@@ -40,7 +40,9 @@ FramePacer::FramePacer()
 	m_updateTime = 1.0f / (Real)BaseFps; // initialized to something to avoid division by zero on first use
 	m_logicFramePhase = 1.0f;
 	m_enableFpsLimit = FALSE;
-	m_enableLogicTimeScale = FALSE;
+	// TheSuperHackers @bugfix Keep normal offline simulation at 30 ticks/s when the render cap changes.
+	// Reuse the existing accumulator and client time scaling; network pacing takes precedence below.
+	m_enableLogicTimeScale = TRUE;
 	m_isTimeFrozen = FALSE;
 	m_isGameHalted = FALSE;
 }

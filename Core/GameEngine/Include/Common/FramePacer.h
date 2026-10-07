@@ -59,7 +59,7 @@ public:
 
 	void setLogicTimeScaleFps( Int fps ); ///< Set the logic time scale fps and therefore scale the simulation time. Is capped by the max render fps and does not apply to network matches.
 	Int  getLogicTimeScaleFps() const; ///< Get the raw logic time scale fps value.
-	void enableLogicTimeScale( Bool enable ); ///< Enable or disable the logic time scale setup. If disabled, the simulation time scale is bound to the render frame time or network update time.
+	void enableLogicTimeScale( Bool enable ); ///< Enabled by default at 30 ticks/s. Disabling explicitly restores render-bound offline simulation; network pacing is independent.
 	Bool isLogicTimeScaleEnabled() const; ///< Check whether the logic time scale setup is enabled.
 	Int  getActualLogicTimeScaleFps(LogicTimeQueryFlags flags = 0) const; ///< Get the real logic time scale fps, depending on the max render fps, network state and enabled state.
 	Real getActualLogicTimeScaleRatio(LogicTimeQueryFlags flags = 0) const; ///< Get the real logic time scale ratio, depending on the max render fps, network state and enabled state.
