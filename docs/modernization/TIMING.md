@@ -1,5 +1,15 @@
 # Timing and frame-rate architecture
 
+Stage 3A update (2026-10-08): the developer has now manually verified the Stage 2
+fix: Ctrl+numpad + reaches 60 render FPS without accelerating infantry/vehicles
+or gameplay, and camera motion is visibly smoother. Approximately 30 TPS is
+inferred from normal speed, not measured. Release `-fps 60` is ineffective because
+its parser-table entry is RTS_DEBUG-only. The Stage 3A candidate adds default 60
+and persistent Options render choices 30/60/120/144/165/240, keeping Stage 2's
+30-TPS policy intact. See [STAGE3A_FPS_OPTIONS.md](STAGE3A_FPS_OPTIONS.md) for the
+complete legacy Game Speed slider audit, tests and manual acceptance. Stage 3A
+runtime/UI/persistence remains UNVERIFIED. Earlier status below is historical.
+
 Stage 2 update (2026-10-08): the developer manually verified normal baseline
 startup/menus/skirmish/exit and verified that **raising the render/frame-rate cap
 using Ctrl + Numpad + caused offline gameplay/simulation to speed up**.

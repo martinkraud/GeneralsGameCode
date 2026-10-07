@@ -513,6 +513,8 @@ void GameEngine::init()
 		TheSubsystemList->postProcessLoadAll();
 
 		TheFramePacer->setFramesPerSecondLimit(TheGlobalData->m_framesPerSecondLimit);
+		// TheSuperHackers @feature Normal Options preferences are finite, independent of legacy LOD flags.
+		TheWritableGlobalData->m_useFpsLimit = TRUE;
 
 		TheAudio->setOn(TheGlobalData->m_audioOn && TheGlobalData->m_musicOn, AudioAffect_Music);
 		TheAudio->setOn(TheGlobalData->m_audioOn && TheGlobalData->m_soundsOn, AudioAffect_Sound);

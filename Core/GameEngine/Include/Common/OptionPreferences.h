@@ -44,7 +44,7 @@ typedef UnsignedInt ScreenEdgeScrollMode;
 class OptionPreferences : public UserPreferences
 {
 public:
-	OptionPreferences();
+	explicit OptionPreferences(Bool loadPreferences = TRUE); ///< FALSE permits in-memory preferences without touching user files.
 	virtual ~OptionPreferences() override;
 
 	enum AntiAliasingMode CPP_11(: Int)
@@ -57,6 +57,8 @@ public:
 	};
 
 	Bool loadFromIniFile();
+	Int getFrameRateLimit() const;
+	void setFrameRateLimit(Int fps);
 
 	WW3D::MultiSampleModeEnum getAntiAliasing() const;
 	TextureFilterClass::TextureFilterMode getTextureFilterMode() const;

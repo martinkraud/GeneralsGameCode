@@ -1,5 +1,20 @@
 # Agent handoff
 
+**Latest, Stage 3A (2026-10-08):** read
+[STAGE3A_FPS_OPTIONS.md](STAGE3A_FPS_OPTIONS.md) first. Starting checkpoint was clean
+`b68b2e82f` on `dev/modern-engine`. The developer has verified Stage 2's 60-FPS
+offline smoke test: hotkeys no longer speed up gameplay, with smoother camera
+motion and normal vehicles/timing; approximately 30 TPS is inferred, not measured.
+Release `-fps` is RTS_DEBUG-table guarded, so use normal Options persistence.
+Stage 3A adds default 60 and Options 30/60/120/144/165/240 via FrameRateLimit in
+Options.ini, preserving Stage 2 scaling and temporary developer controls. The
+legacy Skirmish slider has a complete behavior/call-site audit before retirement;
+restart/replay message semantics remain intact. No broad persistence refactor.
+Release build and 22 Google tests pass. The separate `stage3a-fps-options` runtime
+is prepared for guarded manual UI/persistence acceptance, **not automatically
+launched**. Preserve baseline and Stage 2. No commit/push; changes remain unstaged.
+Stage 3A runtime success is still UNVERIFIED. Earlier updates below are historical.
+
 Read this first, then the linked documents. Investigation: 2026-10-07,
 revision `adac468d732503ba50f1de21bbfc5e83982c5430`.
 

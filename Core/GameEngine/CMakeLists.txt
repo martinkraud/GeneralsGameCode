@@ -589,6 +589,7 @@ set(GAMEENGINE_SRC
     Source/Common/DiscreteCircle.cpp
     Source/Common/FramePacer.cpp
     Source/Common/FrameRateLimit.cpp
+    Source/GameClient/GUI/FrameRateOptions.cpp
 #    Source/Common/GameEngine.cpp
 #    Source/Common/GameLOD.cpp
 #    Source/Common/GameMain.cpp

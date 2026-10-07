@@ -52,6 +52,7 @@
 #include "GameClient/GadgetStaticText.h"
 #include "GameClient/GadgetTextEntry.h"
 #include "GameClient/GadgetComboBox.h"
+#include "GameClient/FrameRateOptions.h"
 #include "GameClient/GadgetRadioButton.h"
 #include "GameClient/GadgetSlider.h"
 #include "GameClient/HeaderTemplate.h"
@@ -96,6 +97,7 @@ static GameWindow *   comboBoxResolution       = nullptr;
 
 static NameKeyType    comboBoxDetailID      = NAMEKEY_INVALID;
 static GameWindow *   comboBoxDetail        = nullptr;
+static GameWindow *   comboBoxFrameRateLimit = nullptr;
 
 static NameKeyType		checkAlternateMouseID	= NAMEKEY_INVALID;
 static GameWindow *		checkAlternateMouse		= nullptr;
@@ -208,6 +210,7 @@ static OptionPreferences *pref = nullptr;
 
 static void setDefaults()
 {
+	resetFrameRateOptions(comboBoxFrameRateLimit);
 	constexpr const Bool ModifyDisplaySettings = FALSE;
 
 	//-------------------------------------------------------------------------------------------------
@@ -935,6 +938,7 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 	comboBoxResolution     = TheWindowManager->winGetWindowFromId( nullptr, comboBoxResolutionID );
 	comboBoxDetailID			 = TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ComboBoxDetail" );
 	comboBoxDetail		   = TheWindowManager->winGetWindowFromId( nullptr, comboBoxDetailID );
+	comboBoxFrameRateLimit = createFrameRateOptions(comboBoxDetail, *pref);
 
 	checkLanguageFilterID  = TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:CheckLanguageFilter" );
 	checkLanguageFilter    = TheWindowManager->winGetWindowFromId( nullptr, checkLanguageFilterID );
@@ -1573,6 +1577,7 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 			else if (controlID == buttonAccept )
 			{
 				saveOptions();
+				acceptFrameRateOptions(comboBoxFrameRateLimit, *pref);
 
 				if (pref)
 				{

@@ -66,6 +66,21 @@ void FrameRateLimit::reset()
 }
 
 
+Int RenderFpsPreset::getOptionFpsValue(Int index)
+{
+	// TheSuperHackers @feature Finite render preferences; simulation remains at its own rate.
+	static const Int values[OptionCount] = {30, DefaultFpsValue, 120, 144, 165, 240};
+	return index >= 0 && index < OptionCount ? values[index] : DefaultFpsValue;
+}
+
+Bool RenderFpsPreset::isOptionFpsValue(Int value)
+{
+	for (Int i = 0; i < OptionCount; ++i)
+		if (value == getOptionFpsValue(i))
+			return TRUE;
+	return FALSE;
+}
+
 const UnsignedInt RenderFpsPreset::s_fpsValues[] = {
 	30, 50, 56, 60, 65, 70, 72, 75, 80, 85, 90, 100, 110, 120, 144, 240, 480, UncappedFpsValue };
 

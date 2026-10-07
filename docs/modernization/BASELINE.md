@@ -1,5 +1,14 @@
 # Modernization baseline
 
+Latest evidence (2026-10-08): the developer also verified the Stage 2 correction
+at checkpoint `b68b2e82f`: increasing render FPS no longer accelerates offline
+gameplay; 60 FPS via Ctrl+numpad + gives smoother camera motion and normal vehicle/
+gameplay timing. TPS is inferred, not instrumented. Startup Release `-fps 60`
+was ineffective (its parser entry requires RTS_DEBUG). See
+[STAGE3A_FPS_OPTIONS.md](STAGE3A_FPS_OPTIONS.md) for the new persistent render-cap
+candidate, whose runtime/UI/persistence acceptance remains UNVERIFIED. Existing
+baseline/Stage 2 runtimes are preserved; historical evidence follows.
+
 Stage 2 evidence update (2026-10-08): the developer reports that the guarded
 `build/dev-runtimes/zh/baseline/game` runtime starts, menus work, skirmish gameplay
 appears normal at the default cap, and exit returns 0. No obvious audio/render/

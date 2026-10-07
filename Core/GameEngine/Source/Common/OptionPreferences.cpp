@@ -36,6 +36,8 @@
 #include "Common/GameLOD.h"
 #include "Common/GlobalData.h"
 #include "Common/OptionPreferences.h"
+#include "Common/FrameRateLimit.h"
+#include <errno.h>
 
 #include "GameClient/ClientInstance.h"
 #include "GameClient/Display.h"
@@ -46,9 +48,28 @@
 
 #include "GameNetwork/IPEnumeration.h"
 
-OptionPreferences::OptionPreferences()
+OptionPreferences::OptionPreferences(Bool loadPreferences)
 {
-	loadFromIniFile();
+	if (loadPreferences)
+		loadFromIniFile();
+}
+
+Int OptionPreferences::getFrameRateLimit() const
+{
+	// TheSuperHackers @feature Old/malformed preferences use the authoritative render default.
+	const AsciiString value = getAsciiString("FrameRateLimit", AsciiString::TheEmptyString);
+	char *end = nullptr;
+	errno = 0;
+	const long fps = strtol(value.str(), &end, 10);
+	if (errno || end == value.str() || *end != '\0' || fps < 30 || fps > 240 ||
+		!RenderFpsPreset::isOptionFpsValue(static_cast<Int>(fps)))
+		return RenderFpsPreset::DefaultFpsValue;
+	return static_cast<Int>(fps);
+}
+
+void OptionPreferences::setFrameRateLimit(Int fps)
+{
+	setInt("FrameRateLimit", RenderFpsPreset::isOptionFpsValue(fps) ? fps : RenderFpsPreset::DefaultFpsValue);
 }
 
 OptionPreferences::~OptionPreferences()

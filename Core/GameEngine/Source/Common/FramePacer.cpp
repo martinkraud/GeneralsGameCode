@@ -35,9 +35,9 @@ FramePacer::FramePacer()
 	// Set the time slice size to 1 ms.
 	timeBeginPeriod(1);
 
-	m_maxFPS = BaseFps;
+	m_maxFPS = RenderFpsPreset::DefaultFpsValue;
 	m_logicTimeScaleFPS = LOGICFRAMES_PER_SECOND;
-	m_updateTime = 1.0f / (Real)BaseFps; // initialized to something to avoid division by zero on first use
+	m_updateTime = 1.0f / (Real)RenderFpsPreset::DefaultFpsValue; // predict the first render interval
 	m_logicFramePhase = 1.0f;
 	m_enableFpsLimit = FALSE;
 	// TheSuperHackers @bugfix Keep normal offline simulation at 30 ticks/s when the render cap changes.

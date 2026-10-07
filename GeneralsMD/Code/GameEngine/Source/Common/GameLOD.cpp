@@ -638,7 +638,8 @@ void GameLODManager::applyStaticLODLevel(StaticGameLODLevel level)
 		TheWritableGlobalData->m_useDrawModuleLOD=!lodInfo->m_useBuildupScaffolds;
 		TheWritableGlobalData->m_useHeatEffects=lodInfo->m_useHeatEffects;
 		TheWritableGlobalData->m_enableDynamicLOD = lodInfo->m_enableDynamicLOD;
-		TheWritableGlobalData->m_useFpsLimit = lodInfo->m_useFpsLimit;
+		// TheSuperHackers @feature Graphics detail must not disable the finite render preference.
+		TheWritableGlobalData->m_useFpsLimit = TRUE;
 		TheWritableGlobalData->m_useTrees = requestedTrees;
 
 		if (!m_memPassed || isReallyLowMHz()) {

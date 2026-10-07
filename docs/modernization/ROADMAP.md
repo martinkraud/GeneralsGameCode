@@ -1,5 +1,15 @@
 # Incremental modernization roadmap
 
+Stage 3A update (2026-10-08): Stage 2's 60-FPS offline smoke test is developer
+verified: raising render FPS no longer accelerates gameplay; the camera is
+smoother. TPS remains inferred rather than instrumented. The focused Stage 3A
+candidate provides default 60, finite persistent Options render caps and retires
+the audited conflicting Skirmish slider; 30-TPS scaling remains intact.
+[STAGE3A_FPS_OPTIONS.md](STAGE3A_FPS_OPTIONS.md) records build/tests, guarded staging
+and the required manual UI/persistence checks. Stage 3A gameplay acceptance remains
+UNVERIFIED; Stage 3B interpolation, network/replay validation and broader
+performance/ultrawide/renderer work remain separate. Earlier updates are historical.
+
 Stage 2 update (2026-10-08): the developer's guarded baseline passes startup,
 menus, ordinary skirmish and clean exit, with 369-file source/runtime hash
 checks before/after. Raising the render cap manually accelerates offline play.

@@ -350,10 +350,7 @@ Bool SkirmishPreferences::write()
 
 	setSlotList();
 
-//	NameKeyType sliderGameSpeedID = TheNameKeyGenerator->nameToKey( "SkirmishGameOptionsMenu.wnd:SliderGameSpeed" );
-	GameWindow *sliderGameSpeed = TheWindowManager->winGetWindowFromId( parentSkirmishGameOptions, sliderGameSpeedID );
-	Int maxFPS = GadgetSliderGetPosition( sliderGameSpeed );
-	setInt("FPS", maxFPS);
+// Keep the legacy Skirmish.ini FPS entry unchanged; Options owns the render preference.
 
 	return UserPreferences::write();
 }
@@ -409,14 +406,8 @@ void reallyDoStart()
 	if (TheGameLogic->isInGame())
 		TheGameLogic->clearGameData(FALSE);
 
-	//NameKeyType sliderGameSpeedID = TheNameKeyGenerator->nameToKey( "SkirmishGameOptionsMenu.wnd:SliderGameSpeed" );
-	GameWindow *sliderGameSpeed = TheWindowManager->winGetWindowFromId( parentSkirmishGameOptions, sliderGameSpeedID );
-	Int maxFPS = GadgetSliderGetPosition( sliderGameSpeed );
-	DEBUG_LOG(("GameSpeedSlider was at %d", maxFPS));
-	if (maxFPS > GREATER_NO_FPS_LIMIT)
-		maxFPS = 1000;
-	if (maxFPS < 15)
-		maxFPS = 15;
+	// TheSuperHackers @feature New skirmishes use the Options render cap, independently of logic TPS.
+	const Int maxFPS = TheGlobalData->m_framesPerSecondLimit;
 
   TheWritableGlobalData->m_mapName = TheSkirmishGameInfo->getMap();
   TheSkirmishGameInfo->startGame(0);
@@ -1270,6 +1261,13 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	GameWindow *sliderGameSpeed = TheWindowManager->winGetWindowFromId( parentSkirmishGameOptions, sliderGameSpeedID );
 	Int sliderPos = max(15,min(61,prefs.getInt("FPS", TheGlobalData->m_framesPerSecondLimit)));
 	GadgetSliderSetPosition( sliderGameSpeed, sliderPos );
+	// TheSuperHackers @feature Render rate is configured in Options, not the legacy game-speed slider.
+	sliderGameSpeed->winHide(TRUE);
+	staticTextGameSpeed->winHide(TRUE);
+	GameWindow *speedLabel = TheWindowManager->winGetWindowFromId(parentSkirmishGameOptions,
+		NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1"));
+	if (speedLabel && speedLabel->winGetText() == TheGameText->fetch("GUI:GameSpeed"))
+		speedLabel->winHide(TRUE);
 	setFPSTextBox(sliderPos);
 	buttonStart->winSetText(TheGameText->fetch("GUI:Start"));
 	/* hey, for now we're also going to disable the map select button until it doesn't crash */

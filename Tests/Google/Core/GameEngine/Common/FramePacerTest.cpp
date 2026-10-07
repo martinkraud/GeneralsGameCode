@@ -36,7 +36,9 @@ TEST(FramePacer, NormalOfflineRateDoesNotFollowRenderCap)
 {
 	ASSERT_EQ(TheNetwork, nullptr);
 	TestFramePacer pacer;
-	const Int renderRates[] = {30, 60, 120, 144, 240, 480};
+	EXPECT_EQ(pacer.getFramesPerSecondLimit(), 60);
+	EXPECT_EQ(pacer.getLogicTimeScaleFps(), 30);
+	const Int renderRates[] = {30, 60, 120, 144, 165, 240, 480};
 	for (const Int fps : renderRates)
 	{
 		SCOPED_TRACE(fps);

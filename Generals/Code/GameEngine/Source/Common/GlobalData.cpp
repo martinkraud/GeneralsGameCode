@@ -1197,6 +1197,8 @@ void GlobalData::parseGameDataDefinition( INI* ini )
 
 	// override INI values with user preferences
 	OptionPreferences optionPref;
+	// TheSuperHackers @feature User render preference overrides packaged defaults; logic units are unchanged.
+	TheWritableGlobalData->m_framesPerSecondLimit = optionPref.getFrameRateLimit();
 	TheWritableGlobalData->m_useAlternateMouse = optionPref.getAlternateMouseModeEnabled();
 	TheWritableGlobalData->m_useRightMouseScrollWithAlternateMouse = optionPref.getRightMouseScrollWithAlternateMouseEnabled();
 	TheWritableGlobalData->m_clientRetaliationModeEnabled = optionPref.getRetaliationModeEnabled();

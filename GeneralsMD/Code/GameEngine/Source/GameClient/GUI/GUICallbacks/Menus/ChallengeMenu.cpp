@@ -682,9 +682,8 @@ WindowMsgHandledType ChallengeMenuSystem( GameWindow *window, UnsignedInt msg, W
 				msg->appendIntegerArgument(TheCampaignManager->getRankPoints());
 
 
-        // Added so that, even though a ChallengeGame is really a SkirmishGame in SinglePlayerGame's clothing,
-        // GameEngine will still apply the default "FRAME CAP" as it does during "Solo Missions."
-        msg->appendIntegerArgument(LOGICFRAMES_PER_SECOND);	// FPS limit
+        // TheSuperHackers @feature Challenge games use the same render preference as other offline games.
+        msg->appendIntegerArgument(TheGlobalData->m_framesPerSecondLimit);	// render FPS limit
 
 				InitRandom(0);
 			}

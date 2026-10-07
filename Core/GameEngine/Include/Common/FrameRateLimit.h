@@ -47,8 +47,12 @@ class RenderFpsPreset
 public:
 	enum CPP_11(: UnsignedInt)
 	{
+		DefaultFpsValue = 60,
 		UncappedFpsValue = 1000000,
 	};
+	static const Int OptionCount = 6;
+	static Int getOptionFpsValue(Int index);
+	static Bool isOptionFpsValue(Int value);
 
 	static UnsignedInt getNextFpsValue(UnsignedInt value);
 	static UnsignedInt getPrevFpsValue(UnsignedInt value);
