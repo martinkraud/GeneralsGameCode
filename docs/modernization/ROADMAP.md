@@ -1,5 +1,22 @@
 # Incremental modernization roadmap
 
+Stage 3B update (2026-10-08): Stage 3A is now developer manually accepted,
+including default 60, normal gameplay, immediate 120-FPS Accept and persistence
+through relaunch; TPS is still inferred. The analysis-only
+[STAGE3B_INTERPOLATION.md](STAGE3B_INTERPOLATION.md) identifies missing generic
+world-root interpolation alongside existing animation/decorative/particle
+mechanisms, and a visual-phase/scheduler-remainder mismatch at non-integer ratios.
+Proposed Stage 3C: establish and test a scheduler-aligned presentation phase
+contract, then gate a client-only translation prototype for a narrow ground-unit
+subset with lifecycle snaps and gameplay-query isolation. Preserve tick policy,
+ordering, network pacing and serialized formats. No Stage 3C implementation is
+authorized by this investigation; review the plan and runtime acceptance matrix.
+Separately, plan opt-in user-rebindable camera actions retaining arrows and mouse
+controls. All WASD letters have gameplay/contextual conflicts in the copied
+English assets; resolving press/release ownership and focus gates precedes any
+controls implementation. This is not bundled into the interpolation prototype.
+Earlier updates below describe their historical acceptance state.
+
 Stage 3A update (2026-10-08): Stage 2's 60-FPS offline smoke test is developer
 verified: raising render FPS no longer accelerates gameplay; the camera is
 smoother. TPS remains inferred rather than instrumented. The focused Stage 3A

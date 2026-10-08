@@ -1,5 +1,30 @@
 # Agent handoff
 
+**Latest, Stage 3B (2026-10-08):** read
+[STAGE3B_INTERPOLATION.md](STAGE3B_INTERPOLATION.md) first. Investigation started
+clean on `dev/modern-engine` at `967dfb739 Add persistent render FPS options`.
+Stage 3A is developer manually accepted: default 60, normal gameplay, Options
+dropdown, immediate Accept at 120, persistence through exit/relaunch and integrity
+checks. Approximately 30 TPS remains inferred, not measured. This stage changes
+documentation only: no source/build/data/runtime change, launch, commit or push.
+Baseline, Stage 2 and Stage 3A copied-runtime checks each pass all 369 paths,
+lengths and SHA256 hashes. No build/tests rerun for this documentation change.
+
+Generic Object -> Drawable -> W3D root translation does not interpolate.
+Existing skeletal interpolation, decorative physics and particle integration
+must be retained. FramePacer visual phase is separate from the scheduler's
+remainder; resolve its contract before a gated Stage 3C ground-unit translation
+prototype. Keep endpoint state client-owned; never mutate canonical Drawable
+transforms temporarily: logic bone/launch queries and rendered picking can cross
+the boundary. Snap spawn/load/reset/teleport/containment discontinuities.
+Arrow panning uses elapsed client time; follow-camera smoothing includes a fixed
+per-update factor. WASD conflicts include Stop in both titles, aircraft selection
+in ZH and contextual button shortcuts. Plan opt-in rebindable actions separately,
+preserving arrows, focus gates and explicit key/conflict ownership. Do not
+implement controls or interpolation until the developer reviews follow-up scope.
+The Stage 3B cap/visual/replay/network matrix is still NOT RUN.
+Earlier updates below describe their historical acceptance state.
+
 **Latest, Stage 3A (2026-10-08):** read
 [STAGE3A_FPS_OPTIONS.md](STAGE3A_FPS_OPTIONS.md) first. Starting checkpoint was clean
 `b68b2e82f` on `dev/modern-engine`. The developer has verified Stage 2's 60-FPS
@@ -92,11 +117,11 @@ commit or push; existing uncommitted investigation documents are retained.
 
 ## Next action
 
-Developer: follow STAGE2_TIMING.md to create/validate a fresh `stage2-timing`
-runtime and manually compare 30 versus 60 with fresh backup protection. Do not
-use Ctrl+Shift+numpad to repair speed during acceptance. Retain baseline unchanged.
-Record actual rendered FPS and completed logic-frame change per elapsed second
-where instrumentation permits; distinguish target values from measurements.
-Only after 60 passes, characterize 120/144/240, pause/loading/speed transitions,
-visual stepping, replay and multiplayer. Complete remaining Stage 1 coverage
-and profiling separately. No automatic game launch, commit or push.
+Developer: review STAGE3B_INTERPOLATION.md sections 11–14 and approve a narrow
+Stage 3C phase-contract/ground-unit presentation prototype before implementation.
+The documented 30/60/120/144/165/240 matrix still needs measured FPS/TPS and
+camera/object/animation/particle comparisons, pause/load/containment/stall tests,
+same-build replay CRCs and mixed-cap LAN checks. Controls/rebinding is a separate
+follow-up; Stage 3B adds no WASD. Complete remaining Stage 1 profiling separately.
+Keep the three existing copied runtimes intact; protect shared user data for any
+manual session. No automatic game launch, commit or push.

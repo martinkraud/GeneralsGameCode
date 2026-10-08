@@ -1,5 +1,19 @@
 # Timing and frame-rate architecture
 
+Stage 3B update (2026-10-08): analysis only at clean checkpoint `967dfb739`.
+Stage 3A is developer manually accepted: default 60, normal gameplay, Options
+selection/Accept at 120 and persistence through relaunch. TPS remains inferred.
+[STAGE3B_INTERPOLATION.md](STAGE3B_INTERPOLATION.md) traces both titles: ordinary
+world-root translation is not interpolated; skeletal animation, physics
+decorations and particles have separate smoothing mechanisms. FramePacer's
+visual phase is not the offline scheduler remainder, with non-integer-ratio
+alignment risk. A future root prototype needs a scheduler-aligned phase contract,
+client-owned endpoints and explicit discontinuity invalidation first.
+Arrow panning scales elapsed client time; camera follow includes per-update
+smoothing. WASD conflicts require a separate opt-in, rebindable controls change.
+No implementation, game launch or new runtime measurement in Stage 3B.
+Earlier updates below describe their historical acceptance state.
+
 Stage 3A update (2026-10-08): the developer has now manually verified the Stage 2
 fix: Ctrl+numpad + reaches 60 render FPS without accelerating infantry/vehicles
 or gameplay, and camera motion is visibly smoother. Approximately 30 TPS is
