@@ -12,6 +12,14 @@ namespace GroundTranslation
 {
 	const KindOfMaskType& excludedKinds();
 	bool supportsMovement(AIStateType state);
+	inline bool supportsOrientationMovement(AIStateType state, bool infantry, bool aimingOrFiring)
+	{
+		if (!supportsMovement(state)) return false;
+		if (!infantry) return true;
+		if (aimingOrFiring) return false;
+		return state == AI_IDLE || state == AI_MOVE_TO || state == AI_WAIT
+			|| state == AI_MOVE_OUT_OF_THE_WAY || state == AI_MOVE_AND_TIGHTEN;
+	}
 	inline bool supportsSurfaces(unsigned int surfaces)
 	{
 		return (surfaces & LOCOMOTORSURFACE_GROUND) != 0

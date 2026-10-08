@@ -347,6 +347,14 @@ void W3DTruckDraw::onRenderObjRecreated()
 //-------------------------------------------------------------------------------------------------
 /** Rotate and position wheels and other truck parts. */
 //-------------------------------------------------------------------------------------------------
+Bool W3DTruckDraw::supportsGroundRootOrientation() const
+{
+	const W3DTruckDrawModuleData* data = getW3DTruckDrawModuleData();
+	return GroundTranslation::supportsRootOrientationDraw(getModuleNameKey() == NAMEKEY("W3DTruckDraw"),
+		data->m_attachToDrawableBone.isNotEmpty(),
+		data->m_cabBoneName.isNotEmpty() || data->m_trailerBoneName.isNotEmpty());
+}
+
 void W3DTruckDraw::doDrawModule(const Matrix3D* transformMtx)
 {
 

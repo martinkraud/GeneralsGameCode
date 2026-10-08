@@ -417,6 +417,8 @@ public:
 	Vector3 getGroundPresentationPosition() const; // Local UI/render hit testing only.
 	Vector3 getGroundPresentationOffset() const;
 	Bool isGroundPresentationEligible() const;
+	Bool isGroundOrientationEligible() const;
+	void invalidateGroundOrientation() { m_groundTranslation.resetOrientation(); }
 	void draw();													///< render the drawable to the given view
 	void updateDrawable(Real timeScale);														///< update the drawable
 

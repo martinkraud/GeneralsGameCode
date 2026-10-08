@@ -353,6 +353,7 @@ public:
 	/// the draw method
 	virtual void doDrawModule(const Matrix3D* transformMtx) override;
 	virtual Bool supportsGroundTranslation() const override;
+	virtual Bool supportsGroundRootOrientation() const override;
 	virtual void setShadowsEnabled(Bool enable) override;
 	virtual void releaseShadows() override;	///< frees all shadow resources used by this module - used by Options screen.
 	virtual void allocateShadows() override; ///< create shadow resources if not already present. Used by Options screen.

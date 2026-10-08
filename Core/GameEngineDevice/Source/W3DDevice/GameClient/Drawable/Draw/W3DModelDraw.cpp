@@ -2049,6 +2049,14 @@ Bool W3DModelDraw::supportsGroundTranslation() const
 		getW3DModelDrawModuleData()->m_attachToDrawableBone.isNotEmpty());
 }
 
+Bool W3DModelDraw::supportsGroundRootOrientation() const
+{
+	const NameKeyType name = getModuleNameKey();
+	return GroundTranslation::supportsRootOrientationDraw(
+		name == NAMEKEY("W3DModelDraw") || name == NAMEKEY("W3DTankDraw"),
+		getW3DModelDrawModuleData()->m_attachToDrawableBone.isNotEmpty(), false);
+}
+
 void W3DModelDraw::doDrawModule(const Matrix3D* transformMtx)
 {
 	// update whether or not we should be animating.

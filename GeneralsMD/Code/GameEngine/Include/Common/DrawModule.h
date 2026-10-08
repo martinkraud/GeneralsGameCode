@@ -71,6 +71,7 @@ public:
 
 	virtual void doDrawModule(const Matrix3D* transformMtx) = 0;
 	virtual Bool supportsGroundTranslation() const { return FALSE; }
+	virtual Bool supportsGroundRootOrientation() const { return FALSE; }
 
 	virtual void setShadowsEnabled(Bool enable) = 0;
 	virtual void releaseShadows() = 0;	///< frees all shadow resources used by this module - used by Options screen.

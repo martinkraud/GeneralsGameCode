@@ -2657,6 +2657,24 @@ Bool Drawable::isGroundPresentationEligible() const
 	return GroundTranslation::canInterpolate(c);
 }
 
+Bool Drawable::isGroundOrientationEligible() const
+{
+	// Caller has already established the full translation policy.
+	const Object* obj = getObject();
+	if (!obj || obj->isKindOf(KINDOF_STICK_TO_TERRAIN_SLOPE)) return FALSE;
+	const AIUpdateInterface* ai = obj->getAIUpdateInterface();
+	const Bool aiming = obj->getStatusBits().test(OBJECT_STATUS_IS_ATTACKING)
+		|| obj->getStatusBits().test(OBJECT_STATUS_IS_AIMING_WEAPON)
+		|| obj->getStatusBits().test(OBJECT_STATUS_IS_FIRING_WEAPON);
+	if (!ai || !GroundTranslation::supportsOrientationMovement(ai->getAIStateType(),
+		obj->isKindOf(KINDOF_INFANTRY), aiming)) return FALSE;
+	const DrawModule* const* modules = (const DrawModule* const*)getModuleList(MODULETYPE_DRAW);
+	if (!modules || !*modules) return FALSE;
+	for (; *modules; ++modules)
+		if (!(*modules)->supportsGroundRootOrientation()) return FALSE;
+	return GroundTranslation::supportsHeadingBasis(*getTransformMatrix());
+}
+
 void Drawable::captureGroundPresentation()
 {
 	const PresentationTiming& timing = TheFramePacer->getPresentationTiming();
@@ -2668,7 +2686,12 @@ void Drawable::captureGroundPresentation()
 	}
 	// GameClient runs before the next logic update: this is the last completed world.
 	if (TheGameLogic->hasUpdated() && timing.generation == TheGameLogic->getFrame())
-		m_groundTranslation.capture(getTransformMatrix()->Get_Translation(), timing.generation, timing.epoch);
+	{
+		const Matrix3D& canonical = *getTransformMatrix();
+		const Bool orientationEligible = isGroundOrientationEligible();
+		m_groundTranslation.capture(canonical.Get_Translation(), timing.generation, timing.epoch,
+			orientationEligible ? canonical.Get_Z_Rotation() : 0, orientationEligible);
+	}
 }
 
 Vector3 Drawable::getGroundPresentationPosition() const
@@ -2724,8 +2747,11 @@ void Drawable::draw()
 	// call the database defined draw action method
 	Matrix3D transformMtx = *getTransformMatrix();
 	if (GroundTranslation::isEnabled())
+	{
+		const Bool eligible = isGroundPresentationEligible();
 		transformMtx = m_groundTranslation.getRenderTransform(transformMtx,
-			TheFramePacer->getPresentationTiming(), isGroundPresentationEligible());
+			TheFramePacer->getPresentationTiming(), eligible, eligible && isGroundOrientationEligible());
+	}
 	if (!isInstanceIdentity())
 	{
 #ifdef ALLOW_TEMPORARIES

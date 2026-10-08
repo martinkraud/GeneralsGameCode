@@ -1,5 +1,25 @@
 # Incremental modernization roadmap
 
+Stage 3C.4 update (2026-10-08):
+[STAGE3C4_GROUND_ORIENTATION.md](STAGE3C4_GROUND_ORIENTATION.md) records root-heading interpolation.
+Started clean at 289be9bf9 after developer Stage 3C.3 acceptance/commit/push.
+Existing clock and completed XYZ pair now share two heading samples, +8 bytes
+per Drawable (history 48, Drawable 392 in x86). Local shortest-yaw basis rotation
+precedes existing instance/physics/model decoration; canonical getters, aiming,
+turret/barrel states and simulation remain unchanged. Separate default-false
+orientation capabilities exclude articulated trucks, terrain-aligned roots and
+infantry combat while retaining translation. The same process-local flag remains
+OFF by default. Release build/CTest 2/2 and 148 direct Google tests pass; both
+Release synthetic benchmarks pass. New candidate stage3c4-ground-orientation;
+full inventories PASS for it, Steam source and all five previous acceptance
+candidates (369 files each). Hashes and manual 1v1 procedure are in the report.
+Stage 3C.4 runtime acceptance remains pending. Developer + 5 AI combat spikes
+already occurred ON/OFF before this stage; retain for later stress profiling.
+Ordinary acceptance uses developer vs 1 AI. Recommend PERFORMANCE BASELINE /
+PROFILING next after 1v1 review; no speculative spike fix or deeper presentation
+stage implemented. No launch/Install/user-data/Steam changes/commit/push.
+Earlier entries below describe their historical acceptance states.
+
 Stage 3C.3 update (2026-10-08):
 [STAGE3C3_GROUND_HARDENING.md](STAGE3C3_GROUND_HARDENING.md) records the hardening.
 Developer Stage 3C.2 same-binary laptop A/B confirmed smoother eligible movement

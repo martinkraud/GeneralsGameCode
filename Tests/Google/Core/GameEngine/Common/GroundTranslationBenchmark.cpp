@@ -23,10 +23,17 @@ __declspec(noinline)
 __attribute__((noinline))
 #endif
 Matrix3D benchmarkRender(const GroundTranslationHistory& history, const Matrix3D& canonical,
-	const PresentationTiming& timing, bool eligible)
+	const PresentationTiming& timing, bool eligible, bool orientation = false)
 {
-	return history.getRenderTransform(canonical, timing, eligible);
+	return history.getRenderTransform(canonical, timing, eligible, orientation);
 }
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__)
+__attribute__((noinline))
+#endif
+float benchmarkHeading(float previous, float current, float alpha)
+{ return GroundTranslation::interpolateHeading(previous, current, alpha); }
 struct KindView
 {
 	KindOfMaskType mask;
@@ -50,10 +57,10 @@ TEST(GroundTranslationBenchmark, DISABLED_ReleaseCost)
 		KindView kind; kind.mask.set(KINDOF_VEHICLE);
 		GroundTranslation::Eligibility c = {true, true, false, true, true, AI_MOVE_TO, 1, true};
 		PresentationTiming t = {10, 11, 1, 0.5f, true};
-		for (unsigned int i = 0; i < count; ++i) canonical[i].Set_Translation(Vector3(float(i % 7), 2, 3));
+		for (unsigned int i = 0; i < count; ++i) { canonical[i].Rotate_Z(0.8f); canonical[i].Set_Translation(Vector3(float(i % 7), 2, 3)); }
 		const char* operations[] = {"off_draw_branch", "off_hud_branch", "on_eligibility_policy",
-			"on_capture_traversal", "on_render_matrix", "on_hud_selection_position", "on_combined"};
-		for (unsigned int op = 0; op < 7; ++op)
+			"on_capture_traversal", "on_render_matrix", "on_hud_selection_position", "on_combined", "on_heading_helper", "on_xyz_heading_matrix", "on_heading_capture"};
+		for (unsigned int op = 0; op < 10; ++op)
 		{
 			GroundTranslation::setEnabled(op >= 2);
 			std::vector<double> milliseconds;
@@ -62,8 +69,8 @@ TEST(GroundTranslationBenchmark, DISABLED_ReleaseCost)
 				for (unsigned int i = 0; i < count; ++i)
 				{
 					history[i].reset();
-					history[i].capture(canonical[i].Get_Translation() - Vector3(1, 0, 0), 10, 1);
-					history[i].capture(canonical[i].Get_Translation(), 11, 1);
+					history[i].capture(canonical[i].Get_Translation() - Vector3(1, 0, 0), 10, 1, 0.2f, true);
+					history[i].capture(canonical[i].Get_Translation(), 11, 1, canonical[i].Get_Z_Rotation(), true);
 				}
 				float checksum = 0;
 				const auto start = std::chrono::steady_clock::now();
@@ -89,6 +96,11 @@ TEST(GroundTranslationBenchmark, DISABLED_ReleaseCost)
 							break;
 						case 4: checksum += benchmarkRender(history[i], canonical[i], t, true).Get_X_Translation(); break;
 						case 5: checksum += history[i].getPresentationPosition(canonical[i].Get_Translation(), t, true).X; break;
+						case 7: checksum += benchmarkHeading(0.2f, 0.8f, t.alpha); break;
+						case 8: checksum += benchmarkRender(history[i], canonical[i], t, true, true).Get_X_Translation(); break;
+						case 9:
+							history[i].capture(canonical[i].Get_Translation(), iteration + 12, 1, canonical[i].Get_Z_Rotation(), true);
+							checksum += canonical[i].Get_X_Translation(); break;
 						case 6:
 							c.ordinaryGroundKind = GroundTranslation::supportsKinds(kind);
 							checksum += benchmarkRender(history[i], canonical[i], t, GroundTranslation::canInterpolate(c)).Get_X_Translation();
@@ -107,6 +119,6 @@ TEST(GroundTranslationBenchmark, DISABLED_ReleaseCost)
 	}
 	GroundTranslation::setEnabled(false);
 	EXPECT_EQ(sizeof(void*), 4u);
-	EXPECT_EQ(sizeof(GroundTranslationHistory), 40u);
+	EXPECT_EQ(sizeof(GroundTranslationHistory), 48u);
 }
 }

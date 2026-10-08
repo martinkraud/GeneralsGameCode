@@ -5,6 +5,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/FramePacerTest.cpp
     GameEngine/Common/PresentationClockTest.cpp
     GameEngine/Common/GroundTranslationTest.cpp
+    GameEngine/Common/GroundOrientationTest.cpp
     GameEngine/Common/GroundTranslationPolicyTest.cpp
     GameEngine/Common/GroundTranslationBenchmark.cpp
     GameEngine/Common/OptionPreferencesTest.cpp

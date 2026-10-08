@@ -89,6 +89,7 @@ public:
 
 	virtual void setHidden(Bool h) override;
 	virtual void doDrawModule(const Matrix3D* transformMtx) override;
+	virtual Bool supportsGroundRootOrientation() const override;
 	virtual void setFullyObscuredByShroud(Bool fullyObscured) override;
 	virtual void reactToGeometryChange() override { }
 

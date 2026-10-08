@@ -1057,6 +1057,11 @@ StateReturnType AIStateMachine::setState(StateID newStateID)
 		&& (!GroundTranslation::supportsMovement(static_cast<AIStateType>(oldID))
 			|| !GroundTranslation::supportsMovement(static_cast<AIStateType>(newStateID))))
 		getOwner()->getDrawable()->invalidateGroundPresentation();
+	if (GroundTranslation::isEnabled() && oldID != newStateID && getOwner()->getDrawable()
+		&& getOwner()->isKindOf(KINDOF_INFANTRY)
+		&& (!GroundTranslation::supportsOrientationMovement(static_cast<AIStateType>(oldID), true, false)
+			|| !GroundTranslation::supportsOrientationMovement(static_cast<AIStateType>(newStateID), true, false)))
+		getOwner()->getDrawable()->invalidateGroundOrientation();
 	StateReturnType tmp = StateMachine::setState(newStateID);
 
 	AIUpdateInterface* ai = getOwner()->getAI();
