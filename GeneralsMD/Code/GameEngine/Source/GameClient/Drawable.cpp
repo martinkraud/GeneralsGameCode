@@ -37,6 +37,7 @@
 #include "Common/ClientUpdateModule.h"
 #include "Common/DrawModule.h"
 #include "Common/FramePacer.h"
+#include "Common/GroundTranslationPolicy.h"
 #include "Common/GameAudio.h"
 #include "Common/GameLOD.h"
 #include "Common/GameState.h"
@@ -2621,28 +2622,41 @@ void Drawable::setStealthLook(StealthLookType look)
 Bool Drawable::isGroundPresentationEligible() const
 {
 	const Object* obj = getObject();
-	if (!GroundTranslation::isEnabled() || !obj
-		|| !GroundTranslation::supportsTemplate(obj->getTemplate()->getName().str())
-		|| m_hidden || m_hiddenByStealth || m_drawableFullyObscuredByShroud
-		|| (TheTacticalView && TheTacticalView->isDoingScriptedCamera())
-		|| obj->getContainedBy() || obj->getContain() || obj->isEffectivelyDead()
-		|| obj->isDisabled() || obj->isAirborneTarget() || obj->isSignificantlyAboveTerrain()
-		|| obj->getStatusBits().test(OBJECT_STATUS_PARACHUTING)
-		|| (!obj->isKindOf(KINDOF_INFANTRY) && !obj->isKindOf(KINDOF_VEHICLE))
-		|| obj->isKindOf(KINDOF_AIRCRAFT) || obj->isKindOf(KINDOF_PROJECTILE)
-		|| obj->isKindOf(KINDOF_STRUCTURE) || obj->isKindOf(KINDOF_IMMOBILE))
+	if (!GroundTranslation::isEnabled() || !obj)
 		return FALSE;
+	GroundTranslation::Eligibility c = {};
+	c.boundVisibleAlive = !m_hidden && !m_hiddenByStealth && !m_drawableFullyObscuredByShroud
+		&& !obj->isEffectivelyDead();
+	c.ordinaryGroundKind = GroundTranslation::supportsKinds(*obj->getTemplate());
+	if (!c.boundVisibleAlive || !c.ordinaryGroundKind)
+		return FALSE;
+	c.blocked = obj->getContainedBy() || obj->getContain() || obj->isDisabled()
+		|| obj->isAirborneTarget() || obj->isSignificantlyAboveTerrain()
+		|| (TheTacticalView && TheTacticalView->isDoingScriptedCamera())
+		|| obj->getStatusBits().test(OBJECT_STATUS_PARACHUTING)
+		|| obj->getStatusBits().test(OBJECT_STATUS_IS_USING_ABILITY)
+		|| obj->getStatusBits().test(OBJECT_STATUS_UNDERGOING_REPAIR)
+		|| obj->getStatusBits().test(OBJECT_STATUS_RECONSTRUCTING)
+		|| obj->getStatusBits().test(OBJECT_STATUS_IMMOBILE)
+		|| obj->getStatusBits().test(OBJECT_STATUS_DEPLOYED);
 	const AIUpdateInterface* ai = obj->getAIUpdateInterface();
-	if (!ai || !ai->isDoingGroundMovement()
-		|| (ai->getAIStateType() != AI_IDLE && ai->getAIStateType() != AI_MOVE_TO))
+	if (c.blocked || !ai || ai->getLastCommandSource() == CMD_FROM_SCRIPT)
+		return FALSE;
+	// Exact behavior capability, not inheritance: custom/special AI stays canonical.
+	c.ordinaryAI = ai->getModuleNameKey() == NAMEKEY("AIUpdateInterface");
+	c.groundLocomotor = ai->isDoingGroundMovement() && ai->getCurLocomotor()
+		&& GroundTranslation::supportsSurfaces(ai->getCurLocomotor()->getLegalSurfaces());
+	c.movement = ai->getAIStateType();
+	if (!c.ordinaryAI || !c.groundLocomotor || !GroundTranslation::supportsMovement(c.movement))
 		return FALSE;
 	const DrawModule* const* modules = (const DrawModule* const*)getModuleList(MODULETYPE_DRAW);
-	if (!modules || !*modules)
-		return FALSE;
-	for (; *modules; ++modules)
-		if (!(*modules)->supportsGroundTranslation())
-			return FALSE;
-	return TRUE;
+	c.allDrawModulesSupported = true;
+	if (modules)
+		for (; *modules; ++modules)
+		{
+			c.addDrawModule((*modules)->supportsGroundTranslation());
+		}
+	return GroundTranslation::canInterpolate(c);
 }
 
 void Drawable::captureGroundPresentation()
@@ -2659,11 +2673,20 @@ void Drawable::captureGroundPresentation()
 		m_groundTranslation.capture(getTransformMatrix()->Get_Translation(), timing.generation, timing.epoch);
 }
 
+Vector3 Drawable::getGroundPresentationPosition() const
+{
+	const Vector3 canonical = getTransformMatrix()->Get_Translation();
+	if (!GroundTranslation::isEnabled())
+		return canonical;
+	return m_groundTranslation.getPresentationPosition(canonical, TheFramePacer->getPresentationTiming(),
+		isGroundPresentationEligible());
+}
+
 Vector3 Drawable::getGroundPresentationOffset() const
 {
-	const Matrix3D& canonical = *getTransformMatrix();
-	return m_groundTranslation.getRenderTransform(canonical, TheFramePacer->getPresentationTiming(),
-		isGroundPresentationEligible()).Get_Translation() - canonical.Get_Translation();
+	if (!GroundTranslation::isEnabled())
+		return Vector3(0, 0, 0);
+	return getGroundPresentationPosition() - getTransformMatrix()->Get_Translation();
 }
 
 void Drawable::draw()
@@ -2704,8 +2727,10 @@ void Drawable::draw()
 #endif
 
 	// call the database defined draw action method
-	Matrix3D transformMtx = m_groundTranslation.getRenderTransform(*getTransformMatrix(),
-		TheFramePacer->getPresentationTiming(), isGroundPresentationEligible());
+	Matrix3D transformMtx = *getTransformMatrix();
+	if (GroundTranslation::isEnabled())
+		transformMtx = m_groundTranslation.getRenderTransform(transformMtx,
+			TheFramePacer->getPresentationTiming(), isGroundPresentationEligible());
 	if (!isInstanceIdentity())
 	{
 #ifdef ALLOW_TEMPORARIES

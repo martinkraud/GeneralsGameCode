@@ -1,5 +1,24 @@
 # Timing and frame-rate architecture
 
+Stage 3C.3 update (2026-10-08):
+[STAGE3C3_GROUND_HARDENING.md](STAGE3C3_GROUND_HARDENING.md) records the hardening.
+Developer Stage 3C.2 same-binary laptop A/B confirmed smoother eligible movement
+with ON and no obvious speed/basic-selection regression. Starting clean at
+8fdc9c939, preserve the clock/history/render architecture; default-OFF capability
+policy replaces stock-name gating, admits standard truck roots and ordinary
+combat/guard/formation movement, and excludes special AI/script/containment states.
+Local box selection follows presentation XYZ; commands/getters stay canonical.
+Explicit semantic/locomotor/train displacement history resets add no simulation
+mutation. Release build/CTest 2/2 and 106 Google tests pass; actual x86 history
+impact remains 40 bytes/Drawable, with synthetic cost measurements in the report.
+Final fresh candidate: build/dev-runtimes/zh/stage3c3-ground-hardening.
+Full SHA-256 inventories pass for it, the Steam source and all four older
+candidates (369 files each); EXE/PDB identities/hashes are in the report.
+Stage 3C.3 runtime acceptance is pending. Recommend more ground hardening/manual
+acceptance before orientation. No launch/Install/user-data/Steam changes/commit/
+push; previous entries are historical.
+
+
 Stage 3C.2 update (2026-10-08): read
 [STAGE3C2_GROUND_INTERPOLATION.md](STAGE3C2_GROUND_INTERPOLATION.md).
 Default-off Release `-groundInterpolation` prototype uses the Stage 3C.1 pair

@@ -2367,7 +2367,6 @@ Int W3DView::iterateDrawablesInRegion( IRegion2D *screenRegion,
 	Int count = 0;
 	Drawable *draw;
 	Vector3 screen, world;
-	Coord3D pos;
 	Region2D normalizedRegion;
 
 	/** @todo we need to have partitions of which drawables are in the
@@ -2431,10 +2430,8 @@ Int W3DView::iterateDrawablesInRegion( IRegion2D *screenRegion,
 
 				// project the center of the drawable to the screen
 				/// @todo use a real 3D position in the drawable
-				pos = *draw->getPosition();
-				world.X = pos.x;
-				world.Y = pos.y;
-				world.Z = pos.z;
+				// Local screen selection follows the presented root; no command/world coordinates change.
+				world = draw->getGroundPresentationPosition();
 
 				// project the world point to the screen
 				if( m_3DCamera->Project( screen, world ) == CameraClass::INSIDE_FRUSTUM &&

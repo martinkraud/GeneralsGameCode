@@ -330,6 +330,9 @@ void RailroadBehavior::onCollide( Object *other, const Coord3D *loc, const Coord
 	newPos.x = theirLoc->x + dlt.x;
 	newPos.y = theirLoc->y + dlt.y;
 	newPos.z = theirLoc->z + dlt.z;
+	// A train can displace an otherwise eligible ground victim by a small amount.
+	if (other->getDrawable())
+		other->getDrawable()->invalidateGroundPresentation();
 	other->setPosition( &newPos );
 
 	AIUpdateInterface *ai = other->getAI();
@@ -392,6 +395,9 @@ void RailroadBehavior::onCollide( Object *other, const Coord3D *loc, const Coord
 
 	Coord3D heft = *theirLoc;
 	heft.z = MAX(heft.z, TheTerrainLogic->getGroundHeight(heft.x, heft.y) + 2); // lift them off the ground
+	// A train can displace an otherwise eligible ground victim by a small amount.
+	if (other->getDrawable())
+		other->getDrawable()->invalidateGroundPresentation();
 	other->setPosition(&heft);
 
 	delta.z = GameLogicRandomValueReal(0.05f, m_pullInfo.speed/10);	// for some fake heft

@@ -414,6 +414,7 @@ public:
 
 	void captureGroundPresentation();
 	void invalidateGroundPresentation() { m_groundTranslation.reset(); }
+	Vector3 getGroundPresentationPosition() const; // Local UI/render hit testing only.
 	Vector3 getGroundPresentationOffset() const;
 	Bool isGroundPresentationEligible() const;
 	void draw();													///< render the drawable to the given view

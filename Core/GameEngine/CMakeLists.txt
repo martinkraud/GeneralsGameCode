@@ -44,6 +44,7 @@ set(GAMEENGINE_SRC
     Include/Common/FrameRateLimit.h
     Include/Common/PresentationClock.h
     Include/Common/GroundTranslation.h
+    Include/Common/GroundTranslationPolicy.h
 #    Include/Common/FunctionLexicon.h
     Include/Common/GameAudio.h
     Include/Common/GameCommon.h

@@ -2044,8 +2044,9 @@ Bool W3DModelDraw::supportsGroundTranslation() const
 {
 	// Do not opt bespoke subclasses into root interpolation by inheritance.
 	const NameKeyType name = getModuleNameKey();
-	return (name == NAMEKEY("W3DModelDraw") || name == NAMEKEY("W3DTankDraw"))
-		&& getW3DModelDrawModuleData()->m_attachToDrawableBone.isEmpty();
+	return GroundTranslation::supportsRootDraw(name == NAMEKEY("W3DModelDraw") || name == NAMEKEY("W3DTankDraw")
+		|| name == NAMEKEY("W3DTruckDraw"),
+		getW3DModelDrawModuleData()->m_attachToDrawableBone.isNotEmpty());
 }
 
 void W3DModelDraw::doDrawModule(const Matrix3D* transformMtx)

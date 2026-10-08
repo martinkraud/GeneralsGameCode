@@ -10,9 +10,9 @@
 
 namespace GroundTranslation
 {
+	inline bool supportsRootDraw(bool knownModule, bool attachedRoot) { return knownModule && !attachedRoot; }
 	bool isEnabled();
 	void setEnabled(bool enabled); // Process-local developer gate; default off, never saved.
-	bool supportsTemplate(const char* name);
 	const float MaxSampleDistance = 12.0f; // Conservative fallback, not a semantic teleport flag.
 }
 
@@ -63,6 +63,12 @@ public:
 		Vector3::Lerp(m_previous, m_current, alpha, &position);
 		result.Set_Translation(position); // Only a local copy; basis and canonical state stay intact.
 		return result;
+	}
+	Vector3 getPresentationPosition(const Vector3& canonical, const PresentationTiming& timing, bool eligible) const
+	{
+		Matrix3D root(true);
+		root.Set_Translation(canonical);
+		return getRenderTransform(root, timing, eligible).Get_Translation();
 	}
 private:
 	Vector3 m_previous;

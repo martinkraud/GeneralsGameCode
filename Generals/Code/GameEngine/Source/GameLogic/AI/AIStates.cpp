@@ -29,6 +29,7 @@
 
 
 #include "Common/ActionManager.h"
+#include "Common/GroundTranslationPolicy.h"
 #include "Common/AudioHandleSpecialValues.h"
 #include "Common/CRCDebug.h"
 #include "Common/GameAudio.h"
@@ -45,6 +46,7 @@
 #include "Common/XferCRC.h"
 
 #include "GameClient/ControlBar.h"
+#include "GameClient/Drawable.h"
 #include "GameClient/FXList.h"
 #include "GameClient/InGameUI.h"
 
@@ -564,6 +566,8 @@ StateReturnType AIRappelState::update()
 	{
 		Coord3D tmp = *pos;
 		tmp.z = m_destZ;
+		if (obj->getDrawable())
+			obj->getDrawable()->invalidateGroundPresentation();
 		obj->setPosition(&tmp);
 
 		if (m_targetIsBldg)
@@ -608,6 +612,8 @@ StateReturnType AIRappelState::update()
 					startPosition.y += offset * Sin( angle );
 					startPosition.z = TheTerrainLogic->getGroundHeight( startPosition.x, startPosition.y );
 
+					if (obj->getDrawable())
+						obj->getDrawable()->invalidateGroundPresentation();
 					obj->setPosition( &startPosition );
 					obj->setOrientation( exitAngle );
 
@@ -1031,6 +1037,8 @@ void AIStateMachine::clear()
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIStateMachine::resetToDefaultState()
 {
+	if (GroundTranslation::isEnabled() && getOwner()->getDrawable())
+		getOwner()->getDrawable()->invalidateGroundPresentation();
 	StateReturnType tmp = StateMachine::resetToDefaultState();
 
 	AIUpdateInterface* ai = getOwner()->getAI();
@@ -1044,6 +1052,11 @@ StateReturnType AIStateMachine::resetToDefaultState()
 StateReturnType AIStateMachine::setState(StateID newStateID)
 {
 	StateID oldID = getCurrentStateID();
+	// Entry/exit may both complete inside one tick: discard the pair at the boundary.
+	if (GroundTranslation::isEnabled() && oldID != newStateID && getOwner()->getDrawable()
+		&& (!GroundTranslation::supportsMovement(static_cast<AIStateType>(oldID))
+			|| !GroundTranslation::supportsMovement(static_cast<AIStateType>(newStateID))))
+		getOwner()->getDrawable()->invalidateGroundPresentation();
 	StateReturnType tmp = StateMachine::setState(newStateID);
 
 	AIUpdateInterface* ai = getOwner()->getAI();
@@ -1365,6 +1378,8 @@ void AIIdleState::doInitIdleState()
 			if (!ultraAccurate && TheAI->pathfinder()->goalPosition(obj, &goalPos))
 			{
 				if (TheGameLogic->getFrame()<=1) {
+					if (obj->getDrawable())
+						obj->getDrawable()->invalidateGroundPresentation();
 					obj->setPosition(&goalPos);
 				} else {
 #ifdef STOP_AND_SLIDE
@@ -2738,6 +2753,8 @@ void AIAttackApproachTargetState::onExit( StateExitType status )
 			if (dx*dx+dy*dy<PATHFIND_CELL_SIZE_F*PATHFIND_CELL_SIZE_F*0.125)
 			{
 				// We are doing accurate ground movement, so make sure we end exactly at the goal.
+				if (obj->getDrawable())
+					obj->getDrawable()->invalidateGroundPresentation();
 				obj->setPosition(&m_goalPosition);
 			}
 		}

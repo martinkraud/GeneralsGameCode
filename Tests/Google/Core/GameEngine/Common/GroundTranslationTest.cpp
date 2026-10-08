@@ -184,16 +184,11 @@ TEST(GroundTranslation, SixRenderRatesConsumeClockWithoutFpsSpecificHistory)
 		}
 	}
 }
-TEST(GroundTranslation, GateAndExactTemplateAllowlistAreConservative)
+TEST(GroundTranslation, GateDefaultsOff)
 {
 	EXPECT_FALSE(GroundTranslation::isEnabled());
 	GroundTranslation::setEnabled(true);
 	EXPECT_TRUE(GroundTranslation::isEnabled());
 	GroundTranslation::setEnabled(false);
-	EXPECT_TRUE(GroundTranslation::supportsTemplate("AmericaInfantryRanger"));
-	EXPECT_TRUE(GroundTranslation::supportsTemplate("AmericaTankCrusader"));
-	EXPECT_FALSE(GroundTranslation::supportsTemplate("AirF_AmericaInfantryRanger"));
-	EXPECT_FALSE(GroundTranslation::supportsTemplate("AmericaJetRaptor"));
-	EXPECT_FALSE(GroundTranslation::supportsTemplate(nullptr));
 }
 }

@@ -826,6 +826,8 @@ Bool AIUpdateInterface::chooseLocomotorSetExplicit(LocomotorSetType wst)
 	const LocomotorTemplateVector* set = getAIUpdateModuleData()->findLocomotorTemplateVector(wst);
 	if (set)
 	{
+		if (getObject()->getDrawable())
+			getObject()->getDrawable()->invalidateGroundPresentation();
 		m_locomotorSet.clear();
 		m_curLocomotor = nullptr;
 		for (size_t i = 0; i < set->size(); ++i)
@@ -865,6 +867,8 @@ void AIUpdateInterface::chooseGoodLocomotorFromCurrentSet()
 		}
 	}
 
+	if (newLoco != prevLoco && getObject()->getDrawable())
+		getObject()->getDrawable()->invalidateGroundPresentation();
 	m_curLocomotor = newLoco;
 
 	if (prevLoco != m_curLocomotor)
