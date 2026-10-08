@@ -1,5 +1,49 @@
 # Incremental modernization roadmap
 
+Accepted Stage 4A/4A.1 tooling baseline (2026-10-08): developer authorized one
+tooling commit. The synchronized WPR analysis and selection limits are recorded in
+[STAGE4A1_PATHFINDING_DEEP_PROFILE.md](STAGE4A1_PATHFINDING_DEEP_PROFILE.md).
+Real CPU pathfinding stalls repeat, but insertion versus line/movement checking
+is not resolved by the truncated caller stacks. Stage 4B remains unselected;
+the bounded sampled phase accumulator remains a review proposal, not implemented.
+Pre-commit Release build, CTest 2/2, 184 direct tests, profiler benchmark smoke
+checks and pathfinder token audit pass; EXE/PDB match the captured candidate.
+No gameplay changes, game launch or push. Older entries are historical.
+
+Stage 4A.1 update (2026-10-08):
+[STAGE4A1_PATHFINDING_DEEP_PROFILE.md](STAGE4A1_PATHFINDING_DEEP_PROFILE.md) analyzes
+all original A/B capture formats directly. B's worst completed logic frame is
+172.436 ms, with 163.287 ms aggregated across five path_search calls; this does
+not establish a single 163 ms search. Queue work/cells scale sharply, and the
+5,000-cell queue budget is checked between requests. Pathfinding is a measured
+lead, but the exact Stage 4B optimization remains undecided.
+Default-OFF -pathProfile, alongside -performanceProfile <directory>, adds bounded
+individual linked search/phase records, workload counters and paths.csv. No path,
+AI, queue, sort, gameplay or threading optimization. Current candidate is
+stage4a1-pathfinding-deep-final. Final Release build, CTest 2/2, 184 direct tests
+and both aggregate/deep benchmarks per title pass. Source/new/previous Stage 4A
+inventories pass (369 files each); launch validation passes without a launch.
+Use the report's delayed-start capture procedure
+to avoid deliberately recording focus transitions. Preserve original A/B files.
+Stage 4A entries below are historical; real developer captures now exist.
+
+Stage 4A update (2026-10-08):
+[STAGE4A_PERFORMANCE_BASELINE.md](STAGE4A_PERFORMANCE_BASELINE.md) records the CPU instrumentation and exact capture procedures.
+Started clean on dev/modern-engine at 1de7e65d173104ad2f288ac0a379e102a5057ebc.
+Developer accepted/committed/pushed Stage 3C.4 after a complete 1v1; same-binary
+OFF immediately restored stepped turning. Main-PC high-refresh/ultrawide remains pending.
+Default-OFF -performanceProfile <absolute-directory> adds bounded QPC observations,
+inclusive/exclusive category totals, frame/tick counts, tails and top-N breakdowns.
+Release build and CTest 2/2 pass; 168 direct Google tests and both profiler benchmarks
+pass. Fresh candidate stage4a-performance-baseline is for developer captures only;
+full source/new/six earlier acceptance inventories pass (369 files each), and
+launch validation passes without launching or backing up user data.
+No game launch, optimization, scheduling/AI/path decision changes, Install, Steam or
+user-data writes, commit or push. Large-map + 5 AI spikes predate this stage and
+occurred ON/OFF. Collect the documented light/stress windows with accepted
+interpolation ON and a stable finite cap; use evidence to choose Stage 4B later.
+Older entries retain their historical acceptance states.
+
 Stage 3C.4 update (2026-10-08):
 [STAGE3C4_GROUND_ORIENTATION.md](STAGE3C4_GROUND_ORIENTATION.md) records root-heading interpolation.
 Started clean at 289be9bf9 after developer Stage 3C.3 acceptance/commit/push.

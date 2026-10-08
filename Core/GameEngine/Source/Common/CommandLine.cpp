@@ -24,6 +24,7 @@
 
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "Common/ArchiveFileSystem.h"
 #include "Common/CommandLine.h"
@@ -1160,6 +1161,21 @@ Int parseClearDebugLevel(char *args[], int num)
 }
 #endif
 
+static Int parsePerformanceProfile(char *args[], int num)
+{
+	if (num < 2 || args[1][0] == '-' || !PerformanceProfile::configure(args[1]))
+	{
+		OutputDebugStringA("-performanceProfile requires an existing absolute output directory.\n");
+		return num >= 2 && args[1][0] != '-' ? 2 : 1;
+	}
+	return 2;
+}
+static Int parsePathProfile(char *args[], int num)
+{
+	PerformanceProfile::enablePathDetails();
+	return 1;
+}
+
 // Initial Params are parsed before Windows Creation.
 // Note that except for TheGlobalData, no other global objects exist yet when these are parsed.
 static Int parseGroundInterpolation(char *args[], int num)
@@ -1170,6 +1186,8 @@ static Int parseGroundInterpolation(char *args[], int num)
 
 static CommandLineParam paramsForStartup[] =
 {
+	{ "-performanceProfile", parsePerformanceProfile },
+	{ "-pathProfile", parsePathProfile },
 	{ "-groundInterpolation", parseGroundInterpolation },
 	{ "-win", parseWin },
 	{ "-fullscreen", parseNoWin },

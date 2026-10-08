@@ -27,6 +27,7 @@
 // Author: Michael S. Booth, April 2001
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "Common/ActionManager.h"
 #include "Common/AudioAffect.h"
@@ -259,6 +260,7 @@ GameEngine::GameEngine()
 //-------------------------------------------------------------------------------------------------
 GameEngine::~GameEngine()
 {
+	PerformanceProfile::shutdown();
 	//extern std::vector<std::string>	preloadTextureNamesGlobalHack;
 	//preloadTextureNamesGlobalHack.clear();
 
@@ -738,6 +740,7 @@ DECLARE_PERF_TIMER(GameEngine_update)
  */
 void GameEngine::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(EngineUpdate);
 	USE_PERF_TIMER(GameEngine_update)
 	{
 		{
@@ -750,11 +753,11 @@ void GameEngine::update()
 
 			TheAudio->UPDATE();
 			TheGameClient->UPDATE();
-			TheMessageStream->propagateMessages();
+			{ PERFORMANCE_PROFILE_SCOPE(Messages); TheMessageStream->propagateMessages(); }
 
 			if (TheNetwork != nullptr)
 			{
-				TheNetwork->UPDATE();
+				{ PERFORMANCE_PROFILE_SCOPE(Network); TheNetwork->UPDATE(); }
 			}
 		}
 
@@ -787,6 +790,8 @@ void GameEngine::execute()
 	// pretty basic for now
 	while( !m_quitting )
 	{
+		if (PerformanceProfile::configured())
+			PerformanceProfile::beginOuterFrame(TheGameLogic->getFrame(), TheFramePacer->getFramesPerSecondLimit(), TheFramePacer->getActualFramesPerSecondLimit());
 
 		//if (TheGlobalData->m_vTune)
 		{
@@ -848,7 +853,9 @@ void GameEngine::execute()
 				}
 			}
 
-			TheFramePacer->update();
+			{ PERFORMANCE_PROFILE_SCOPE(Pacer); TheFramePacer->update(); }
+			if (PerformanceProfile::configured())
+				PerformanceProfile::endOuterFrame(TheGameLogic->getFrame());
 		}
 
 #ifdef PERF_TIMERS
@@ -861,6 +868,7 @@ void GameEngine::execute()
 #endif
 
 	}
+	PerformanceProfile::shutdown();
 }
 
 /** -----------------------------------------------------------------------------------------------

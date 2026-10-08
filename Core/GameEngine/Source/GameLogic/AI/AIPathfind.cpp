@@ -26,6 +26,7 @@
 // AI pathfinding system
 // Author: Michael S. Booth, October 2001
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "GameLogic/AIPathfind.h"
 
@@ -1368,8 +1369,10 @@ void PathfindCell::clearParentCell(  )
  */
 Bool PathfindCell::allocateInfo( const ICoord2D &pos )
 {
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::InfoAttempts);
 	if (!m_info) {
 		m_info = PathfindCellInfo::getACellInfo(this, pos);
+		PerformanceProfile::pathCount(m_info?PerformanceProfile::PathWork::InfoNew:PerformanceProfile::PathWork::InfoFailed);
 		return (m_info != nullptr);
 	}
 	return true;
@@ -1708,6 +1711,7 @@ void PathfindCell::forwardInsertionSortRetailCompatible(PathfindCellList& list)
 		previousCell = currentCell;
 		currentCell = currentCell->getNextOpen();
 	}
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::ForwardHops,cellCount);
 
 	if (currentCell)
 	{
@@ -1760,12 +1764,16 @@ void PathfindCell::forwardInsertionSort(PathfindCellList& list)
 		return;
 	}
 
+	const bool profileHopsEnabled=PerformanceProfile::activePath!=nullptr;
+	PerformanceProfile::Tick profileHops=0;
 	// Traverse the list to find correct position
 	PathfindCell* current = list.m_head;
 	while (current->m_info->m_nextOpen && current->m_info->m_nextOpen->m_totalCost <= m_info->m_totalCost) {
 		current = current->getNextOpen();
+		if(profileHopsEnabled)++profileHops;
 	}
 
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::ForwardHops,profileHops);
 	// Insert the new node in the correct position
 	m_info->m_nextOpen = current->m_info->m_nextOpen;
 	if (current->m_info->m_nextOpen != nullptr) {
@@ -1806,12 +1814,16 @@ void PathfindCell::reverseInsertionSort(PathfindCellList& list)
 		return;
 	}
 
+	const bool profileHopsEnabled=PerformanceProfile::activePath!=nullptr;
+	PerformanceProfile::Tick profileHops=0;
 	// Traverse the list to find correct position
 	PathfindCell* current = list.m_tail;
 	while (current->m_info->m_prevOpen && current->m_info->m_prevOpen->m_totalCost > m_info->m_totalCost) {
 		current = current->getPrevOpen();
+		if(profileHopsEnabled)++profileHops;
 	}
 
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::ReverseHops,profileHops);
 	// Insert the new node in the correct position
 	m_info->m_prevOpen = current->m_info->m_prevOpen;
 	if (current->m_info->m_prevOpen != nullptr) {
@@ -1828,6 +1840,7 @@ void PathfindCell::reverseInsertionSort(PathfindCellList& list)
 /// put self on "open" list in ascending cost order, return new list
 void PathfindCell::putOnSortedOpenList( PathfindCellList &list )
 {
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::OpenInserts);
 #if RETAIL_COMPATIBLE_PATHFINDING
 	if (!s_useFixedPathfinding) {
 		forwardInsertionSortRetailCompatible(list);
@@ -2660,6 +2673,7 @@ void PathfindZoneManager::markZonesDirty()  ///< Called when the zones need to b
  */
 void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer layers[], const IRegion2D &globalBounds )
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Zones);
 #ifdef DEBUG_QPF
 #if defined(DEBUG_LOGGING)
 	__int64 startTime64;
@@ -3120,7 +3134,9 @@ void PathfindZoneManager::updateZonesForModify(PathfindCell **map, PathfindLayer
 // Clear the passable flags.
 //
 void PathfindZoneManager::clearPassableFlags()
-{	Int blockX;
+{
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::ZoneFlags);
+	Int blockX;
 	Int blockY;
 	for (blockX = 0; blockX<m_zoneBlockExtent.x; blockX++) {
 		for (blockY = 0; blockY<m_zoneBlockExtent.y; blockY++) {
@@ -3133,7 +3149,9 @@ void PathfindZoneManager::clearPassableFlags()
 // Set the passable flags.
 //
 void PathfindZoneManager::setAllPassable()
-{	Int blockX;
+{
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::ZoneFlags);
+	Int blockX;
 	Int blockY;
 	for (blockX = 0; blockX<m_zoneBlockExtent.x; blockX++) {
 		for (blockY = 0; blockY<m_zoneBlockExtent.y; blockY++) {
@@ -3242,6 +3260,7 @@ Bool PathfindZoneManager::interactsWithBridge(Int cellX, Int cellY) const
 //
 zoneStorageType PathfindZoneManager::getBlockZone(LocomotorSurfaceTypeMask acceptableSurfaces, Bool crusher,Int cellX, Int cellY, PathfindCell **map) const
 {
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::BlockZoneQueries);
 	PathfindCell *cell = &(map[cellX][cellY]);
 	Int blockX = cellX/ZONE_BLOCK_SIZE;
 	Int blockY = cellY/ZONE_BLOCK_SIZE;
@@ -4171,6 +4190,7 @@ void Pathfinder::updateLayer(Object *obj, PathfindLayerEnum layer)
  */
 void Pathfinder::classifyFence( Object *obj, Bool insert )
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Obstacle);
 #if RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING
 	m_zoneManager.markZonesDirty();
 #endif
@@ -4371,6 +4391,7 @@ void Pathfinder::classifyObjectFootprint( Object *obj, Bool insert )
 
 void Pathfinder::internal_classifyObjectFootprint( Object *obj, Bool insert )
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Obstacle);
 	const Coord3D *pos = obj->getPosition();
 
 #if !(RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING)
@@ -4941,6 +4962,7 @@ Bool Pathfinder::validMovementTerrain( PathfindLayerEnum layer, const Locomotor*
 // Releases the cells on the open & closed lists.
 //
 void Pathfinder::cleanOpenAndClosedLists() {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Cleanup);
 	Int count = 0;
 	if (!m_openList.empty()) {
 		count += PathfindCell::releaseOpenList(m_openList);
@@ -4971,6 +4993,7 @@ void Pathfinder::cleanOpenAndClosedLists() {
 	}
 #endif
 
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::CleanedCells,count);
 	m_cumulativeCellsAllocated += count;
 }
 
@@ -5993,6 +6016,9 @@ Path *Pathfinder::getAircraftPath( const Object *obj, const Coord3D *to )
 //DECLARE_PERF_TIMER(processPathfindQueue)
 void Pathfinder::processPathfindQueue()
 {
+	PERFORMANCE_PROFILE_SCOPE(PathQueue);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Queue);
+	if(pathProfile.enabled())pathProfile.sample()->queueBefore=(m_queuePRTail-m_queuePRHead+PATHFIND_QUEUE_LEN)%PATHFIND_QUEUE_LEN;
 	//USE_PERF_TIMER(processPathfindQueue)
 	if (!m_isMapReady) {
 		return;
@@ -6034,6 +6060,8 @@ void Pathfinder::processPathfindQueue()
 		if (obj) {
 			AIUpdateInterface *ai = obj->getAIUpdateInterface();
 			if (ai) {
+				PerformanceProfile::PathScope dispatch(PerformanceProfile::PathKind::Dispatch);
+				if(dispatch.enabled()){dispatch.sample()->object=obj->getID();dispatch.sample()->layer=obj->getLayer();}
 				ai->doPathfind(this);
 				pathsFound++;
 			}
@@ -6043,6 +6071,9 @@ void Pathfinder::processPathfindQueue()
 			m_queuePRHead = 0;
 		}
 	}
+	if(pathProfile.enabled())pathProfile.sample()->queueAfter=(m_queuePRTail-m_queuePRHead+PATHFIND_QUEUE_LEN)%PATHFIND_QUEUE_LEN;
+	PerformanceProfile::count(PerformanceProfile::Counter::QueuedPaths, pathsFound);
+	PerformanceProfile::count(PerformanceProfile::Counter::QueueCells, m_cumulativeCellsAllocated);
 	if (pathsFound > 0) {
 		PROFILER_PLOT("PathfindCells", (double)m_cumulativeCellsAllocated);
 		PROFILER_PLOT("PathfindPaths", (double)pathsFound);
@@ -6455,28 +6486,35 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 Path *Pathfinder::findPath( Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from,
 													 const Coord3D *rawTo)
 {
+	PERFORMANCE_PROFILE_SCOPE(PathRequest);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Request);
+	if(pathProfile.enabled() && from && rawTo){auto* sample=pathProfile.sample();sample->hasCoordinates=true;sample->fromX=from->x;sample->fromY=from->y;sample->toX=rawTo->x;sample->toY=rawTo->y;}
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
+	if(pathProfile.enabled())pathProfile.sample()->surfaces=locomotorSet.getValidSurfaces();
 	if (!clientSafeQuickDoesPathExist(locomotorSet, from, rawTo)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	Bool isHuman = true;
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 
 	m_zoneManager.clearPassableFlags();
 	Path *hPat = findHierarchicalPath(isHuman, locomotorSet, from, rawTo, false);
 	if (hPat) {
 		deleteInstance(hPat);
 	}	else {
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HierarchyFallbacks);
 		m_zoneManager.setAllPassable();
 	}
 
 	Path *pat = internalFindPath(obj, locomotorSet, from, rawTo);
 	if (pat!=nullptr) {
-		return pat;
+		{ pathProfile.result(pat != nullptr); return pat; }
 	}
 
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 /**
  * Find a short, valid path between given locations.
@@ -6485,6 +6523,11 @@ Path *Pathfinder::findPath( Object *obj, const LocomotorSet& locomotorSet, const
 Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from,
 													 const Coord3D *rawTo)
 {
+	PERFORMANCE_PROFILE_SCOPE(PathSearch);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Internal);
+	if(pathProfile.enabled() && from && rawTo){auto* sample=pathProfile.sample();sample->hasCoordinates=true;sample->fromX=from->x;sample->fromY=from->y;sample->toX=rawTo->x;sample->toY=rawTo->y;}
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
+	if(pathProfile.enabled())pathProfile.sample()->surfaces=locomotorSet.getValidSurfaces();
 	//CRCDEBUG_LOG(("Pathfinder::findPath()"));
 #ifdef INTENSE_DEBUG
 	DEBUG_LOG(("internal find path..."));
@@ -6497,20 +6540,22 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 	Int radius = 0;
 	if (obj) {
 		getRadiusAndCenter(obj, radius, centerInCell);
+		if(pathProfile.enabled())pathProfile.sample()->radius=radius;
 	}
 
 	Bool isHuman = true;
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 
 	if (rawTo->x == 0.0f && rawTo->y == 0.0f) {
 		DEBUG_LOG(("Attempting pathfind to 0,0, generally a bug."));
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	DEBUG_ASSERTCRASH(m_openList.empty() && m_closedList.empty(), ("Dangling lists."));
 	if (m_isMapReady == false) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	Coord3D adjustTo = *rawTo;
@@ -6529,14 +6574,14 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 	// determine goal cell
 	PathfindCell *goalCell = getCell( destinationLayer, to );
 	if (goalCell == nullptr) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	ICoord2D cell;
 	worldToCell( to, &cell );
 
 	if (!checkDestination(obj, cell.x, cell.y, destinationLayer, radius, centerInCell)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	// determine start cell
 	ICoord2D startCellNdx;
@@ -6547,19 +6592,19 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 	}
 	PathfindCell *parentCell = getClippedCell( layer,&clipFrom );
 	if (parentCell == nullptr) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	ICoord2D pos2d;
 	worldToCell(to, &pos2d);
 	if (!goalCell->allocateInfo(pos2d)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	if (parentCell!=goalCell) {
 		worldToCell(&clipFrom, &pos2d);
 		if (!parentCell->allocateInfo(pos2d)) {
 			goalCell->releaseInfo();
-			return nullptr;
+			{ pathProfile.result(false); return nullptr; }
 		}
 	}
 	//
@@ -6572,6 +6617,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 
 	Int zone1, zone2;
 	Bool isCrusher = obj ? obj->getCrusherLevel() > 0 : false;
+	if(pathProfile.enabled())pathProfile.sample()->crusher=isCrusher;
 	zone1 = m_zoneManager.getEffectiveZone(locomotorSet.getValidSurfaces(), isCrusher, parentCell->getZone());
 	zone2 =  m_zoneManager.getEffectiveZone(locomotorSet.getValidSurfaces(), isCrusher, goalCell->getZone());
 
@@ -6583,7 +6629,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 			goalCell->releaseInfo();
 			parentCell->releaseInfo();
 		}
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	if (goalCell->isObstaclePresent(m_ignoreObstacleID) || m_isTunneling) {
@@ -6597,10 +6643,11 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 	//DEBUG_LOG(("Zones %d to %d", zone1, zone2));
 
 	if ( zone1 != zone2) {
+		if(pathProfile.enabled())pathProfile.sample()->zoneRejected=true;
 		//DEBUG_LOG(("Intense Debug Info - Pathfind Zone screen failed-cannot reach desired location."));
 		goalCell->releaseInfo();
 		parentCell->releaseInfo();
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	// sanity check - if destination is invalid, can't path there
@@ -6608,7 +6655,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 		m_isTunneling = false;
 		goalCell->releaseInfo();
 		parentCell->releaseInfo();
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	// sanity check - if source is invalid, we have to cheat
@@ -6644,6 +6691,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
@@ -6683,7 +6731,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 				cleanOpenAndClosedLists();
 				parentCell->releaseInfo();
 			}
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 
 		// put parent cell onto closed list - its evaluation is finished
@@ -6771,7 +6819,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 		parentCell->releaseInfo();
 		goalCell->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 /**
@@ -6845,6 +6893,7 @@ Int Pathfinder::clearCellForDiameter(Bool crusher, Int cellX, Int cellY, Pathfin
  */
 Path *Pathfinder::buildGroundPath(Bool isCrusher, const Coord3D *fromPos, PathfindCell *goalCell, Bool center, Int pathDiameter )
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Reconstruction);
 	DEBUG_ASSERTCRASH( goalCell, ("Pathfinder::buildActualPath: goalCell == nullptr") );
 
 	Path *path = newInstance(Path);
@@ -6894,6 +6943,7 @@ Path *Pathfinder::buildGroundPath(Bool isCrusher, const Coord3D *fromPos, Pathfi
  */
 Path *Pathfinder::buildHierarchicalPath( const Coord3D *fromPos, PathfindCell *goalCell )
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Reconstruction);
 	DEBUG_ASSERTCRASH( goalCell, ("Pathfinder::buildHierarchicalPath: goalCell == nullptr") );
 
 	Path *path = newInstance(Path);
@@ -7065,6 +7115,10 @@ struct GroundCellsStruct
 Path *Pathfinder::findGroundPath( const Coord3D *from,
 													 const Coord3D *rawTo, Int pathDiameter, Bool crusher)
 {
+	PERFORMANCE_PROFILE_SCOPE(PathSearch);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Ground);
+	if(pathProfile.enabled() && from && rawTo){auto* sample=pathProfile.sample();sample->hasCoordinates=true;sample->fromX=from->x;sample->fromY=from->y;sample->toX=rawTo->x;sample->toY=rawTo->y;}
+	if(pathProfile.enabled()){pathProfile.sample()->radius=pathDiameter;pathProfile.sample()->crusher=crusher;pathProfile.sample()->surfaces=LOCOMOTORSURFACE_GROUND;}
 	//CRCDEBUG_LOG(("Pathfinder::findGroundPath()"));
 #ifdef DEBUG_LOGGING
 	Int startTimeMS = ::GetTickCount();
@@ -7081,16 +7135,17 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 	if (hPat) {
 		deleteInstance(hPat);
 	}	else {
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HierarchyFallbacks);
 		m_zoneManager.setAllPassable();
 	}
 
 	if (rawTo->x == 0.0f && rawTo->y == 0.0f) {
 		DEBUG_LOG(("Attempting pathfind to 0,0, generally a bug."));
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	DEBUG_ASSERTCRASH(m_openList.empty() && m_closedList.empty(), ("Dangling lists."));
 	if (m_isMapReady == false) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	Coord3D adjustTo = *rawTo;
@@ -7131,17 +7186,17 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 			cell = newCell;
 		}
 		if (offset >= MAX_OFFSET) {
-			return nullptr;
+			{ pathProfile.result(false); return nullptr; }
 		}
 	}
 
 	// determine goal cell
 	PathfindCell *goalCell = getCell( destinationLayer, cell.x, cell.y );
 	if (goalCell == nullptr) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	if (!goalCell->allocateInfo(cell)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	// determine start cell
@@ -7155,13 +7210,13 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 		{
 			goalCell->releaseInfo();
 		}
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	if (parentCell!=goalCell) {
 		worldToCell(&clipFrom, &startCellNdx);
 		if (!parentCell->allocateInfo(startCellNdx)) {
 			goalCell->releaseInfo();
-			return nullptr;
+			{ pathProfile.result(false); return nullptr; }
 		}
 	}
 
@@ -7174,9 +7229,10 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 	//DEBUG_LOG(("Zones %d to %d", zone1, zone2));
 
 	if ( zone1 != zone2) {
+		if(pathProfile.enabled())pathProfile.sample()->zoneRejected=true;
 		goalCell->releaseInfo();
 		parentCell->releaseInfo();
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	parentCell->startPathfind(goalCell);
 
@@ -7209,6 +7265,7 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
@@ -7238,7 +7295,7 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 				cleanOpenAndClosedLists();
 				parentCell->releaseInfo();
 			}
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 
 		// put parent cell onto closed list - its evaluation is finished
@@ -7451,7 +7508,7 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 		parentCell->releaseInfo();
 		goalCell->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 /**
@@ -7582,6 +7639,10 @@ Path *Pathfinder::findClosestHierarchicalPath( Bool isHuman, const LocomotorSet&
 Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSurfaceTypeMask locomotorSurface, const Coord3D *from,
 													 const Coord3D *rawTo, Bool crusher, Bool closestOK)
 {
+	PERFORMANCE_PROFILE_SCOPE(PathSearch);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Hierarchical);
+	if(pathProfile.enabled() && from && rawTo){auto* sample=pathProfile.sample();sample->hasCoordinates=true;sample->fromX=from->x;sample->fromY=from->y;sample->toX=rawTo->x;sample->toY=rawTo->y;}
+	if(pathProfile.enabled()){pathProfile.sample()->human=isHuman;pathProfile.sample()->crusher=crusher;pathProfile.sample()->closestAllowed=closestOK;pathProfile.sample()->surfaces=locomotorSurface;}
 	//CRCDEBUG_LOG(("Pathfinder::findGroundPath()"));
 #ifdef DEBUG_LOGGING
 	Int startTimeMS = ::GetTickCount();
@@ -7589,11 +7650,11 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 
 	if (rawTo->x == 0.0f && rawTo->y == 0.0f) {
 		DEBUG_LOG(("Attempting pathfind to 0,0, generally a bug."));
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	DEBUG_ASSERTCRASH(m_openList.empty() && m_closedList.empty(), ("Dangling lists."));
 	if (m_isMapReady == false) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	Coord3D adjustTo = *rawTo;
@@ -7611,11 +7672,11 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 	// determine goal cell
 	PathfindCell *goalCell = getCell( destinationLayer, cell.x, cell.y );
 	if (!goalCell) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	if (!goalCell->allocateInfo(cell)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	// determine start cell
@@ -7623,14 +7684,14 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 	PathfindLayerEnum layer = TheTerrainLogic->getLayerForDestination(from);
 	PathfindCell *parentCell = getClippedCell( layer,&clipFrom );
 	if (!parentCell) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	if (parentCell!=goalCell) {
 		worldToCell(&clipFrom, &startCellNdx);
 		if (!parentCell->allocateInfo(startCellNdx)) {
 			goalCell->releaseInfo();
-			return nullptr;
+			{ pathProfile.result(false); return nullptr; }
 		}
 	}
 
@@ -7640,9 +7701,10 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 	zone2 =  m_zoneManager.getEffectiveZone(locomotorSurface, false, goalCell->getZone());
 
 	if ( zone1 != zone2) {
+		if(pathProfile.enabled())pathProfile.sample()->zoneRejected=true;
 		goalCell->releaseInfo();
 		parentCell->releaseInfo();
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	parentCell->startPathfind(goalCell);
@@ -7705,7 +7767,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 					cleanOpenAndClosedLists();
 					goalCell->releaseInfo();
 				}
-				return nullptr;
+				{ pathProfile.result(false); return nullptr; }
 			}
 			startCell->setParentCellHierarchical(parentCell);
 			cellCount++;
@@ -7732,7 +7794,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 					cleanOpenAndClosedLists();
 					goalCell->releaseInfo();
 				}
-				return nullptr;
+				{ pathProfile.result(false); return nullptr; }
 			}
 			curCost = cell->costToHierGoal(parentCell);
 			remCost = cell->costToHierGoal(goalCell);
@@ -7755,6 +7817,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		zoneStorageType parentZone;
@@ -7835,7 +7898,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 								cleanOpenAndClosedLists();
 								goalCell->releaseInfo();
 							}
-							return nullptr;
+							{ pathProfile.result(false); return nullptr; }
 						}
 						startCell->setParentCellHierarchical(parentCell);
 						if (!startCell->getClosed() && !startCell->getOpen()) {
@@ -7856,7 +7919,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 							cleanOpenAndClosedLists();
 							goalCell->releaseInfo();
 						}
-						return nullptr;
+						{ pathProfile.result(false); return nullptr; }
 					}
 					cell->setParentCellHierarchical(startCell);
 
@@ -7907,7 +7970,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 				parentCell->releaseInfo();
 				goalCell->releaseInfo();
 			}
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 
 #if defined(RTS_DEBUG)
@@ -8070,6 +8133,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 	}
 
 	if (closestOK && closestCell) {
+		pathProfile.closest();
 		m_isTunneling = false;
 		// construct and return path
 		Path *path =  buildHierarchicalPath( from, closestCell );
@@ -8089,7 +8153,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 			parentCell->releaseInfo();
 			goalCell->releaseInfo();
 		}
-		return path;
+		{ pathProfile.result(path != nullptr); return path; }
 	}
 
 	// failure - goal cannot be reached
@@ -8148,7 +8212,7 @@ Path *Pathfinder::internal_findHierarchicalPath( Bool isHuman, const LocomotorSu
 		goalCell->releaseInfo();
 	}
 
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 
@@ -8685,6 +8749,11 @@ Int Pathfinder::checkPathCost(Object *obj, const LocomotorSet& locomotorSet, con
 Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from,
 																	Coord3D *rawTo, Bool blocked, Real pathCostMultiplier, Bool moveAllies)
 {
+	PERFORMANCE_PROFILE_SCOPE(PathRequest);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Closest);
+	if(pathProfile.enabled() && from && rawTo){auto* sample=pathProfile.sample();sample->hasCoordinates=true;sample->fromX=from->x;sample->fromY=from->y;sample->toX=rawTo->x;sample->toY=rawTo->y;}
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
+	if(pathProfile.enabled())pathProfile.sample()->surfaces=locomotorSet.getValidSurfaces();
 	//CRCDEBUG_LOG(("Pathfinder::findClosestPath()"));
 #ifdef DEBUG_LOGGING
 	Int startTimeMS = ::GetTickCount();
@@ -8693,17 +8762,18 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 
 	if (locomotorSet.getValidSurfaces() == 0) {
 		DEBUG_CRASH(("Attempting to path immobile unit."));
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
-	if (m_isMapReady == false) return nullptr;
+	if (m_isMapReady == false) { pathProfile.result(false); return nullptr; }
 
 	m_isTunneling = false;
 
-	if (!obj) return nullptr;
+	if (!obj) { pathProfile.result(false); return nullptr; }
 
 	Bool canPathThroughUnits = false;
 	if (obj && obj->getAIUpdateInterface()) {
@@ -8712,6 +8782,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	Bool centerInCell;
 	Int radius;
 	getRadiusAndCenter(obj, radius, centerInCell);
+		if(pathProfile.enabled())pathProfile.sample()->radius=radius;
 
 	Coord3D adjustTo = *rawTo;
 	Coord3D *to = &adjustTo;
@@ -8723,6 +8794,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	// create unique "mark" values for open and closed cells for this pathfind invocation
 
 	Bool isCrusher = obj ? obj->getCrusherLevel() > 0 : false;
+	if(pathProfile.enabled())pathProfile.sample()->crusher=isCrusher;
 
 
 	Coord3D clipFrom = *from;
@@ -8732,10 +8804,10 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	// determine goal cell
 	PathfindCell *goalCell = getClippedCell( destinationLayer,  to );
 	if (goalCell == nullptr)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
 	if (goalCell->getZone()==0 && destinationLayer==LAYER_WALL) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	Bool goalOnObstacle = false;
@@ -8769,7 +8841,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	worldToCell(from, &startCellNdx);
  	PathfindCell *parentCell = getClippedCell( obj->getLayer(), &clipFrom );
 	if (parentCell == nullptr)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
 	if (validMovementPosition( isCrusher, locomotorSet.getValidSurfaces(), parentCell ) == false) {
 		m_isTunneling = true; // We can't move from our current location.  So relax the constraints.
@@ -8803,7 +8875,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	ICoord2D pos2d;
 	worldToCell(to, &pos2d);
 	if (!goalCell->allocateInfo(pos2d)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	if (parentCell!=goalCell) {
 		worldToCell(&clipFrom, &pos2d);
@@ -8814,7 +8886,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 			{
 				goalCell->releaseInfo();
 			}
-			return nullptr;
+			{ pathProfile.result(false); return nullptr; }
 		}
 	}
 	parentCell->startPathfind(goalCell);
@@ -8850,6 +8922,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 		Real distSqr;
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
@@ -8906,7 +8979,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 				goalCell->releaseInfo();
 			}
 
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 		// put parent cell onto closed list - its evaluation is finished
 		parentCell->putOnClosedList( m_closedList );
@@ -8954,6 +9027,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 	}
 
 	if (closesetCell) {
+		pathProfile.closest();
 		// success - found a path to near the goal
 
 		Bool show = TheGlobalData->m_debugAI;
@@ -8996,7 +9070,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 			parentCell->releaseInfo();
 			goalCell->releaseInfo();
 		}
-		return path;
+		{ pathProfile.result(path != nullptr); return path; }
 	}
 
 	// failure - goal cannot be reached
@@ -9027,7 +9101,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 		parentCell->releaseInfo();
 		goalCell->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 
@@ -9050,6 +9124,8 @@ void Pathfinder::adjustCoordToCell(Int cellX, Int cellY, Bool centerInCell, Coor
 Path *Pathfinder::buildActualPath( const Object *obj, LocomotorSurfaceTypeMask acceptableSurfaces, const Coord3D *fromPos,
 																	PathfindCell *goalCell, Bool center, Bool blocked )
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Reconstruction);
+	PERFORMANCE_PROFILE_SCOPE(PathBuild);
 	DEBUG_ASSERTCRASH( goalCell, ("Pathfinder::buildActualPath: goalCell == nullptr") );
 
 	Path *path = newInstance(Path);
@@ -10317,8 +10393,10 @@ if (g_UT_startTiming) return false;
 Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 											Path *pathToAvoid, Object *otherObj2, Path *pathToAvoid2)
 {
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::MoveAway);
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
 	if (!m_isMapReady)
-		return nullptr; // Should always be ok.
+		{ pathProfile.result(false); return nullptr; } // Should always be ok.
 
 #ifdef DEBUG_LOGGING
 	Int startTimeMS = ::GetTickCount();
@@ -10327,6 +10405,7 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 	Bool otherCenter;
 	Int otherRadius;
 	getRadiusAndCenter(otherObj, otherRadius, otherCenter);
@@ -10351,10 +10430,10 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 	worldToCell(&startPos, &startCellNdx);
 	PathfindCell *parentCell = getClippedCell( obj->getLayer(), obj->getPosition() );
 	if (!parentCell)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
 	if (!obj->getAIUpdateInterface()) // shouldn't happen, but can't move it without an ai.
-		return nullptr; 
+		{ pathProfile.result(false); return nullptr; }
 
 	const LocomotorSet& locomotorSet = obj->getAIUpdateInterface()->getLocomotorSet();
 
@@ -10375,7 +10454,7 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 	}
 
 	if (!parentCell->allocateInfo(startCellNdx)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	parentCell->startPathfind(nullptr);
 
@@ -10408,6 +10487,7 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		Region2D bounds;
@@ -10467,7 +10547,7 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 				cleanOpenAndClosedLists();
 				parentCell->releaseInfo();
 			}
-			return newPath;
+			{ pathProfile.result(newPath != nullptr); return newPath; }
 		}
 		// put parent cell onto closed list - its evaluation is finished
 		parentCell->putOnClosedList( m_closedList );
@@ -10497,7 +10577,7 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 		cleanOpenAndClosedLists();
 		parentCell->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 
@@ -10506,18 +10586,24 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet,
 		Path *originalPath, Bool blocked )
 {
+	PERFORMANCE_PROFILE_SCOPE(PathRequest);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Patch);
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
+	if(pathProfile.enabled())pathProfile.sample()->surfaces=locomotorSet.getValidSurfaces();
 	//CRCDEBUG_LOG(("Pathfinder::patchPath()"));
 #ifdef DEBUG_LOGGING
 	Int startTimeMS = ::GetTickCount();
 #endif
-	if (originalPath==nullptr) return nullptr;
+	if (originalPath==nullptr) { pathProfile.result(false); return nullptr; }
 	Bool centerInCell;
 	Int radius;
 	getRadiusAndCenter(obj, radius, centerInCell);
+		if(pathProfile.enabled())pathProfile.sample()->radius=radius;
 	Bool isHuman = true;
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 
 	m_zoneManager.setAllPassable();
 
@@ -10539,15 +10625,15 @@ Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet
 	//worldToCell(obj->getPosition(), &startCellNdx);
 	PathfindCell *parentCell = getClippedCell( obj->getLayer(), &currentPosition);
 	if (parentCell == nullptr)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	if (!obj->getAIUpdateInterface()) {
-		return nullptr; // shouldn't happen, but can't move it without an ai.
+		{ pathProfile.result(false); return nullptr; } // shouldn't happen, but can't move it without an ai.
 	}
 
 	m_isTunneling = false;
 
 	if (!parentCell->allocateInfo(startCellNdx)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	parentCell->startPathfind( nullptr);
 
@@ -10629,7 +10715,7 @@ Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet
 		{
 			parentCell->releaseInfo();
 		}
-		return nullptr; // no open nodes.
+		{ pathProfile.result(false); return nullptr; } // no open nodes.
 	}
 	PathfindCell *candidateGoal;
 	candidateGoal = getCell(LAYER_GROUND, &goalPos); // just using for cost estimates.
@@ -10642,13 +10728,14 @@ Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet
 		{
 			parentCell->releaseInfo();
 		}
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	while( !m_openList.empty() )
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		Coord3D cellCenter;
@@ -10690,7 +10777,7 @@ Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet
 				candidateGoal->releaseInfo();
 			}
 
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 		// put parent cell onto closed list - its evaluation is finished
 		parentCell->putOnClosedList( m_closedList );
@@ -10727,7 +10814,7 @@ Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet
 		parentCell->releaseInfo();
 		candidateGoal->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 
@@ -10735,13 +10822,19 @@ Path *Pathfinder::patchPath( const Object *obj, const LocomotorSet& locomotorSet
 Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from,
 		const Object *victim, const Coord3D* victimPos, const Weapon *weapon )
 {
+	PERFORMANCE_PROFILE_SCOPE(PathRequest);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Attack);
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
+	if(pathProfile.enabled())pathProfile.sample()->surfaces=locomotorSet.getValidSurfaces();
 	if (!m_isMapReady)
-		return nullptr; // Should always be ok.
+		{ pathProfile.result(false); return nullptr; } // Should always be ok.
 
 	Bool isCrusher = obj ? obj->getCrusherLevel() > 0 : false;
+	if(pathProfile.enabled())pathProfile.sample()->crusher=isCrusher;
 	Int radius;
 	Bool centerInCell;
 	getRadiusAndCenter(obj, radius, centerInCell);
+		if(pathProfile.enabled())pathProfile.sample()->radius=radius;
 
 	// Quick check:  See if moving couple of cells towards the victim will work.
 	{
@@ -10784,7 +10877,7 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 			if (TheGlobalData->m_debugAI==AI_DEBUG_PATHS) {
 				setDebugPath(path);
 			}
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 	}
 
@@ -10794,6 +10887,7 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 	m_zoneManager.clearPassableFlags();
 	Path *hPat = findClosestHierarchicalPath(isHuman, locomotorSet, from, victimPos, isCrusher);
 	if (hPat) {
@@ -10819,15 +10913,15 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 	}
 
 	if (!obj->getAIUpdateInterface()) // shouldn't happen, but can't move without an ai.
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
 	worldToCell(&objPos, &startCellNdx);
 	PathfindCell *parentCell = getClippedCell( obj->getLayer(), &objPos );
 	if (!parentCell)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
 	if (!parentCell->allocateInfo(startCellNdx))
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
 	const PathfindCell *startCell = parentCell;
 	parentCell->startPathfind(nullptr);
@@ -10839,10 +10933,10 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 	// determine goal cell
 	PathfindCell *goalCell = getCell( LAYER_GROUND, victimCellNdx.x, victimCellNdx.y );
 	if (!goalCell)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 
  	if (!goalCell->allocateInfo(victimCellNdx)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 
 	// initialize "open" list to contain start cell
@@ -10879,6 +10973,7 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		Coord3D cellCenter;
@@ -11019,7 +11114,7 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 					parentCell->releaseInfo();
 					goalCell->releaseInfo();
 				}
-				return path;
+				{ pathProfile.result(path != nullptr); return path; }
 			}
 		}
 		if (checkDestination(obj, parentCell->getXIndex(), parentCell->getYIndex(), parentCell->getLayer(), radius, centerInCell)) {
@@ -11059,10 +11154,11 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 #endif
 #if 0
 	if (closestCell) {
+		pathProfile.closest();
 		// construct and return path
 		Path *path = buildActualPath( obj, locomotorSet, obj->getPosition(), closestCell, centerInCell, false);
 		cleanOpenAndClosedLists();
-		return path;
+		{ pathProfile.result(path != nullptr); return path; }
 	}
 #if defined(RTS_DEBUG)
 	DEBUG_LOG(("%d (%d cells) Attack Pathfind failed from (%f,%f) to (%f,%f) --", TheGameLogic->getFrame(), cellCount, from->x, from->y, victim->getPosition()->x, victim->getPosition()->y));
@@ -11087,15 +11183,19 @@ Path *Pathfinder::findAttackPath( const Object *obj, const LocomotorSet& locomot
 		parentCell->releaseInfo();
 		goalCell->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 /** Find a short, valid path to a location that is safe from the repulsors.  */
 Path *Pathfinder::findSafePath( const Object *obj, const LocomotorSet& locomotorSet,
 		const Coord3D *from, const Coord3D* repulsorPos1, const Coord3D* repulsorPos2, Real repulsorRadius)
 {
+	PERFORMANCE_PROFILE_SCOPE(PathRequest);
+	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Safe);
+	if(pathProfile.enabled() && obj){pathProfile.sample()->object=obj->getID();pathProfile.sample()->layer=obj->getLayer();}
+	if(pathProfile.enabled())pathProfile.sample()->surfaces=locomotorSet.getValidSurfaces();
 	//CRCDEBUG_LOG(("Pathfinder::findSafePath()"));
-	if (m_isMapReady == false) return nullptr; // Should always be ok.
+	if (m_isMapReady == false) { pathProfile.result(false); return nullptr; } // Should always be ok.
 #if defined(RTS_DEBUG)
 //	Int startTimeMS = ::GetTickCount();
 #endif
@@ -11105,12 +11205,14 @@ Path *Pathfinder::findSafePath( const Object *obj, const LocomotorSet& locomotor
 	Bool centerInCell;
 	Int radius;
 	getRadiusAndCenter(obj, radius, centerInCell);
+		if(pathProfile.enabled())pathProfile.sample()->radius=radius;
 	Real repulsorDistSqr = repulsorRadius*repulsorRadius;
 	Int cellCount = 0;
 	Bool isHuman = true;
 	if (obj && obj->getControllingPlayer() && (obj->getControllingPlayer()->getPlayerType()==PLAYER_COMPUTER)) {
 		isHuman = false; // computer gets to cheat.
 	}
+	if(pathProfile.enabled())pathProfile.sample()->human=isHuman;
 
 	DEBUG_ASSERTCRASH(m_openList.empty() && m_closedList.empty(), ("Dangling lists."));
 	// create unique "mark" values for open and closed cells for this pathfind invocation
@@ -11121,12 +11223,12 @@ Path *Pathfinder::findSafePath( const Object *obj, const LocomotorSet& locomotor
 	worldToCell(obj->getPosition(), &startCellNdx);
 	PathfindCell *parentCell = getClippedCell( obj->getLayer(), obj->getPosition() );
 	if (parentCell == nullptr)
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	if (!obj->getAIUpdateInterface()) {
-		return nullptr; // shouldn't happen, but can't move it without an ai.
+		{ pathProfile.result(false); return nullptr; } // shouldn't happen, but can't move it without an ai.
 	}
 	if (!parentCell->allocateInfo(startCellNdx)) {
-		return nullptr;
+		{ pathProfile.result(false); return nullptr; }
 	}
 	parentCell->startPathfind( nullptr);
 
@@ -11156,6 +11258,7 @@ Path *Pathfinder::findSafePath( const Object *obj, const LocomotorSet& locomotor
 	{
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
+		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
 		parentCell->removeFromOpenList(m_openList);
 
 		Coord3D cellCenter;
@@ -11228,7 +11331,7 @@ Path *Pathfinder::findSafePath( const Object *obj, const LocomotorSet& locomotor
 				cleanOpenAndClosedLists();
 				parentCell->releaseInfo();
 			}
-			return path;
+			{ pathProfile.result(path != nullptr); return path; }
 		}
 
 		// put parent cell onto closed list - its evaluation is finished
@@ -11271,7 +11374,7 @@ Path *Pathfinder::findSafePath( const Object *obj, const LocomotorSet& locomotor
 		cleanOpenAndClosedLists();
 		parentCell->releaseInfo();
 	}
-	return nullptr;
+	{ pathProfile.result(false); return nullptr; }
 }
 
 //-----------------------------------------------------------------------------

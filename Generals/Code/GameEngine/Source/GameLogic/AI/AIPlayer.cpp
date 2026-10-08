@@ -29,6 +29,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 #include "Common/GameMemory.h"
 #include "Common/GameState.h"
 #include "Common/GlobalData.h"
@@ -2721,6 +2722,7 @@ void AIPlayer::doUpgradesAndSkills()
 //DECLARE_PERF_TIMER(AIPlayer_update)
 void AIPlayer::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(AIPlayer);
 	//USE_PERF_TIMER(AIPlayer_update)
 
 	doBaseBuilding();		// See if it's time to build another building.

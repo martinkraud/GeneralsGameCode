@@ -27,6 +27,7 @@
 // Desc:   Implementation of missile behavior
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "Common/Thing.h"
 #include "Common/ThingTemplate.h"
@@ -659,6 +660,7 @@ void MissileAIUpdate::doDeadState()
  */
 UpdateSleepTime MissileAIUpdate::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(Missile);
 	Coord3D newPos = *getObject()->getPosition();
 	if (m_noTurnDistLeft > 0.0f && m_state >= IGNITION)
 	{

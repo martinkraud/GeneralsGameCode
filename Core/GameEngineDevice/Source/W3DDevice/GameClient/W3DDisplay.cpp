@@ -34,6 +34,7 @@
 static void drawFramerateBar();
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
+#include "Common/PerformanceProfile.h"
 #include <numeric>
 #include <stdlib.h>
 #include <windows.h>
@@ -1732,7 +1733,7 @@ void W3DDisplay::calculateTerrainLOD()
 				// draw all views of the world
 				drawViews();
 				// render is all done!
-				WW3D::End_Render();
+				{ PERFORMANCE_PROFILE_SCOPE(RenderEnd); WW3D::End_Render(); }
 			}
 			Int64 time64 = getPerformanceCounter();
 			timeForFrame = (float)((double)(time64-startTime64) / (double)(freq64));
@@ -1787,6 +1788,7 @@ Int W3DDisplay::getLastFrameDrawCalls()
 //=============================================================================
 void W3DDisplay::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(DisplayUpdate);
 	Display::update();
 
 	if (TheGlobalData->m_headless)
@@ -1841,6 +1843,7 @@ void W3DDisplay::step()
 //DECLARE_PERF_TIMER(W3DDisplay_draw)
 void W3DDisplay::draw()
 {
+	PERFORMANCE_PROFILE_SCOPE(DisplayDraw);
 	//USE_PERF_TIMER(W3DDisplay_draw)
 
 	extern HWND ApplicationHWnd;
@@ -2018,7 +2021,7 @@ AGAIN:
 					TheInGameUI->draw();
 					if( TheMouse )
 						TheMouse->draw();	//keep applying the current cursor style so it remains hidden if needed.
-					WW3D::End_Render();
+					{ PERFORMANCE_PROFILE_SCOPE(RenderEnd); WW3D::End_Render(); }
 					continue;
 				}
 				couldRender = true;
@@ -2109,7 +2112,7 @@ AGAIN:
 				}
 #endif
 				// render is all done!
-				WW3D::End_Render();
+				{ PERFORMANCE_PROFILE_SCOPE(RenderEnd); WW3D::End_Render(); }
 			}
 			else
 			{

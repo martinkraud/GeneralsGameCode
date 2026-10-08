@@ -1,5 +1,52 @@
 # Agent handoff
 
+Accepted Stage 4A/4A.1 tooling baseline (2026-10-08): developer authorized one
+tooling commit, including the synchronized WPR analysis in
+[STAGE4A1_PATHFINDING_DEEP_PROFILE.md](STAGE4A1_PATHFINDING_DEEP_PROFILE.md).
+Pre-commit win32 Release build, CTest 2/2, 184 direct tests, both profiler benchmark
+smoke suites and the pathfinder token audit pass. Release EXE/PDB hashes still
+match the captured candidate exactly. Stage 4B selection remains unresolved:
+truncated ETW caller chains and comparable insertion/checking leaf costs require
+review of the minimal sampled phase observer proposal. That observer is not
+implemented. No gameplay change, game launch or push; stop after the tooling
+commit for developer review. Entries below retain historical states.
+
+Stage 4A.1 update (2026-10-08):
+[STAGE4A1_PATHFINDING_DEEP_PROFILE.md](STAGE4A1_PATHFINDING_DEEP_PROFILE.md) is current.
+HEAD remains 1de7e65d173104ad2f288ac0a379e102a5057ebc; preceding Stage 4A changes
+were already dirty and are preserved. Actual A/B summaries/categories/frames/slow
+files were read and cross-checked. Pathfinding dominates several B logic tails,
+but 163.287 ms is an aggregate of five search calls, not one measured search.
+Do not choose an exact Stage 4B algorithm change yet. New -pathProfile plus
+-performanceProfile <directory> records individual linked calls/work/maintenance;
+without the extra flag the same candidate retains shallow aggregate profiling.
+Final Release build/CTest 2/2, 184 direct tests and all profiler benchmarks pass;
+source/new/previous Stage 4A full inventories pass (369 files each), and launch
+validation passes without a launch or backup. Read the report for capacities,
+inclusive counters, outcomes and delayed-start
+manual commands. Fresh candidate stage4a1-pathfinding-deep-final is unlaunched.
+No optimization, game launch, commit or push. Preserve original capture bytes
+and all previous runtime candidates. Older entries describe historical states.
+
+Stage 4A update (2026-10-08):
+[STAGE4A_PERFORMANCE_BASELINE.md](STAGE4A_PERFORMANCE_BASELINE.md) is the current handoff.
+Started clean on dev/modern-engine at 1de7e65d173104ad2f288ac0a379e102a5057ebc;
+Stage 3C.4 is developer accepted/committed/pushed after full 1v1 and OFF comparison.
+Stage 4A adds default-OFF developer CPU profiling with an explicit existing output
+directory, file start/stop controls, 60-second/16,384-frame bound, QPC scope accounting,
+CSV tails/top-N/counters and synthetic tests/overhead measurements. No optimization.
+Final win32 Release build, CTest 2/2, 168 direct Google tests and both profiler
+benchmarks pass. Initial report-test failure from metadata edits during build is
+retained/documented; a consistent rebuild passes. Candidate stage4a-performance-baseline
+is unlaunched; full source/new/six previous acceptance inventories pass (369 files
+each), with matching EXE/PDB identity and hashes recorded in the report.
+Use exact A (1 AI) and B (5 AI) capture instructions in the report;
+primary accepted interpolation ON, stable finite cap, preserve metadata/settings.
+Runtime profiler control/output and in-game overhead still need manual acceptance.
+No real match bottleneck measured; do not select Stage 4B yet or assume pathfinding,
+interpolation or threading is the answer. No commit/push/Install/Steam/user-data writes.
+Earlier entries below are historical; later main-PC high-refresh/ultrawide still pending.
+
 Stage 3C.4 update (2026-10-08):
 [STAGE3C4_GROUND_ORIENTATION.md](STAGE3C4_GROUND_ORIENTATION.md) records root-heading interpolation.
 Started clean at 289be9bf9 after developer Stage 3C.3 acceptance/commit/push.

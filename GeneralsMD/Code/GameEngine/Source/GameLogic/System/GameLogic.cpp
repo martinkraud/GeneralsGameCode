@@ -28,6 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "Common/AudioAffect.h"
 #include "Common/AudioHandleSpecialValues.h"
@@ -3680,6 +3681,7 @@ extern __int64 Total_Load_3D_Assets;
 // ------------------------------------------------------------------------------------------------
 void GameLogic::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(Logic);
 	USE_PERF_TIMER(GameLogic_update)
 	PROFILER_SECTION_COLOR(0x4CAF50);
 
@@ -3797,6 +3799,7 @@ void GameLogic::update()
 
 #ifdef ALLOW_NONSLEEPY_UPDATES
 	{
+		PERFORMANCE_PROFILE_SCOPE(ObjectUpdates);
 		for (std::list<UpdateModulePtr>::const_iterator it = m_normalUpdates.begin(); it != m_normalUpdates.end(); ++it)
 		{
 			UpdateModulePtr u = *it;
@@ -3813,6 +3816,7 @@ void GameLogic::update()
 			{
 				USE_PERF_TIMER(GameLogic_update_normal)
 
+				PerformanceProfile::count(PerformanceProfile::Counter::UpdateModules);
 				m_curUpdateModule = u;
 
 				#ifdef DEBUG_LOGGING
@@ -3829,6 +3833,7 @@ void GameLogic::update()
 #endif
 
 	{
+		PERFORMANCE_PROFILE_SCOPE(ObjectUpdates);
 		while (!m_sleepyUpdates.empty())
 		{
 			UpdateModulePtr u = peekSleepyUpdate();
@@ -3862,6 +3867,7 @@ void GameLogic::update()
 				USE_PERF_TIMER(GameLogic_update_sleepy)
 
 				//DEBUG_LOG(("calling update %08lx (%d %d)...",update,update->friend_getNextCallFrame(),update->friend_getNextCallPhase()));
+				PerformanceProfile::count(PerformanceProfile::Counter::UpdateModules);
 				m_curUpdateModule = u;
 
 				sleepLen = u->update();
@@ -3914,6 +3920,7 @@ void GameLogic::update()
 		//Handle disabled statii (and re-enable objects once frame matches)
 		for( Object *obj = m_objList; obj; obj = obj->getNextObject() )
 		{
+			PerformanceProfile::count(PerformanceProfile::Counter::ObjectsVisited);
 			if( obj->isDisabled() )
 			{
 				obj->checkDisabledStatus();
@@ -3929,6 +3936,7 @@ void GameLogic::update()
 	if (!m_startNewGame)
 	{
 		m_frame++;
+		PerformanceProfile::count(PerformanceProfile::Counter::CompletedTicks);
 		m_hasUpdated = TRUE;
 	}
 }

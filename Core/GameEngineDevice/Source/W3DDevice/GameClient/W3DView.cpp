@@ -33,6 +33,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////////////////////////
+#include "Common/PerformanceProfile.h"
 #include <stdlib.h>
 #include <windows.h>
 
@@ -1841,6 +1842,7 @@ void W3DView::drawView()
 //DECLARE_PERF_TIMER(W3DView_drawView)
 void W3DView::draw()
 {
+	PERFORMANCE_PROFILE_SCOPE(SceneView);
 	//USE_PERF_TIMER(W3DView_drawView)
 	Bool skipRender = false;
 	Bool doExtraRender = false;

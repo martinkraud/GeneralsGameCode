@@ -29,6 +29,7 @@
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 #include "GameClient/GameClient.h"
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
@@ -519,6 +520,7 @@ DECLARE_PERF_TIMER(GameClient_update)
 DECLARE_PERF_TIMER(GameClient_draw)
 void GameClient::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(Client);
 	USE_PERF_TIMER(GameClient_update)
 	PROFILER_FRAME_MARK;
 	PROFILER_SECTION_COLOR(0x2196F3);
@@ -646,6 +648,7 @@ void GameClient::update()
 
 
 		// call the update for all client drawables
+		PERFORMANCE_PROFILE_SCOPE(DrawableUpdates);
 		const Real timeScale = TheFramePacer->getActualLogicTimeScaleOverFpsRatio();
 		Drawable* draw = firstDrawable();
 		while (draw)
@@ -695,6 +698,7 @@ void GameClient::update()
 					draw->setFullyObscuredByShroud(ss >= OBJECTSHROUD_FOGGED);
 				}
 			}
+			PerformanceProfile::count(PerformanceProfile::Counter::DrawablesUpdated);
 			draw->updateDrawable(timeScale);
 			draw = next;
 		}
@@ -710,7 +714,7 @@ void GameClient::update()
 
 	// update the terrain visuals
 	{
-		TheTerrainVisual->UPDATE();
+		{ PERFORMANCE_PROFILE_SCOPE(Terrain); TheTerrainVisual->UPDATE(); }
 	}
 
 	// update display
@@ -724,7 +728,7 @@ void GameClient::update()
 	if( !freezeTime && TheGameLogic->hasUpdated() )
 	{
 		TheParticleSystemManager->setLocalPlayerIndex(localPlayerIndex);
-		TheParticleSystemManager->UPDATE();
+		{ PERFORMANCE_PROFILE_SCOPE(Particles); TheParticleSystemManager->UPDATE(); }
 	}
 
 	{

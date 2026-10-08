@@ -26,6 +26,7 @@
 // The Artificial Intelligence system
 // Author: Michael S. Booth, November 2000
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "Common/CRCDebug.h"
 #include "Common/GameState.h"
@@ -352,6 +353,7 @@ void AI::reset()
  */
 void AI::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(AIGlobal);
 	// Do pathfinding.
 	m_pathfinder->processPathfindQueue();
 

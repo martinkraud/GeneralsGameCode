@@ -29,6 +29,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #define DEFINE_DEATH_NAMES
 #define DEFINE_WEAPONBONUSCONDITION_NAMES
@@ -1569,6 +1570,7 @@ WeaponTemplate *WeaponStore::newOverride(WeaponTemplate *weaponTemplate)
 //-------------------------------------------------------------------------------------------------
 void WeaponStore::update()
 {
+	PERFORMANCE_PROFILE_SCOPE(WeaponStore);
 	for (std::list<WeaponDelayedDamageInfo>::iterator ddi = m_weaponDDI.begin(); ddi != m_weaponDDI.end(); )
 	{
 		UnsignedInt curFrame = TheGameLogic->getFrame();
@@ -2385,6 +2387,7 @@ Bool Weapon::privateFireWeapon(
 	ObjectID* projectileID
 )
 {
+	PERFORMANCE_PROFILE_SCOPE(WeaponFire);
 	//CRCDEBUG_LOG(("Weapon::privateFireWeapon() for %s", DescribeObject(sourceObj).str()));
 	//USE_PERF_TIMER(fireWeapon)
 	if (projectileID)
