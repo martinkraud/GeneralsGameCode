@@ -1840,6 +1840,7 @@ void PathfindCell::reverseInsertionSort(PathfindCellList& list)
 /// put self on "open" list in ascending cost order, return new list
 void PathfindCell::putOnSortedOpenList( PathfindCellList &list )
 {
+	PerformanceProfile::PathInsertion phaseInsertion; // Stage4A.2 observer
 	PerformanceProfile::pathCount(PerformanceProfile::PathWork::OpenInserts);
 #if RETAIL_COMPATIBLE_PATHFINDING
 	if (!s_useFixedPathfinding) {
@@ -6244,6 +6245,7 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 																				 Bool isHuman, Bool centerInCell, Int radius, const ICoord2D &startCellNdx,
 																				 const Object *obj, Int attackDistance)
 {
+	PerformanceProfile::PathPhase neighborPhase(PerformanceProfile::PathPhaseKind::Neighbor); // Stage4A.2 observer
 		Bool canPathThroughUnits = false;
 		if (obj && obj->getAIUpdateInterface()) {
 			canPathThroughUnits = obj->getAIUpdateInterface()->canPathThroughUnits();
@@ -6264,7 +6266,7 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 			start.y = parentCell->getYIndex();
 			end.x = goalCell->getXIndex();
 			end.y = goalCell->getYIndex();
-			iterateCellsAlongLine(start, end, parentCell->getLayer(), examineCellsCallback, &info);
+			{ PerformanceProfile::PathPhase linePhase(PerformanceProfile::PathPhaseKind::Line); iterateCellsAlongLine(start, end, parentCell->getLayer(), examineCellsCallback, &info); } // Stage4A.2 observer
 		}
 
 		Int cellCount = 0;
@@ -6692,6 +6694,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
 		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
+		PerformanceProfile::PathIteration phaseIteration; // Stage4A.2 observer
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
@@ -6738,7 +6741,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 		parentCell->putOnClosedList( m_closedList );
 
 		// Check to see if we can change layers in this cell.
-		checkChangeLayers(parentCell);
+		{ PerformanceProfile::PathPhase layerPhase(PerformanceProfile::PathPhaseKind::Neighbor); checkChangeLayers(parentCell); } // Stage4A.2 observer
 
 		cellCount += examineNeighboringCells(parentCell, goalCell, locomotorSet, isHuman, centerInCell, radius, startCellNdx, obj, NO_ATTACK);
 
@@ -7266,6 +7269,7 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
 		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
+		PerformanceProfile::PathIteration phaseIteration; // Stage4A.2 observer
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
@@ -7299,6 +7303,7 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 		}
 
 		// put parent cell onto closed list - its evaluation is finished
+		PerformanceProfile::PathPhase neighborPhase(PerformanceProfile::PathPhaseKind::Neighbor); // Stage4A.2 observer
 		parentCell->putOnClosedList( m_closedList );
 
 		// Check to see if we can change layers in this cell.
@@ -7315,7 +7320,7 @@ Path *Pathfinder::findGroundPath( const Coord3D *from,
 		start.y = parentCell->getYIndex();
 		end.x = goalCell->getXIndex();
 		end.y = goalCell->getYIndex();
-		iterateCellsAlongLine(start, end, parentCell->getLayer(), groundCellsCallback, &info);
+		{ PerformanceProfile::PathPhase linePhase(PerformanceProfile::PathPhaseKind::Line); iterateCellsAlongLine(start, end, parentCell->getLayer(), groundCellsCallback, &info); } // Stage4A.2 observer
 
 		// expand search to neighboring orthogonal cells
 		static ICoord2D delta[] =
@@ -8923,6 +8928,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
 		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
+		PerformanceProfile::PathIteration phaseIteration; // Stage4A.2 observer
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
@@ -9021,7 +9027,7 @@ Path *Pathfinder::findClosestPath( Object *obj, const LocomotorSet& locomotorSet
 		// If we haven't already found the goal cell, continue examining. [8/25/2003]
 		if (!foundGoal) {
 			// Check to see if we can change layers in this cell.
-			checkChangeLayers(parentCell);
+			{ PerformanceProfile::PathPhase layerPhase(PerformanceProfile::PathPhaseKind::Neighbor); checkChangeLayers(parentCell); } // Stage4A.2 observer
 			count += examineNeighboringCells(parentCell, goalCell, locomotorSet, isHuman, centerInCell, radius, startCellNdx, obj, NO_ATTACK);
 		}
 	}

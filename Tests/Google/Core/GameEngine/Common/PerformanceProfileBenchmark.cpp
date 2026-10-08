@@ -18,6 +18,58 @@ __declspec(noinline) void benchmarkPathScope()
 { PerformanceProfile::PathScope scope(PerformanceProfile::PathKind::Internal); }
 __declspec(noinline) void benchmarkPathCount()
 { PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops); }
+__declspec(noinline) void benchmarkPhaseInsert(bool hooks)
+{
+	if(hooks){PerformanceProfile::PathInsertion insertion;PerformanceProfile::pathCount(PerformanceProfile::PathWork::OpenInserts);PerformanceProfile::pathCount(PerformanceProfile::PathWork::ForwardHops,100);}
+	else {PerformanceProfile::pathCount(PerformanceProfile::PathWork::OpenInserts);PerformanceProfile::pathCount(PerformanceProfile::PathWork::ForwardHops,100);}
+}
+__declspec(noinline) void benchmarkPhaseExpansion(bool hooks)
+{
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::InfoAttempts,32);
+	for(unsigned int i=0;i<8;++i)benchmarkPhaseInsert(hooks);
+}
+__declspec(noinline) void benchmarkPhaseIteration(bool hooks)
+{
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
+	if(hooks)
+	{
+		PerformanceProfile::PathIteration iteration;
+		PerformanceProfile::PathPhase neighbor(PerformanceProfile::PathPhaseKind::Neighbor);
+		{PerformanceProfile::PathPhase line(PerformanceProfile::PathPhaseKind::Line);benchmarkPhaseExpansion(hooks);}
+		benchmarkPhaseExpansion(hooks);
+	}
+	else {benchmarkPhaseExpansion(hooks);benchmarkPhaseExpansion(hooks);}
+}
+TEST(PerformanceProfileBenchmark, DISABLED_SampledPhaseOverhead)
+{
+#ifdef _DEBUG
+	GTEST_SKIP()<<"Release measurements only";
+#endif
+	using namespace PerformanceProfile;
+	constexpr unsigned int iterations=262144;
+	std::printf("PHASE_MEMORY,sample,%zu,capacity,%u,buffer_bytes,%zu\n",sizeof(PathSample),MaxPaths,sizeof(PathSample)*MaxPaths);
+	// Mode 2 omits new hooks; mode 3 runs hooks but suppresses sampled clocks.
+	const char* names[]={"disabled_with_hooks","aggregate_with_hooks","legacy_deep_no_hooks","deep_unsampled_hooks","deep_sampled_64","disabled_no_hooks","aggregate_no_hooks"};
+	for(unsigned int mode=0;mode<7;++mode)
+	{
+		std::vector<double> times;
+		for(unsigned int repeat=0;repeat<7;++repeat)
+		{
+			Recorder r(1,mode>=2 && mode<=4?8:0,mode==4);r.start(0);r.beginFrame(0,0,120,120);
+			activeRecorder=mode!=0 && mode!=5?&r:nullptr;
+			{
+				Scope aggregate(Category::PathSearch);PathScope search(PathKind::Internal);
+				const auto start=std::chrono::steady_clock::now();
+				for(unsigned int i=0;i<iterations;++i)benchmarkPhaseIteration(mode!=2 && mode<5);
+				times.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
+				if(mode==4){EXPECT_EQ(search.sample()->phases.selected,iterations/PathPhaseStride);EXPECT_EQ(search.sample()->phases.errors,0u);}
+			}
+			activeRecorder=nullptr;r.endFrame(now(),0);profileBenchmarkSink=r.paths().size();
+		}
+		std::sort(times.begin(),times.end());
+		std::printf("PHASE_BENCH,%s,%u,7,%.6f,%.3f\n",names[mode],iterations,times[3],times[3]*1000000/iterations);
+	}
+}
 TEST(PerformanceProfileBenchmark, DISABLED_PathDetailOverhead)
 {
 #ifdef _DEBUG

@@ -1,5 +1,44 @@
 # Agent handoff
 
+Stage 4A.2 final analysis (2026-10-08): selection gate resolved from all five
+reports plus command.txt in `build/performance/stage4a2-B-final-2`.
+Read [STAGE4A2_PATH_PHASE_SAMPLING.md](STAGE4A2_PATH_PHASE_SAMPLING.md) first.
+Valid 43.9108-second capacity stop, phases enabled at stride 64, zero phase or
+stack/clock errors, interpolation ON and requested/effective cap 120. Exclude
+all final-frame detail because 15 records dropped; 32,718 complete rows remain.
+The 31 Internal searches over 40 ms consistently favor checking: sampled
+Line/Neighbor/insertion shares 51.19/15.56/33.25%, robust to the documented
+clock-overhead sensitivity. First proposed Stage 4B route is Internal
+goal-directed line/movement checking through `examineNeighboringCells` ->
+integer `iterateCellsAlongLine` -> `examineCellsCallback`. Preserve all checks,
+cell order, FP/cost, allocations, parents/reopens, insertion ties/5000-hop rule,
+retry/hierarchy/queue policy and deterministic state. Closest insertion is a
+later candidate; this decision does not generalize to all Ground/Closest work.
+Next recommended infrastructure task: reproducible deterministic heavy developer
+scenario/benchmark harness with unchanged reference and differential correctness
+checks, before long optimization iterations. No further manual five-AI selection
+capture or WPR requested. Analysis changed only the three modernization documents;
+existing Stage 4A.2 source/test work is preserved. No behavior/harness implementation,
+game launch, staging, commit or push in this analysis. Stop for developer review.
+Earlier unresolved-gate and capture instructions below are historical.
+
+Stage 4A.2 (2026-10-08): started clean/synchronized at accepted/pushed 854b8294d.
+[STAGE4A2_PATH_PHASE_SAMPLING.md](STAGE4A2_PATH_PHASE_SAMPLING.md) is the current
+observer/capture handoff. Only bounded per-search every-64th phase measurement is
+added: line, remaining neighbor/layer and their nested insertion; no extra rows,
+sort/policy/budget/state changes or game launch. Final x86 Release build, CTest 2/2,
+198 direct tests, focused tests, sequential benchmark trials and token/static audit
+pass. New guarded candidate is stage4a2-path-phase-sampling. Use the report's
+single delayed 45-second busy ground-heavy developer + 5 AI capture, interpolation
+ON and cap 120. No further WPR is requested. Select one Stage 4B target only after
+analyzing repeated expensive individual phase records. No commit/push.
+After target selection, prioritize a reproducible deterministic developer workload
+harness before a long optimization series (build, isolated stage, launch, warm-up,
+heavy pathfinding/object/AI load, bounded capture, exit, reference comparison).
+No such harness is implemented now. Real user+AI matches remain milestone checks;
+automated scenarios should become frequent development benchmarks. Older entries
+below retain historical states.
+
 Accepted Stage 4A/4A.1 tooling baseline (2026-10-08): developer authorized one
 tooling commit, including the synchronized WPR analysis in
 [STAGE4A1_PATHFINDING_DEEP_PROFILE.md](STAGE4A1_PATHFINDING_DEEP_PROFILE.md).

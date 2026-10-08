@@ -35,6 +35,15 @@ enum class PathWork : unsigned int
 };
 enum class PathOutcome : unsigned int { Observed, ReturnedPath, ReturnedClosest, NullBeforeWork, NullAfterWork };
 constexpr unsigned int PathWorkCount=static_cast<unsigned int>(PathWork::Count), MaxPaths=32768;
+constexpr unsigned int PathPhaseStride=64;
+enum class PathPhaseKind : unsigned int { Line, Neighbor, Count };
+struct PathPhaseMetric { Tick calls=0,inclusive=0,insertion=0,inserts=0; };
+struct PathPhases
+{
+	bool enabled=false;
+	Tick iterations=0,selected=0,errors=0;
+	std::array<PathPhaseMetric,2> metrics{};
+};
 struct PathSample
 {
 	Tick id=0,parent=0,offset=0,inclusive=0,exclusive=0,sourceCategories=0;
@@ -45,6 +54,7 @@ struct PathSample
 	PathKind kind=PathKind::Request,request=PathKind::Count;
 	PathOutcome outcome=PathOutcome::Observed;
 	std::array<Tick,PathWorkCount> work{};
+	PathPhases phases;
 };
 struct Metric { Tick inclusive=0, exclusive=0, calls=0; };
 struct Frame
@@ -62,7 +72,7 @@ const char* name(Counter counter);
 class Recorder
 {
 public:
-	explicit Recorder(unsigned int capacity=MaxFrames,unsigned int pathCapacity=0);
+	explicit Recorder(unsigned int capacity=MaxFrames,unsigned int pathCapacity=0,bool samplePhases=true);
 	void start(Tick now);
 	void stop();
 	bool running() const { return m_running; }
@@ -78,6 +88,7 @@ public:
 	Tick elapsed() const { return m_elapsed; }
 	Tick errors() const { return m_errors; }
 	bool deepPaths() const { return m_pathCapacity!=0; }
+	bool samplePhases() const { return deepPaths() && m_samplePhases; }
 	bool pathsFull() const { return deepPaths() && m_paths.size()>=m_pathCapacity; }
 	Tick droppedPaths() const { return m_droppedPaths; }
 	const std::vector<PathSample>& paths() const { return m_paths; }
@@ -93,6 +104,7 @@ private:
 	unsigned int m_capacity, m_depth=0;
 	Tick m_activeCategories=0, m_started=0, m_elapsed=0, m_errors=0;
 	bool m_running=false, m_inFrame=false;
+	bool m_samplePhases;
 };
 struct Metadata
 {
@@ -107,7 +119,11 @@ Tick frequency();
 extern thread_local Recorder* activeRecorder;
 using Clock = Tick(*)();
 class PathScope;
+class PathIteration;
+class PathPhase;
 extern thread_local PathScope* activePath;
+extern thread_local PathIteration* activeIteration;
+extern thread_local PathPhase* activePhase;
 class PathScope
 {
 public:
@@ -126,8 +142,54 @@ private:
 	Clock m_clock;
 	Tick m_started=0,m_children=0;
 	bool m_guard=false;
+	PathIteration* m_previousIteration=nullptr;
+	PathPhase* m_previousPhase=nullptr;
 };
 inline void pathCount(PathWork work,Tick amount=1) { if(activePath)activePath->add(work,amount); }
+// Ordinals and clocks belong only to the observer, never to search state.
+class PathIteration
+{
+public:
+	explicit PathIteration(Clock clock=now);
+	~PathIteration();
+	PathIteration(const PathIteration&)=delete;
+	PathIteration& operator=(const PathIteration&)=delete;
+	PathSample* sample() const { return m_sample; }
+	Clock clock() const { return m_clock; }
+private:
+	PathSample* m_sample=nullptr;
+	PathIteration* m_previous;
+	PathPhase* m_previousPhase;
+	Clock m_clock;
+};
+class PathPhase
+{
+public:
+	explicit PathPhase(PathPhaseKind kind);
+	~PathPhase();
+	PathPhase(const PathPhase&)=delete;
+	PathPhase& operator=(const PathPhase&)=delete;
+private:
+	friend class PathInsertion;
+	PathSample* m_sample=nullptr;
+	PathPhase* m_parent=nullptr;
+	PathPhaseKind m_kind;
+	Clock m_clock=nullptr;
+	Tick m_start=0,m_children=0,m_insertion=0,m_inserts=0;
+};
+class PathInsertion
+{
+public:
+	PathInsertion() : m_phase(activePhase) { if(m_phase)begin(); }
+	~PathInsertion() { if(m_phase)finish(); }
+	PathInsertion(const PathInsertion&)=delete;
+	PathInsertion& operator=(const PathInsertion&)=delete;
+private:
+	PathPhase* m_phase;
+	Tick m_start=0;
+	void begin();
+	void finish();
+};
 void reportPaths(const Recorder& recorder,const Metadata& metadata,std::ostream& summary,std::ostream& paths);
 void enablePathDetails();
 class Scope

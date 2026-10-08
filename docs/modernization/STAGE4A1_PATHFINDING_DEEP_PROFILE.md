@@ -1,5 +1,12 @@
 # Stage 4A.1: capture analysis and individual pathfinding profile
 
+Stage 4A.2 follow-up: [STAGE4A2_PATH_PHASE_SAMPLING.md](STAGE4A2_PATH_PHASE_SAMPLING.md)
+records the accepted sampled phase observer, validation and final bounded busy
+capture analysis. The accepted Stage 4A/4A.1 baseline is committed
+and pushed at 854b8294d; the WPR findings and historical records below are retained.
+The final Stage 4A.2 evidence selects Internal goal-directed line/movement checking
+as the first Stage 4B target; no optimization is part of Stage 4A.2.
+
 ## Accepted tooling baseline - pre-commit validation, 2026-10-08
 
 The developer accepted Stage 4A + Stage 4A.1 as the performance-tooling baseline and authorized one tooling commit. The synchronized WPR findings below are included. Stage 4B selection remains unresolved; the sampled phase accumulator is a proposal only and has not been implemented.

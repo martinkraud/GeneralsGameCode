@@ -1,5 +1,36 @@
 # Incremental modernization roadmap
 
+Stage 4A.2 final selection (2026-10-08): direct analysis of all reports in
+`build/performance/stage4a2-B-final-2` resolves the first Stage 4B target as
+Internal goal-directed line/movement checking via `examineNeighboringCells`,
+the integer `iterateCellsAlongLine` and `examineCellsCallback`. In all 31 complete
+Internal searches over 40 ms, combined checking exceeds insertion; sampled
+shares are 51.19% Line self, 15.56% Neighbor self and 33.25% insertion.
+Capacity ended the 43.9108-second capture with 15 dropped records; the entire
+incomplete final frame is excluded. Closest retries favor insertion, a later
+candidate. See [STAGE4A2_PATH_PHASE_SAMPLING.md](STAGE4A2_PATH_PHASE_SAMPLING.md)
+for individual evidence, observer sensitivity, invariants and acceptance plan.
+No additional manual five-AI selection capture or WPR is needed. Recommend the
+reproducible guarded developer scenario/benchmark harness as the next
+infrastructure task before optimization iterations, with an unchanged reference
+and deterministic correctness comparisons. No harness or optimization is
+implemented; stop for developer review. The earlier selection requests below
+are historical and superseded by this result.
+
+Stage 4A.2 (2026-10-08): the accepted/pushed Stage 4A/4A.1 baseline is 854b8294d.
+[STAGE4A2_PATH_PHASE_SAMPLING.md](STAGE4A2_PATH_PHASE_SAMPLING.md) records bounded
+every-64th per-search line/neighbor/insertion observations to resolve the remaining
+Stage 4B gate. No pathfinding optimization or automated scenario is implemented.
+Request one delayed-start, approximately 45-second already-busy ground-heavy
+developer + 5 AI capture; no new ETL. Select exactly one first Stage 4B target from
+repeated individual-search phase evidence, preserving authoritative behavior.
+After target selection, prioritize a reproducible developer performance scenario
+before a long optimization series: build -> isolated stage -> deterministic launch
+-> warm-up -> representative heavy pathfinding/object/AI workload -> bounded
+capture -> exit -> reference comparison. Automated runs should be the frequent
+development benchmark; real user+AI matches remain milestone validation.
+This future harness direction is documentation only. Older entries are historical.
+
 Accepted Stage 4A/4A.1 tooling baseline (2026-10-08): developer authorized one
 tooling commit. The synchronized WPR analysis and selection limits are recorded in
 [STAGE4A1_PATHFINDING_DEEP_PROFILE.md](STAGE4A1_PATHFINDING_DEEP_PROFILE.md).
