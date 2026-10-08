@@ -43,6 +43,7 @@ set(GAMEENGINE_SRC
     Include/Common/FramePacer.h
     Include/Common/FrameRateLimit.h
     Include/Common/PresentationClock.h
+    Include/Common/GroundTranslation.h
 #    Include/Common/FunctionLexicon.h
     Include/Common/GameAudio.h
     Include/Common/GameCommon.h
@@ -589,6 +590,7 @@ set(GAMEENGINE_SRC
     Source/Common/Dict.cpp
     Source/Common/DiscreteCircle.cpp
     Source/Common/FramePacer.cpp
+    Source/Common/GroundTranslation.cpp
     Source/Common/FrameRateLimit.cpp
     Source/GameClient/GUI/FrameRateOptions.cpp
 #    Source/Common/GameEngine.cpp

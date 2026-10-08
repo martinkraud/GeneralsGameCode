@@ -27,6 +27,7 @@
 
 #include "Common/ArchiveFileSystem.h"
 #include "Common/CommandLine.h"
+#include "Common/GroundTranslation.h"
 #include "Common/CRCDebug.h"
 #include "Common/LocalFileSystem.h"
 #include "Common/version.h"
@@ -1161,8 +1162,15 @@ Int parseClearDebugLevel(char *args[], int num)
 
 // Initial Params are parsed before Windows Creation.
 // Note that except for TheGlobalData, no other global objects exist yet when these are parsed.
+static Int parseGroundInterpolation(char *args[], int num)
+{
+	GroundTranslation::setEnabled(true);
+	return 1;
+}
+
 static CommandLineParam paramsForStartup[] =
 {
+	{ "-groundInterpolation", parseGroundInterpolation },
 	{ "-win", parseWin },
 	{ "-fullscreen", parseNoWin },
 

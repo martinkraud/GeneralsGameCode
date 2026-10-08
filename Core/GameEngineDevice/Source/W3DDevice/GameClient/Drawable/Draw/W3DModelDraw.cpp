@@ -2040,6 +2040,14 @@ void W3DModelDraw::adjustTransformMtx(Matrix3D& mtx) const
 }
 
 //-------------------------------------------------------------------------------------------------
+Bool W3DModelDraw::supportsGroundTranslation() const
+{
+	// Do not opt bespoke subclasses into root interpolation by inheritance.
+	const NameKeyType name = getModuleNameKey();
+	return (name == NAMEKEY("W3DModelDraw") || name == NAMEKEY("W3DTankDraw"))
+		&& getW3DModelDrawModuleData()->m_attachToDrawableBone.isEmpty();
+}
+
 void W3DModelDraw::doDrawModule(const Matrix3D* transformMtx)
 {
 	// update whether or not we should be animating.

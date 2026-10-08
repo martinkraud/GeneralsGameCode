@@ -659,6 +659,9 @@ Int Object::getTransportSlotCount() const
 
 void Object::friend_setContainedBy(Object* containedBy)
 {
+	// Presentation only, including entry and exit within one completed tick.
+	if (m_drawable)
+		m_drawable->invalidateGroundPresentation();
 	m_containedBy = containedBy;
 
 #if !RETAIL_COMPATIBLE_CRC

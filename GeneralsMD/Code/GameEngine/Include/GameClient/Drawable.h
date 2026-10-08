@@ -30,6 +30,7 @@
 
 #include "Common/AudioEventRTS.h"
 #include "Common/GameType.h"
+#include "Common/GroundTranslation.h"
 #include "Common/ModelState.h"
 #include "Common/ModuleFactory.h"
 #include "Common/Thing.h"
@@ -411,6 +412,10 @@ public:
 
 	const Matrix3D *getTransformMatrix() const;	///< return the world transform
 
+	void captureGroundPresentation();
+	void invalidateGroundPresentation() { m_groundTranslation.reset(); }
+	Vector3 getGroundPresentationOffset() const;
+	Bool isGroundPresentationEligible() const;
 	void draw();													///< render the drawable to the given view
 	void updateDrawable(Real timeScale);														///< update the drawable
 
@@ -684,6 +689,7 @@ private:
 	Real m_decalOpacityFadeRate;
 	Real m_decalOpacity;
 
+	GroundTranslationHistory m_groundTranslation; // Client-only; deliberately absent from xfer/CRC.
 	Object *m_object;						///< object (if any) that this drawable represents
 
 	DrawableID m_id;						///< this drawable's unique ID

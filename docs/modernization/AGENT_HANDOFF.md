@@ -1,5 +1,20 @@
 # Agent handoff
 
+Stage 3C.2 update (2026-10-08): read
+[STAGE3C2_GROUND_INTERPOLATION.md](STAGE3C2_GROUND_INTERPOLATION.md).
+Default-off Release `-groundInterpolation` prototype uses the Stage 3C.1 pair
+for XYZ only on six exact stock ground templates in idle/move-to states.
+Drawable-owned nonserialized history captures final completed generations before
+client updates/views; local matrix replacement precedes instance/physics
+composition. Explicit lifecycle/containment/load/large-move snaps; unknown short
+semantic relocations and rendered picking versus canonical selection remain
+gated limitations. Clock, legacy phase, simulation ordering and formats stay
+unchanged. Release build and 90 Google tests pass (CTest 2/2); fresh candidate
+`stage3c2-ground-interpolation` and Steam source pass 369-file SHA256 checks each.
+Baseline/Stage 2/Stage 3A remain intact. Runtime acceptance is entirely pending;
+no game launch/Install/commit/push. Stage 3C.3 starts with candidate review and picking/teleport/FX acceptance,
+not broader controls or interpolation. Earlier entries below are historical.
+
 **Latest, Stage 3C.1 (2026-10-08):** read
 [STAGE3C1_PRESENTATION_CLOCK.md](STAGE3C1_PRESENTATION_CLOCK.md) first. Started clean
 on `dev/modern-engine` at `bc87b4954`; developer had committed/pushed Stage 3A/3B.

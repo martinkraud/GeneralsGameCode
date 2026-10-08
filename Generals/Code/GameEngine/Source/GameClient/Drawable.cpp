@@ -2616,6 +2616,54 @@ void Drawable::setStealthLook(StealthLookType look)
 //-------------------------------------------------------------------------------------------------
 /** default draw is to just call the database defined draw */
 //-------------------------------------------------------------------------------------------------
+Bool Drawable::isGroundPresentationEligible() const
+{
+	const Object* obj = getObject();
+	if (!GroundTranslation::isEnabled() || !obj
+		|| !GroundTranslation::supportsTemplate(obj->getTemplate()->getName().str())
+		|| m_hidden || m_hiddenByStealth || m_drawableFullyObscuredByShroud
+		|| (TheTacticalView && TheTacticalView->isDoingScriptedCamera())
+		|| obj->getContainedBy() || obj->getContain() || obj->isEffectivelyDead()
+		|| obj->isDisabled() || obj->isAirborneTarget() || obj->isSignificantlyAboveTerrain()
+		|| obj->getStatusBits().test(OBJECT_STATUS_PARACHUTING)
+		|| (!obj->isKindOf(KINDOF_INFANTRY) && !obj->isKindOf(KINDOF_VEHICLE))
+		|| obj->isKindOf(KINDOF_AIRCRAFT) || obj->isKindOf(KINDOF_PROJECTILE)
+		|| obj->isKindOf(KINDOF_STRUCTURE) || obj->isKindOf(KINDOF_IMMOBILE))
+		return FALSE;
+	const AIUpdateInterface* ai = obj->getAIUpdateInterface();
+	if (!ai || !ai->isDoingGroundMovement()
+		|| (ai->getAIStateType() != AI_IDLE && ai->getAIStateType() != AI_MOVE_TO))
+		return FALSE;
+	const DrawModule* const* modules = (const DrawModule* const*)getModuleList(MODULETYPE_DRAW);
+	if (!modules || !*modules)
+		return FALSE;
+	for (; *modules; ++modules)
+		if (!(*modules)->supportsGroundTranslation())
+			return FALSE;
+	return TRUE;
+}
+
+void Drawable::captureGroundPresentation()
+{
+	const PresentationTiming& timing = TheFramePacer->getPresentationTiming();
+	m_groundTranslation.observeEpoch(timing.epoch);
+	if (!isGroundPresentationEligible())
+	{
+		m_groundTranslation.reset();
+		return;
+	}
+	// GameClient runs before the next logic update: this is the last completed world.
+	if (TheGameLogic->hasUpdated() && timing.generation == TheGameLogic->getFrame())
+		m_groundTranslation.capture(getTransformMatrix()->Get_Translation(), timing.generation, timing.epoch);
+}
+
+Vector3 Drawable::getGroundPresentationOffset() const
+{
+	const Matrix3D& canonical = *getTransformMatrix();
+	return m_groundTranslation.getRenderTransform(canonical, TheFramePacer->getPresentationTiming(),
+		isGroundPresentationEligible()).Get_Translation() - canonical.Get_Translation();
+}
+
 void Drawable::draw()
 {
 	if ( getObject() && getObject()->isEffectivelyDead() )
@@ -2651,7 +2699,8 @@ void Drawable::draw()
 #endif
 
 	// call the database defined draw action method
-	Matrix3D transformMtx = *getTransformMatrix();
+	Matrix3D transformMtx = m_groundTranslation.getRenderTransform(*getTransformMatrix(),
+		TheFramePacer->getPresentationTiming(), isGroundPresentationEligible());
 	if (!isInstanceIdentity())
 	{
 #ifdef ALLOW_TEMPORARIES
@@ -2689,6 +2738,8 @@ static Bool computeHealthRegion( const Drawable *draw, IRegion2D& region )
 
 	Coord3D p;
 	obj->getHealthBoxPosition(p);
+	const Vector3 offset = draw->getGroundPresentationOffset();
+	p.x += offset.X; p.y += offset.Y; p.z += offset.Z;
 	ICoord2D screenCenter;
 	if( !TheTacticalView->worldToScreen( &p, &screenCenter ) )
 		return FALSE;
@@ -2906,6 +2957,8 @@ void Drawable::drawAmmo( const IRegion2D *healthBarRegion )
 
 	ICoord2D screenCenter;
 	Coord3D pos = *obj->getPosition();
+	const Vector3 offset = getGroundPresentationOffset();
+	pos.x += offset.X; pos.y += offset.Y; pos.z += offset.Z;
 	pos.x += TheGlobalData->m_ammoPipWorldOffset.x;
 	pos.y += TheGlobalData->m_ammoPipWorldOffset.y;
 	pos.z += TheGlobalData->m_ammoPipWorldOffset.z + obj->getGeometryInfo().getMaxHeightAbovePosition();
@@ -2973,6 +3026,8 @@ void Drawable::drawContained( const IRegion2D *healthBarRegion )
 
 	ICoord2D screenCenter;
 	Coord3D pos = *obj->getPosition();
+	const Vector3 offset = getGroundPresentationOffset();
+	pos.x += offset.X; pos.y += offset.Y; pos.z += offset.Z;
 	pos.x += TheGlobalData->m_containerPipWorldOffset.x;
 	pos.y += TheGlobalData->m_containerPipWorldOffset.y;
 	pos.z += TheGlobalData->m_containerPipWorldOffset.z + obj->getGeometryInfo().getMaxHeightAbovePosition();
@@ -3157,6 +3212,8 @@ void Drawable::drawUIText()
 		Coord3D p;
 		ICoord2D screenCenter;
 		obj->getHealthBoxPosition(p);
+		const Vector3 offset = getGroundPresentationOffset();
+		p.x += offset.X; p.y += offset.Y; p.z += offset.Z;
 		if( ! TheTacticalView->worldToScreen( &p, &screenCenter ) )
 			return;
 
@@ -3690,6 +3747,8 @@ void Drawable::drawConstructPercent( const IRegion2D *healthBarRegion )
 	ICoord2D screen;
 	Coord3D pos;
 	getDrawableGeometryInfo().getCenterPosition(*getPosition(), pos);
+	const Vector3 offset = getGroundPresentationOffset();
+	pos.x += offset.X; pos.y += offset.Y; pos.z += offset.Z;
 
 	// convert drawable center position to screen coords
 	TheTacticalView->worldToScreen( &pos, &screen );
@@ -3717,6 +3776,8 @@ void Drawable::drawCaption( const IRegion2D *healthBarRegion )
 	ICoord2D screen;
 	Coord3D pos;
 	getDrawableGeometryInfo().getCenterPosition(*getPosition(), pos);
+	const Vector3 offset = getGroundPresentationOffset();
+	pos.x += offset.X; pos.y += offset.Y; pos.z += offset.Z;
 
 	// convert drawable center position to screen coords
 	TheTacticalView->worldToScreen( &pos, &screen );
@@ -3779,6 +3840,8 @@ void Drawable::drawVeterancy( const IRegion2D *healthBarRegion )
 	Coord3D p;
 	ICoord2D screenCenter;
 	obj->getHealthBoxPosition(p);
+	const Vector3 offset = getGroundPresentationOffset();
+	p.x += offset.X; p.y += offset.Y; p.z += offset.Z;
 	if( !TheTacticalView->worldToScreen( &p, &screenCenter ) )
 		return;
 
@@ -4118,6 +4181,7 @@ DrawableID Drawable::getID() const
 //-------------------------------------------------------------------------------------------------
 void Drawable::friend_bindToObject( Object *obj ) ///< bind this drawable to an object ID
 {
+	m_groundTranslation.reset();
 	m_object = obj;
 	if (getObject())
 	{
@@ -4186,6 +4250,15 @@ void Drawable::setPosition(const Coord3D *pos)
 //-------------------------------------------------------------------------------------------------
 void Drawable::reactToTransformChange(const Matrix3D* oldMtx, const Coord3D* oldPos, Real oldAngle)
 {
+	// Invalidate only; setters never become completed-world samples.
+	if (GroundTranslation::isEnabled() && oldPos)
+	{
+		const Vector3 oldPosition(oldPos->x, oldPos->y, oldPos->z);
+		if (!TheGameLogic->isInGameLogicUpdate()
+			|| (getTransformMatrix()->Get_Translation() - oldPosition).Length2()
+				> GroundTranslation::MaxSampleDistance * GroundTranslation::MaxSampleDistance)
+			m_groundTranslation.reset();
+	}
 	for (DrawModule** dm = getDrawModules(); *dm; ++dm)
 	{
 		(*dm)->reactToTransformChange(oldMtx, oldPos, oldAngle);
@@ -4636,6 +4709,7 @@ void Drawable::setDrawableHidden( Bool hidden )
 {
 	if (hidden != m_hidden)
 	{
+		m_groundTranslation.reset();
 		m_hidden = hidden;
 		updateHiddenStatus();
 	}
@@ -5408,6 +5482,7 @@ void Drawable::xfer( Xfer *xfer )
 // ------------------------------------------------------------------------------------------------
 void Drawable::loadPostProcess()
 {
+	m_groundTranslation.reset();
 		// if we have an object, we don't need to save/load the pos, just restore it.
 		// if we don't, we'd better save it!
 	if (m_object != nullptr)

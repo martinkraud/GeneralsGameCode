@@ -501,6 +501,10 @@ void GameClient::update()
 	USE_PERF_TIMER(GameClient_update)
 	PROFILER_FRAME_MARK;
 	PROFILER_SECTION_COLOR(0x2196F3);
+	// Capture final completed simulation positions before client updates or any views.
+	if (GroundTranslation::isEnabled())
+		for (Drawable* draw = firstDrawable(); draw; draw = draw->getNextDrawable())
+			draw->captureGroundPresentation();
 	// create the FRAME_TICK message
 	GameMessage *frameMsg = TheMessageStream->appendMessage( GameMessage::MSG_FRAME_TICK );
 	frameMsg->appendTimestampArgument( getFrame() );
