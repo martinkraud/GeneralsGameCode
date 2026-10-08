@@ -1,5 +1,19 @@
 # Timing and frame-rate architecture
 
+Stage 3C.1 update (2026-10-08): a separate read-only presentation clock now
+observes actual post-decision scheduler remainder and completed GameLogic frames.
+FramePacer publishes `(previousGeneration, generation, epoch, alpha, valid)` after
+its existing wait for the next client pass; alpha is clamped `(remainder + new
+measured delta) / period`. Legacy getLogicFramePhase and all consumers retain their
+existing behavior. Unsupported network/immediate/fast paths, pause/freeze and
+>=one-tick deltas explicitly invalidate/snap. Reset/load hooks clear presentation
+history without resetting the engine accumulator. No world interpolation or input
+changes. Release build and 56 Google tests pass, including two-minute synthetic
+144/165 cadence/oracle checks. Runtime behavior is still unverified. Read
+[STAGE3C1_PRESENTATION_CLOCK.md](STAGE3C1_PRESENTATION_CLOCK.md) for exact ordering,
+sample/latency semantics, tests and conservative limitations. Earlier status below
+is historical; Stage 3A/3B were committed/pushed by the developer before this work.
+
 Stage 3B update (2026-10-08): analysis only at clean checkpoint `967dfb739`.
 Stage 3A is developer manually accepted: default 60, normal gameplay, Options
 selection/Accept at 120 and persistence through relaunch. TPS remains inferred.

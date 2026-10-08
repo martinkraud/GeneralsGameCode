@@ -1,5 +1,18 @@
 # Incremental modernization roadmap
 
+Stage 3C.1 update (2026-10-08): the developer reviewed/committed/pushed Stage 3A/3B.
+The separate scheduler-observing presentation timing API is implemented; legacy
+phase, tick policy, network readiness and formats are unchanged. No world or
+controls implementation. Release build and 56 Google tests pass; all six caps
+and non-integer/jitter/recovery behavior have deterministic synthetic coverage.
+[STAGE3C1_PRESENTATION_CLOCK.md](STAGE3C1_PRESENTATION_CLOCK.md) documents explicit
+invalid/snap timing for unsupported modes and the one-tick latency tradeoff.
+Stage 3C.2 requires review before a narrow, gated ground-unit translation cache:
+match completed generations/epochs/object lifetimes, handle discontinuities and
+audit picking/bone/attachment queries. Network smoothing, generalized rotation,
+aircraft/projectiles and WASD/rebinding remain separate. Runtime visual/CRC/LAN
+acceptance is still open; synthetic cadence tests do not establish compatibility.
+
 Stage 3B update (2026-10-08): Stage 3A is now developer manually accepted,
 including default 60, normal gameplay, immediate 120-FPS Accept and persistence
 through relaunch; TPS is still inferred. The analysis-only

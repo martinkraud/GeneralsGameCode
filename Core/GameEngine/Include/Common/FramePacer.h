@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Common/FrameRateLimit.h"
+#include "Common/PresentationClock.h"
 
 
 // TheSuperHackers @todo Use unsigned integers for fps values
@@ -69,6 +70,10 @@ public:
 
 	Real getLogicFramePhase() const; ///< Get how far the current render step reaches into the current logic frame, in [0,1]. Used to interpolate render updates between logic updates.
 
+	const PresentationTiming& getPresentationTiming() const; ///< Separate completed-sample clock, published after update() for the next client pass. Invalid means use canonical current state.
+	void observePresentationScheduler(Real remainder, Real period); ///< Scheduler observer only: post-decision remainder, or period=0 for an unsupported branch. Never changes scheduling.
+	void resetPresentationTiming(); ///< Invalidate presentation history on world reset/load, without changing the scheduler or legacy phase.
+
 protected:
 
 	FrameRateLimit m_frameRateLimit;
@@ -78,6 +83,7 @@ protected:
 
 	Real m_updateTime; ///< Last update delta time in seconds
 	Real m_logicFramePhase; ///< How far the current render step reaches into the current logic frame, ranging 0 to 1.
+	PresentationClock m_presentationClock; ///< Nonserialized client timing; no authoritative state.
 
 	Bool m_enableFpsLimit;
 	Bool m_enableLogicTimeScale;

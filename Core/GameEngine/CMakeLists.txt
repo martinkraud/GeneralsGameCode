@@ -42,6 +42,7 @@ set(GAMEENGINE_SRC
     Include/Common/FileSystem.h
     Include/Common/FramePacer.h
     Include/Common/FrameRateLimit.h
+    Include/Common/PresentationClock.h
 #    Include/Common/FunctionLexicon.h
     Include/Common/GameAudio.h
     Include/Common/GameCommon.h

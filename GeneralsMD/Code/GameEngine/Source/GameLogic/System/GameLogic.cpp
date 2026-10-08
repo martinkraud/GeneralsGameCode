@@ -401,6 +401,8 @@ void GameLogic::init()
 //-------------------------------------------------------------------------------------------------
 void GameLogic::reset()
 {
+	if (TheFramePacer != nullptr)
+		TheFramePacer->resetPresentationTiming();
 	m_thingTemplateBuildableOverrides.clear();
 	m_controlBarOverrides.clear();
 
@@ -5352,6 +5354,8 @@ void GameLogic::xfer( Xfer *xfer )
 // ------------------------------------------------------------------------------------------------
 void GameLogic::loadPostProcess()
 {
+	if (TheFramePacer != nullptr)
+		TheFramePacer->resetPresentationTiming();
 
 	//
 	// the act of loading objects can (theoretically) as a side effect create other objects,

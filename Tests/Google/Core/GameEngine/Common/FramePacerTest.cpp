@@ -30,6 +30,7 @@ public:
 		m_maxFPS = fps;
 		m_updateTime = 1.0f / fps;
 	}
+	void setLegacyPhase(Real phase) { m_logicFramePhase = phase; }
 };
 
 TEST(FramePacer, NormalOfflineRateDoesNotFollowRenderCap)
@@ -90,4 +91,21 @@ TEST(FramePacer, SlowRenderingDoesNotExtrapolateVisualTime)
 	EXPECT_EQ(pacer.getActualLogicTimeScaleFps(), 30);
 	EXPECT_FLOAT_EQ(pacer.getActualLogicTimeScaleOverFpsRatio(), 1.0f);
 	EXPECT_FLOAT_EQ(pacer.getLogicTimeStepSeconds(), SECONDS_PER_LOGICFRAME_REAL);
+}
+
+TEST(FramePacer, PresentationObservationAndInvalidationLeaveLegacyTimingUntouched)
+{
+	TestFramePacer pacer;
+	pacer.setRenderTiming(144);
+	pacer.setLegacyPhase(0.625f);
+	const unsigned int epoch = pacer.getPresentationTiming().epoch;
+	pacer.observePresentationScheduler(0.001f, SECONDS_PER_LOGICFRAME_REAL);
+	pacer.resetPresentationTiming();
+	EXPECT_NE(pacer.getPresentationTiming().epoch, epoch);
+	EXPECT_FALSE(pacer.getPresentationTiming().valid);
+	EXPECT_FLOAT_EQ(pacer.getPresentationTiming().alpha, 1.0f);
+	EXPECT_FLOAT_EQ(pacer.getLogicFramePhase(), 0.625f);
+	EXPECT_FLOAT_EQ(pacer.getUpdateTime(), 1.0f / 144);
+	EXPECT_EQ(pacer.getLogicTimeScaleFps(), 30);
+	EXPECT_TRUE(pacer.isLogicTimeScaleEnabled());
 }

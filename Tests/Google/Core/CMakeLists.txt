@@ -3,6 +3,7 @@ set(COREI_GOOGLETEST_SRC
     GoogleTestMain.cpp
     GameEngine/Common/AsciiStringTest.cpp
     GameEngine/Common/FramePacerTest.cpp
+    GameEngine/Common/PresentationClockTest.cpp
     GameEngine/Common/OptionPreferencesTest.cpp
     Libraries/Compression/CompressionManagerTest.cpp
 )

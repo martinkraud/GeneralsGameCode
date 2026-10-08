@@ -1,5 +1,27 @@
 # Agent handoff
 
+**Latest, Stage 3C.1 (2026-10-08):** read
+[STAGE3C1_PRESENTATION_CLOCK.md](STAGE3C1_PRESENTATION_CLOCK.md) first. Started clean
+on `dev/modern-engine` at `bc87b4954`; developer had committed/pushed Stage 3A/3B.
+FramePacer owns a separate PresentationClock. Both engine schedulers copy actual
+post-subtraction remainder/T; after its existing wait FramePacer publishes the
+completed frame pair, epoch, alpha and validity for the next client pass. Normal
+offline alpha is clamp((remainder + newly measured delta)/T). Existing
+getLogicFramePhase and particle/physics consumers are unchanged.
+
+Unsupported network/immediate/fast modes, pause/freeze/halt, >=T deltas and invalid
+observations snap to canonical current state; valid timing needs two fresh
+consecutive completions. Both title GameLogic reset/loadPostProcess and FramePacer
+reset invalidate presentation history, never the existing engine accumulator.
+No source changes outside this timing boundary, no world cache/interpolation,
+controls, RNG or format/pacing changes. Release configure/build passes; CTest 2/2,
+28 Google tests each (56 total). Existing warnings on unchanged lines are recorded
+in the stage report. Runtime FPS/TPS, visuals and compatibility remain unverified.
+No new runtime candidate was needed for this unused API; existing stages are
+preserved. No launch, Install, commit or push. Stop for developer review.
+Final read-only baseline/Stage 2/Stage 3A integrity checks pass all 369 files each.
+Earlier updates below describe their historical state and authorization.
+
 **Latest, Stage 3B (2026-10-08):** read
 [STAGE3B_INTERPOLATION.md](STAGE3B_INTERPOLATION.md) first. Investigation started
 clean on `dev/modern-engine` at `967dfb739 Add persistent render FPS options`.
@@ -114,14 +136,16 @@ commit or push; existing uncommitted investigation documents are retained.
 [RENDERER](RENDERER.md): W3D/DX8, displays/UI and ultrawide.
 [COMPATIBILITY](COMPATIBILITY.md): lockstep, replay/save/RNG risks and tests.
 [ROADMAP](ROADMAP.md): staged objectives, tests, compatibility and rollback.
+[STAGE3C1_PRESENTATION_CLOCK](STAGE3C1_PRESENTATION_CLOCK.md): implemented timing
+contract, deterministic evidence, conservative exclusions and Stage 3C.2 gates.
 
 ## Next action
 
-Developer: review STAGE3B_INTERPOLATION.md sections 11–14 and approve a narrow
-Stage 3C phase-contract/ground-unit presentation prototype before implementation.
-The documented 30/60/120/144/165/240 matrix still needs measured FPS/TPS and
-camera/object/animation/particle comparisons, pause/load/containment/stall tests,
-same-build replay CRCs and mixed-cap LAN checks. Controls/rebinding is a separate
-follow-up; Stage 3B adds no WASD. Complete remaining Stage 1 profiling separately.
-Keep the three existing copied runtimes intact; protect shared user data for any
-manual session. No automatic game launch, commit or push.
+Developer: review STAGE3C1_PRESENTATION_CLOCK.md, especially alpha/sample IDs,
+epoch handling, unsupported-mode policy and Stage 3C.2 prerequisites. Authorize
+the narrow ground-unit translation cache separately before implementation.
+Synthetic clock tests pass; the Stage 3B manual 30/60/120/144/165/240 matrix still
+needs measured FPS/TPS, visual comparisons, pause/load/containment/stall cases,
+same-build replay CRCs and mixed-cap LAN checks. Controls/rebinding remains
+separate. Keep existing runtimes intact and protect shared user data for any
+developer manual session. No automatic game launch, commit or push.

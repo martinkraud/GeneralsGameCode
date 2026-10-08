@@ -75,6 +75,18 @@ void FramePacer::update()
 			m_logicFramePhase = min(1.0f, m_logicFramePhase + timeScale);
 		}
 	}
+
+	// Observe completed world frames, never scheduler acceptance alone (scripts
+	// can run while frozen without completing a world tick). Legacy phase above
+	// intentionally retains its existing particle/physics-decoration semantics.
+	const Bool permitted = TheGameLogic != nullptr && TheGameLogic->isInGame()
+		&& !TheGameLogic->isGamePaused() && TheNetwork == nullptr
+		&& !isTimeFrozen() && !isGameHalted()
+		&& getActualLogicTimeScaleFps() == LOGICFRAMES_PER_SECOND
+		&& (TheScriptEngine == nullptr || !TheScriptEngine->isTimeFast())
+		&& (TheTacticalView == nullptr || TheTacticalView->getTimeMultiplier() == 1);
+	m_presentationClock.advance(TheGameLogic != nullptr ? TheGameLogic->getFrame() : 0,
+		TheGameLogic != nullptr && TheGameLogic->hasUpdated(), m_updateTime, permitted);
 }
 
 void FramePacer::reset()
@@ -82,6 +94,7 @@ void FramePacer::reset()
 	m_frameRateLimit.reset();
 	m_updateTime = 1.0f / (Real)getActualFramesPerSecondLimit();
 	m_logicFramePhase = 1.0f;
+	resetPresentationTiming();
 }
 
 void FramePacer::setFramesPerSecondLimit( Int fps )
@@ -241,4 +254,19 @@ Real FramePacer::getLogicTimeStepMilliseconds(LogicTimeQueryFlags flags) const
 Real FramePacer::getLogicFramePhase() const
 {
 	return m_logicFramePhase;
+}
+
+const PresentationTiming& FramePacer::getPresentationTiming() const
+{
+	return m_presentationClock.getTiming();
+}
+
+void FramePacer::observePresentationScheduler(Real remainder, Real period)
+{
+	m_presentationClock.observeScheduler(remainder, period);
+}
+
+void FramePacer::resetPresentationTiming()
+{
+	m_presentationClock.reset();
 }

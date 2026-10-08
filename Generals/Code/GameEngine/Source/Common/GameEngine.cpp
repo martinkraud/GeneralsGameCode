@@ -654,6 +654,8 @@ void GameEngine::resetSubsystems()
 /// -----------------------------------------------------------------------------------------------
 Bool GameEngine::canUpdateGameLogic(UnsignedInt logicTimeQueryFlags)
 {
+	// Conservative default for network, halt and immediate/fast branches.
+	TheFramePacer->observePresentationScheduler(0.0f, 0.0f);
 	// This updates the paused game status of the game logic.
 	TheGameLogic->preUpdate();
 
@@ -719,8 +721,10 @@ Bool GameEngine::canUpdateRegularGameLogic(UnsignedInt logicTimeQueryFlags)
 		if (m_logicTimeAccumulator >= targetFrameTime)
 		{
 			m_logicTimeAccumulator -= targetFrameTime;
+			TheFramePacer->observePresentationScheduler(m_logicTimeAccumulator, targetFrameTime);
 			return true;
 		}
+		TheFramePacer->observePresentationScheduler(m_logicTimeAccumulator, targetFrameTime);
 	}
 
 	return false;
