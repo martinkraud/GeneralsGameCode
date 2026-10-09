@@ -37,6 +37,7 @@ typedef UnsignedShort zoneStorageType;
  */
 class PathfindCell
 {
+	friend struct RetailOpenListTestAccess; // Test-only access; no runtime state.
 public:
 
 	enum CellType

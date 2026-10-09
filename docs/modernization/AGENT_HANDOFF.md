@@ -1,5 +1,247 @@
 # Agent handoff
 
+## Performance cycle closeout (2026-10-09)
+
+Stages 1-3 high-FPS timing/interpolation foundation and Stage 4A/A.1/A.2
+profiling foundation are complete. Developer Mode / Quick Game / battle preset
+are the accepted practical interactive development and stress workflow. Stage4A.3
+automation remains **PAUSED**, with neutral-owner selection and warmup goal
+relocation defects unresolved; it is not accepted representative automation.
+
+Stage4B.1 surface-mask hoist is retained; no measurable speedup is claimed.
+Stage4B.2 investigation is complete with no production movement cache. Stage4B.3
+oracle/equivalence/microbenchmark work is complete with no selected production
+insertion optimization; exact retail insertion behavior remains unchanged.
+
+**Immediate next major phase: X64.1 - Architecture/dependency audit and Win64 build foundation.**
+No x64 implementation is part of this closeout. Prefix/rank-hint feasibility and
+other pathfinding work belong to the future **Pathfinding 2.0 backlog**, subject
+to the existing equivalence and meaningful-benefit gates, not the immediate task.
+
+See [PERFORMANCE_CYCLE_CLOSEOUT.md](PERFORMANCE_CYCLE_CLOSEOUT.md) for the reviewed
+file inventory, commit grouping and final integrated validation. All earlier
+next-step, uncommitted and no-push statements below describe their historical
+task states and are superseded by this closeout. Preserve all local evidence.
+
+## Stage4B.3 retail-list investigation: Outcome B (2026-10-09)
+
+Actual production insertion oracle/microbenchmark and adversarial tests are added.
+No production insertion optimization selected: cost snapshot and exact two-step
+loop do not show a broad repeatable worthwhile gain. Three test-access friend
+headers add no runtime state; actual insertion .cpp is unchanged. Exact identity,
+links, tail,5000 cutoff, repair and noncanonical-owner behavior are covered.
+
+Full x86 Release build PASS; CTest2/2; direct132/title; focused58/title; Python16;
+PowerShell9. No stage4b3 runtime, launch, commit/push or staging. Stage4B.2 remains
+rejected for implementation and Stage4A.3 remains PAUSED.
+
+Future Pathfinding 2.0 backlog: bounded prefix/rank-hint feasibility against the
+actual oracle, with complete mutation/repair validity proof and unchanged logical
+hop cutoff. No production finger/index authorized; stop if broad invalidation is
+needed. Larger Internal checking remains the alternative with its reference gate.
+
+[STAGE4B3_RETAIL_OPEN_LIST_INVESTIGATION.md](STAGE4B3_RETAIL_OPEN_LIST_INVESTIGATION.md)
+contains exact semantics, measured baseline/candidates, limits and reproduction.
+Earlier next-step notes below are historical and superseded by this outcome.
+
+
+## Stage4B.2 audit: production cache rejected pending equivalence (2026-10-09)
+
+Stage4B.1 remains accepted for retention. Stage4B.2 added no gameplay code or
+measurement observer. The audit establishes substantial successful line-query
+repetition, but existing captures do not measure full query keys/bounded-cache hits,
+and exact actual-helper/path reference equivalence has not been demonstrated.
+Pool occupancy IDs share search storage; non-ground getCell fallback prevents an
+unconditional30000-key bound. Across7 Internal>40ms, conservative successful-line
+queries>=7851431 and repeats>=4701431 using15 layers; these are derived bounds,
+not measured cache hit rates or saved milliseconds.
+
+No Stage4B.2 candidate or runtime command. Next proposed optimization investigation:
+actual-retail-list equivalence tests/microbenchmark for forwardInsertionSortRetailCompatible,
+whose repeated cost is measured and whose production primitive can be tested without
+an object/terrain world. Preserve exact ties/5000-hop/repair/order; reject noise-sized
+gains. Movement caching remains promising but requires the explicit reference gate.
+No automatic heap/fixed-mode/policy change. Stage4A.3 remains PAUSED.
+
+Full dependency/pool audit, bounds, rejection reason, alternatives and validation:
+[STAGE4B2_PATH_MOVEMENT_CACHE_AUDIT.md](STAGE4B2_PATH_MOVEMENT_CACHE_AUDIT.md).
+The prior next-step proposals below are historical and superseded by this audit.
+
+
+## Developer runtime review and latest capture — PASS (2026-10-09)
+
+Developer confirms TEST1 quick-game/overlay/money/reveal/spawn/capture/normal exit
+PASS and TEST2 battle preset PASS (96 units per side, movement/fighting, interactive,
+capture and normal exit). Release instant build remains documented/deferred and is
+not a blocker. Matching launch receipts for both runs show the expected candidate
+EXE hash and exit0.
+
+Latest exact battle capture: build/performance/dev-20261009T082332Z-c286325d,
+stem20261009T082505Z-29724-1;60.0094s clean automatic60-second stop,30375path records,
+zero drops/stack-clock/phase errors,120requested/effective cap and interpolation1.
+GameLogic mean/p95/p99/max3.3180/8.2369/27.8651/165.1720ms;15logic frames>30ms,
+all pathfinding-dominated.770Internal searches,64>10ms/11>30ms/7>40ms; worst156.232ms.
+Severe sampled Line/Neighbor/insertion61.87/13.22/24.90%; all7checking winners.
+
+Retain Stage4B.1; optimized route is exercised, manual gameplay is healthy, no
+regression evident. NO matched speedup claim; its inline getter hoist may be too
+small to distinguish from run variation. Proposed next high-value task: bounded
+single-Internal-search reuse of pure checkForMovement footprint/query results in
+the line callback, subject to read/write invariance proof and exact reference
+comparisons. No Stage4B.2 implemented or authorized by this analysis. Sorted insertion
+is a later target; rendering/present is sustained wall cost but GPU/wait cause is
+unresolved. Stage4A.3 debugging stays PAUSED; do not resume Fix6 or add another
+selection capture/profiler.
+
+Full measured analysis, risks and acceptance plan:
+[STAGE4B1_INTERACTIVE_CAPTURE.md](STAGE4B1_INTERACTIVE_CAPTURE.md).
+All earlier source/forensics/evidence preserved; documentation-only update, no
+build/game launch/commit/push. The earlier never-launched runtime-review state below
+is historical and superseded by the developer's successful manual review.
+
+
+## Current priority — interactive Dev Mode / Stage4B.1 (2026-10-09)
+
+Developer review explicitly PAUSES the Stage4A.3 relocation investigation and Fix6.
+Do not rerun old scenarios or stage another diagnostic Fix6. All automation, forensic
+snapshots, reference1–5, previous runtimes and working -skipIntro remain preserved.
+The neutral-owner0 defect and goal_relocated_after_warmup remain unresolved harness
+issues; neither is corrected or used as a prerequisite for current optimization.
+Earlier "Stage4B locked" / "next diagnostic trial" instructions below are historical
+and superseded by this priority decision.
+
+Part A independent interactive Quick Game and actions are implemented and validated
+without game launch. Explicit slot0 human / slot1 enemy ownership rejects neutral.
+Part B implements one local surface-mask hoist in the accepted Internal line callback;
+source-level exact-reference/order proof passes. No runtime speedup or gameplay success
+is claimed. See [DEVELOPER_MODE.md](DEVELOPER_MODE.md) and
+[STAGE4B1_PATH_POLICY_HOIST.md](STAGE4B1_PATH_POLICY_HOIST.md).
+
+Next: developer runtime review of ONE fresh isolated stage4b1-devmode-pathfinding
+candidate, first Quick Game/actions, then a bounded existing-profiler interactive
+battle capture. No further five-AI selection capture required. No automation/Fix6
+prerequisite. No launch, commit or push by agent. Future reproducible benchmark repair
+remains a separate follow-up, after developer priority review.
+
+
+
+Latest Stage4A.3 forensic state (2026-10-09): Fix5/reference-5 failed at tick91
+with goal_relocated_after_warmup, unit293/index76, (600.5,3080.5)->(610.5,3080.5).
+Center checkForAdjust failed; right-neighbor first spiral cell succeeded. Exact
+terrain/occupancy/reservation/connectivity branch is unrecorded. Same validation
+primitive runs at preparation/order time, but world state differs and prior orders
+can synchronously write reservations. No speculative endpoint/tolerance fix.
+Bounded getter-only index76 cell snapshots added to source for review; no corrected
+Fix6 runtime staged because root cause remains unproven. All96 units were owner0
+(neutral): independent ownership defect must be resolved before benchmark acceptance,
+not assumed to explain this relocation. Developer confirms real -skipIntro success.
+Preserve reference1..5/runtimes; no rerun, launch, commit/push or Stage4B. Current
+forensic report atop STAGE4A3_PERFORMANCE_HARNESS.md supersedes older launch procedures.
+
+
+
+Current Stage4A.3 state (2026-10-09, supersedes historical entries below):
+Fix4/reference-4 controlled failure at tick91 after96 spawns/90 warmup/76 orders;
+no capture started. Exact reason workload_goal_changed_or_unreachable conflates
+three checks, so no endpoint/pathfinder correction is justified yet. Fix5 adds
+bounded first-check/unit/candidate diagnostics and safe opt-in -skipIntro (implicit
+for scenario), preserving all readiness guards/checks/thresholds. Release/CTest,
+119 direct and45 focused tests/title,11 Python and actual intro CLI tests pass.
+Next: review never-launched stage4a3-pathfinding-workload-fix5-final; authorize ONE
+fresh reference-5 diagnostic trial using the current Stage4A3 report procedure.
+No game launched, no commit/push; all old evidence retained. Stage4B stays locked,
+with accepted future target Internal goal-directed line/movement/neighbor checking.
+
+
+
+Stage 4A.3 workload fix4 (2026-10-09): automation completion and coordinate
+schema repair are accepted; v1/reference-3 remains invalid for comparison and
+Closest dominated. Source/CSV/map inspection identifies pre-expansion destination
+footprint rejection followed by normal Closest retry; crowded8-unit goals and
+repeated redirects are the leading workload cause, with exact cell ownership
+unrecorded. Prepared version2 candidate uses bounded legal/connected western
+bank pairs, min40 spacing and one ordinary script move/unit at capture start.
+No pathfinder or normal-game policy change. New qualification gate is structural:
+96 Internal records,3 >=20k pops/500k info attempts with both checking samples,
+and >=75% Internal pop share versus Closest; timing remains diagnostic only.
+Accepted A.2 passes; v1 fails. Release/CTest2of2,42 focused/title and10 Python
+tests pass. Next: developer review then ONE guarded trial of never-launched
+stage4a3-pathfinding-workload-fix4 into fresh stage4a3-reference-4. Do not launch
+fix3, start extra trials or implement Stage4B before reviewing this result.
+No launch/commit/push. See current one-trial procedure atop the Stage4A3 report;
+older entries below are historical. Target remains Internal goal-directed
+line/movement/neighbor checking.
+
+
+Stage 4A.3 fix2 real trial review (2026-10-09): reference-3/trial-1 completed
+96 units/480 orders/90 warmup/300 capture ticks, finalized all reports and exited
+intentionally with code0. No new crash. Post-validation found float-coordinate
+parsing and lossy six-digit coordinate serialization; reporting-only repair
+keeps strict fingerprints (original trial still mismatches and cannot be reused
+as a validated reference). Preserve all three reference directories and fix2.
+No startup/gameplay/pathfinding change. Severe workload is 93 Closest retries,
+not Internal: Internal max18.6461ms, zero>40ms. Accepted Stage4B target remains
+Internal line/checking; do not run two more unchanged scenario trials or treat
+this capture as representative. Next: review schema repair and narrow scenario
+reachability/failed-request workload investigation before a separately approved
+scenario revision/capture. Full Release build, CTest2/2, focused40/title and
+8 Python tests pass. No launch/commit/push. See Stage4A3 report's real-trial section;
+earlier pending-runtime entries below are historical.
+
+Stage 4A.3 fix2 (2026-10-09): fix1 crashed at tick 0, GameLogic.cpp:3757,
+reading null TheGameInfo+8 in CRC generation. Matching PID3592 full/minidumps,
+exact staged PDB age27 and captured Sizzle/movie/loading state prove the harness
+requested Skirmish before Intro completed. Slots were ready but no scenario
+map load/player construction, units, orders, warm-up or profiler recording
+completed. Preserve reference-1/reference-2, both earlier runtimes and dumps.
+Fix2 waits for the complete Intro lifecycle and no movie/load/clear transition
+before requesting the unchanged scenario. Adds only read-only readiness
+accessors, bounded scenario breadcrumbs and focused regressions. Release build,
+CTest 2/2, 113 direct and 39 focused tests per title, six Python tests and static/
+evidence audits pass. Next: review the updated Stage 4A.3 report and fresh guarded
+`stage4a3-performance-harness-fix2`, then developer trials into fresh
+`stage4a3-reference-3`. Runtime remains unproven. No game launch, Stage 4B,
+commit or push. Earlier entries are historical.
+
+Stage 4A.3 fix1 (2026-10-09): the first developer trial failed in initial Setup:
+menu-owned `TheSkirmishGameInfo` was null, and the automatic harness incorrectly
+required it before initialization. No scenario map request, units, orders,
+warm-up or capture occurred. Preserve reference-1/trial-1 and the original
+runtime. Its old marker omitted the absolute logic tick; do not invent one.
+Scenario-only lazy allocation now follows normal engine ownership; bounded
+failure diagnostics include state/tick/progress and specific startup reasons.
+Two focused regressions were added. Final Release build, CTest 2/2, 111 direct
+and 37 focused tests per title, four synthetic profiler benchmarks per title,
+six Python tests and static audits pass. Fresh guarded candidate is
+`stage4a3-performance-harness-fix1`, staged but not launched. Next: developer
+review, then three automatic trials into fresh `stage4a3-reference-2` using the
+updated report commands. Runtime success/coverage/repeatability remain unproven.
+No Stage 4B, game launch, commit or push. Earlier entries are historical.
+
+Stage 4A.3 (2026-10-09): start at
+[STAGE4A3_PERFORMANCE_HARNESS.md](STAGE4A3_PERFORMANCE_HARNESS.md).
+Accepted baseline `0ff7f9c9b` is synchronized/pushed; current additions are
+uncommitted, unstaged infrastructure only. Default-OFF scenario automatically
+prepares fixed Twilight Flame offline allied China slots, spawns 96 AI-owned
+ground units, schedules ordinary move orders, warms up 90 ticks, captures 300
+ticks, writes bounded metadata/CRC/RNG/path fingerprints and exits. Existing
+manual profiler commands remain available. Repeated-trial guarded scripts and
+strict validity/configuration/correctness comparison are in scripts/performance.
+Minimal gated Ctrl+Alt+Shift+F5â€“F11 tools provide overlay, money, reveal,
+predefined spawning and capture. Instant build keeps its existing compile-time
+gate and is unavailable in this Release build; scenario restart is a fresh process.
+Full x86 Release build, CTest 2/2, 109 direct tests per title, 35 focused tests per
+title, four profiler/overhead benchmarks per title, six Python tests and token
+audits pass. Source/new/previous runtime inventories pass 369 files each; wrapper
+two-trial validation-only checks create no output, backups, receipts or process.
+Candidate `stage4a3-performance-harness` is staged and unlaunched (PDB age 25).
+Next developer action: review, then execute three automatic unchanged-reference
+trials from the report. Actual map/setup, severe Internal coverage and matching
+fingerprints remain unvalidated. Keep Stage 4B unimplemented until that reference
+is qualified; its selected target remains Internal line/movement checking.
+No new manual five-AI selection battle, game launch, commit, push or generated-file
+staging. Earlier entries are historical.
+
 Stage 4A.2 final analysis (2026-10-08): selection gate resolved from all five
 reports plus command.txt in `build/performance/stage4a2-B-final-2`.
 Read [STAGE4A2_PATH_PHASE_SAMPLING.md](STAGE4A2_PATH_PHASE_SAMPLING.md) first.

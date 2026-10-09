@@ -22,6 +22,7 @@ class PathfindCell;
 
 class PathfindCellInfo
 {
+	friend struct RetailOpenListTestAccess; // Test-only access; no runtime state.
 	friend class PathfindCell;
 public:
 #if RETAIL_COMPATIBLE_PATHFINDING

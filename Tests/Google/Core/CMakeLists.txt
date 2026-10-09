@@ -5,6 +5,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/FramePacerTest.cpp
     GameEngine/Common/PerformanceProfileTest.cpp
     GameEngine/Common/PathProfileTest.cpp
+    GameEngine/Common/RetailOpenListTest.cpp
     GameEngine/Common/PathPhaseTest.cpp
     GameEngine/Common/DeveloperHarnessTest.cpp
     GameEngine/Common/PerformanceProfileBenchmark.cpp

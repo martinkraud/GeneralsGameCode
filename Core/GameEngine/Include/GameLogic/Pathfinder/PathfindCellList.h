@@ -23,6 +23,7 @@ class PathfindCell;
 // TheSuperHackers @info The PathfindCellList class acts as a new management class for the pathfindcell open and closed lists
 class PathfindCellList
 {
+	friend struct RetailOpenListTestAccess; // Test-only access; no runtime state.
 	friend class PathfindCell;
 
 public:
