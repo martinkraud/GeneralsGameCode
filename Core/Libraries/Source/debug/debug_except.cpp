@@ -28,6 +28,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "debug.h"
 #include "internal_except.h"
+#include "Utility/stdio_adapter.h"
 #include <windows.h>
 #include <commctrl.h>
 
@@ -44,10 +45,10 @@ const char *DebugExceptionhandler::GetExceptionType(struct _EXCEPTION_POINTERS *
   switch(exptr->ExceptionRecord->ExceptionCode)
   {
 		case EXCEPTION_ACCESS_VIOLATION:
-      wsprintf(explanation,
+      sprintf(explanation,
              "The thread tried to read from or write to a virtual\n"
              "address for which it does not have the appropriate access.\n"
-             "Access address 0x%08x was %s.",
+             "Access address 0x" RTS_DIAGNOSTIC_ADDRESS_FORMAT " was %s.",
                 exptr->ExceptionRecord->ExceptionInformation[1],
                 exptr->ExceptionRecord->ExceptionInformation[0]?"written to":"read from");
       return "EXCEPTION_ACCESS_VIOLATION";
@@ -110,7 +111,7 @@ void DebugExceptionhandler::LogExceptionLocation(Debug &dbg, struct _EXCEPTION_P
   struct _CONTEXT &ctx=*exptr->ContextRecord;
 
   char buf[512];
-  DebugStackwalk::Signature::GetSymbol(ctx.Eip,buf,sizeof(buf));
+  DebugStackwalk::Signature::GetSymbol(WindowsDiagnostics::InstructionPointer(ctx),buf,sizeof(buf));
   dbg << "Exception occured at\n" << buf << ".";
 }
 
@@ -118,6 +119,15 @@ void DebugExceptionhandler::LogRegisters(Debug &dbg, struct _EXCEPTION_POINTERS 
 {
   struct _CONTEXT &ctx=*exptr->ContextRecord;
 
+#if defined(_WIN64)
+  dbg << Debug::FillChar('0') << Debug::Hex()
+      << "RAX:" << Debug::Width(16) << ctx.Rax << " RBX:" << Debug::Width(16) << ctx.Rbx << " RCX:" << Debug::Width(16) << ctx.Rcx << "\n"
+      << "RDX:" << Debug::Width(16) << ctx.Rdx << " RSI:" << Debug::Width(16) << ctx.Rsi << " RDI:" << Debug::Width(16) << ctx.Rdi << "\n"
+      << "RIP:" << Debug::Width(16) << ctx.Rip << " RSP:" << Debug::Width(16) << ctx.Rsp << " RBP:" << Debug::Width(16) << ctx.Rbp << "\n"
+      << "R8:" << Debug::Width(16) << ctx.R8 << " R9:" << Debug::Width(16) << ctx.R9 << " R10:" << Debug::Width(16) << ctx.R10 << " R11:" << Debug::Width(16) << ctx.R11 << "\n"
+      << "R12:" << Debug::Width(16) << ctx.R12 << " R13:" << Debug::Width(16) << ctx.R13 << " R14:" << Debug::Width(16) << ctx.R14 << " R15:" << Debug::Width(16) << ctx.R15 << "\n"
+      << "Flags:" << Debug::Width(8) << ctx.EFlags << "\n" << Debug::FillChar() << Debug::Dec();
+#else
   dbg << Debug::FillChar('0')
       << Debug::Hex()
       <<  "EAX:" << Debug::Width(8) << ctx.Eax
@@ -126,7 +136,7 @@ void DebugExceptionhandler::LogRegisters(Debug &dbg, struct _EXCEPTION_POINTERS 
       <<  "EDX:" << Debug::Width(8) << ctx.Edx
       << " ESI:" << Debug::Width(8) << ctx.Esi
       << " EDI:" << Debug::Width(8) << ctx.Edi << "\n"
-      <<  "EIP:" << Debug::Width(8) << ctx.Eip
+      <<  "EIP:" << Debug::Width(8) << WindowsDiagnostics::InstructionPointer(ctx)
       << " ESP:" << Debug::Width(8) << ctx.Esp
       << " EBP:" << Debug::Width(8) << ctx.Ebp << "\n"
       <<  "Flags:" << Debug::Bin() << Debug::Width(32) << ctx.EFlags << Debug::Hex() << "\n"
@@ -136,6 +146,7 @@ void DebugExceptionhandler::LogRegisters(Debug &dbg, struct _EXCEPTION_POINTERS 
       << "\nES:" << Debug::Width(4) << ctx.SegEs
       << " FS:" << Debug::Width(4) << ctx.SegFs
       << " GS:" << Debug::Width(4) << ctx.SegGs << "\n" << Debug::FillChar() << Debug::Dec();
+#endif
 }
 
 void DebugExceptionhandler::LogFPURegisters(Debug &dbg, struct _EXCEPTION_POINTERS *exptr)
@@ -148,6 +159,19 @@ void DebugExceptionhandler::LogFPURegisters(Debug &dbg, struct _EXCEPTION_POINTE
     return;
   }
 
+#if defined(_WIN64)
+  const XMM_SAVE_AREA32& flt = ctx.FltSave;
+  dbg << Debug::Hex() << Debug::FillChar('0')
+      << "MXCSR:" << Debug::Width(8) << ctx.MxCsr << " CW:" << Debug::Width(4) << flt.ControlWord
+      << " SW:" << Debug::Width(4) << flt.StatusWord << " TW:" << Debug::Width(2) << flt.TagWord << "\n";
+  for (unsigned k = 0; k < 8; ++k)
+    dbg << "ST(" << k << ") " << Debug::Width(4) << static_cast<unsigned>(flt.FloatRegisters[k].High & 0xffff)
+        << Debug::Width(16) << flt.FloatRegisters[k].Low << "\n";
+  for (unsigned k = 0; k < 16; ++k)
+    dbg << "XMM(" << k << ") " << Debug::Width(16) << static_cast<unsigned __int64>(flt.XmmRegisters[k].High)
+        << Debug::Width(16) << flt.XmmRegisters[k].Low << "\n";
+  dbg << Debug::FillChar() << Debug::Dec();
+#else
   FLOATING_SAVE_AREA &flt=ctx.FloatSave;
   dbg << Debug::Bin() << Debug::FillChar('0')
       << "CW:" << Debug::Width(16) << (flt.ControlWord&0xffff) << "\n"
@@ -181,6 +205,7 @@ void DebugExceptionhandler::LogFPURegisters(Debug &dbg, struct _EXCEPTION_POINTE
     dbg << "\n";
   }
   dbg << Debug::FillChar() << Debug::Dec();
+#endif
 }
 
 // include exception dialog box
@@ -195,7 +220,7 @@ static char regInfo[1024],verInfo[256];
 // and this saves us from doing a stack walk twice
 static DebugStackwalk::Signature sig;
 
-static BOOL CALLBACK ExceptionDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK ExceptionDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   switch(uMsg)
   {
@@ -240,7 +265,7 @@ static BOOL CALLBACK ExceptionDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
   // address
   struct _CONTEXT &ctx=*exPtrs->ContextRecord;
-  DebugStackwalk::Signature::GetSymbol(ctx.Eip,regInfo,sizeof(regInfo));
+  DebugStackwalk::Signature::GetSymbol(WindowsDiagnostics::InstructionPointer(ctx),regInfo,sizeof(regInfo));
   SendDlgItemMessage(hWnd,102,WM_SETTEXT,0,(LPARAM)regInfo);
 
   // stack
@@ -396,7 +421,7 @@ LONG __stdcall DebugExceptionhandler::ExceptionFilter(struct _EXCEPTION_POINTERS
   dbg.m_stackWalk.StackWalk(sig,pExPtrs->ContextRecord);
   dbg << sig << "\n";
 
-  dbg << "Bytes around EIP:" << Debug::MemDump::Char(((char *)(pExPtrs->ContextRecord->Eip))-32,80);
+  dbg << "Bytes around EIP:" << Debug::MemDump::Char(((char *)(WindowsDiagnostics::InstructionPointer(*pExPtrs->ContextRecord)))-32,80);
 
   dbg.FlushOutput();
 

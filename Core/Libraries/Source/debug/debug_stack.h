@@ -28,6 +28,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Utility/windows_diagnostics.h"
 
 /// \brief stack walker class (singleton)
 class DebugStackwalk
@@ -56,7 +57,7 @@ public:
     unsigned m_numAddr;
 
     /// addresses
-    unsigned m_addr[MAX_ADDR];
+    WindowsDiagnostics::Address m_addr[MAX_ADDR];
 
   public:
     explicit Signature(): m_numAddr(0) {}
@@ -78,7 +79,7 @@ public:
       \param n index, 0..Size()-1
       \return signature address
     */
-    unsigned GetAddress(int n) const;
+    WindowsDiagnostics::Address GetAddress(int n) const;
 
     /**
       \brief Strong ordering operator.
@@ -110,7 +111,7 @@ public:
       \param buf return buffer
       \param bufSize size of return buffer, minimum is 64 bytes (256 recommended)
     */
-    static void GetSymbol(unsigned addr, char *buf, unsigned bufSize);
+    static void GetSymbol(WindowsDiagnostics::Address addr, char *buf, unsigned bufSize);
 
     /**
       \brief Determines symbol for given address.
@@ -127,9 +128,9 @@ public:
       \param line line number, may be nullptr
       \param relLine relative address within line, may be nullptr
     */
-    static void GetSymbol(unsigned addr,
-                          char *bufMod, unsigned sizeMod, unsigned *relMod,
-                          char *bufSym, unsigned sizeSym, unsigned *relSym,
+    static void GetSymbol(WindowsDiagnostics::Address addr,
+                          char *bufMod, unsigned sizeMod, WindowsDiagnostics::Address *relMod,
+                          char *bufSym, unsigned sizeSym, WindowsDiagnostics::Address *relSym,
                           char *bufFile, unsigned sizeFile, unsigned *line, unsigned *relLine);
   };
 

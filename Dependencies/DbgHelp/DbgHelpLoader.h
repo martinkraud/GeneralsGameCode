@@ -19,6 +19,7 @@
 #pragma once
 
 #include "imagehlp_adapter.h"
+#include "Utility/windows_diagnostics.h"
 
 // This static class loads and unloads dbghelp.dll at runtime.
 //
@@ -63,31 +64,31 @@ BOOL WINAPI SymInitialize(
 BOOL WINAPI SymCleanup(
 	HANDLE hProcess);
 
-DWORD WINAPI SymLoadModule(
+WindowsDiagnostics::ApiAddress WINAPI SymLoadModule(
 	HANDLE hProcess,
 	HANDLE hFile,
 	PCSTR ImageName,
 	PCSTR ModuleName,
-	DWORD BaseOfDll,
+	WindowsDiagnostics::ApiAddress BaseOfDll,
 	DWORD SizeOfDll);
 
-DWORD WINAPI SymGetModuleBase(
+WindowsDiagnostics::ApiAddress WINAPI SymGetModuleBase(
 	HANDLE hProcess,
-	DWORD dwAddr);
+	WindowsDiagnostics::ApiAddress dwAddr);
 
 BOOL WINAPI SymUnloadModule(
 	HANDLE hProcess,
-	DWORD BaseOfDll);
+	WindowsDiagnostics::ApiAddress BaseOfDll);
 
 BOOL WINAPI SymGetSymFromAddr(
 	HANDLE hProcess,
-	DWORD dwAddr,
-	PDWORD pdwDisplacement,
+	WindowsDiagnostics::ApiAddress dwAddr,
+	WindowsDiagnostics::SymbolDisplacement* pdwDisplacement,
 	PIMAGEHLP_SYMBOL Symbol);
 
 BOOL WINAPI SymGetLineFromAddr(
 	HANDLE hProcess,
-	DWORD dwAddr,
+	WindowsDiagnostics::ApiAddress dwAddr,
 	PDWORD pdwDisplacement,
 	PIMAGEHLP_LINE Line);
 
@@ -96,7 +97,7 @@ DWORD WINAPI SymSetOptions(
 
 PVOID WINAPI SymFunctionTableAccess(
 	HANDLE hProcess,
-	DWORD AddrBase);
+	WindowsDiagnostics::ApiAddress AddrBase);
 
 BOOL WINAPI StackWalk(
 	DWORD MachineType,

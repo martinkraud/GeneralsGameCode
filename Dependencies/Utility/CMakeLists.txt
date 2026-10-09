@@ -23,6 +23,7 @@ set(UTILITY_SRC
     Utility/thread_compat.h
     Utility/time_compat.h
     Utility/utility_adapter.h
+    Utility/windows_diagnostics.h
     Utility/wchar_compat.h
 )
 

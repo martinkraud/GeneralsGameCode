@@ -1,5 +1,23 @@
 # Incremental modernization roadmap
 
+## X64.2 native diagnostics (2026-10-09)
+
+X64.2 removes the 92 reproduced diagnostic/callback error occurrences. Native
+WWLib/debug/DbgHelp libraries and five independent platform tests pass. Both
+conditional title stack bodies compile on x86 and AMD64; Win32 Release remains
+validated (CTest3/3, direct132/title, focused58/title, Python16). Full Win64 still
+stops on DX8 headers; no native game linked or launched. X64 is not complete.
+
+**Next proposed task: X64.3 - Separate legacy DX8 header/math requirements from x86 binary linkage.**
+Keep Win32 behavior and the full graph; define the native backend dependency
+contract without renderer stubs, x86 link substitutions or D3D11 implementation.
+GUI/allocator/audio/browser and format/FP lockstep gates remain. X64.3 has not
+begun; Pathfinding 2.0 remains backlog and Stage4A.3 remains PAUSED.
+
+See [X64_2_WINDOWS_DIAGNOSTICS.md](X64_2_WINDOWS_DIAGNOSTICS.md) for exact native
+API/address changes, before/after counts, tests and limits. Older next-step notes
+below are historical and superseded by this result.
+
 ## X64.1 build foundation (2026-10-09)
 
 X64.1 audit and parallel experimental Win64 presets are complete. Win32 Release
