@@ -28,6 +28,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/PerformanceProfile.h"
+#include "Common/DeveloperHarness.h"
 
 #include "Common/ActionManager.h"
 #include "Common/AudioAffect.h"
@@ -953,6 +954,10 @@ void GameEngine::execute()
 	// pretty basic for now
 	while( !m_quitting )
 	{
+		if(DeveloperTools::scenarioEnabled() || DeveloperTools::devModeEnabled())
+		{
+			DeveloperTools::beginOuter();if(m_quitting)break;
+		}
 		if (PerformanceProfile::configured())
 			PerformanceProfile::beginOuterFrame(TheGameLogic->getFrame(), TheFramePacer->getFramesPerSecondLimit(), TheFramePacer->getActualFramesPerSecondLimit());
 
@@ -1031,6 +1036,7 @@ void GameEngine::execute()
 #endif
 
 	}
+	DeveloperTools::shutdown();
 	PerformanceProfile::shutdown();
 }
 

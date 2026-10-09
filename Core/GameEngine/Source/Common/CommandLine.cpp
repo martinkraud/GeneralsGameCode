@@ -25,6 +25,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/PerformanceProfile.h"
+#include "Common/DeveloperHarness.h"
 
 #include "Common/ArchiveFileSystem.h"
 #include "Common/CommandLine.h"
@@ -1175,7 +1176,38 @@ static Int parsePathProfile(char *args[], int num)
 	PerformanceProfile::enablePathDetails();
 	return 1;
 }
+static bool skipStartupIntro=false;
+static Int parseSkipIntro(char *[], int)
+{
+    // Keep Intro creation, Done/post-intro and normal shell handoff intact.
+    skipStartupIntro=true;
+    TheWritableGlobalData->m_playIntro=FALSE;
+    TheWritableGlobalData->m_playSizzle=FALSE;
+    return 1;
+}
+static Int parsePerformanceScenario(char *args[], int num)
+{
+	if(num<2 || !DeveloperTools::configureScenario(args[1]))
+	{
+		OutputDebugStringA("-performanceScenario requires pathfinding-heavy.\n");
+		return num>=2 && args[1][0]!='-'?2:1;
+	}
+	TheWritableGlobalData->m_shellMapOn=FALSE;
+	parseSkipIntro(nullptr,0);
+	return 2;
+}
+static Int parseDevMode(char *[], int)
+{
+	DeveloperTools::enableDevMode();return 1;
+}
 
+static Int parseQuickGame(char *[], int) { DeveloperTools::requestQuickGame();return 1; }
+static Int parseDevPreset(char *args[], int num)
+{
+    if(num<2 || args[1][0]=='-')return 1;
+    if(!DeveloperTools::configureDevPreset(args[1]))OutputDebugStringA("-devPreset supports battle only.\n");
+    return 2;
+}
 // Initial Params are parsed before Windows Creation.
 // Note that except for TheGlobalData, no other global objects exist yet when these are parsed.
 static Int parseGroundInterpolation(char *args[], int num)
@@ -1186,6 +1218,11 @@ static Int parseGroundInterpolation(char *args[], int num)
 
 static CommandLineParam paramsForStartup[] =
 {
+	{ "-skipIntro", parseSkipIntro },
+	{ "-performanceScenario", parsePerformanceScenario },
+	{ "-devMode", parseDevMode },
+	{ "-quickGame", parseQuickGame },
+	{ "-devPreset", parseDevPreset },
 	{ "-performanceProfile", parsePerformanceProfile },
 	{ "-pathProfile", parsePathProfile },
 	{ "-groundInterpolation", parseGroundInterpolation },
@@ -1463,6 +1500,8 @@ void CommandLine::parseCommandLineForStartup()
 	parseCommandLine(paramsForStartup, ARRAY_SIZE(paramsForStartup),
 		TheWritableGlobalData->m_commandLineData.m_parsedArguments);
 
+	if(DeveloperTools::quickGameEnabled()){parseSkipIntro(nullptr,0);TheWritableGlobalData->m_shellMapOn=FALSE;}
+
 	if (!rts::WorkingDirectory::hasSetWorkingDirectory())
 		rts::WorkingDirectory::setExecutableWorkingDirectory();
 }
@@ -1479,4 +1518,8 @@ void CommandLine::parseCommandLineForEngineInit()
 
 	parseCommandLine(paramsForEngineInit, ARRAY_SIZE(paramsForEngineInit),
 		TheWritableGlobalData->m_commandLineData.m_parsedArguments);
+    // GlobalData INI loading follows startup parsing; honor the opt-in request
+    // after that load without changing defaults or persistent configuration.
+    if(skipStartupIntro)parseSkipIntro(nullptr,0);
+    if(DeveloperTools::quickGameEnabled())TheWritableGlobalData->m_shellMapOn=FALSE;
 }

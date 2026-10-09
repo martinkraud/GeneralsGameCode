@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstdio>
 #include "Common/PerformanceProfile.h"
+#include "Common/DeveloperHarness.h"
 namespace
 {
 volatile PerformanceProfile::Tick profileBenchmarkSink=0;
@@ -69,6 +70,27 @@ TEST(PerformanceProfileBenchmark, DISABLED_SampledPhaseOverhead)
 		std::sort(times.begin(),times.end());
 		std::printf("PHASE_BENCH,%s,%u,7,%.6f,%.3f\n",names[mode],iterations,times[3],times[3]*1000000/iterations);
 	}
+}
+TEST(PerformanceProfileBenchmark, DISABLED_DeveloperHarnessOverhead)
+{
+    constexpr unsigned iterations=1000000;
+    for(unsigned mode=0;mode<3;++mode)
+    {
+        DeveloperTools::Controller controller(mode==2);if(mode==2)controller.prepared(0);
+        std::vector<double> times;
+        for(unsigned repeat=0;repeat<7;++repeat)
+        {
+            const auto start=std::chrono::steady_clock::now();
+            for(unsigned i=0;i<iterations;++i)
+            {
+                if(mode==1){if(DeveloperTools::scenarioEnabled() || DeveloperTools::devModeEnabled())DeveloperTools::beginOuter();DeveloperTools::drawOverlay();}
+                if(mode==2){if(i%500==0){controller=DeveloperTools::Controller(true);controller.prepared(i);}profileBenchmarkSink=controller.tick(i);}
+                else profileBenchmarkSink=i;
+            }
+            times.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
+        }
+        std::sort(times.begin(),times.end());std::printf("DEV_BENCH,%u,%.3f,ns_per_iteration\n",mode,times[3]*1000000/iterations);
+    }
 }
 TEST(PerformanceProfileBenchmark, DISABLED_PathDetailOverhead)
 {

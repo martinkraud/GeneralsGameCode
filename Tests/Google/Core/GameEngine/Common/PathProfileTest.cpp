@@ -123,4 +123,24 @@ TEST_F(PathProfiler, SourceCategoryMaskAndRepeatedSearchesStayDistinct)
 	EXPECT_NE(r.paths()[0].sourceCategories&(Tick(1)<<static_cast<unsigned int>(Category::AIPlayer)),0u);
 	EXPECT_EQ(r.paths()[0].inclusive,10u);EXPECT_EQ(r.paths()[1].inclusive,20u);
 }
+TEST_F(PathProfiler, CoordinateReportRoundTripsFractionalAndIntegerBoundaryValues)
+{
+    Recorder r(1,1);r.start(0);r.beginFrame(0,91,120,120);
+    auto* sample=r.beginPath(PathKind::Internal,0,0);
+    sample->fromX=1090.5f;sample->fromY=1023.99994f;
+    sample->toX=3870.5f;sample->toY=1100.5f;
+    r.endFrame(1,92);
+    Metadata meta;meta.frequency=1000;std::ostringstream summary,csv;
+    reportPaths(r,meta,summary,csv);
+    std::istringstream input(csv.str());std::string line,field;
+    std::getline(input,line);std::getline(input,line);std::istringstream row(line);
+    for(int i=0;i<16;++i)std::getline(row,field,',');
+    for(float expected:{sample->fromX,sample->fromY,sample->toX,sample->toY})
+    {
+        std::getline(row,field,',');std::istringstream value(field);value.imbue(std::locale::classic());
+        float actual=0;value>>actual;ASSERT_TRUE(value);EXPECT_EQ(actual,expected);
+        EXPECT_EQ(static_cast<std::uint64_t>(actual),static_cast<std::uint64_t>(expected));
+    }
+}
+
 }

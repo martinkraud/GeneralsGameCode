@@ -37,6 +37,7 @@
 
 
 // PUBLIC DATA ////////////////////////////////////////////////////////////////////////////////////
+#include "Common/DeveloperHarness.h"
 Keyboard *TheKeyboard = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +59,10 @@ void Keyboard::createStreamMessages()
 	GameMessage *msg = nullptr;
 	while( key->key != KEY_NONE )
 	{
+		if(DeveloperTools::devModeEnabled() && DeveloperTools::consumeKey(key->key,key->state))
+		{
+			key->setUsed();++key;continue;
+		}
 
 		// add message to stream
 		if( BitIsSet( key->state, KEY_STATE_DOWN ) )

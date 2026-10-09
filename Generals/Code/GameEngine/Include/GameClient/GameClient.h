@@ -151,6 +151,8 @@ public:
 	void incrementRenderedObjectCount() { m_renderedObjectCount++; }
 
 	Bool skipCurrentIntroStage();
+	// Read-only readiness for gated developer scenario startup, including inter-movie gaps.
+	Bool isStartupIntroComplete() const { return m_intro == nullptr; }
 
 	static Bool isMovieAbortRequested();
 

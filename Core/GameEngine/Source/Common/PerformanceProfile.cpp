@@ -7,6 +7,9 @@
 #include "Common/PerformanceProfile.h"
 #include <algorithm>
 #include <ostream>
+#include <iomanip>
+#include <limits>
+#include <locale>
 namespace PerformanceProfile
 {
 thread_local Recorder* activeRecorder=nullptr;
@@ -141,6 +144,7 @@ void reportPaths(const Recorder& r,const Metadata& meta,std::ostream& summary,st
 	static const char* work[]={"open_head_pops","info_attempts","info_new","info_failed","open_inserts","forward_hops","reverse_hops","cleaned_cells","block_zone_queries","hierarchy_fallbacks"};
 	static_assert(sizeof(kinds)/sizeof(*kinds)==static_cast<unsigned int>(PathKind::Count));
 	static_assert(sizeof(work)/sizeof(*work)==PathWorkCount);
+	paths.imbue(std::locale::classic());
 	const double ticksPerMs=static_cast<double>(std::max<Tick>(meta.frequency,1))/1000.0;
 	Tick phaseErrors=0;
 	for(const auto& sample:r.paths())phaseErrors+=sample.phases.errors;
@@ -156,7 +160,13 @@ void reportPaths(const Recorder& r,const Metadata& meta,std::ostream& summary,st
 	paths<<"\n";
 	for(const auto& s:r.paths())
 	{
-		paths<<s.id<<","<<s.parent<<","<<s.outer<<","<<s.logic<<","<<s.offset/ticksPerMs<<","<<kinds[static_cast<unsigned int>(s.kind)]<<","<<(s.request==PathKind::Count?"none":kinds[static_cast<unsigned int>(s.request)])<<","<<s.sourceCategories<<","<<s.object<<","<<s.layer<<","<<s.surfaces<<","<<s.radius<<","<<s.human<<","<<s.crusher<<","<<s.closestAllowed<<","<<s.hasCoordinates<<","<<s.fromX<<","<<s.fromY<<","<<s.toX<<","<<s.toY<<","<<s.queueBefore<<","<<s.queueAfter<<","<<outcomes[static_cast<unsigned int>(s.outcome)]<<","<<s.zoneRejected<<","<<s.inclusive/ticksPerMs<<","<<s.exclusive/ticksPerMs;
+		paths<<s.id<<","<<s.parent<<","<<s.outer<<","<<s.logic<<","<<s.offset/ticksPerMs<<","<<kinds[static_cast<unsigned int>(s.kind)]<<","<<(s.request==PathKind::Count?"none":kinds[static_cast<unsigned int>(s.request)])<<","<<s.sourceCategories<<","<<s.object<<","<<s.layer<<","<<s.surfaces<<","<<s.radius<<","<<s.human<<","<<s.crusher<<","<<s.closestAllowed<<","<<s.hasCoordinates<<",";
+        // Preserve float32 coordinates across report parsing and digest verification.
+        const auto precision=paths.precision();
+        paths<<std::setprecision(std::numeric_limits<float>::max_digits10)
+            <<s.fromX<<","<<s.fromY<<","<<s.toX<<","<<s.toY<<",";
+        paths.precision(precision);
+        paths<<s.queueBefore<<","<<s.queueAfter<<","<<outcomes[static_cast<unsigned int>(s.outcome)]<<","<<s.zoneRejected<<","<<s.inclusive/ticksPerMs<<","<<s.exclusive/ticksPerMs;
 		for(Tick value:s.work)paths<<","<<value;
 		paths<<","<<s.phases.iterations<<","<<s.phases.selected<<","<<s.phases.errors;
 		for(const auto& phase:s.phases.metrics)paths<<","<<phase.calls<<","<<phase.inclusive/ticksPerMs<<","<<phase.insertion/ticksPerMs<<","<<phase.inserts;

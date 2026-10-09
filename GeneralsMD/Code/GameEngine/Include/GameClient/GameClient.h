@@ -156,6 +156,8 @@ public:
 	virtual void notifyTerrainObjectMoved(Object *obj) = 0;
 
 	Bool skipCurrentIntroStage();
+	// Read-only readiness for gated developer scenario startup, including inter-movie gaps.
+	Bool isStartupIntroComplete() const { return m_intro == nullptr; }
 
 	static Bool isMovieAbortRequested();
 

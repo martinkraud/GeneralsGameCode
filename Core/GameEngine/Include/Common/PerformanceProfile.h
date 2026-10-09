@@ -208,6 +208,21 @@ inline void count(Counter counter, Tick amount=1) { if (activeRecorder) activeRe
 // Runtime frontend: never controls game timing or command/input state.
 bool configure(const char* absoluteDirectory);
 bool configured();
+// Developer controls are called only between measured outer frames.
+bool startCapture(const char* label);
+bool stopCapture(const char* reason);
+void setAutomaticControl(bool enabled);
+struct RuntimeStatus
+{
+    bool configured=false,running=false,details=false;
+    Tick frames=0,records=0,dropped=0,errors=0,elapsed=0,frequency=0;
+    double logicMs=0,outerMs=0;
+    Tick queuedPaths=0,queueCells=0;
+};
+RuntimeStatus runtimeStatus();
+using ReportObserver=void(*)(const Recorder&,const Metadata&,const char* base,bool written);
+void setReportObserver(ReportObserver observer);
+const char* outputDirectory();
 void beginOuterFrame(unsigned int logicFrame, int requestedFps, int effectiveFps);
 void endOuterFrame(unsigned int logicFrame);
 void shutdown();

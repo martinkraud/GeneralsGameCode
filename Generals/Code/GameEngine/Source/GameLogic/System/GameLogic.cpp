@@ -29,6 +29,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/PerformanceProfile.h"
+#include "Common/DeveloperHarness.h"
 
 #include "Common/AudioAffect.h"
 #include "Common/AudioHandleSpecialValues.h"
@@ -3403,6 +3404,7 @@ void GameLogic::update()
 	if (!m_startNewGame)
 	{
 		m_frame++;
+		if(DeveloperTools::scenarioEnabled() || DeveloperTools::devModeEnabled())DeveloperTools::logicTick(m_frame);
 		PerformanceProfile::count(PerformanceProfile::Counter::CompletedTicks);
 		m_hasUpdated = TRUE;
 	}

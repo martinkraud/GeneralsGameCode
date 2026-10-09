@@ -19,6 +19,9 @@ namespace
 {
 bool enabled=false;
 bool pathDetails=false;
+bool automaticControl=false;
+ReportObserver observer=nullptr;
+std::string directoryText;
 std::filesystem::path directory;
 std::unique_ptr<Recorder> recorder;
 Tick clockFrequency=0,nextPoll=0;
@@ -49,16 +52,41 @@ void flush(const char* reason)
 	metadata.build="MSVC "+std::to_string(_MSC_FULL_VER)+"; " __DATE__ " " __TIME__;
 	metadata.mode=reason;metadata.frequency=clockFrequency;metadata.interpolation=GroundTranslation::isEnabled();
 	report(*recorder,metadata,summary,frames,categories,slow);
+	bool written=true;
 	if(recorder->deepPaths())
 	{
 		std::ofstream paths(base.string()+"-paths.csv");
-		if(paths){reportPaths(*recorder,metadata,summary,paths);if(!paths)OutputDebugStringA("Stage4A.1: path report write failed.\n");}
-		else OutputDebugStringA("Stage4A.1: path report could not be opened.\n");
+		if(paths){reportPaths(*recorder,metadata,summary,paths);paths.close();if(!paths){written=false;OutputDebugStringA("Stage4A.1: path report write failed.\n");}}
+		else {written=false;OutputDebugStringA("Stage4A.1: path report could not be opened.\n");}
 	}
+	summary.close();frames.close();categories.close();slow.close();
 	if(!summary || !frames || !categories || !slow)OutputDebugStringA("Stage4A: report write failed.\n");
+	if(observer)observer(*recorder,metadata,base.string().c_str(),written && summary && frames && categories && slow);
 }
 }
 bool configured(){return enabled;}
+void setAutomaticControl(bool value){automaticControl=value;}
+void setReportObserver(ReportObserver value){observer=value;}
+const char* outputDirectory(){return directoryText.c_str();}
+RuntimeStatus runtimeStatus()
+{
+	RuntimeStatus s;s.configured=enabled;s.details=pathDetails;s.frequency=clockFrequency;
+	if(recorder){s.running=recorder->running();s.frames=recorder->frames().size();s.records=recorder->paths().size();s.dropped=recorder->droppedPaths();s.errors=recorder->errors();s.elapsed=recorder->elapsed();
+		if(!recorder->frames().empty() && clockFrequency){const auto& f=recorder->frames().back();s.queuedPaths=f.counters[static_cast<unsigned>(Counter::QueuedPaths)];s.queueCells=f.counters[static_cast<unsigned>(Counter::QueueCells)];s.logicMs=f.metrics[static_cast<unsigned>(Category::Logic)].inclusive*1000.0/clockFrequency;s.outerMs=f.metrics[static_cast<unsigned>(Category::Outer)].inclusive*1000.0/clockFrequency;}}
+	return s;
+}
+bool startCapture(const char* label)
+{
+	if(!enabled || activeRecorder || !label || (recorder && recorder->running()))return false;
+	try {if(!recorder)recorder=std::make_unique<Recorder>(MaxFrames,pathDetails?MaxPaths:0);
+		captureLabel=std::string(label).substr(0,120);captureStartUtc=utcStamp();recorder->start(now());return true;}
+	catch(...){OutputDebugStringA("Stage4A: capture start failed.\n");return false;}
+}
+bool stopCapture(const char* reason)
+{
+	if(!enabled || activeRecorder || !recorder || !recorder->running() || !reason)return false;
+	try {flush(reason);return true;}catch(...){OutputDebugStringA("Stage4A: capture stop failed.\n");return false;}
+}
 void enablePathDetails(){pathDetails=true;}
 bool configure(const char* path)
 {
@@ -69,7 +97,7 @@ bool configure(const char* path)
 		// An explicit existing absolute output directory is required; no implicit user-data writes.
 		if(!candidate.is_absolute() || !std::filesystem::is_directory(candidate))return false;
 		const Tick freq=frequency();if(!freq)return false;
-		directory=std::filesystem::canonical(candidate);clockFrequency=freq;nextPoll=0;enabled=true;return true;
+		directory=std::filesystem::canonical(candidate);directoryText=directory.string();clockFrequency=freq;nextPoll=0;enabled=true;return true;
 	}
 	catch(...){return false;}
 }
@@ -80,7 +108,7 @@ void beginOuterFrame(unsigned int logic,int requested,int effective)
 	{
 		Tick timestamp=now();
 		if(recorder && recorder->running() && (recorder->full() || recorder->pathsFull() || timestamp-recorder->started()>=clockFrequency*60))flush(recorder->full() || recorder->pathsFull()?"capture_capacity":"60_second_limit");
-		if(timestamp>=nextPoll)
+		if(!automaticControl && timestamp>=nextPoll)
 		{
 			nextPoll=timestamp+clockFrequency;
 			std::ifstream control(directory/"command.txt");char buffer[130]{};control.getline(buffer,sizeof(buffer));
@@ -90,8 +118,7 @@ void beginOuterFrame(unsigned int logic,int requested,int effective)
 				lastCommand=command;
 				if(command.rfind("start ",0)==0 && (!recorder || !recorder->running()))
 				{
-					if(!recorder)recorder=std::make_unique<Recorder>(MaxFrames,pathDetails?MaxPaths:0);
-					captureLabel=command.substr(6);captureStartUtc=utcStamp();recorder->start(now());
+					startCapture(command.substr(6).c_str());
 				}
 				else if(command.rfind("stop ",0)==0)flush("manual_stop");
 			}
@@ -110,9 +137,11 @@ void shutdown()
 	try{if(enabled)flush("process_exit");}catch(...){OutputDebugStringA("Stage4A exit report failed.\n");}
 	enabled=false;activeRecorder=nullptr;recorder.reset();
 	pathDetails=false;activePath=nullptr;
+	automaticControl=false;observer=nullptr;activeIteration=nullptr;activePhase=nullptr;
 	// Release allocations before the engine's global memory allocator is shut down,
 	// including when a previous capture error already disabled profiling.
 	std::filesystem::path().swap(directory);
 	std::string().swap(lastCommand);std::string().swap(captureLabel);std::string().swap(captureStartUtc);
+	std::string().swap(directoryText);
 }
 }
