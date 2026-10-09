@@ -6142,7 +6142,7 @@ bool Pathfinder::checkCellOutsideExtents(ICoord2D& cell) {
 struct ExamineCellsStruct
 {
 	Pathfinder					*thePathfinder;
-	const LocomotorSet	*theLoco;
+	LocomotorSurfaceTypeMask acceptableSurfaces;
 	Bool								centerInCell;
 	Bool								isHuman;
 	Bool								isCrusher;
@@ -6156,7 +6156,7 @@ struct ExamineCellsStruct
 	ExamineCellsStruct* d = (ExamineCellsStruct*)userData;
 	if (d->thePathfinder->m_isTunneling) return 1; // abort.
 	if (from && to) {
-			if (!d->thePathfinder->validMovementPosition( d->isCrusher, d->theLoco->getValidSurfaces(), to, from )) {
+			if (!d->thePathfinder->validMovementPosition( d->isCrusher, d->acceptableSurfaces, to, from )) {
 				return 1;
 			}
 			if ( (to->getLayer() == LAYER_GROUND) && !d->thePathfinder->m_zoneManager.isPassable(to_x, to_y) ) {
@@ -6180,7 +6180,7 @@ struct ExamineCellsStruct
 			info.centerInCell = d->centerInCell;
 			info.radius = d->radius;
 			info.considerTransient = false;
-			info.acceptableSurfaces = d->theLoco->getValidSurfaces();
+			info.acceptableSurfaces = d->acceptableSurfaces;
 			if (!d->thePathfinder->checkForMovement(d->obj, info)) {
 				return 1; //abort.
 			}
@@ -6254,7 +6254,8 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 		if (attackDistance==NO_ATTACK && !m_isTunneling && !locomotorSet.isDownhillOnly() && goalCell) {
 			ExamineCellsStruct info;
 			info.thePathfinder = this;
-			info.theLoco = &locomotorSet;
+			// Stage4B.1: the synchronous line callback never mutates this locomotor set.
+			info.acceptableSurfaces = locomotorSet.getValidSurfaces();
 			info.centerInCell = centerInCell;
 			info.radius = radius;
 			info.obj = obj;
