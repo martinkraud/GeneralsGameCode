@@ -1,5 +1,23 @@
 # Agent handoff
 
+## X64.1 build foundation (2026-10-09)
+
+X64.1 audit and parallel experimental Win64 presets are complete. Win32 Release
+remains validated; Win64 configures and compiles independent native libraries,
+but full engine compilation is blocked by DX8 dependencies and x86 diagnostics.
+No native game linked or launched; x64 is not complete. Renderer boundary/native
+backend dependency work must precede first x64 gameplay with this dependency set.
+
+**Next proposed task: X64.2 - Native Windows diagnostics and stack-unwind foundation.**
+Keep that scope bounded to contexts/unwinding/DbgHelp/dialog ABI and Win32
+regression proof. Renderer dependency, GUI pointers, allocator/layout and
+format/FP lockstep validation remain separate gates. No D3D11 or X64.2 work begun.
+Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED.
+
+See [X64_1_BUILD_FOUNDATION.md](X64_1_BUILD_FOUNDATION.md) for actual compiler
+counts, dependency matrix, renderer decision, validation and exact next scope.
+The older X64.1 next-step notes below describe the prior closeout state.
+
 ## Performance cycle closeout (2026-10-09)
 
 Stages 1-3 high-FPS timing/interpolation foundation and Stage 4A/A.1/A.2

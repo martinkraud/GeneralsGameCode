@@ -37,6 +37,23 @@ include(cmake/config-vcpkg.cmake)
 # Top level project, doesn't really affect anything.
 project(genzh LANGUAGES C CXX)
 
+# Ninja's external architecture selection requires the matching developer shell.
+# Experimental Win64 presets request 8; existing configurations leave this unset.
+set(RTS_EXPECTED_POINTER_SIZE "" CACHE STRING "Expected target pointer size in bytes (empty to skip)")
+if(RTS_EXPECTED_POINTER_SIZE AND NOT CMAKE_SIZEOF_VOID_P EQUAL RTS_EXPECTED_POINTER_SIZE)
+    message(FATAL_ERROR
+        "Expected ${RTS_EXPECTED_POINTER_SIZE}-byte pointers, but compiler produces ${CMAKE_SIZEOF_VOID_P}. "
+        "Use the matching Visual Studio developer shell and a separate build directory.")
+endif()
+
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(WARNING
+        "Win64 is an experimental migration target, not a playable build. "
+        "The bundled DX8 SDK supplies only x86 libraries and is not linked here. "
+        "DX8 headers/backend dependencies and source-width blockers remain; see "
+        "docs/modernization/X64_1_BUILD_FOUNDATION.md.")
+endif()
+
 # This file handles extra settings wanted/needed for different compilers.
 include(cmake/compilers.cmake)
 

@@ -105,6 +105,31 @@
             }
         },
         {
+            "name": "win64",
+            "inherits": "default",
+            "hidden": false,
+            "displayName": "Windows 64bit Release (experimental)",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "RTS_FLAGS": "/W3",
+                "RTS_EXPECTED_POINTER_SIZE": "8",
+                "RTS_BUILD_OPTION_TESTS": "ON"
+            }
+        },
+        {
+            "name": "win64-vcpkg",
+            "inherits": "win64",
+            "displayName": "Windows 64bit VCPKG Release (experimental)",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows",
+                "VCPKG_HOST_TRIPLET": "x64-windows"
+            }
+        },
+        {
             "name": "win32-profile",
             "inherits": "win32",
             "displayName": "Windows 32bit Profile",
@@ -232,6 +257,18 @@
             "configuration": "Release"
         },
         {
+            "name": "win64",
+            "configurePreset": "win64",
+            "displayName": "Build win64 Release (experimental)",
+            "configuration": "Release"
+        },
+        {
+            "name": "win64-vcpkg",
+            "configurePreset": "win64-vcpkg",
+            "displayName": "Build win64-vcpkg Release (experimental)",
+            "configuration": "Release"
+        },
+        {
             "name": "win32-profile",
             "configurePreset": "win32-profile",
             "displayName": "Build Windows 32bit Profile",
@@ -311,6 +348,20 @@
             "configurePreset": "win32",
             "displayName": "Test Windows 32bit Release",
             "description": "Test Windows 32bit Release",
+            "configuration": "Release"
+        },
+        {
+            "name": "win64",
+            "inherits": "default",
+            "configurePreset": "win64",
+            "displayName": "Test win64 Release (experimental)",
+            "configuration": "Release"
+        },
+        {
+            "name": "win64-vcpkg",
+            "inherits": "default",
+            "configurePreset": "win64-vcpkg",
+            "displayName": "Test win64-vcpkg Release (experimental)",
             "configuration": "Release"
         },
         {
