@@ -40,12 +40,13 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "dx8fvf.h"
+#include "LegacyFVFStride.h"
 #include "WWLib/wwstring.h"
 #include <d3dx8core.h>
 
 static unsigned Get_FVF_Vertex_Size(unsigned FVF)
 {
-	return D3DXGetFVFVertexSize(FVF);
+	return LegacyD3DX::FVFVertexSize(FVF);
 }
 
 FVFInfoClass::FVFInfoClass(unsigned FVF_)

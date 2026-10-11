@@ -114,7 +114,15 @@ class Render2DReference(unittest.TestCase):
     def test_dynamic_allocation_lock_and_wrapper_sources_are_unchanged(self):
         for name in ("dx8vertexbuffer.cpp", "dx8indexbuffer.cpp", "dx8wrapper.cpp",
                      "texturefilter.cpp", "dx8fvf.cpp"):
-            self.assertEqual(tokens(current(CORE + name)), tokens(original(CORE + name)), name)
+            text = current(CORE + name)
+            if name == "dx8fvf.cpp":
+                # X64.5 permits only this reference-tested integer substitution.
+                include = '#include "LegacyFVFStride.h"\n'
+                self.assertEqual(text.count(include), 1)
+                self.assertEqual(text.count("LegacyD3DX::FVFVertexSize("), 1)
+                text = text.replace(include, "").replace(
+                    "LegacyD3DX::FVFVertexSize(", "D3DXGetFVFVertexSize(")
+            self.assertEqual(tokens(text), tokens(original(CORE + name)), name)
         adapter = "".join(tokens(self.adapter))
         self.assertIn("DynamicVBAccessClass(BUFFER_TYPE_DYNAMIC_DX8,dynamic_fvf_type,count)", adapter)
         self.assertIn("DynamicIBAccessClass(BUFFER_TYPE_DYNAMIC_DX8,count)", adapter)

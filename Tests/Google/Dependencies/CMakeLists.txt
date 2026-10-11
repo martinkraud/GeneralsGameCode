@@ -11,6 +11,34 @@ target_link_libraries(depsi_googletest INTERFACE
     deps_utility
 )
 
+# Integer-only FVF sizing. Independent tests use actual SDK/engine declarations
+# for layout assertions, but the production boundary needs only <cstdint>.
+add_executable(legacy_fvf_stride_test ../Core/Libraries/LegacyFVFStrideTest.cpp)
+target_include_directories(legacy_fvf_stride_test PRIVATE
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Include
+)
+target_compile_definitions(legacy_fvf_stride_test PRIVATE DISABLE_GAMEMEMORY)
+target_link_libraries(legacy_fvf_stride_test PRIVATE dx8_headers deps_utility deps_precompiled GTest::gtest_main)
+add_test(NAME legacy_fvf_stride_test COMMAND legacy_fvf_stride_test)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    add_executable(legacy_fvf_stride_reference ../Core/Libraries/LegacyFVFStrideReference.cpp)
+    add_executable(legacy_fvf_stride_comparison ../Core/Libraries/LegacyFVFStrideTest.cpp)
+    foreach(target legacy_fvf_stride_reference legacy_fvf_stride_comparison)
+        target_include_directories(${target} PRIVATE
+            ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas
+            ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib
+            ${PROJECT_SOURCE_DIR}/Core/Libraries/Include
+        )
+        target_compile_definitions(${target} PRIVATE DISABLE_GAMEMEMORY)
+        target_link_libraries(${target} PRIVATE legacy_dx8_dependencies deps_utility deps_precompiled advapi32)
+    endforeach()
+    target_compile_definitions(legacy_fvf_stride_comparison PRIVATE LEGACY_FVF_LIVE_REFERENCE)
+    target_link_libraries(legacy_fvf_stride_comparison PRIVATE GTest::gtest_main)
+    add_test(NAME legacy_fvf_stride_comparison COMMAND legacy_fvf_stride_comparison)
+endif()
+
 add_executable(legacy_d3dx_math_test ../Core/Libraries/LegacyD3DXMathTest.cpp)
 target_link_libraries(legacy_d3dx_math_test PRIVATE legacy_d3dx_math GTest::gtest_main)
 add_test(NAME legacy_d3dx_math_test COMMAND legacy_d3dx_math_test)
