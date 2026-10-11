@@ -17,6 +17,7 @@ set(WW3D2_SRC
     Backend/DX8Backend.h
     Backend/DX8Render2D.cpp
     Backend/DX8Texture2D.cpp
+    Backend/D3D11TextureBridge.cpp
     Texture2D.cpp
     Texture2DCPUContent.cpp
     FontChars.cpp
@@ -266,3 +267,17 @@ target_link_libraries(corei_ww3d2 INTERFACE
     core_wwlib
     core_wwmath
 )
+
+# Independent modern-SDK backend. No title PCH or legacy DX8 SDK dependency.
+add_library(w3d_d3d11 STATIC Backend/D3D11Backend.cpp)
+target_include_directories(w3d_d3d11 PUBLIC
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Include
+)
+target_include_directories(w3d_d3d11 PRIVATE
+    ${PROJECT_SOURCE_DIR}/GeneralsMD/Code/Libraries/Source/WWVegas
+)
+target_compile_definitions(w3d_d3d11 PRIVATE DISABLE_GAMEMEMORY)
+target_link_libraries(w3d_d3d11 PUBLIC deps_utility d3d11 dxgi d3dcompiler)
+target_link_libraries(corei_ww3d2 INTERFACE w3d_d3d11)

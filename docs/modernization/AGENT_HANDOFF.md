@@ -1,5 +1,24 @@
 # Agent handoff
 
+## D3D11.1 real sentence Render2D foundation (2026-10-11)
+
+Implemented the bounded native backend behind IRenderBackend with private
+device/COM state, real sentence upload, explicit supported pipeline and retained
+residency/buffers. Offscreen readback and hidden DXGI Present/resize pass on
+real WARP devices on x86 and AMD64. Full Win32 Release/CTest passes; bounded
+native full/link probes retain exactly 30 tool errors and 17 D3DX helper names.
+See [D3D11_1_FOUNDATION.md](D3D11_1_FOUNDATION.md) for tests, inventory and limits.
+DX8 remains the default; TextureClass bridge execution in game, hardware-driver
+coverage, full-game D3D11 and visual equivalence are not established. No game
+was launched. Captures/ETL/runtime evidence remain preserved.
+
+**Next proposed task: D3D11.2 - ordinary file-backed single-mip normal-alpha UI
+Texture2D CPU loading.** W3DDisplay::drawImage requests file-backed MIP_LEVELS_1
+textures; the native loader remains the next real content boundary. Preserve
+asset/missing/format policy; do not expand into all materials or mutable video.
+Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED. Do not begin the next
+slice automatically. Older checkpoints below are historical and superseded.
+
 ## RendererBoundary.3 CPU sentence content (2026-10-11)
 
 The actual FontChars glyph producer now writes W3D CPU A4R4G4B4 backing.

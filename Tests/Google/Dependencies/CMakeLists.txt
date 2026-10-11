@@ -57,3 +57,18 @@ target_include_directories(sentence_content_test PRIVATE
 target_compile_definitions(sentence_content_test PRIVATE DISABLE_GAMEMEMORY)
 target_link_libraries(sentence_content_test PRIVATE deps_utility GTest::gtest_main user32 gdi32)
 add_test(NAME sentence_content_test COMMAND sentence_content_test)
+
+# Real D3D11/WARP rendering and controlled hidden-window DXGI validation.
+add_executable(d3d11_sentence_test
+    ../Core/Libraries/D3D11SentenceTest.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/FontChars.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib/wwstring.cpp
+)
+target_include_directories(d3d11_sentence_test PRIVATE
+    ${PROJECT_SOURCE_DIR}/GeneralsMD/Code/Libraries/Source/WWVegas
+)
+target_compile_definitions(d3d11_sentence_test PRIVATE DISABLE_GAMEMEMORY)
+target_link_libraries(d3d11_sentence_test PRIVATE w3d_d3d11 GTest::gtest_main user32 gdi32)
+add_test(NAME d3d11_sentence_test COMMAND d3d11_sentence_test)

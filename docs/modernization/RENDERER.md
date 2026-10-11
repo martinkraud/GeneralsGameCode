@@ -1,14 +1,16 @@
 # Renderer and display architecture
 
-Current renderer boundary evidence (2026-10-11):
-[RendererBoundary.3 CPU content](RENDERER_BOUNDARY_3_CONTENT_BACKING.md) completes
-one real sentence glyph/content path without D3D8 device/resources. CPU snapshots
-feed backend-owned upload/residency; RB1 submission and RB2 sampler intent remain.
-D3D11.1 is the next proposed bounded sentence Render2D task. File-backed UI,
-Font3D, radar/video retain their documented compatibility requirements.
-SDK-free/device-free producer proof does not imply playable Win64 or remove
-known D3DX/tool ABI blockers. No game was launched; no visual equivalence is
-claimed. Older findings below are historical context.
+Current D3D11 evidence (2026-10-11):
+[D3D11.1 foundation](D3D11_1_FOUNDATION.md) executes real GDI sentence CPU
+content through D3D11 upload, sampler, geometry, shaders, draw and readback.
+Seven real WARP tests pass on x86/AMD64; hidden DXGI Present/resize also pass.
+DX8 remains the game default. The TextureClass bridge compiles but is not
+game-validated; no game launch or final visual-equivalence claim was made.
+Full Win32 Release passes; native tool/D3DX blocker multisets remain unchanged.
+Next proposed task: D3D11.2 ordinary file-backed single-mip normal-alpha UI
+Texture2D content/loading, based on W3DDisplay::drawImage and the native loader.
+Whole-game D3D11 and playable Win64 remain unproven. Older findings below are
+historical context.
 
 Scope: revision `adac468d7`, investigated 2026-10-07. No renderer replacement,
 display-mode change or game launch was performed.
