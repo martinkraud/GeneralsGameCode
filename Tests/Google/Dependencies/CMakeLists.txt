@@ -34,6 +34,14 @@ if(MSVC)
 endif()
 
 # Fixed CPU diagnostics need neither a graphics SDK nor device implementation.
+if(MSVC)
+    add_executable(native_startup_fp_test Utility/NativeStartupFPTest.cpp)
+    target_compile_features(native_startup_fp_test PRIVATE cxx_std_17)
+    target_compile_options(native_startup_fp_test PRIVATE /fp:strict)
+    target_link_libraries(native_startup_fp_test PRIVATE GTest::gtest_main)
+    add_test(NAME native_startup_fp_test COMMAND native_startup_fp_test)
+endif()
+
 add_executable(legacy_error_string_test ../Core/Libraries/LegacyErrorStringTest.cpp)
 target_include_directories(legacy_error_string_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
 target_link_libraries(legacy_error_string_test PRIVATE GTest::gtest_main)

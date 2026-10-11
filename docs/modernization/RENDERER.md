@@ -1,5 +1,23 @@
 # Renderer and display architecture
 
+## X64.11 native startup route (2026-10-12)
+
+Both AMD64 titles now link with no external D3DX helpers, but graphical startup
+still selects DX8Backend unconditionally and loads D3D8.DLL. Native system D3D8
+is absent; existing app-local copy is x86. D3D11.1/.2 remain independent sentence/
+UI slices; changing the factory would leave direct DX8 world/resource calls
+invalid. No renderer selection or implementation changed in this audit.
+
+Existing headless startup bypasses WW3D/device/browser initialization, while still
+constructing W3D fonts/metadata/terrain/video objects. It is a bounded diagnostic
+candidate, not a native renderer or proven gameplay route. Exactly one next task
+is **X64.12 bounded native headless startup diagnostic gate**, with flushed stages
+and deliberate init-only exit prepared for developer review. No game launched.
+See [X64_11_NATIVE_STARTUP_READINESS.md](X64_11_NATIVE_STARTUP_READINESS.md) for
+actual call graph, dependencies, FP limits and diagnostics. Earlier entries below
+are historical; accepted X64.10 resource contracts remain binding.
+
+
 ## X64.9D numerical convergence complete (2026-10-11)
 
 The independent test-only RGB/DXT5 numerical checker closes **13/13 compressed

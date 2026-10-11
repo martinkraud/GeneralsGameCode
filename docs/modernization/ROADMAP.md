@@ -1,5 +1,28 @@
 # Incremental modernization roadmap
 
+## X64.11 audit completed; native graphical launch remains blocked (2026-10-12)
+
+Both title native links remain green; D3DX0/title and X64.10 resource references
+remain intact. DX8 is the unconditional renderer, system AMD64 D3D8 is missing
+and existing app-local DLL is x86. D3D11's bounded UI slice cannot replace it.
+Installed native static imports are present; native media/browser remain limited.
+The measured Release CRT ignores PC_24 requests, not an observed startup abort.
+A supported nearest/masked/gradual-underflow policy passes focused tests, but
+production policy and full determinism remain unchanged/unvalidated.
+
+Full Win32 Release/CTest22, native independent CTest12, four new FP tests per
+architecture and supplemental regressions pass. No game launch or staging.
+Existing minidumps need initialization/result logging; Release startup checkpoints
+and native dual-title staging/actual user-data resolution are missing.
+See [X64_11_NATIVE_STARTUP_READINESS.md](X64_11_NATIVE_STARTUP_READINESS.md).
+
+Exactly one recommended next task: **X64.12 bounded native headless startup
+diagnostic gate**: opt-in flushed checkpoints, explicit AMD64 FP branch, native
+preflight/staging and init-only exit before execute/replay/simulation. Prepare
+first developer validation for review. No renderer implementation or automatic
+launch; Stage4A.3 stays paused. Older next-step entries are historical.
+
+
 ## X64.10 completed; native title linkage unblocked (2026-10-11)
 
 Engine-owned replacements now implement the accepted X64.9 file/filter/surface

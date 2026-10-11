@@ -1,5 +1,22 @@
 # Stage 1: development runtime laboratory
 
+## Native startup audit clarification (X64.11, 2026-10-12)
+
+The workflow below remains the accepted **Win32 Zero Hour** workflow. It explicitly
+requires an x86 PE32 executable/PDB pair; do not use it unchanged for AMD64 or
+remove its architecture guard. Native titles link, but graphical DX8 startup is
+blocked by missing native D3D8 and the existing app-local DLL is x86. Generals and
+Zero Hour also differ in user-data resolution; native ZH reads a different default
+registry view from this launcher. No native game was launched or staged here.
+
+[X64_11_NATIVE_STARTUP_READINESS.md](X64_11_NATIVE_STARTUP_READINESS.md) documents
+the required PE32+/symbol/DLL checks, actual per-title user-data/dump receipts,
+flushed Release startup logging and an init-only headless exit gate. Exactly one
+recommended next task is **X64.12 bounded native headless startup diagnostic gate**,
+preparing a separate reviewed developer validation route while preserving this
+Win32 workflow. The historical procedures below do not authorize a native launch.
+
+
 Stage 2 follow-up: the developer has now manually validated the real `baseline`
 runtime (startup/menus/skirmish/exit 0 and 369-file integrity before/after).
 Keep it unchanged. Use [STAGE2_TIMING.md](STAGE2_TIMING.md) for the timing candidate

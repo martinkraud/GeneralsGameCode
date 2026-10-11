@@ -1,5 +1,56 @@
 # Agent handoff
 
+## X64.11 native pre-launch audit complete (2026-10-12)
+
+Baseline: `09b2983af689043845a447e7084a15bd5684e747`. This audit changes only
+standalone FP tests/CMake and documentation. Production helpers, startup, FP,
+renderer and gameplay remain unchanged. No game launched or runtime staged.
+Native titles still link; external D3DX count remains0/title. Earlier next-step
+entries below are historical. See [X64_11_NATIVE_STARTUP_READINESS.md](X64_11_NATIVE_STARTUP_READINESS.md).
+
+Graphical startup is BLOCKED: factory always selects DX8; System32 AMD64 d3d8.dll
+is absent; inspected Steam/developer d3d8.dll is014c. D3D11 is an isolated UI/
+sentence slice, not a selectable game renderer. Both title PE import sets have
+28 contracts; native system/VC runtime components are present. Bink/Miles loading
+is disabled on AMD64, with existing no-video/audio-off behavior; no native media
+support. Browser COM initialization/registration is still attempted after graphical
+device startup, optional/failing gracefully but not proven native-safe. Headless
+skips graphics/browser/input and uses dummy audio/mouse/window paths, while still
+initializing W3D metadata/fonts/terrain/video/subsystems. No native init success
+or simulation/replay/lockstep equivalence has been established.
+
+The exact existing setFPMode probe shows Release UCRT ignores unsupported AMD64
+PC bits: invalid callbacks0/errno0, MXCSR0x1f80, control0x8001f; Win32 PC_24
+control0xa001f. Do not claim an observed invalid-parameter crash. Proposed AMD64
+policy: supported nearest-even, masked exceptions, gradual underflow, no FTZ/DAZ,
+explicit thread/restoration boundaries. Test-only proposal passes reset/idempotence,
+tie and subnormal tests. PC_24 cannot enforce x87-equivalent SSE2/double expressions;
+production policy change and matched deterministic evidence remain future work.
+X64.10 resource PC_53 contract must remain separate.
+
+First startup requires default-off flushed Release checkpoints before engine
+logging is available, subsystem begin/end/fail/skip, typed/WinMain catches, FP,
+actual DLL path/API failures and cleanup/exit. Existing native minidump support
+is enabled; no new crash framework needed, actual dump generation remains untested.
+The ZH staging adapter explicitly accepts x86 PE32 only; do not bypass its guard.
+Native staging must handle PE32+/matching PDB and per-title assets/user data.
+ZH registry uses native default view whereas current launcher uses Registry32;
+Generals user-data leaf comes from INI. Receipt actual paths and dump location.
+
+Validation: full Win32 Release/CTest22, direct149/title (six existing disabled),
+focused75/title, producer5/render2D15; AMD64 independent CTest12; new FP4/architecture;
+both title native links exit0. Python28/16, PS parse9 and preservation audit PASS.
+Six Win32/three native CPU resource streams byte-identical; native resource device
+skip3 remains. No broad native tool rebuild claimed; X64.10 blockers unchanged.
+Eight-file audit/test/documentation checkpoint, authorized for one commit and
+push only to origin/dev/modern-engine. Generated logs/probes/captures remain ignored.
+
+Exactly one next task: **X64.12 bounded native headless startup diagnostic gate**:
+opt-in flushed checkpoints, tested AMD64 FP branch, native dual-title staging/
+preflight and init-only exit before execute/replay/simulation. Prepare a developer
+procedure for review; no automatic game launch, renderer port or tool repair.
+
+
 ## X64.10 resource migration complete (2026-10-11)
 
 Current checkpoint supersedes historical next-step entries below. From accepted
