@@ -52,6 +52,7 @@
 
 #include "dx8wrapper.h"
 #include "LegacyTextureCreation.h"
+#include "LegacyErrorString.h"
 #include "dx8webbrowser.h"
 #include "dx8fvf.h"
 #include "dx8vertexbuffer.h"
@@ -198,7 +199,7 @@ void Log_DX8_ErrorCode(unsigned res)
 {
 	char tmp[256]="";
 
-	HRESULT new_res=D3DXGetErrorStringA(
+	HRESULT new_res=LegacyD3DX::GetErrorStringA(
 		res,
 		tmp,
 		sizeof(tmp));
@@ -214,7 +215,7 @@ void Non_Fatal_Log_DX8_ErrorCode(unsigned res,const char * file,int line)
 {
 	char tmp[256]="";
 
-	HRESULT new_res=D3DXGetErrorStringA(
+	HRESULT new_res=LegacyD3DX::GetErrorStringA(
 		res,
 		tmp,
 		sizeof(tmp));

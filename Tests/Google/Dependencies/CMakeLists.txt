@@ -11,6 +11,19 @@ target_link_libraries(depsi_googletest INTERFACE
     deps_utility
 )
 
+# Fixed CPU diagnostics need neither a graphics SDK nor device implementation.
+add_executable(legacy_error_string_test ../Core/Libraries/LegacyErrorStringTest.cpp)
+target_include_directories(legacy_error_string_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+target_link_libraries(legacy_error_string_test PRIVATE GTest::gtest_main)
+add_test(NAME legacy_error_string_test COMMAND legacy_error_string_test)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    add_executable(legacy_error_string_comparison ../Core/Libraries/LegacyErrorStringTest.cpp)
+    target_compile_definitions(legacy_error_string_comparison PRIVATE LEGACY_ERROR_LIVE_REFERENCE)
+    target_include_directories(legacy_error_string_comparison PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+    target_link_libraries(legacy_error_string_comparison PRIVATE legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32)
+    add_test(NAME legacy_error_string_comparison COMMAND legacy_error_string_comparison)
+endif()
+
 # Fixed legacy shader CPU data needs no graphics SDK or implementation library.
 add_executable(legacy_fixed_shader_test ../Core/Libraries/LegacyFixedPixelShaderTest.cpp)
 target_compile_features(legacy_fixed_shader_test PRIVATE cxx_std_14)

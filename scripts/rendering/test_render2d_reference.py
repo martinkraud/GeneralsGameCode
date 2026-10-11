@@ -116,6 +116,12 @@ class Render2DReference(unittest.TestCase):
                      "texturefilter.cpp", "dx8fvf.cpp"):
             text = current(CORE + name)
             if name == "dx8wrapper.cpp":
+                # X64.8 permits only two CPU diagnostic substitutions.
+                include = '#include "LegacyErrorString.h"\n'
+                self.assertEqual(text.count(include), 1)
+                self.assertEqual(text.count("LegacyD3DX::GetErrorStringA("), 2)
+                text = text.replace(include, "").replace(
+                    "LegacyD3DX::GetErrorStringA(", "D3DXGetErrorStringA(")
                 # X64.6 permits only the measured creation-helper substitutions.
                 include = '#include "LegacyTextureCreation.h"\n'
                 self.assertEqual(text.count(include), 1)

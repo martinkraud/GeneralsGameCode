@@ -1,6 +1,30 @@
 # Agent handoff
 
-## X64.7 fixed legacy shader bytecode (2026-10-11)
+## X64.8 native CPU diagnostic compatibility (2026-10-11)
+
+Both DX8Wrapper error loggers now use engine-owned pinned-reference error text.
+All 32 original names, exact lowercase eight-digit fallback, S_OK returns and
+buffer behavior match the actual Win32 helper. The 256-byte production buffers,
+logging/assert distinctions and surrounding wrapper behavior are unchanged.
+1,264 literal output cases pass on Win32/AMD64; live Win32 comparison also
+covers the complete D3D HRESULT low-word facility and seeded truncation cases.
+No resource helper, gameplay or renderer implementation changed; no game launch.
+
+Native probes remove only D3DXGetErrorStringA: 4 -> 3 helpers/title, combined
+LNK2019 8 -> 6, LNK2001=8, LNK1120=2. Neither game links; exact 30 separate tool
+ABI errors are unchanged. Full Win32 Release/CTest19, direct149/title,
+focused75/title and native CTest10 pass, including prior math/FVF/texture/shader,
+Bezier, RB1/RB2/RB3 and D3D11.1/.2 coverage. Native CPU binary has Windows/CRT
+imports only. See [X64_8_ERROR_STRING.md](X64_8_ERROR_STRING.md) for the measured
+contract, validation, exact remaining helper inventory and resource evidence plan.
+
+**Next proposed task: X64.9 - characterization-only of the coherent file/filter/
+surface resource group.** Three helpers remain, but pixel conversion, sampling,
+mip, compressed-format and device-access semantics are not yet bounded by
+allocation or single-mip UI work. No combined migration or next-stage probe
+has started. Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED.
+
+## X64.7 fixed legacy shader bytecode (2026-10-11, historical checkpoint)
 
 The four immutable pixel shaders (three water ps.1.1, one profiler ps.1.4)
 now use exact pinned-D3DX8 token arrays, including assembler comments and END.
