@@ -11,6 +11,28 @@ target_link_libraries(depsi_googletest INTERFACE
     deps_utility
 )
 
+# Fixed legacy shader CPU data needs no graphics SDK or implementation library.
+add_executable(legacy_fixed_shader_test ../Core/Libraries/LegacyFixedPixelShaderTest.cpp)
+target_compile_features(legacy_fixed_shader_test PRIVATE cxx_std_14)
+target_compile_definitions(legacy_fixed_shader_test PRIVATE PROFILER_ENABLED)
+target_include_directories(legacy_fixed_shader_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+target_link_libraries(legacy_fixed_shader_test PRIVATE GTest::gtest_main)
+add_test(NAME legacy_fixed_shader_test COMMAND legacy_fixed_shader_test)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    add_executable(legacy_fixed_shader_comparison ../Core/Libraries/LegacyFixedPixelShaderTest.cpp)
+    target_compile_features(legacy_fixed_shader_comparison PRIVATE cxx_std_14)
+    target_compile_definitions(legacy_fixed_shader_comparison PRIVATE PROFILER_ENABLED LEGACY_SHADER_LIVE_REFERENCE)
+    target_include_directories(legacy_fixed_shader_comparison PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+    target_link_libraries(legacy_fixed_shader_comparison PRIVATE legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32)
+    add_test(NAME legacy_fixed_shader_comparison COMMAND legacy_fixed_shader_comparison)
+    add_executable(legacy_fixed_shader_device_test ../Core/Libraries/LegacyFixedPixelShaderDeviceTest.cpp)
+    target_compile_features(legacy_fixed_shader_device_test PRIVATE cxx_std_14)
+    target_compile_definitions(legacy_fixed_shader_device_test PRIVATE PROFILER_ENABLED)
+    target_include_directories(legacy_fixed_shader_device_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+    target_link_libraries(legacy_fixed_shader_device_test PRIVATE legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32 user32)
+    add_test(NAME legacy_fixed_shader_device_test COMMAND legacy_fixed_shader_device_test)
+endif()
+
 # Controlled DX8 COM recording is independent of graphics/device availability.
 add_executable(legacy_texture_creation_test ../Core/Libraries/LegacyTextureCreationTest.cpp)
 target_compile_features(legacy_texture_creation_test PRIVATE cxx_std_17)

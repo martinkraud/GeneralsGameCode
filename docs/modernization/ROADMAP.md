@@ -1,6 +1,32 @@
 # Incremental modernization roadmap
 
-## X64.6 DX8 texture creation compatibility (2026-10-11)
+## X64.7 fixed legacy shader bytecode (2026-10-11)
+
+The four immutable pixel shaders (three water ps.1.1, one profiler ps.1.4)
+now use exact pinned-D3DX8 token arrays, including assembler comments and END.
+Actual original source bytes are compile-time identity-checked and compared
+exactly in independent recorded/live reference tests. Real Win32 DX8 creation
+passed for all four through both routes. Runtime assembly/buffer allocation is
+retired; device creation/failures, handles, reset/release and profiler gates are
+preserved. Both titles' actual profiler-enabled TU also compiles on Win32/AMD64.
+No D3D11 migration or game launch occurred; DX8 remains default.
+
+Native probes remove only D3DXAssembleShader: 5 -> 4 helpers/title, combined
+LNK2019 10 -> 8, LNK2001=8, LNK1120=2. Neither game links; the exact 30 separate
+tool ABI errors are unchanged. Full Win32 Release, CTest17, direct149/title,
+focused75/title and native CTest9 pass, including prior texture/FVF/math,
+Bezier, RB1/RB2/RB3 and D3D11.1/.2 coverage. Native CPU proof does not establish
+AMD64 DX8 shader execution or whole-game visual equivalence.
+See [X64_7_FIXED_SHADER_BYTECODE.md](X64_7_FIXED_SHADER_BYTECODE.md) for exact
+sources/tokens, reference/device evidence, contract change and remaining risks.
+
+**Next proposed task: X64.8 - pinned-reference CPU diagnostic error-string
+compatibility for D3DXGetErrorStringA.** The file/filter/surface group remains
+coherent but allocation work does not bound its uncharacterized conversion,
+filtering and file semantics. No next task has begun. Pathfinding 2.0 remains
+backlog; Stage4A.3 remains PAUSED. Older checkpoints are historical.
+
+## X64.6 DX8 texture creation compatibility (2026-10-11, historical checkpoint)
 
 The ten 2D/cube/volume creation calls now use engine-owned LegacyD3DX policy
 and actual DX8 COM creation. The pinned Win32 library and replacement match
