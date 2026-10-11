@@ -119,13 +119,19 @@ TextureBaseClass::~TextureBaseClass()
 	delete ThumbnailLoadTask;
 	ThumbnailLoadTask=nullptr;
 
-	if (D3DTexture)
-	{
-		D3DTexture->Release();
-		D3DTexture = nullptr;
-	}
+	Release_D3D_Storage();
 
 	DX8TextureManagerClass::Remove(this);
+}
+
+void TextureBaseClass::Release_D3D_Storage()
+{
+	if (Render2DResidency.Has_Residency()) {
+		Render2DResidency.Reset();
+	} else if (D3DTexture) {
+		D3DTexture->Release();
+	}
+	D3DTexture = nullptr;
 }
 
 
@@ -201,11 +207,7 @@ void TextureBaseClass::Invalidate()
 		return;
 	}
 
-	if (D3DTexture)
-	{
-		D3DTexture->Release();
-		D3DTexture = nullptr;
-	}
+	Release_D3D_Storage();
 
 	Initialized=false;
 
@@ -267,9 +269,7 @@ void TextureBaseClass::Set_D3D_Base_Texture(IDirect3DBaseTexture8* tex)
 	// reset the access timer whenever someon messes with this pointer.
 	LastAccessed=WW3D::Get_Sync_Time();
 
-	if (D3DTexture != nullptr) {
-		D3DTexture->Release();
-	}
+	Release_D3D_Storage();
 	D3DTexture = tex;
 	if (D3DTexture != nullptr) {
 		D3DTexture->AddRef();
@@ -284,8 +284,7 @@ void TextureBaseClass::Set_D3D_Base_Texture(IDirect3DBaseTexture8* tex)
 void TextureBaseClass::Load_Locked_Surface()
 {
 	WWPROFILE(("TextureClass::Load_Locked_Surface()"));
-	if (D3DTexture) D3DTexture->Release();
-	D3DTexture=nullptr;
+	Release_D3D_Storage();
 	TextureLoader::Request_Thumbnail(this);
 	Initialized=false;
 }
@@ -886,9 +885,8 @@ void TextureClass::Apply_New_Surface
 	bool disable_auto_invalidation
 )
 {
-	IDirect3DBaseTexture8* d3d_tex=Peek_D3D_Base_Texture();
-
-	if (d3d_tex) d3d_tex->Release();
+	Peek_D3D_Base_Texture();
+	Release_D3D_Storage();
 
 	Poke_Texture(d3d_texture);//TextureLoadTask->Peek_D3D_Texture();
 	d3d_texture->AddRef();
@@ -919,6 +917,10 @@ void TextureClass::Apply_New_Surface
 */
 void TextureClass::Apply(unsigned int stage)
 {
+	if (Render2DUsed) {
+		Apply_Render2D_Texture(stage);
+		return;
+	}
 	// Initialization needs to be done when texture is used if it hasn't been done before.
 	// XBOX always initializes textures at creation time.
 	if (!Initialized)

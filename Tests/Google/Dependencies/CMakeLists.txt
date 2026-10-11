@@ -28,6 +28,7 @@ endif()
 # game links; this does not replace the full game/tool build.
 add_executable(render2d_submission_test
     ../Core/Libraries/Render2DSubmissionTest.cpp
+    ../Core/Libraries/Texture2DTest.cpp
     ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp
 )
 target_include_directories(render2d_submission_test PRIVATE

@@ -48,6 +48,7 @@
 #include "WWLib/wwstring.h"
 #include "WWMath/vector3.h"
 #include "texturefilter.h"
+#include "Texture2D.h"
 
 struct IDirect3DBaseTexture8;
 struct IDirect3DTexture8;
@@ -203,7 +204,11 @@ public:
 protected:
 
 	void Load_Locked_Surface();
-	void Poke_Texture(IDirect3DBaseTexture8* tex) { D3DTexture = tex; }
+	// Release exactly one native owner: either the backend residency or the
+	// original legacy reference. Clear the alias before accepting replacement.
+	void Release_D3D_Storage();
+	Texture2DResidencyOwner Render2DResidency;
+	void Poke_Texture(IDirect3DBaseTexture8* tex) { WWASSERT(!Render2DResidency.Has_Residency()); D3DTexture = tex; }
 
 	bool Initialized;
 
@@ -267,6 +272,11 @@ class TextureClass : public TextureBaseClass
 //	friend DX8Wrapper;
 
 public:
+
+	void Use_For_Render2D() { if (Get_Asset_Type() == TEX_REGULAR) Render2DUsed = true; }
+	void Prepare_Render2D_Texture();
+	Texture2DResidency &Get_Render2D_Residency();
+	void Apply_Render2D_Texture(unsigned stage);
 
 	// Create texture with desired height, width and format.
 	TextureClass
@@ -343,6 +353,9 @@ protected:
 
 	// legacy
 	TextureFilterClass	Filter;
+
+private:
+	bool Render2DUsed = false;
 };
 
 class ZTextureClass : public TextureBaseClass

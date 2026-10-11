@@ -7,6 +7,7 @@
 #include "WW3D2/dx8caps.h"
 #include "WW3D2/vertmaterial.h"
 #include "WW3D2/shader.h"
+#include "WW3D2/texture.h"
 #include "WWMath/matrix4.h"
 
 namespace
@@ -68,7 +69,11 @@ public:
                           viewport.min_z, viewport.max_z};
         DX8Wrapper::Set_Viewport(&vp);
     }
-    void Set_Texture(TextureClass *texture) { DX8Wrapper::Set_Texture(0, texture); }
+    void Set_Texture(TextureClass *texture)
+    {
+        if (texture) texture->Use_For_Render2D();
+        DX8Wrapper::Set_Texture(0, texture);
+    }
     void Set_Prelit_Diffuse_Material()
     {
         VertexMaterialClass *material = VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);

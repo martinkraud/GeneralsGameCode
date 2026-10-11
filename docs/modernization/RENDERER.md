@@ -1,15 +1,15 @@
 # Renderer and display architecture
 
-Current submission/boundary evidence (2026-10-11):
-[RendererBoundary.1 Render2D](RENDERER_BOUNDARY_1_RENDER2D.md), following the
-[X64.3 dependency inventory](X64_3_DX8_RENDERER_BOUNDARY.md).
-Both titles' Render2D now uses a neutral W3D submission/geometry mapping with the
-original DX8 reference adapter; generic buffer declarations are separated.
-Other rendering remains on legacy paths. The one recommended prerequisite to
-D3D11.1 textured Render2D is RendererBoundary.2: Texture2D residency/upload and
-sampler intent, because the current W3D texture application still requires DX8.
-No D3D11 backend, playable Win64 or visual equivalence is claimed. No game was
-launched. The original architecture investigation below is historical context.
+Current renderer boundary evidence (2026-10-11):
+[RendererBoundary.2 Texture2D](RENDERER_BOUNDARY_2_TEXTURE2D.md), following
+[RendererBoundary.1 Render2D](RENDERER_BOUNDARY_1_RENDER2D.md).
+The neutral texture contract, DX8 residency ownership, pitched content leases
+and sampler mapping preserve the reference path. Actual 2D/font/UI producers
+still allocate or lock D3D8 resources. The one remaining prerequisite is
+RendererBoundary.3: device-independent 2D/font/UI content backing and loading,
+before D3D11.1. SDK-free source compilation does not imply a playable Win64
+renderer or remove the known D3DX/tool ABI blockers. No game was launched and
+no visual equivalence is claimed. Older findings below are historical context.
 
 Scope: revision `adac468d7`, investigated 2026-10-07. No renderer replacement,
 display-mode change or game launch was performed.

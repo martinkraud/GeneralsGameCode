@@ -45,6 +45,9 @@ public:
     virtual void Set_Ambient(const Vector3 & color) override;
     virtual void Set_Light_Environment(LightEnvironmentClass * light_env) override;
     virtual void Submit_Render2D(const Render2DSubmission & submission) override;
+    virtual Texture2DResidency *Create_Render2D_Residency(TextureClass &texture) override;
+    virtual void Apply_Render2D_Texture(TextureClass &texture, unsigned stage) override;
+    virtual void Copy_Render2D_Surface(SurfaceClass &source, SurfaceClass &destination) override;
 
 private:
     explicit DX8Backend(bool lite);

@@ -28,6 +28,9 @@
 class LightEnvironmentClass;
 class Vector3;
 struct Render2DSubmission;
+class TextureClass;
+class SurfaceClass;
+class Texture2DResidency;
 
 struct RenderBackendViewport
 {
@@ -68,4 +71,7 @@ public:
 
     // Synchronous W3D geometry/state submission; retains no borrowed arrays.
     virtual void Submit_Render2D(const Render2DSubmission & submission) = 0;
+    virtual Texture2DResidency *Create_Render2D_Residency(TextureClass &texture) = 0;
+    virtual void Apply_Render2D_Texture(TextureClass &texture, unsigned stage) = 0;
+    virtual void Copy_Render2D_Surface(SurfaceClass &source, SurfaceClass &destination) = 0;
 };

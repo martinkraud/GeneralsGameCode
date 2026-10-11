@@ -1,20 +1,17 @@
 # Agent handoff
 
-## RendererBoundary.1 Render2D submission (2026-10-11)
+## RendererBoundary.2 Texture2D boundary (2026-10-11)
 
-Both titles now submit Render2D geometry/state through IRenderBackend, with the
-original DX8 dynamic buffers, locks, material, shader, grayscale and draw path
-retained in the reference adapter. Generic buffer declarations have been moved
-out of concrete DX8 headers; other renderer callers are unchanged.
-
-See [RENDERER_BOUNDARY_1_RENDER2D.md](RENDERER_BOUNDARY_1_RENDER2D.md) for exact
-contracts, ownership/order, reference tests, SDK-free compilation and validation.
-No visual equivalence or playable Win64 claim is made; no game was launched.
-**Next proposed task: RendererBoundary.2 - the existing Render2D Texture2D
-residency/upload and sampler seam.** Texture identity is neutral, but its loader,
-content updates and filter application still require DX8. Complete that one
-bounded prerequisite before D3D11.1 device/swap-chain + clear/present + minimal
-textured Render2D work. Do not begin D3D11 or unrelated x64 fixes automatically.
+The Render2D texture path now has W3D descriptions, pitched content leases,
+backend residency ownership and sampler intent, with the DX8 reference adapter.
+Sentence copy/upload and deferred texture application preserve legacy ordering;
+loader, conversion, missing pixels and dynamic UI updates are retained.
+See [RENDERER_BOUNDARY_2_TEXTURE2D.md](RENDERER_BOUNDARY_2_TEXTURE2D.md) for exact
+scope, ownership, reference tests, SDK-free probes and validation limitations.
+**Next proposed task: RendererBoundary.3 - device-independent 2D/font/UI content
+backing and loading.** Existing producers still allocate/lock D3D8 resources;
+this is the one remaining prerequisite to actual textured D3D11.1 Render2D.
+No D3D11, visual-equivalence or playable Win64 claim is made; no game was launched.
 Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED.
 
 The following X64.3 checkpoint is historical; this next-step state supersedes it.

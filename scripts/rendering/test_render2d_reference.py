@@ -113,7 +113,7 @@ class Render2DReference(unittest.TestCase):
 
     def test_dynamic_allocation_lock_and_wrapper_sources_are_unchanged(self):
         for name in ("dx8vertexbuffer.cpp", "dx8indexbuffer.cpp", "dx8wrapper.cpp",
-                     "texture.cpp", "texturefilter.cpp", "dx8fvf.cpp"):
+                     "texturefilter.cpp", "dx8fvf.cpp"):
             self.assertEqual(tokens(current(CORE + name)), tokens(original(CORE + name)), name)
         adapter = "".join(tokens(self.adapter))
         self.assertIn("DynamicVBAccessClass(BUFFER_TYPE_DYNAMIC_DX8,dynamic_fvf_type,count)", adapter)
