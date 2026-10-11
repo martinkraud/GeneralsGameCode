@@ -50,8 +50,9 @@ if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(WARNING
         "Win64 is an experimental migration target, not a playable build. "
         "The bundled DX8 SDK supplies only x86 libraries and is not linked here. "
-        "DX8 headers/backend dependencies and source-width blockers remain; see "
-        "docs/modernization/X64_1_BUILD_FOUNDATION.md.")
+        "Legacy DX8 declarations are available for compilation only; native "
+        "backend/helper implementations and source-width blockers remain; see "
+        "docs/modernization/X64_3_DX8_RENDERER_BOUNDARY.md.")
 endif()
 
 # This file handles extra settings wanted/needed for different compilers.
@@ -70,7 +71,7 @@ if(MINGW)
 endif()
 
 # Find/Add build dependencies and stubs shared by all projects
-if((WIN32 OR "${CMAKE_SYSTEM}" MATCHES "Windows") AND ${CMAKE_SIZEOF_VOID_P} EQUAL 4)
+if(WIN32 OR "${CMAKE_SYSTEM}" MATCHES "Windows")
     include(cmake/dx8.cmake)
 endif()
 

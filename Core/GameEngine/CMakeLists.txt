@@ -1222,7 +1222,7 @@ target_link_libraries(corei_gameengine_public INTERFACE
     core_compression
     core_browserdispatch
     #core_wwvegas
-    d3d8lib
+    legacy_dx8_dependencies
     deps_dbghelp
     gamespy::gamespy
     stlport

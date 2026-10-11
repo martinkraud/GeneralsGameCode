@@ -1,5 +1,16 @@
 # Renderer and display architecture
 
+Current dependency/boundary evidence (2026-10-11):
+[X64.3 DX8 renderer boundary](X64_3_DX8_RENDERER_BOUNDARY.md).
+The existing interface is sufficient for scene/viewport/light operations, but
+resources/state/transforms/draw/readback still bypass it. Legacy declarations
+are now separated from I386 binary linkage; this is compile foundation only.
+The proposed first implementation is RendererBoundary.1, a neutral W3D
+resource/state submission seam for the existing Render2D slice with DX8 as the
+working adapter, before D3D11.1 device/draw work. No renderer replacement was
+implemented or launched. The original architecture investigation below remains
+historical context; use the new report for the current exact dependency map.
+
 Scope: revision `adac468d7`, investigated 2026-10-07. No renderer replacement,
 display-mode change or game launch was performed.
 

@@ -1,5 +1,32 @@
 # Incremental modernization roadmap
 
+## X64.3 DX8 declarations and renderer boundary (2026-10-11)
+
+X64.3 separates the original pinned SDK declarations from I386 linkage.
+Win32 still uses the unchanged upstream D3D8 target: compile commands and link
+requirements match the reference exactly, and full Release validation passes.
+Native WWMath and both titles' W3D/engine/device archives compile. The full build
+now stops on 30 tool ABI error occurrences; separate native game link probes
+fail on 17 D3DX helpers each, with input/GUID dependencies resolved through the
+native Windows SDK. This is not a playable native game or a D3D11 backend.
+Real DX8 sources remain enabled.
+
+**Next proposed renderer task: RendererBoundary.1 - W3D resource/state submission
+for the existing Render2D vertical slice.** The current IRenderBackend covers
+scene/viewport/light operations but most resources, state and drawing bypass it.
+Retain DX8 as the functional adapter, migrate only the real slice's neutral
+contract, then use that seam for a separately validated D3D11.1 device/draw step.
+Common Bezier external D3DX math and general GUI/persistence/allocator/audio/
+browser/FP-lockstep gates remain separate; compilation is not compatibility proof.
+No D3D11 implementation or next x64 phase begins automatically. Pathfinding 2.0
+remains backlog; Stage4A.3 remains PAUSED. No game was launched.
+
+See [X64_3_DX8_RENDERER_BOUNDARY.md](X64_3_DX8_RENDERER_BOUNDARY.md) for the full
+consumer inventory, math/helper split, contract, actual native build results,
+remaining blockers and validation. Older next-step notes below are historical
+and superseded by this result.
+
+
 ## X64.2 native diagnostics (2026-10-09)
 
 X64.2 removes the 92 reproduced diagnostic/callback error occurrences. Native

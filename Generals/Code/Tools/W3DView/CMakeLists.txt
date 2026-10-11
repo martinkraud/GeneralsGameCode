@@ -3,7 +3,7 @@ add_executable(g_w3dview WIN32)
 target_link_libraries(g_w3dview PRIVATE
     core_wwstub # avoid linking GameEngine
     corei_w3dview # this interface gets the source files for the tool
-    d3d8lib
+    legacy_dx8_dependencies
     deps_miles
     g_wwaudio
     g_wwvegas
