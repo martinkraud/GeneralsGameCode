@@ -29,6 +29,7 @@
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
 #include "GameClient/GameClient.h"
 
@@ -265,7 +266,7 @@ void GameClient::init()
 	// create the display string factory
 	TheDisplayStringManager = createDisplayStringManager();
 	if( TheDisplayStringManager )	{
-		TheDisplayStringManager->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheDisplayStringManager.init"); TheDisplayStringManager->init(); }
 		TheDisplayStringManager->setName("TheDisplayStringManager");
 	}
 
@@ -273,17 +274,17 @@ void GameClient::init()
 	{
 		// create the keyboard
 		TheKeyboard = createKeyboard();
-		TheKeyboard->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheKeyboard.init"); TheKeyboard->init(); }
 		TheKeyboard->setName("TheKeyboard");
 	}
 
 	// allocate and load image collection for the GUI and just load the 256x256 ones for now
 	TheMappedImageCollection = MSGNEW("GameClientSubsystem") ImageCollection;
-	TheMappedImageCollection->load( 512 );
+	{ StartupDiagnostics::Phase diagnosticPhase("TheMappedImageCollection.load"); TheMappedImageCollection->load( 512 ); }
 
 	// now that we have all the images loaded ... load any animation definitions from those images
 	TheAnim2DCollection = MSGNEW("GameClientSubsystem") Anim2DCollection;
-	TheAnim2DCollection->init();
+	{ StartupDiagnostics::Phase diagnosticPhase("TheAnim2DCollection.init"); TheAnim2DCollection->init(); }
  	TheAnim2DCollection->setName("TheAnim2DCollection");
 
 	// register message translators
@@ -321,24 +322,24 @@ void GameClient::init()
 	// create the font library
 	TheFontLibrary = createFontLibrary();
 	if( TheFontLibrary )
-		TheFontLibrary->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheFontLibrary.init"); TheFontLibrary->init(); }
 
 	// create the mouse
 	TheMouse = TheGlobalData->m_headless ? NEW MouseDummy : createMouse();
-	TheMouse->parseIni();
-	TheMouse->initCursorResources();
+	{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.parseIni"); TheMouse->parseIni(); }
+	{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.initCursorResources"); TheMouse->initCursorResources(); }
  	TheMouse->setName("TheMouse");
 
 	// instantiate the display
 	TheDisplay = createGameDisplay();
 	if( TheDisplay ) {
-		TheDisplay->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheDisplay.init"); TheDisplay->init(); }
  		TheDisplay->setName("TheDisplay");
 	}
 
 	TheHeaderTemplateManager = MSGNEW("GameClientSubsystem") HeaderTemplateManager;
 	if(TheHeaderTemplateManager){
-		TheHeaderTemplateManager->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheHeaderTemplateManager.init"); TheHeaderTemplateManager->init(); }
 	}
 
 	// create the window manager
@@ -346,7 +347,7 @@ void GameClient::init()
 	if( TheWindowManager )
 	{
 
-		TheWindowManager->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheWindowManager.init"); TheWindowManager->init(); }
  		TheWindowManager->setName("TheWindowManager");
 //		TheWindowManager->initTestGUI();
 
@@ -356,46 +357,46 @@ void GameClient::init()
 	TheIMEManager = CreateIMEManagerInterface();
 	if ( TheIMEManager )
 	{
-		TheIMEManager->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheIMEManager.init"); TheIMEManager->init(); }
  		TheIMEManager->setName("TheIMEManager");
 	}
 
 	// create the shell
 	TheShell = MSGNEW("GameClientSubsystem") Shell;
 	if( TheShell ) {
-		TheShell->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheShell.init"); TheShell->init(); }
  		TheShell->setName("TheShell");
 	}
 
 	// instantiate the in-game user interface
 	TheInGameUI = createInGameUI();
 	if( TheInGameUI ) {
-		TheInGameUI->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheInGameUI.init"); TheInGameUI->init(); }
  		TheInGameUI->setName("TheInGameUI");
 	}
 
  	TheChallengeGenerals = createChallengeGenerals();
  	if( TheChallengeGenerals ) {
- 		TheChallengeGenerals->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheChallengeGenerals.init"); TheChallengeGenerals->init(); }
  	}
 
 	TheHotKeyManager = MSGNEW("GameClientSubsystem") HotKeyManager;
 	if( TheHotKeyManager ) {
-		TheHotKeyManager->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheHotKeyManager.init"); TheHotKeyManager->init(); }
  		TheHotKeyManager->setName("TheHotKeyManager");
 	}
 
 	// instantiate the terrain visual display
 	TheTerrainVisual = createTerrainVisual();
 	if( TheTerrainVisual ) {
-		TheTerrainVisual->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheTerrainVisual.init"); TheTerrainVisual->init(); }
  		TheTerrainVisual->setName("TheTerrainVisual");
 	}
 
 	// allocate the ray effects manager
 	TheRayEffects = MSGNEW("GameClientSubsystem") RayEffectSystem;
 	if( TheRayEffects )	{
-		TheRayEffects->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheRayEffects.init"); TheRayEffects->init(); }
  		TheRayEffects->setName("TheRayEffects");
 	}
 
@@ -403,7 +404,7 @@ void GameClient::init()
 	if( TheMouse )
 	{
 		// finish initializing the mouse.
-		TheMouse->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.init"); TheMouse->init(); }
 		TheMouse->initCapture();
 		TheMouse->setPosition( 0, 0 );
 		TheMouse->setMouseLimits();
@@ -414,7 +415,7 @@ void GameClient::init()
 	TheVideoPlayer = createVideoPlayer();
 	if ( TheVideoPlayer )
 	{
-		TheVideoPlayer->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheVideoPlayer.init"); TheVideoPlayer->init(); }
  		TheVideoPlayer->setName("TheVideoPlayer");
 	}
 
@@ -422,23 +423,23 @@ void GameClient::init()
 	TheLanguageFilter = createLanguageFilter();
 	if (TheLanguageFilter)
 	{
-		TheLanguageFilter->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheLanguageFilter.init"); TheLanguageFilter->init(); }
  		TheLanguageFilter->setName("TheLanguageFilter");
 	}
 
 	TheCampaignManager = MSGNEW("GameClientSubsystem") CampaignManager;
-	TheCampaignManager->init();
+	{ StartupDiagnostics::Phase diagnosticPhase("TheCampaignManager.init"); TheCampaignManager->init(); }
 
 	TheEva = MSGNEW("GameClientSubsystem") Eva;
-	TheEva->init();
+	{ StartupDiagnostics::Phase diagnosticPhase("TheEva.init"); TheEva->init(); }
  	TheEva->setName("TheEva");
 
-	TheDisplayStringManager->postProcessLoad();
+	{ StartupDiagnostics::Phase diagnosticPhase("TheDisplayStringManager.postProcessLoad"); TheDisplayStringManager->postProcessLoad(); }
 
 	TheSnowManager = createSnowManager();
 	if (TheSnowManager)
 	{
-		TheSnowManager->init();
+		{ StartupDiagnostics::Phase diagnosticPhase("TheSnowManager.init"); TheSnowManager->init(); }
 		TheSnowManager->setName("TheSnowManager");
 	}
 

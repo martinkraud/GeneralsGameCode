@@ -31,6 +31,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #include "WW3D2/ww3d.h"
 #include "WW3D2/texturefilter.h"
@@ -1056,7 +1057,7 @@ GlobalData::GlobalData()
 //-------------------------------------------------------------------------------------------------
 AsciiString GlobalData::getPath_UserData() const
 {
-	return m_userDataDir;
+	return StartupDiagnostics::userData() ? AsciiString(StartupDiagnostics::userData()) : m_userDataDir;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1192,7 +1193,7 @@ void GlobalData::parseGameDataDefinition( INI* ini )
 	ini->initFromINI( TheWritableGlobalData, s_GlobalDataFieldParseTable );
 
 	TheWritableGlobalData->m_userDataDir.clear();
-	TheWritableGlobalData->m_userDataDir = BuildUserDataPathFromIni();
+	TheWritableGlobalData->m_userDataDir = StartupDiagnostics::userData() ? AsciiString(StartupDiagnostics::userData()) : BuildUserDataPathFromIni();
 	CreateDirectory(TheWritableGlobalData->m_userDataDir.str(), nullptr);
 
 	// override INI values with user preferences

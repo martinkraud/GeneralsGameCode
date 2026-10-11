@@ -28,6 +28,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
+#include "Common/NativeFloatingPoint.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/DeveloperHarness.h"
 
@@ -186,6 +188,17 @@ static Waypoint * findNamedWaypoint(AsciiString name)
 // ------------------------------------------------------------------------------------------------
 void setFPMode()
 {
+#if defined(_M_AMD64)
+	const int result = NativeFloatingPoint::reset();
+	if (StartupDiagnostics::enabled())
+	{
+		char fpState[96]; unsigned control = 0;
+		_controlfp_s(&control, 0, 0);
+		sprintf_s(fpState, "control=%08x mxcsr=%08x", control, _mm_getcsr());
+		StartupDiagnostics::checkpoint("FP", result ? "fail" : "complete", fpState, result);
+	}
+	if (result != 0) RELEASE_CRASH(("Native floating-point initialization failed"));
+#else
   // Set floating point round mode to CHOP, which only comes
   // into play when precision is exceeded.  This is necessary
   // for the fast float to int routines used elsewhere in the
@@ -204,6 +217,7 @@ void setFPMode()
 	newVal = (newVal & ~_MCW_PC) | (_PC_24   & _MCW_PC);
 
 	_controlfp(newVal, _MCW_PC | _MCW_RC);
+#endif
 }
 
 // ------------------------------------------------------------------------------------------------

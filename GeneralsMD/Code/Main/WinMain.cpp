@@ -32,6 +32,7 @@
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <windows.h>
+#include "Common/StartupDiagnostics.h"
 #include <stdlib.h>
 #include <crtdbg.h>
 #include <eh.h>
@@ -797,6 +798,14 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
                       LPSTR lpCmdLine, Int nCmdShow )
 {
 	Int exitcode = 1;
+	if (!StartupDiagnostics::configure(__argc, __argv)) return 87;
+	StartupDiagnostics::checkpoint("WinMain", "begin", "GeneralsMD AMD64 init-only");
+	if (StartupDiagnostics::enabled())
+	{
+		char diagnosticModule[MAX_PATH] = {};
+		GetModuleFileNameA(nullptr, diagnosticModule, MAX_PATH);
+		StartupDiagnostics::checkpoint("module", "resolved", diagnosticModule);
+	}
 
 #ifdef RTS_PROFILE_LEGACY
   Profile::StartRange("init");
@@ -805,6 +814,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	try {
 
 		SetUnhandledExceptionFilter( UnHandledExceptionFilter );
+		StartupDiagnostics::checkpoint("exception_filter", "complete");
 		//
 		// there is something about checkin in and out the .dsp and .dsw files
 		// that blows the working directory information away on each of the
@@ -820,9 +830,19 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		TheDebugLogCriticalSection = &critSec5;
 
 		// initialize the memory manager early
+		StartupDiagnostics::checkpoint("memory", "begin");
 		initMemoryManager();
+		StartupDiagnostics::checkpoint("memory", "complete");
 
+		StartupDiagnostics::checkpoint("startup_parse", "begin");
 		CommandLine::parseCommandLineForStartup();
+		if (StartupDiagnostics::enabled())
+		{
+			char diagnosticCwd[MAX_PATH] = {};
+			GetCurrentDirectoryA(MAX_PATH, diagnosticCwd);
+			StartupDiagnostics::checkpoint("startup_parse", "complete", diagnosticCwd);
+		}
+		StartupDiagnostics::checkpoint("HWND_DX8_browser_input", TheGlobalData->m_headless ? "skipped" : "normal");
 
 
 		#ifdef RTS_DEBUG
@@ -865,7 +885,9 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 #ifdef RTS_ENABLE_CRASHDUMP
 		// Initialize minidump facilities - requires TheGlobalData so performed after parseCommandLineForStartup
+		StartupDiagnostics::checkpoint("minidumper", "begin", TheGlobalData->getPath_UserData().str());
 		MiniDumper::initMiniDumper(TheGlobalData->getPath_UserData());
+		StartupDiagnostics::checkpoint("minidumper", TheMiniDumper && TheMiniDumper->IsInitialized() ? "complete" : "disabled");
 #endif
 
 		// register windows class and create application window
@@ -896,6 +918,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 		// TheSuperHackers @refactor The instance mutex now lives in its own class.
 
+		StartupDiagnostics::checkpoint("instance", "begin");
 		if (!rts::ClientInstance::initialize())
 		{
 			HWND ccwindow = FindWindow(rts::ClientInstance::getFirstInstanceName(), nullptr);
@@ -916,6 +939,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		DEBUG_LOG(("CRC message is %d", GameMessage::MSG_LOGIC_CRC));
 
 		// run the game main loop
+		StartupDiagnostics::checkpoint("instance", "complete");
 		exitcode = GameMain();
 
 		delete TheVersion;
@@ -935,16 +959,22 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 	catch (...)
 	{
-
+		StartupDiagnostics::checkpoint("WinMain", "fail", "caught exception");
+		if (StartupDiagnostics::enabled()) exitcode = 1;
 	}
 
 #ifdef RTS_ENABLE_CRASHDUMP
+	StartupDiagnostics::checkpoint("minidumper_shutdown", "begin");
 	MiniDumper::shutdownMiniDumper();
+	StartupDiagnostics::checkpoint("minidumper_shutdown", "complete");
 #endif
 	TheUnicodeStringCriticalSection = nullptr;
 	TheDmaCriticalSection = nullptr;
 	TheMemoryPoolCriticalSection = nullptr;
 
+	StartupDiagnostics::checkpoint("WinMain", exitcode == 0 ? "complete" : "fail", "exit", exitcode);
+	if (!StartupDiagnostics::healthy()) exitcode = 1;
+	StartupDiagnostics::close();
 	return exitcode;
 
 }

@@ -27,6 +27,7 @@
 // Author: Michael S. Booth, April 2001
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/DeveloperHarness.h"
 
@@ -165,6 +166,7 @@ void initSubsystem(
 	const char* path1 = nullptr,
 	const char* path2 = nullptr)
 {
+	StartupDiagnostics::Phase diagnosticPhase(name.str());
 	sysref = sys;
 	TheSubsystemList->initSubsystem(sys, path1, path2, pXfer, name);
 }
@@ -667,7 +669,8 @@ void GameEngine::init()
 		TheWritableGlobalData->m_iniCRC = xferCRC.getCRC();
 		DEBUG_LOG(("INI CRC is 0x%8.8X", TheGlobalData->m_iniCRC));
 
-		TheSubsystemList->postProcessLoadAll();
+		{ StartupDiagnostics::Phase diagnosticPhase("postProcessLoadAll");
+		TheSubsystemList->postProcessLoadAll(); }
 
 		TheFramePacer->setFramesPerSecondLimit(TheGlobalData->m_framesPerSecondLimit);
 		// TheSuperHackers @feature Normal Options preferences are finite, independent of legacy LOD flags.
@@ -692,7 +695,7 @@ void GameEngine::init()
 
 		// initialize the MapCache
 		TheMapCache = MSGNEW("GameEngineSubsystem") MapCache;
-		TheMapCache->updateCache();
+		{ StartupDiagnostics::Phase diagnosticPhase("map_cache"); TheMapCache->updateCache(); }
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -753,6 +756,8 @@ void GameEngine::init()
 	}
 	catch (ErrorCode ec)
 	{
+		StartupDiagnostics::checkpoint("engine_init", "fail", "ErrorCode", static_cast<unsigned>(ec));
+		if (StartupDiagnostics::enabled()) throw;
 		if (ec == ERROR_INVALID_D3D)
 		{
 			RELEASE_CRASHLOCALIZED("ERROR:D3DFailurePrompt", "ERROR:D3DFailureMessage");
@@ -760,6 +765,8 @@ void GameEngine::init()
 	}
 	catch (INIException e)
 	{
+		StartupDiagnostics::checkpoint("engine_init", "fail", e.mFailureMessage ? e.mFailureMessage : "INIException");
+		if (StartupDiagnostics::enabled()) throw;
 		if (e.mFailureMessage)
 			RELEASE_CRASH((e.mFailureMessage));
 		else
@@ -768,12 +775,14 @@ void GameEngine::init()
 	}
 	catch (...)
 	{
+		StartupDiagnostics::checkpoint("engine_init", "fail", "unknown");
+		if (StartupDiagnostics::enabled()) throw;
 		RELEASE_CRASH(("Uncaught Exception during initialization."));
 	}
 
-	resetSubsystems();
+	{ StartupDiagnostics::Phase diagnosticPhase("initial_reset"); resetSubsystems(); }
 
-	HideControlBar();
+	{ StartupDiagnostics::Phase diagnosticPhase("HideControlBar"); HideControlBar(); }
 }
 
 /** -----------------------------------------------------------------------------------------------

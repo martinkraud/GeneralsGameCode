@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// X64.11 audit only: production GameLogic/setFPMode remains unchanged.
+// X64.11 numerical cases retained; X64.12 exercises the shared AMD64 production policy.
 #include <gtest/gtest.h>
+#include "Common/NativeFloatingPoint.h"
 #include <float.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -36,18 +37,8 @@ void ExistingGameLogicPolicy() {
     value = (value & ~_MCW_PC) | (_PC_24 & _MCW_PC);
     _controlfp(value, _MCW_PC | _MCW_RC);
 }
-// Proposed native policy, not wired into either title in this audit.
-int ProposedNativePolicy() {
-    _fpreset();
-    unsigned control = 0;
-    int result = _controlfp_s(&control, _RC_NEAR | _MCW_EM, _MCW_RC | _MCW_EM);
-    // Nearest-even, masked exceptions, gradual underflow; clear status, DAZ,
-    // rounding bits and FTZ while preserving unrelated MXCSR bits.
-    unsigned csr = _mm_getcsr();
-    csr = (csr & ~0xe07fu) | 0x1f80u;
-    _mm_setcsr(csr);
-    return result;
-}
+// Historical test names retained; this wrapper calls the production helper.
+int ProposedNativePolicy() { return NativeFloatingPoint::reset(); }
 unsigned Bits(float value) { unsigned bits; std::memcpy(&bits, &value, sizeof(bits)); return bits; }
 }
 

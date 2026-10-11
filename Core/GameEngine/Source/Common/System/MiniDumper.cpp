@@ -20,6 +20,7 @@
 
 #ifdef RTS_ENABLE_CRASHDUMP
 #include "Common/MiniDumper.h"
+#include "Common/StartupDiagnostics.h"
 #include <wctype.h>
 #include "gitinfo.h"
 
@@ -218,6 +219,7 @@ Bool MiniDumper::InitializeDumpDirectory(const AsciiString& userDirPath)
 
 	strlcpy(m_dumpDir, userDirPath.str(), ARRAY_SIZE(m_dumpDir));
 	strlcat(m_dumpDir, "CrashDumps\\", ARRAY_SIZE(m_dumpDir));
+	StartupDiagnostics::checkpoint("dump_path", "resolved", m_dumpDir);
 	if (::_access(m_dumpDir, 0) != 0)
 	{
 		if (!::CreateDirectory(m_dumpDir, nullptr))

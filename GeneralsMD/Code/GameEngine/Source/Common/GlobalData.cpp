@@ -31,6 +31,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #include "WW3D2/ww3d.h"
 #include "WW3D2/texturefilter.h"
@@ -1048,7 +1049,7 @@ GlobalData::GlobalData()
 
 	// Set user data directory based on registry settings instead of INI parameters.
 	// This allows us to localize the leaf name.
-	m_userDataDir = BuildUserDataPathFromRegistry();
+	m_userDataDir = StartupDiagnostics::userData() ? AsciiString(StartupDiagnostics::userData()) : BuildUserDataPathFromRegistry();
 	CreateDirectory(m_userDataDir.str(), nullptr);
 
 	//-allAdvice feature

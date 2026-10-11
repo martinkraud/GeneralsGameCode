@@ -1,5 +1,20 @@
 # Incremental modernization roadmap
 
+## X64.12 gate prepared; first native execution remains reviewed (2026-10-12)
+
+Flushed bounded startup checkpoints, explicit AMD64 FP reset, isolated per-title
+user/dump paths, native EXE/PDB/assets/import preflight and an init-only stop are
+implemented and tested. ZH's diagnostic base-asset path is staged independently
+of the native registry view. Ordinary Win32 behavior and the DX8 factory remain.
+Both final native stages pass preflight; neither game was launched. Win32 CTest23,
+independent native CTest13 and supplemental regression/preservation checks pass.
+
+Exactly one next task: **developer-reviewed first native init-only validation for
+Generals and Zero Hour** using [X64_12_NATIVE_INIT_ONLY_GATE.md](X64_12_NATIVE_INIT_ONLY_GATE.md).
+No renderer port, gameplay/determinism claim or benchmark resumption is implied.
+Earlier next-step entries below are historical; graphical startup is still blocked.
+
+
 ## X64.11 audit completed; native graphical launch remains blocked (2026-10-12)
 
 Both title native links remain green; D3DX0/title and X64.10 resource references

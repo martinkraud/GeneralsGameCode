@@ -29,6 +29,7 @@
 #include "Common/AudioAffect.h"
 #include "Common/ArchiveFile.h"
 #include "Common/ArchiveFileSystem.h"
+#include "Common/StartupDiagnostics.h"
 #include "Common/file.h"
 #include "Common/GameAudio.h"
 #include "Common/GameMemory.h"
@@ -62,11 +63,25 @@ void Win32BIGFileSystem::init() {
 #if RTS_ZEROHOUR
     // load original Generals assets
     AsciiString installPath;
-    GetStringFromGeneralsRegistry("", "InstallPath", installPath );
+    if (StartupDiagnostics::enabled()) installPath = "ZH_Generals\\";
+    else GetStringFromGeneralsRegistry("", "InstallPath", installPath );
     //@todo this will need to be ramped up to a crash for release
     DEBUG_ASSERTCRASH(!installPath.isEmpty(), ("Be 1337! Go install Generals!"));
     if (!installPath.isEmpty())
-      loadBigFilesFromDirectory(installPath, "*.big");
+    {
+      if (StartupDiagnostics::enabled())
+      {
+        char resolved[MAX_PATH] = {};
+        GetFullPathNameA(installPath.str(), MAX_PATH, resolved, nullptr);
+        StartupDiagnostics::checkpoint("base_assets", "resolved", resolved);
+      }
+      const Bool loaded = loadBigFilesFromDirectory(installPath, "*.big");
+      if (StartupDiagnostics::enabled() && !loaded)
+      {
+        StartupDiagnostics::checkpoint("base_assets", "fail", installPath.str());
+        throw "Diagnostic Generals assets unavailable";
+      }
+    }
 #endif
 }
 

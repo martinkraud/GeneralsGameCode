@@ -27,6 +27,7 @@
 // Author: Michael S. Booth, April 2001
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #include "Common/FramePacer.h"
 #include "Common/GameEngine.h"
@@ -43,9 +44,16 @@ Int GameMain()
 	TheFramePacer = new FramePacer();
 	TheFramePacer->enableFramesPerSecondLimit(TRUE);
 	TheGameEngine = CreateGameEngine();
+	StartupDiagnostics::checkpoint("engine_init", "begin");
 	TheGameEngine->init();
+	StartupDiagnostics::checkpoint("engine_init", "complete", TheGlobalData->getPath_UserData().str());
 
-	if (!TheGlobalData->m_simulateReplays.empty())
+	if (StartupDiagnostics::enabled())
+	{
+		if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy()) exitcode = 1;
+		StartupDiagnostics::checkpoint("init_only", "complete", "execute/replay/simulation skipped");
+	}
+	else if (!TheGlobalData->m_simulateReplays.empty())
 	{
 		exitcode = ReplaySimulation::simulateReplays(TheGlobalData->m_simulateReplays, TheGlobalData->m_simulateReplayJobs);
 	}
@@ -56,10 +64,12 @@ Int GameMain()
 	}
 
 	// since execute() returned, we are exiting the game
+	StartupDiagnostics::checkpoint("engine_cleanup", "begin");
 	delete TheFramePacer;
 	TheFramePacer = nullptr;
 	delete TheGameEngine;
 	TheGameEngine = nullptr;
+	StartupDiagnostics::checkpoint("engine_cleanup", "complete");
 
 	return exitcode;
 }

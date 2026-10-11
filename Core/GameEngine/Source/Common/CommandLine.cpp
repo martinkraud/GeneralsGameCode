@@ -24,6 +24,7 @@
 
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/DeveloperHarness.h"
 
@@ -1489,6 +1490,7 @@ void createGlobalData()
 
 void CommandLine::parseCommandLineForStartup()
 {
+	if (!StartupDiagnostics::configure(__argc, __argv)) ExitProcess(87);
 	// We need the GlobalData initialized before parsing the command line.
 	// Note that this function is potentially called multiple times and only initializes the first time.
 	createGlobalData();
@@ -1500,6 +1502,7 @@ void CommandLine::parseCommandLineForStartup()
 	parseCommandLine(paramsForStartup, ARRAY_SIZE(paramsForStartup),
 		TheWritableGlobalData->m_commandLineData.m_parsedArguments);
 
+	if(StartupDiagnostics::enabled()) { parseHeadless(nullptr, 0); TheWritableGlobalData->m_shellMapOn=FALSE; }
 	if(DeveloperTools::quickGameEnabled()){parseSkipIntro(nullptr,0);TheWritableGlobalData->m_shellMapOn=FALSE;}
 
 	if (!rts::WorkingDirectory::hasSetWorkingDirectory())
@@ -1520,6 +1523,7 @@ void CommandLine::parseCommandLineForEngineInit()
 		TheWritableGlobalData->m_commandLineData.m_parsedArguments);
     // GlobalData INI loading follows startup parsing; honor the opt-in request
     // after that load without changing defaults or persistent configuration.
+    if(StartupDiagnostics::enabled()) { parseHeadless(nullptr, 0); TheWritableGlobalData->m_shellMapOn=FALSE; }
     if(skipStartupIntro)parseSkipIntro(nullptr,0);
     if(DeveloperTools::quickGameEnabled())TheWritableGlobalData->m_shellMapOn=FALSE;
 }

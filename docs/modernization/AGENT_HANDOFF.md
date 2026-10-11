@@ -1,5 +1,59 @@
 # Agent handoff
 
+## X64.12 native init-only gate implemented (2026-10-12)
+
+Accepted baseline: `4a36a0cd2c2e3b2bc7fa6e579dd206aeaa7619d3`.
+Current checkpoint implements the X64.11 preparation gate; earlier next-task
+entries below are historical. See [X64_12_NATIVE_INIT_ONLY_GATE.md](X64_12_NATIVE_INIT_ONLY_GATE.md)
+for the exact guarded PowerShell procedure. Neither title has been launched.
+
+The sole diagnostic argv is `-headless -nativeInitOnly <absolute-run-directory>`.
+Strict grammar excludes all scenario/replay/map/benchmark flags and refuses the
+native option on Win32. Configuration occurs before GlobalData/static-startup
+parsing, independently of engine allocation/logging. CREATE_NEW startup.log uses
+bounded buffers,2048 records and WriteFile/FlushFileBuffers at each checkpoint;
+write/capacity failures fail the result. Stages include WinMain/module/CWD/memory,
+subsystems and nested GameClient init, actual dump path/status, initial reset,
+FP, init-only stop and teardown. Typed/WinMain catches are logged; diagnostic
+init errors cannot be silently accepted. Existing SEH/MiniDumper remains enabled.
+
+Both titles use isolated run/userdata/ and CrashDumps before their first path
+access/write. Ordinary Win32/default INI/registry paths are preserved. ZH's
+Win32BIGFileSystem also uses staged ZH_Generals base archives only for this gate;
+ordinary registry lookup, archive precedence and overwrite policy are unchanged.
+The launcher receipts/verifies actual module, CWD, user-data, dump and ZH base path.
+Default native Documents/registry behavior is not validated by this isolated run.
+
+Both AMD64 setFPMode implementations use the shared supported nearest/masked/
+gradual-underflow helper (no FTZ/DAZ, no unsupported precision request). Exact
+Win32 body, restoration boundaries, compiler flags and X64.10 resource numerical
+contracts remain. FP tests now call that production helper. Determinism/replay/
+lockstep/save compatibility is not established by FP registers or init-only tests.
+
+Native dual-title scripts are separate from the x86 ZH workflow. They verify
+8664/PE32+, PDB GUID+age/hash, title/base assets, full staged inventory and native
+startup imports; reject app-local DLL overlays and changed artifacts. Final real
+stages: build/dev-runtimes/native/{Generals,ZeroHour}/x64-12-final. Both preflights
+pass. Earlier x64-12-init-only stages are preliminary evidence, not final candidates.
+The guarded launcher requires -RunReviewedInitOnly, starts one hidden child,
+bounds it to120seconds, records launch/exit/log paths and never reruns or starts
+another title automatically. It exits after init and normal cleanup before
+execute/replay/simulation. First actual execution remains separately reviewed.
+
+Validation PASS: full Win32 Release/CTest23, direct149/title (six disabled),
+focused75/title, producer5/render2D15; native title links and independent CTest13;
+FP4 and gate3 tests/architecture, source contracts7, PS guards6/parse5, Python28/16,
+resource streams/corpora preservation,391 prior evidence/runtime files plus A.2
+hashes and whitespace. Native D3D8 device tests skip3 remains. Generated artifacts
+ignored; this checkpoint is one intended source/test/script/doc commit pushed only
+to origin/dev/modern-engine. No renderer switch, benchmark resumption or game run.
+
+Exactly one next task: **developer-reviewed first native init-only validation for
+Generals and Zero Hour**, using the report procedure and analyzing the first
+failure before any rerun/further execution. Graphical DX8 remains blocked; D3D11
+is still an independent UI slice, not a game renderer.
+
+
 ## X64.11 native pre-launch audit complete (2026-10-12)
 
 Baseline: `09b2983af689043845a447e7084a15bd5684e747`. This audit changes only

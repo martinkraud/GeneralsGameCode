@@ -1,5 +1,16 @@
 # Renderer and display architecture
 
+## X64.12 headless diagnostic preparation (2026-10-12)
+
+The DX8 factory/device route remains unchanged. The new strict native init-only
+gate uses existing headless skips, logs subsystem initialization and exits before
+execute/replay/simulation. Native stages contain no x86 renderer/media overlays.
+Both preflight successfully; neither title has run. Graphical native D3D8 remains
+unavailable and the D3D11 UI slice is not selected. Exactly one next task is the
+developer-reviewed first dual-title native init-only validation described in
+[X64_12_NATIVE_INIT_ONLY_GATE.md](X64_12_NATIVE_INIT_ONLY_GATE.md).
+
+
 ## X64.11 native startup route (2026-10-12)
 
 Both AMD64 titles now link with no external D3DX helpers, but graphical startup

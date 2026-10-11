@@ -1,5 +1,18 @@
 # Stage 1: development runtime laboratory
 
+## X64.12 native diagnostic workflow available (2026-10-12)
+
+The Win32 ZH workflow below is unchanged. Separate scripts/native-runtime tooling
+now stages/verifies AMD64 Generals and ZH assets/EXE/PDB/imports and prepares an
+isolated user-data/dump directory for a strictly headless init-only child. Both
+final stages preflight; no title has been launched. Do not bypass the old x86 guard
+or copy old app-local DLLs into native stages. Preparation and the separately
+reviewed one-child launch procedure are in
+[X64_12_NATIVE_INIT_ONLY_GATE.md](X64_12_NATIVE_INIT_ONLY_GATE.md).
+Exactly one next task: developer-reviewed first native init-only validation for
+both titles; no automatic reruns or graphical launch.
+
+
 ## Native startup audit clarification (X64.11, 2026-10-12)
 
 The workflow below remains the accepted **Win32 Zero Hour** workflow. It explicitly
