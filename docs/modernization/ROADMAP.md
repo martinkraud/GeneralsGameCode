@@ -1,5 +1,28 @@
 # Incremental modernization roadmap
 
+## D3D11.2 ordinary UI file content (2026-10-11)
+
+Bounded raw/RLE 24/32-bit TGA and DXT1/3/5 DDS top-mip content now feeds
+immutable D3D11 residency and normal-alpha Render2D. Reference 16/32-bit
+selection and DEFAULT/repeat sampler intent are explicit. Real WARP tests
+and installed SAUserInterface512_001.tga draw/readback pass on x86/AMD64.
+DX8 remains the default; the real FileFactory/TextureClass bridge is compiled,
+not game-validated. Nonzero HSV, rescaling and native missing fallback remain
+explicit restrictions, alongside all unmigrated renderer features.
+Full Win32 Release/CTest7 passes; native independent CTest5 passes. Full native
+and title link probes retain exactly 30 tool errors and 17 D3DX helper names.
+See [D3D11_2_FILE_UI_TEXTURES.md](D3D11_2_FILE_UI_TEXTURES.md) for actual loader
+policy, proof, inventory, unsupported cases and validation evidence.
+
+**Next proposed task: X64.4 - remove the eight external D3DX math helper
+dependencies through a tested native CPU boundary.** Live Bezier/W3D callers
+and native links support returning to x64 now; another UI slice would not
+remove these failures. Preserve operation/FP ordering, aliasing and DX8 behavior;
+first playable native linkage still has resource/shader/tool gates. No X64.4
+work was started. No game was launched; captures/ETL/runtime evidence remain
+preserved. Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED. Older
+checkpoints below are historical and superseded.
+
 ## D3D11.1 real sentence Render2D foundation (2026-10-11)
 
 Implemented the bounded native backend behind IRenderBackend with private

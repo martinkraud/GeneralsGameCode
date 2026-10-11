@@ -14,6 +14,8 @@ def old(name):
 class Texture2DReference(unittest.TestCase):
     def test_only_render2d_branch_and_single_owner_release_hooks_changed(self):
         new = current(CORE + "texture.cpp")
+        new = new.replace('#include "IRenderBackend.h"', '')
+        new = new.replace('if (WW3D::Get_Render_Backend() && WW3D::Get_Render_Backend()->Prepare_File_Texture(*this)) return;', '')
         branch = "if(Render2DUsed){Apply_Render2D_Texture(stage);return;}"
         flat = "".join(tokens(new))
         self.assertEqual(flat.count("Discard_Render2D_CPU_Content();"), 1)

@@ -72,3 +72,15 @@ target_include_directories(d3d11_sentence_test PRIVATE
 target_compile_definitions(d3d11_sentence_test PRIVATE DISABLE_GAMEMEMORY)
 target_link_libraries(d3d11_sentence_test PRIVATE w3d_d3d11 GTest::gtest_main user32 gdi32)
 add_test(NAME d3d11_sentence_test COMMAND d3d11_sentence_test)
+
+add_executable(d3d11_ui_test
+    ../Core/Libraries/D3D11UITextureTest.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/UITextureContent.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp
+)
+target_include_directories(d3d11_ui_test PRIVATE ${PROJECT_SOURCE_DIR}/GeneralsMD/Code/Libraries/Source/WWVegas)
+target_compile_definitions(d3d11_ui_test PRIVATE DISABLE_GAMEMEMORY
+    D3D11_UI_ASSET="${PROJECT_SOURCE_DIR}/Core/Tools/W3DView/Res/grab.tga")
+target_link_libraries(d3d11_ui_test PRIVATE w3d_d3d11 GTest::gtest_main)
+add_test(NAME d3d11_ui_test COMMAND d3d11_ui_test)

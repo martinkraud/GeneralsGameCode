@@ -26,7 +26,7 @@ void TextureClass::Apply_Render2D_Texture(unsigned stage)
 TextureClass::TextureClass(const Texture2DCPUContent &content)
     : TextureBaseClass(content.Describe().width, content.Describe().height,
                        MIP_LEVELS_1, POOL_MANAGED, false, false),
-      TextureFormat(WW3D_FORMAT_A4R4G4B4), Filter(MIP_LEVELS_1)
+      TextureFormat(content.Describe().format), Filter(MIP_LEVELS_1)
 {
     Initialized = true;
     IsProcedural = true;
@@ -42,4 +42,16 @@ void TextureClass::Discard_Render2D_CPU_Content()
 {
     if (Render2DCPUContent) Render2DCPUContent->Release_Ref();
     Render2DCPUContent = nullptr;
+}
+
+void TextureClass::Install_Render2D_File_Content(const Texture2DCPUContent &content)
+{
+    auto *snapshot = content.Snapshot();
+    Release_D3D_Storage();
+    Discard_Render2D_CPU_Content();
+    Render2DCPUContent = snapshot;
+    const auto d = content.Describe();
+    Width = d.width; Height = d.height; TextureFormat = d.format;
+    Initialized = true; Render2DUsed = true;
+    LastAccessed = WW3D::Get_Sync_Time();
 }

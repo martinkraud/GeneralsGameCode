@@ -13,6 +13,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <map>
 
 using Microsoft::WRL::ComPtr;
 namespace {
@@ -39,11 +40,15 @@ ShaderClass SentenceShader()
     shader.Set_Texturing(ShaderClass::TEXTURING_ENABLE);
     return shader;
 }
-void ValidateSampler(const Texture2DSampler &s)
+bool ValidateSampler(const Texture2DSampler &s)
 {
     const auto expected = SentenceSampler();
-    if (s.min != expected.min || s.mag != expected.mag || s.mip != expected.mip ||
-        s.u != expected.u || s.v != expected.v) Unsupported();
+    if (s.min == expected.min && s.mag == expected.mag && s.mip == expected.mip &&
+        s.u == expected.u && s.v == expected.v) return false;
+    using F = TextureFilterClass;
+    if (s.min == F::FILTER_TYPE_DEFAULT && s.mag == F::FILTER_TYPE_DEFAULT && s.mip == F::FILTER_TYPE_NONE &&
+        s.u == F::TEXTURE_ADDRESS_REPEAT && s.v == F::TEXTURE_ADDRESS_REPEAT) return true;
+    Unsupported();
 }
 class Residency final : public Texture2DResidency {
 public:
@@ -95,6 +100,8 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11DepthStencilState> depth;
     ComPtr<ID3D11RasterizerState> raster;
     ComPtr<ID3D11SamplerState> sampler;
+    std::map<unsigned, ComPtr<ID3D11SamplerState>> uiSamplers;
+    ComPtr<ID3D11SamplerState> boundSampler;
     ComPtr<ID3D11Buffer> vertices, indices, placement;
     ComPtr<ID3D11ShaderResourceView> white, bound;
     unsigned vertexCapacity = 0, indexCapacity = 0;
@@ -133,6 +140,7 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
 {
     if (!config.width || !config.height || config.width > 16384 || config.height > 16384) Unsupported();
     impl->config = config; impl->bridge = bridge;
+    Set_UI_Filter_Policy(config.ui_filter, config.ui_anisotropy);
     const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0};
     const auto driver = config.software ? D3D_DRIVER_TYPE_WARP : D3D_DRIVER_TYPE_HARDWARE;
     DXGI_SWAP_CHAIN_DESC swap{};
@@ -200,11 +208,44 @@ Texture2DResidency *D3D11Backend::Create_Content_Residency(const Texture2DCPUCon
 {
     auto result = std::make_unique<Residency>();
     result->device = impl->device; result->description = content.Describe();
-    const auto pixels = Convert_Sentence_RGBA8(content);
+    const auto format = result->description.format;
+    std::vector<unsigned char> pixels;
+    DXGI_FORMAT native = DXGI_FORMAT_R8G8B8A8_UNORM;
+    unsigned pitch = result->description.width * 4;
+    const void *source = nullptr;
+    if (format == WW3D_FORMAT_A4R4G4B4) {
+        pixels = Convert_Sentence_RGBA8(content); source = pixels.data();
+    } else if (format == WW3D_FORMAT_R5G6B5) {
+        pixels.resize(size_t(result->description.width) * result->description.height * 4);
+        for (unsigned y = 0; y < result->description.height; ++y) for (unsigned x = 0; x < result->description.width; ++x) {
+            unsigned short value; std::memcpy(&value, content.Pixels() + size_t(y) * content.Row_Pitch() + x * 2, 2);
+            auto *p = pixels.data() + size_t(y) * pitch + x * 4;
+            p[0] = (((value >> 11) & 31) * 255 + 15) / 31;
+            p[1] = (((value >> 5) & 63) * 255 + 31) / 63;
+            p[2] = ((value & 31) * 255 + 15) / 31; p[3] = 255;
+        }
+        source = pixels.data();
+    } else if (format == WW3D_FORMAT_A8R8G8B8 || format == WW3D_FORMAT_X8R8G8B8) {
+        pixels.resize(size_t(result->description.width) * result->description.height * 4);
+        for (unsigned y = 0; y < result->description.height; ++y) for (unsigned x = 0; x < result->description.width; ++x) {
+            const auto *s = content.Pixels() + size_t(y) * content.Row_Pitch() + x * 4;
+            auto *p = pixels.data() + size_t(y) * pitch + x * 4;
+            p[0] = s[2]; p[1] = s[1]; p[2] = s[0]; p[3] = format == WW3D_FORMAT_A8R8G8B8 ? s[3] : 255;
+        }
+        source = pixels.data();
+    } else {
+        switch (format) {
+        case WW3D_FORMAT_DXT1: native = DXGI_FORMAT_BC1_UNORM; break;
+        case WW3D_FORMAT_DXT3: native = DXGI_FORMAT_BC2_UNORM; break;
+        case WW3D_FORMAT_DXT5: native = DXGI_FORMAT_BC3_UNORM; break;
+        default: Unsupported();
+        }
+        pitch = content.Row_Pitch(); source = content.Pixels();
+    }
     D3D11_TEXTURE2D_DESC d{}; d.Width = result->description.width; d.Height = result->description.height;
-    d.ArraySize = d.MipLevels = 1; d.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    d.ArraySize = d.MipLevels = 1; d.Format = native;
     d.SampleDesc.Count = 1; d.Usage = D3D11_USAGE_IMMUTABLE; d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    D3D11_SUBRESOURCE_DATA data{pixels.data(), d.Width * 4, 0};
+    D3D11_SUBRESOURCE_DATA data{source, pitch, 0};
     Check(impl->device->CreateTexture2D(&d, &data, &result->texture), "Upload sentence texture");
     Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create sentence SRV");
     ++impl->textures;
@@ -212,7 +253,26 @@ Texture2DResidency *D3D11Backend::Create_Content_Residency(const Texture2DCPUCon
 }
 void D3D11Backend::Bind_Content(Texture2DResidency *content, const Texture2DSampler &sampler)
 {
-    ValidateSampler(sampler);
+    const bool ui = ValidateSampler(sampler);
+    impl->boundSampler = impl->sampler;
+    if (ui) {
+        const unsigned key = unsigned(impl->config.ui_filter) * 32 + impl->config.ui_anisotropy;
+        auto &cached = impl->uiSamplers[key];
+        if (!cached) {
+            D3D11_SAMPLER_DESC s{};
+            s.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+            if (impl->config.ui_filter == TextureFilterClass::TEXTURE_FILTER_BILINEAR ||
+                impl->config.ui_filter == TextureFilterClass::TEXTURE_FILTER_TRILINEAR)
+                s.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+            if (impl->config.ui_filter == TextureFilterClass::TEXTURE_FILTER_ANISOTROPIC)
+                s.Filter = D3D11_FILTER_ANISOTROPIC;
+            s.AddressU = s.AddressV = s.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+            s.ComparisonFunc = D3D11_COMPARISON_NEVER; s.MinLOD = s.MaxLOD = 0;
+            s.MaxAnisotropy = impl->config.ui_anisotropy;
+            Check(impl->device->CreateSamplerState(&s, &cached), "Create UI sampler");
+        }
+        impl->boundSampler = cached;
+    }
     if (!content) { impl->bound.Reset(); return; }
     auto *resource = dynamic_cast<Residency *>(content);
     if (!resource || resource->device.Get() != impl->device.Get()) Unsupported();
@@ -254,7 +314,7 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     impl->context->UpdateSubresource(impl->placement.Get(), 0, nullptr, correction, 0, 0);
     const unsigned stride = sizeof(Vertex), offset = 0;
     auto *vb = impl->vertices.Get(); auto *cb = impl->placement.Get(); auto *rtv = impl->rtv.Get();
-    auto *srv = impl->bound ? impl->bound.Get() : impl->white.Get(); auto *sampler = impl->sampler.Get();
+    auto *srv = impl->bound ? impl->bound.Get() : impl->white.Get(); auto *sampler = impl->boundSampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, nullptr);
     impl->context->OMSetBlendState(impl->blend.Get(), nullptr, 0xffffffff);
     impl->context->OMSetDepthStencilState(impl->depth.Get(), 0);
@@ -326,3 +386,11 @@ Texture2DResidency *D3D11Backend::Create_Render2D_Residency(TextureClass &textur
 { if (!impl->bridge.create) Unsupported(); return impl->bridge.create(*this, texture); }
 void D3D11Backend::Apply_Render2D_Texture(TextureClass &texture, unsigned stage)
 { if (!impl->bridge.apply) Unsupported(); impl->bridge.apply(*this, texture, stage); }
+bool D3D11Backend::Prepare_File_Texture(TextureClass &texture)
+{ if (!impl->bridge.prepare) Unsupported(); return impl->bridge.prepare(*this, texture); }
+void D3D11Backend::Set_UI_Filter_Policy(TextureFilterClass::TextureFilterMode filter, unsigned anisotropy)
+{
+    if (filter < TextureFilterClass::TEXTURE_FILTER_NONE || filter >= TextureFilterClass::TEXTURE_FILTER_COUNT ||
+        (anisotropy != 1 && anisotropy != 2 && anisotropy != 4 && anisotropy != 8 && anisotropy != 16)) Unsupported();
+    impl->config.ui_filter = filter; impl->config.ui_anisotropy = anisotropy;
+}

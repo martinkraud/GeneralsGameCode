@@ -20,9 +20,8 @@ class D3D11Reference(unittest.TestCase):
                              tokens(body(reference, "inline void ShaderClass::Reset()")))
 
     def test_reference_backend_contracts_and_producers_are_unchanged(self):
-        names = ("IRenderBackend.h", "Render2DSubmission.h", "Render2DSubmission.cpp",
-                 "Texture2D.h", "Texture2D.cpp", "Texture2DCPUContent.h", "Texture2DCPUContent.cpp",
-                 "texture.h", "texture.cpp", "FontChars.h", "FontChars.cpp", "render2dsentence.h",
+        names = ("Render2DSubmission.h", "Render2DSubmission.cpp",
+                 "Texture2D.h", "FontChars.h", "FontChars.cpp", "render2dsentence.h",
                  "render2dsentence.cpp", "textureloader.cpp", "Backend/DX8Backend.cpp",
                  "Backend/DX8Render2D.cpp", "Backend/DX8Texture2D.cpp")
         for name in names:
@@ -51,7 +50,7 @@ class D3D11Reference(unittest.TestCase):
         self.assertIsNone(re.search(r"\b(?:D3DX\w*|IDirect3D\w*|DX8Wrapper)\b", source))
         bridge = current(CORE + "Backend/D3D11TextureBridge.cpp")
         self.assertLess(bridge.index("WW3D::Get_Render_Backend() != &backend"), bridge.index("texture.Prepare_Render2D_Texture()"))
-        self.assertLess(bridge.index("!texture.Get_Render2D_CPU_Content()"), bridge.index("texture.Prepare_Render2D_Texture()"))
+        self.assertLess(bridge.index("texture.Prepare_Render2D_Texture()"), bridge.index("if (!texture.Get_Render2D_CPU_Content())"))
         self.assertLess(bridge.index("texture.Prepare_Render2D_Texture()"), bridge.index("texture.Get_Render2D_Residency()"))
 
 

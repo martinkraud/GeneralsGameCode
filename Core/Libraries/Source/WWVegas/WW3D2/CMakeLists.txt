@@ -20,6 +20,7 @@ set(WW3D2_SRC
     Backend/D3D11TextureBridge.cpp
     Texture2D.cpp
     Texture2DCPUContent.cpp
+    UITextureContent.cpp
     FontChars.cpp
     Texture2D.h
     Backend/RenderBackend.h

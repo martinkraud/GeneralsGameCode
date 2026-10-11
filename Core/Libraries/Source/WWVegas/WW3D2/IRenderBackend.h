@@ -73,5 +73,8 @@ public:
     virtual void Submit_Render2D(const Render2DSubmission & submission) = 0;
     virtual Texture2DResidency *Create_Render2D_Residency(TextureClass &texture) = 0;
     virtual void Apply_Render2D_Texture(TextureClass &texture, unsigned stage) = 0;
+    // A backend may provide CPU file content before legacy Init allocates GPU
+    // storage. False retains the complete reference loader (the DX8 default).
+    virtual bool Prepare_File_Texture(TextureClass &) { return false; }
     virtual void Copy_Render2D_Surface(SurfaceClass &source, SurfaceClass &destination) = 0;
 };

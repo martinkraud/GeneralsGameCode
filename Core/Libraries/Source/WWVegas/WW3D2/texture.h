@@ -280,6 +280,7 @@ public:
 	~TextureClass() override;
 	const Texture2DCPUContent *Get_Render2D_CPU_Content() const { return Render2DCPUContent; }
 	void Discard_Render2D_CPU_Content();
+	void Install_Render2D_File_Content(const Texture2DCPUContent &content);
 	void Set_D3D_Base_Texture(IDirect3DBaseTexture8 *tex) override
 	{ Discard_Render2D_CPU_Content(); TextureBaseClass::Set_D3D_Base_Texture(tex); }
 

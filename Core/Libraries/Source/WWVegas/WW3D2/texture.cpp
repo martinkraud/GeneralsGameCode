@@ -40,6 +40,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "texture.h"
+#include "IRenderBackend.h"
 
 #include <d3d8.h>
 #include <d3dx8core.h>
@@ -836,6 +837,7 @@ void TextureClass::Init()
 {
 	// If the texture has already been initialised we should exit now
 	if (Initialized) return;
+	if (WW3D::Get_Render_Backend() && WW3D::Get_Render_Backend()->Prepare_File_Texture(*this)) return;
 
 	WWPROFILE("TextureClass::Init");
 

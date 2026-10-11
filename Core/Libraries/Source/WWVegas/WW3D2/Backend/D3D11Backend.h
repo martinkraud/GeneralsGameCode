@@ -15,6 +15,8 @@ public:
         void *window = nullptr; // null selects a bounded offscreen target
         unsigned width = 128, height = 96;
         bool software = false; // explicit WARP selection for automated validation
+        TextureFilterClass::TextureFilterMode ui_filter = TextureFilterClass::TEXTURE_FILTER_BILINEAR;
+        unsigned ui_anisotropy = 2;
     };
     // The engine bridge accesses real TextureClass ownership. Keeping it in a
     // separate TU lets the real-device probe use neutral CPU content without
@@ -22,6 +24,7 @@ public:
     struct TextureBridge {
         Texture2DResidency *(*create)(D3D11Backend &, TextureClass &) = nullptr;
         void (*apply)(D3D11Backend &, TextureClass &, unsigned) = nullptr;
+        bool (*prepare)(D3D11Backend &, TextureClass &) = nullptr;
     };
     static std::unique_ptr<D3D11Backend> Create(const Configuration &, TextureBridge);
     static std::unique_ptr<D3D11Backend> Create(const Configuration &config)
@@ -42,6 +45,7 @@ public:
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;
     unsigned Feature_Level() const;
+    void Set_UI_Filter_Policy(TextureFilterClass::TextureFilterMode, unsigned anisotropy);
 
     void Set_Gamma(float, float, float, bool, bool) override;
     void Begin_Scene() override;
@@ -55,6 +59,7 @@ public:
     void Submit_Render2D(const Render2DSubmission &) override;
     Texture2DResidency *Create_Render2D_Residency(TextureClass &) override;
     void Apply_Render2D_Texture(TextureClass &, unsigned) override;
+    bool Prepare_File_Texture(TextureClass &) override;
     void Copy_Render2D_Surface(SurfaceClass &, SurfaceClass &) override;
 private:
     struct Impl;
