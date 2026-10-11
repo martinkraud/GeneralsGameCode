@@ -44,6 +44,7 @@ public:
 
     virtual void Set_Ambient(const Vector3 & color) override;
     virtual void Set_Light_Environment(LightEnvironmentClass * light_env) override;
+    virtual void Submit_Render2D(const Render2DSubmission & submission) override;
 
 private:
     explicit DX8Backend(bool lite);

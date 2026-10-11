@@ -16,6 +16,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/GroundTranslationBenchmark.cpp
     GameEngine/Common/OptionPreferencesTest.cpp
     Libraries/Compression/CompressionManagerTest.cpp
+    Libraries/Render2DSubmissionTest.cpp
 )
 
 add_library(corei_googletest INTERFACE)

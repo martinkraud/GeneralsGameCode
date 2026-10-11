@@ -15,6 +15,7 @@ set(WW3D2_SRC
     assetstatus.h
     Backend/DX8Backend.cpp
     Backend/DX8Backend.h
+    Backend/DX8Render2D.cpp
     Backend/RenderBackend.h
     bitmaphandler.cpp
     bitmaphandler.h
@@ -94,6 +95,10 @@ set(WW3D2_SRC
     #htreemgr.cpp
     #htreemgr.h
     IRenderBackend.h
+    Render2DSubmission.h
+    Render2DSubmission.cpp
+    vertexbuffer.h
+    indexbuffer.h
     intersec.cpp
     intersec.h
     intersec.inl

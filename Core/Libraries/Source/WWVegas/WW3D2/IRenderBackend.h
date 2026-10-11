@@ -27,6 +27,7 @@
 
 class LightEnvironmentClass;
 class Vector3;
+struct Render2DSubmission;
 
 struct RenderBackendViewport
 {
@@ -43,9 +44,8 @@ struct RenderBackendViewport
 // DX8Wrapper API stays reachable through DX8Wrapper's static methods until a
 // caller migrates, at which point the method it needs moves here.
 //
-// Method names intentionally match the existing DX8Wrapper names so migrating a
-// caller is a mechanical DX8Wrapper::X(...) -> Get_Render_Backend()->X(...)
-// rewrite.
+// Scene methods retain wrapper names. Render2D is a synchronous W3D submission
+// packet instead of a public copy of the low-level graphics API.
 
 class IRenderBackend
 {
@@ -65,4 +65,7 @@ public:
 
     virtual void Set_Ambient(const Vector3 & color) = 0;
     virtual void Set_Light_Environment(LightEnvironmentClass * light_env) = 0;
+
+    // Synchronous W3D geometry/state submission; retains no borrowed arrays.
+    virtual void Submit_Render2D(const Render2DSubmission & submission) = 0;
 };

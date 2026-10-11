@@ -22,3 +22,20 @@ if(WIN32)
     )
     add_test(NAME windows_diagnostics_test COMMAND windows_diagnostics_test)
 endif()
+
+# Actual neutral upload/submission sources, with no legacy_dx8_dependencies,
+# core_wwcommon, title PCH, or SDK include directory. Also works before native
+# game links; this does not replace the full game/tool build.
+add_executable(render2d_submission_test
+    ../Core/Libraries/Render2DSubmissionTest.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp
+)
+target_include_directories(render2d_submission_test PRIVATE
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Include
+    ${PROJECT_SOURCE_DIR}/GeneralsMD/Code/Libraries/Source/WWVegas
+)
+target_compile_definitions(render2d_submission_test PRIVATE DISABLE_GAMEMEMORY)
+target_link_libraries(render2d_submission_test PRIVATE deps_utility GTest::gtest_main)
+add_test(NAME render2d_submission_test COMMAND render2d_submission_test)

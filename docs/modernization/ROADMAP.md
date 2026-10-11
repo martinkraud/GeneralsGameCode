@@ -1,5 +1,24 @@
 # Incremental modernization roadmap
 
+## RendererBoundary.1 Render2D submission (2026-10-11)
+
+Both titles now submit Render2D geometry/state through IRenderBackend, with the
+original DX8 dynamic buffers, locks, material, shader, grayscale and draw path
+retained in the reference adapter. Generic buffer declarations have been moved
+out of concrete DX8 headers; other renderer callers are unchanged.
+
+See [RENDERER_BOUNDARY_1_RENDER2D.md](RENDERER_BOUNDARY_1_RENDER2D.md) for exact
+contracts, ownership/order, reference tests, SDK-free compilation and validation.
+No visual equivalence or playable Win64 claim is made; no game was launched.
+**Next proposed task: RendererBoundary.2 - the existing Render2D Texture2D
+residency/upload and sampler seam.** Texture identity is neutral, but its loader,
+content updates and filter application still require DX8. Complete that one
+bounded prerequisite before D3D11.1 device/swap-chain + clear/present + minimal
+textured Render2D work. Do not begin D3D11 or unrelated x64 fixes automatically.
+Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED.
+
+The following X64.3 checkpoint is historical; this next-step state supersedes it.
+
 ## X64.3 DX8 declarations and renderer boundary (2026-10-11)
 
 X64.3 separates the original pinned SDK declarations from I386 linkage.
