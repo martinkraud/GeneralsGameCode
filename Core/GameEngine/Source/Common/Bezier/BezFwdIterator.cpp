@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"
+#include "WWMath/LegacyD3DXMath.h"
 #include "Common/BezFwdIterator.h"
 
 //-------------------------------------------------------------------------------------------------
@@ -62,9 +63,9 @@ void BezFwdIterator::start()
 	D3DXVECTOR4 pz(mBezSeg.m_controlPoints[0].z, mBezSeg.m_controlPoints[1].z, mBezSeg.m_controlPoints[2].z, mBezSeg.m_controlPoints[3].z);
 
 	D3DXVECTOR4 cVec[3];
-	D3DXVec4Transform(&cVec[0], &px, &BezierSegment::s_bezBasisMatrix);
-	D3DXVec4Transform(&cVec[1], &py, &BezierSegment::s_bezBasisMatrix);
-	D3DXVec4Transform(&cVec[2], &pz, &BezierSegment::s_bezBasisMatrix);
+	LegacyD3DX::Vec4Transform(&cVec[0], &px, &BezierSegment::s_bezBasisMatrix);
+	LegacyD3DX::Vec4Transform(&cVec[1], &py, &BezierSegment::s_bezBasisMatrix);
+	LegacyD3DX::Vec4Transform(&cVec[2], &pz, &BezierSegment::s_bezBasisMatrix);
 
 	mCurrPoint = mBezSeg.m_controlPoints[0];
 

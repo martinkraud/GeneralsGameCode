@@ -83,6 +83,18 @@ set(WWMATH_SRC
 add_library(core_wwmath STATIC)
 set_target_properties(core_wwmath PROPERTIES OUTPUT_NAME wwmath)
 
+# CPU-only D3DX compatibility. Headers provide existing layouts, never the
+# legacy x86 binary. Keep arithmetic scalar and separately compiled from PCH.
+add_library(legacy_d3dx_math STATIC LegacyD3DXMath.cpp LegacyD3DXMath.h)
+target_link_libraries(legacy_d3dx_math PUBLIC dx8_headers)
+target_include_directories(legacy_d3dx_math PUBLIC ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+if(MSVC)
+    target_compile_options(legacy_d3dx_math PRIVATE /fp:strict /Od)
+else()
+    target_compile_options(legacy_d3dx_math PRIVATE -fno-fast-math -ffp-contract=off -fno-tree-vectorize)
+endif()
+target_link_libraries(core_wwmath PUBLIC legacy_d3dx_math)
+
 target_sources(core_wwmath PRIVATE ${WWMATH_SRC})
 
 target_link_libraries(core_wwmath PRIVATE

@@ -71,6 +71,7 @@
  *   PointGroupClass::Peek_Texture -- Peeks texture                        *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #include "pointgr.h"
+#include "WWMath/LegacyD3DXMath.h"
 #include "vertmaterial.h"
 #include "ww3d.h"
 #include "WWMath/aabox.h"
@@ -1228,7 +1229,7 @@ void PointGroupClass::Update_Arrays(
 					if (!Billboard) {
 						// If we're not billboarding, then the coordinate we have is in screen space.
 						Matrix4x4 rotMat;
-						D3DXMatrixRotationZ(&(D3DXMATRIX&) rotMat, ((float)point_orientation[i] / 255.0f * 2 * D3DX_PI));
+						LegacyD3DX::MatrixRotationZ(&(D3DXMATRIX&) rotMat, ((float)point_orientation[i] / 255.0f * 2 * D3DX_PI));
 
 						Vector4 orientedVecX = rotMat * GroundMultiplierX;
 						Vector4 orientedVecY = rotMat * GroundMultiplierY;

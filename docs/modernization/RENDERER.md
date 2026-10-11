@@ -7,11 +7,10 @@ normal-alpha Render2D execution. Real WARP tests and an installed retail UI
 atlas proof pass on x86/AMD64; DX8 remains the game default. Nonzero HSV,
 rescaling, native missing fallback and broader renderer features reject.
 The FileFactory/TextureClass bridge compiles but is not game-validated.
-Full Win32 Release passes; native tool/D3DX blocker multisets remain unchanged.
-Next proposed task: X64.4 remove the eight external D3DX math helper
-dependencies with reference/FP/aliasing tests. No next task was started and no game was launched;
-whole-game D3D11 and playable Win64 remain unproven. Older findings below are
-historical context.
+D3D11 implementation and default selection are unchanged by X64.4. Current
+native math/link evidence and the proposed next task are recorded in
+[X64_4_D3DX_MATH.md](X64_4_D3DX_MATH.md). Whole-game D3D11 and playable Win64
+remain unproven. Older findings below are historical context.
 
 Scope: revision `adac468d7`, investigated 2026-10-07. No renderer replacement,
 display-mode change or game launch was performed.

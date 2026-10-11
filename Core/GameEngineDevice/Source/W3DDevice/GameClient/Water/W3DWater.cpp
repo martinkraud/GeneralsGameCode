@@ -33,6 +33,7 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 
 #include "W3DDevice/GameClient/W3DWater.h"
+#include "WWMath/LegacyD3DXMath.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/W3DShroud.h"
 #include "W3DDevice/GameClient/W3DWaterTracks.h"
@@ -258,12 +259,12 @@ void WaterRenderObjClass::setupJbaWaterShader()
 		DX8Wrapper::_Get_DX8_Transform(D3DTS_VIEW, curView);
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 		D3DXMATRIX scale;
-		D3DXMatrixScaling(&scale, NOISE_REPEAT_FACTOR, NOISE_REPEAT_FACTOR,1);
-		D3DXMATRIX destMatrix = inv * scale;
-		D3DXMatrixTranslation(&scale, m_riverVOrigin, m_riverVOrigin,0);
-		destMatrix = destMatrix*scale;
+		LegacyD3DX::MatrixScaling(&scale, NOISE_REPEAT_FACTOR, NOISE_REPEAT_FACTOR,1);
+		D3DXMATRIX destMatrix = LegacyD3DX::Multiply(inv, scale);
+		LegacyD3DX::MatrixTranslation(&scale, m_riverVOrigin, m_riverVOrigin,0);
+		destMatrix = LegacyD3DX::Multiply(destMatrix, scale);
 		DX8Wrapper::_Set_DX8_Transform(D3DTS_TEXTURE2, destMatrix);
 
 	}
@@ -1630,7 +1631,7 @@ void WaterRenderObjClass::Render(RenderInfoClass & rinfo)
 				//get inverse of view matrix(= view to world matrix)
 				D3DXMATRIX inv;
 				Real det;
-				D3DXMatrixInverse(&inv, &det, &curView);
+				LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 				//create clipping matrix by inserting our plane equation into the 1st column
 				D3DXMATRIX clipMatrix;
@@ -1639,7 +1640,7 @@ void WaterRenderObjClass::Render(RenderInfoClass & rinfo)
 				clipMatrix(1,0)=WaterNormal.Y;
 				clipMatrix(2,0)=WaterNormal.Z;
 				clipMatrix(3,0)=WaterPlane.W+0.5f;
-				inv *=clipMatrix;
+				LegacyD3DX::MatrixMultiply(&inv, &inv, &clipMatrix);
 
 				// Change texture wrapping mode to 'clamp' for texture stage 1
 				DX8Wrapper::Set_DX8_Texture_Stage_State( 1, D3DTSS_ADDRESSU, D3DTADDRESS_CLAMP);
@@ -1933,12 +1934,12 @@ void WaterRenderObjClass::drawSea(RenderInfoClass & rinfo)
 			patchMatrix._41=(float)(patchX*PATCH_WIDTH*PATCH_SCALE );
 			patchMatrix._43=(float)(patchY*PATCH_WIDTH*PATCH_SCALE );
 			//convert the default D3D coordinate system into ours
-			D3DXMatrixMultiply(&matTempWorld, &patchMatrix, &matWW3D);
+			LegacyD3DX::MatrixMultiply(&matTempWorld, &patchMatrix, &matWW3D);
 
-			D3DXMatrixMultiply(&matTemp, &matTempWorld, &matView);
-			D3DXMatrixMultiply(&matWorldViewProj, &matTemp, &matProj);
+			LegacyD3DX::MatrixMultiply(&matTemp, &matTempWorld, &matView);
+			LegacyD3DX::MatrixMultiply(&matWorldViewProj, &matTemp, &matProj);
 			//matrices must be transposed before loading into vertex shader registers
-			D3DXMatrixTranspose(&matWorldViewProj, &matWorldViewProj);
+			LegacyD3DX::MatrixTranspose(&matWorldViewProj, &matWorldViewProj);
 			m_pDev->SetVertexShaderConstant(CV_WORLDVIEWPROJ_0, &matWorldViewProj, 4);	//pass transform matrix into shader
 
 			m_pDev->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP,0,m_numVertices,0,m_numIndices);
@@ -1992,7 +1993,7 @@ void WaterRenderObjClass::drawSea(RenderInfoClass & rinfo)
 				patchMatrix._41=(float)(patchX*PATCH_WIDTH*PATCH_SCALE);
 				patchMatrix._43=(float)(patchY*PATCH_WIDTH*PATCH_SCALE);
 
-				D3DXMatrixMultiply(&matTemp, &patchMatrix, &matWW3D);
+				LegacyD3DX::MatrixMultiply(&matTemp, &patchMatrix, &matWW3D);
 
 				DX8Wrapper::_Set_DX8_Transform(D3DTS_WORLD, matTemp);
 
@@ -3028,12 +3029,12 @@ void WaterRenderObjClass::setupFlatWaterShader()
 		DX8Wrapper::_Get_DX8_Transform(D3DTS_VIEW, curView);
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 		D3DXMATRIX scale;
-		D3DXMatrixScaling(&scale, NOISE_REPEAT_FACTOR, NOISE_REPEAT_FACTOR,1);
-		D3DXMATRIX destMatrix = inv * scale;
-		D3DXMatrixTranslation(&scale, m_riverVOrigin, m_riverVOrigin,0);
-		destMatrix = destMatrix*scale;
+		LegacyD3DX::MatrixScaling(&scale, NOISE_REPEAT_FACTOR, NOISE_REPEAT_FACTOR,1);
+		D3DXMATRIX destMatrix = LegacyD3DX::Multiply(inv, scale);
+		LegacyD3DX::MatrixTranslation(&scale, m_riverVOrigin, m_riverVOrigin,0);
+		destMatrix = LegacyD3DX::Multiply(destMatrix, scale);
 		DX8Wrapper::_Set_DX8_Transform(D3DTS_TEXTURE2, destMatrix);
 
 	}

@@ -11,6 +11,20 @@ target_link_libraries(depsi_googletest INTERFACE
     deps_utility
 )
 
+add_executable(legacy_d3dx_math_test ../Core/Libraries/LegacyD3DXMathTest.cpp)
+target_link_libraries(legacy_d3dx_math_test PRIVATE legacy_d3dx_math GTest::gtest_main)
+add_test(NAME legacy_d3dx_math_test COMMAND legacy_d3dx_math_test)
+
+# Live legacy oracle is deliberately Win32-only and not part of game linkage.
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    add_executable(legacy_d3dx_math_reference ../Core/Libraries/LegacyD3DXMathReference.cpp)
+    target_link_libraries(legacy_d3dx_math_reference PRIVATE legacy_dx8_dependencies advapi32)
+    add_executable(legacy_d3dx_math_comparison ../Core/Libraries/LegacyD3DXMathTest.cpp)
+    target_compile_definitions(legacy_d3dx_math_comparison PRIVATE LEGACY_MATH_LIVE_REFERENCE)
+    target_link_libraries(legacy_d3dx_math_comparison PRIVATE legacy_d3dx_math legacy_dx8_dependencies GTest::gtest_main advapi32)
+    add_test(NAME legacy_d3dx_math_comparison COMMAND legacy_d3dx_math_comparison)
+endif()
+
 # Platform diagnostics can be validated natively before the renderer/game links.
 # The normal game/tool graph is still enabled and built separately.
 if(WIN32)

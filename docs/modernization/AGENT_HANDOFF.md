@@ -1,6 +1,25 @@
 # Agent handoff
 
-## D3D11.2 ordinary UI file content (2026-10-11)
+## X64.4 CPU D3DX math compatibility (2026-10-11)
+
+The eight external matrix/vector math helpers now route through the engine-owned
+LegacyD3DX boundary. Exact Win32 reference words, live comparisons, aliasing and
+native AMD64 tests cover the pinned modern-x86 SSE2 arithmetic contract. Both
+titles' authoritative Bezier projectile route is explicitly risk-audited; unit
+tests do not certify cross-machine multiplayer/replay/save equivalence.
+DX8 stays default and the accepted D3D11 slices are unchanged. No game launch,
+FP optimization, format/layout change or next-stage implementation occurred.
+See [X64_4_D3DX_MATH.md](X64_4_D3DX_MATH.md) for conventions, inverse behavior,
+validation, actual linker progression, limitations and the exact inventory.
+
+Final native title probes remove exactly eight helpers: 17 -> 9 per title;
+aggregate LNK2019 34 -> 18, LNK2001 24 -> 8, LNK1120 remains two. Neither game
+links yet. The bounded full native graph retains the exact 30 tool ABI compiler
+errors, separate from game linkage. Full Win32/CTest9 and native CTest6 pass.
+**Next proposed task: X64.5 - reference-tested native CPU FVF vertex-stride
+compatibility (D3DXGetFVFVertexSize).** No next task was started.
+
+## D3D11.2 ordinary UI file content (2026-10-11, historical checkpoint)
 
 Bounded raw/RLE 24/32-bit TGA and DXT1/3/5 DDS top-mip content now feeds
 immutable D3D11 residency and normal-alpha Render2D. Reference 16/32-bit

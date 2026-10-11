@@ -56,6 +56,7 @@ enum
 //-----------------------------------------------------------------------------
 
 #include "W3DDevice/GameClient/W3DTreeBuffer.h"
+#include "WWMath/LegacyD3DXMath.h"
 
 #include <WW3D2/assetmgr.h>
 #include <WW3D2/texture.h>
@@ -1654,9 +1655,9 @@ void W3DTreeBuffer::drawTrees(CameraClass * camera, RefRenderObjListIterator *pD
 		DX8Wrapper::_Get_DX8_Transform(D3DTS_VIEW, matView);
 		DX8Wrapper::_Get_DX8_Transform(D3DTS_PROJECTION, matProj);
 		D3DXMATRIX mat;
-		D3DXMatrixMultiply( &mat, &matView, &matProj );
-		D3DXMatrixMultiply( &mat, &matWorld, &mat );
-		D3DXMatrixTranspose( &mat, &mat );
+		LegacyD3DX::MatrixMultiply( &mat, &matView, &matProj );
+		LegacyD3DX::MatrixMultiply( &mat, &matWorld, &mat );
+		LegacyD3DX::MatrixTranspose( &mat, &mat );
 
 		// c4  - Composite World-View-Projection Matrix
 		DX8Wrapper::_Get_D3D_Device8()->SetVertexShaderConstant(  4, &mat,  4 );

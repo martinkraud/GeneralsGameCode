@@ -22,6 +22,11 @@ set(COREI_GOOGLETEST_SRC
 
 add_library(corei_googletest INTERFACE)
 
+# Actual production Bezier routines against the legacy library, Win32 only.
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    list(APPEND COREI_GOOGLETEST_SRC GameEngine/Common/BezierCompatibilityTest.cpp)
+endif()
+
 target_sources(corei_googletest INTERFACE ${COREI_GOOGLETEST_SRC})
 
 target_link_libraries(corei_googletest INTERFACE

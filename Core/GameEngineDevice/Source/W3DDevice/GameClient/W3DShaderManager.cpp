@@ -54,6 +54,7 @@
 //-----------------------------------------------------------------------------
 
 #include "WW3D2/dx8wrapper.h"
+#include "WWMath/LegacyD3DXMath.h"
 #include "WW3D2/assetmgr.h"
 #include "Lib/BaseType.h"
 #include "Common/file.h"
@@ -1251,7 +1252,7 @@ Int ShroudTextureShader::set(Int stage)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		D3DXMATRIX scale,offset;
 
@@ -1270,12 +1271,12 @@ Int ShroudTextureShader::set(Int stage)
 			yoffset = -(float)shroud->getDrawOriginY() + height;
 		}
 
-		D3DXMatrixTranslation(&offset, xoffset, yoffset,0);
+		LegacyD3DX::MatrixTranslation(&offset, xoffset, yoffset,0);
 
 		width = 1.0f/(width*shroud->getTextureWidth());
 		height = 1.0f/(height*shroud->getTextureHeight());
-		D3DXMatrixScaling(&scale, width, height, 1);
-		curView = (inv * offset) * scale;
+		LegacyD3DX::MatrixScaling(&scale, width, height, 1);
+		curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale);
 		DX8Wrapper::_Set_DX8_Transform((D3DTRANSFORMSTATETYPE )(D3DTS_TEXTURE0+stage), curView);
 	}
 	m_stageOfSet=stage;
@@ -1345,7 +1346,7 @@ Int FlatShroudTextureShader::set(Int stage)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		D3DXMATRIX scale,offset;
 
@@ -1364,12 +1365,12 @@ Int FlatShroudTextureShader::set(Int stage)
 			yoffset = -(float)shroud->getDrawOriginY() + height;
 		}
 
-		D3DXMatrixTranslation(&offset, xoffset, yoffset,0);
+		LegacyD3DX::MatrixTranslation(&offset, xoffset, yoffset,0);
 
 		width = 1.0f/(width*shroud->getTextureWidth());
 		height = 1.0f/(height*shroud->getTextureHeight());
-		D3DXMatrixScaling(&scale, width, height, 1);
-		curView = (inv * offset) * scale;
+		LegacyD3DX::MatrixScaling(&scale, width, height, 1);
+		curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale);
 		DX8Wrapper::_Set_DX8_Transform((D3DTRANSFORMSTATETYPE )(D3DTS_TEXTURE0+stage), curView);
 	}
 	m_stageOfSet=stage;
@@ -1440,7 +1441,7 @@ Int MaskTextureShader::set(Int pass)
 	float det;
 
 	//Get inverse view matrix so we can transform camera space points back to world space
-	D3DXMatrixInverse(&inv, &det, &curView);
+	LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 	D3DXMATRIX scale,offset,offsetTextureCenter;
 	Coord3D centerPos;
@@ -1459,9 +1460,9 @@ Int MaskTextureShader::set(Int pass)
 		TheTacticalView->screenToTerrain(&screenPos,&centerPos);
 	}
 
-	D3DXMatrixTranslation(&offset, -centerPos.x, -centerPos.y,0);
+	LegacyD3DX::MatrixTranslation(&offset, -centerPos.x, -centerPos.y,0);
 
-	D3DXMatrixTranslation(&offsetTextureCenter, 0.5f, 0.5f, 0);	//shift coordinates so center of projection falls at uv 0.5,0.5
+	LegacyD3DX::MatrixTranslation(&offsetTextureCenter, 0.5f, 0.5f, 0);	//shift coordinates so center of projection falls at uv 0.5,0.5
 
 	Real worldTexelWidth=(1.0f-fadeLevel)*25.0f;	//9 worked well for circle but weird shape requires more stretch to cover.
 	Real worldTexelHeight=(1.0f-fadeLevel)*25.0f;
@@ -1471,13 +1472,13 @@ Int MaskTextureShader::set(Int pass)
 	{
 		Real widthScale = 1.0f/(worldTexelWidth*128.0f);
 		Real heightScale = 1.0f/(worldTexelHeight*128.0f);
-		D3DXMatrixScaling(&scale, widthScale, heightScale, 1);
-		curView = ((inv * offset) * scale)*offsetTextureCenter;
+		LegacyD3DX::MatrixScaling(&scale, widthScale, heightScale, 1);
+		curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale), offsetTextureCenter);
 	}
 	else
 	{
-		D3DXMatrixScaling(&scale, 0, 0, 1);	//scaling by 0 will set uv coordinates to 0,0
-		curView = ((inv * offset) * scale);
+		LegacyD3DX::MatrixScaling(&scale, 0, 0, 1);	//scaling by 0 will set uv coordinates to 0,0
+		curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale);
 	}
 
 	DX8Wrapper::_Set_DX8_Transform(D3DTS_TEXTURE0, curView);
@@ -1632,12 +1633,12 @@ void TerrainShader2Stage::updateNoise1(D3DXMATRIX *destMatrix,D3DXMATRIX *curVie
 
 	D3DXMATRIX scale;
 
-	D3DXMatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
-	*destMatrix = *curViewInverse * scale;
+	LegacyD3DX::MatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
+	*destMatrix = LegacyD3DX::Multiply(*curViewInverse, scale);
 
 	D3DXMATRIX offset;
-	D3DXMatrixTranslation(&offset, m_xOffset, m_yOffset,0);
-	*destMatrix *= offset;
+	LegacyD3DX::MatrixTranslation(&offset, m_xOffset, m_yOffset,0);
+	LegacyD3DX::MatrixMultiply(destMatrix, destMatrix, &offset);
 }
 
 void TerrainShader2Stage::updateNoise2(D3DXMATRIX *destMatrix,D3DXMATRIX *curViewInverse, Bool doUpdate)
@@ -1645,8 +1646,8 @@ void TerrainShader2Stage::updateNoise2(D3DXMATRIX *destMatrix,D3DXMATRIX *curVie
 
 	D3DXMATRIX scale;
 
-	D3DXMatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
-	*destMatrix = *curViewInverse * scale;
+	LegacyD3DX::MatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
+	*destMatrix = LegacyD3DX::Multiply(*curViewInverse, scale);
 }
 
 Int TerrainShader2Stage::set(Int pass)
@@ -1733,7 +1734,7 @@ Int TerrainShader2Stage::set(Int pass)
 
 			D3DXMATRIX inv;
 			float det;
-			D3DXMatrixInverse(&inv, &det, &curView);
+			LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 			if (W3DShaderManager::getCurrentShader() == W3DShaderManager::ST_TERRAIN_BASE_NOISE12)
 			{
@@ -2064,7 +2065,7 @@ Int TerrainShaderPixelShader::set(Int pass)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		DX8Wrapper::Set_DX8_Texture_Stage_State(2,  D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
 		// Two output coordinates are used.
@@ -2190,7 +2191,7 @@ Int CloudTextureShader::set(Int stage)
 	D3DXMATRIX inv;
 	float det;
 
-	D3DXMatrixInverse(&inv, &det, &curView);
+	LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 	//Get a texture matrix that applies the current cloud position
 	terrainShader2Stage.updateNoise1(&curView,&inv,false);	//update curView with texture matrix
@@ -2324,7 +2325,7 @@ Int RoadShaderPixelShader::set(Int pass)
 
 	D3DXMATRIX inv;
 	float det;
-	D3DXMatrixInverse(&inv, &det, &curView);
+	LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 	if (TheGlobalData && TheGlobalData->m_trilinearTerrainTex)
 	{	DX8Wrapper::Set_DX8_Texture_Stage_State(0, D3DTSS_MIPFILTER, D3DTEXF_LINEAR);
@@ -2440,7 +2441,7 @@ Int RoadShader2Stage::set(Int pass)
 
 			D3DXMATRIX inv;
 			float det;
-			D3DXMatrixInverse(&inv, &det, &curView);
+			LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 			if (TheGlobalData && TheGlobalData->m_trilinearTerrainTex)
 				DX8Wrapper::Set_DX8_Texture_Stage_State(1, D3DTSS_MIPFILTER, D3DTEXF_LINEAR);
@@ -2508,7 +2509,7 @@ Int RoadShader2Stage::set(Int pass)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		if (TheGlobalData && TheGlobalData->m_trilinearTerrainTex)
 			DX8Wrapper::Set_DX8_Texture_Stage_State(1, D3DTSS_MIPFILTER, D3DTEXF_LINEAR);
@@ -3257,7 +3258,7 @@ Int W3DShaderManager::setShroudTex(Int stage)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		D3DXMATRIX scale,offset;
 
@@ -3276,12 +3277,12 @@ Int W3DShaderManager::setShroudTex(Int stage)
 			yoffset = -(float)shroud->getDrawOriginY() + height;
 		}
 
-		D3DXMatrixTranslation(&offset, xoffset, yoffset,0);
+		LegacyD3DX::MatrixTranslation(&offset, xoffset, yoffset,0);
 
 		width = 1.0f/(width*shroud->getTextureWidth());
 		height = 1.0f/(height*shroud->getTextureHeight());
-		D3DXMatrixScaling(&scale, width, height, 1);
-		curView = (inv * offset) * scale;
+		LegacyD3DX::MatrixScaling(&scale, width, height, 1);
+		curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale);
 		DX8Wrapper::_Set_DX8_Transform((D3DTRANSFORMSTATETYPE )(D3DTS_TEXTURE0+stage), curView);
 		return TRUE;
 	}
@@ -3376,7 +3377,7 @@ Int FlatTerrainShader2Stage::set(Int pass)
 
 					D3DXMATRIX inv;
 					float det;
-					D3DXMatrixInverse(&inv, &det, &curView);
+					LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 					D3DXMATRIX scale,offset;
 
@@ -3395,12 +3396,12 @@ Int FlatTerrainShader2Stage::set(Int pass)
 						yoffset = -(float)shroud->getDrawOriginY() + height;
 					}
 
-					D3DXMatrixTranslation(&offset, xoffset, yoffset,0);
+					LegacyD3DX::MatrixTranslation(&offset, xoffset, yoffset,0);
 
 					width = 1.0f/(width*shroud->getTextureWidth());
 					height = 1.0f/(height*shroud->getTextureHeight());
-					D3DXMatrixScaling(&scale, width, height, 1);
-					curView = (inv * offset) * scale;
+					LegacyD3DX::MatrixScaling(&scale, width, height, 1);
+					curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale);
 					DX8Wrapper::_Set_DX8_Transform((D3DTRANSFORMSTATETYPE )(D3DTS_TEXTURE0), curView);
 				}
 			}	else {
@@ -3446,7 +3447,7 @@ Int FlatTerrainShader2Stage::set(Int pass)
 
 			D3DXMATRIX inv;
 			float det;
-			D3DXMatrixInverse(&inv, &det, &curView);
+			LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 			if (W3DShaderManager::getCurrentShader() == W3DShaderManager::ST_FLAT_TERRAIN_BASE_NOISE12)
 			{
@@ -3647,7 +3648,7 @@ Int FlatTerrainShaderPixelShader::set(Int pass)
 
 			D3DXMATRIX inv;
 			float det;
-			D3DXMatrixInverse(&inv, &det, &curView);
+			LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 			D3DXMATRIX scale,offset;
 
@@ -3666,12 +3667,12 @@ Int FlatTerrainShaderPixelShader::set(Int pass)
 				yoffset = -(float)shroud->getDrawOriginY() + height;
 			}
 
-			D3DXMatrixTranslation(&offset, xoffset, yoffset,0);
+			LegacyD3DX::MatrixTranslation(&offset, xoffset, yoffset,0);
 
 			width = 1.0f/(width*shroud->getTextureWidth());
 			height = 1.0f/(height*shroud->getTextureHeight());
-			D3DXMatrixScaling(&scale, width, height, 1);
-			curView = (inv * offset) * scale;
+			LegacyD3DX::MatrixScaling(&scale, width, height, 1);
+			curView = LegacyD3DX::Multiply(LegacyD3DX::Multiply(inv, offset), scale);
 			DX8Wrapper::_Set_DX8_Transform((D3DTRANSFORMSTATETYPE )(D3DTS_TEXTURE0+curStage), curView);
 		}
 		DX8Wrapper::Set_DX8_Texture_Stage_State( curStage, D3DTSS_ADDRESSU, D3DTADDRESS_CLAMP);
@@ -3692,7 +3693,7 @@ Int FlatTerrainShaderPixelShader::set(Int pass)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		DX8Wrapper::Set_DX8_Texture_Stage_State(curStage,  D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
 		// Two output coordinates are used.
@@ -3719,7 +3720,7 @@ Int FlatTerrainShaderPixelShader::set(Int pass)
 
 		D3DXMATRIX inv;
 		float det;
-		D3DXMatrixInverse(&inv, &det, &curView);
+		LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 		DX8Wrapper::Set_DX8_Texture_Stage_State(curStage,  D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
 		// Two output coordinates are used.

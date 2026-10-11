@@ -46,6 +46,7 @@
 //         Includes
 //-----------------------------------------------------------------------------
 #include <stdlib.h>
+#include "WWMath/LegacyD3DXMath.h"
 
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
@@ -716,11 +717,11 @@ void LightMapTerrainTextureClass::Apply(unsigned int stage)
 
 	D3DXMATRIX inv;
 	float det;
-	D3DXMatrixInverse(&inv, &det, &curView);
+	LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 	D3DXMATRIX scale;
-	D3DXMatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
-	inv *=scale;
+	LegacyD3DX::MatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
+	LegacyD3DX::MatrixMultiply(&inv, &inv, &scale);
 	if (stage==0) {
 		DX8Wrapper::_Set_DX8_Transform(D3DTS_TEXTURE0, inv);
 	}	if (stage==1) {
@@ -970,11 +971,11 @@ void CloudMapTerrainTextureClass::Apply(unsigned int stage)
 
 	D3DXMATRIX inv;
 	float det;
-	D3DXMatrixInverse(&inv, &det, &curView);
+	LegacyD3DX::MatrixInverse(&inv, &det, &curView);
 
 	D3DXMATRIX scale;
-	D3DXMatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
-	inv *=scale;
+	LegacyD3DX::MatrixScaling(&scale, STRETCH_FACTOR, STRETCH_FACTOR,1);
+	LegacyD3DX::MatrixMultiply(&inv, &inv, &scale);
 	D3DXMATRIX offset;
 
 	Int delta = m_curTick;
@@ -989,9 +990,9 @@ void CloudMapTerrainTextureClass::Apply(unsigned int stage)
 	if (m_yOffset < -1) m_yOffset += 1;
 
 
-	D3DXMatrixTranslation(&offset, m_xOffset, m_yOffset,0);
+	LegacyD3DX::MatrixTranslation(&offset, m_xOffset, m_yOffset,0);
 
-	inv *= offset;
+	LegacyD3DX::MatrixMultiply(&inv, &inv, &offset);
 
 	if (stage==0) {
 		DX8Wrapper::Set_DX8_Texture_Stage_State( 0, D3DTSS_COLORARG1, D3DTA_TEXTURE );
