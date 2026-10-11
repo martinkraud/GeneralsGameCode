@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "Texture2D.h"
+#include "Texture2DCPUContent.h"
 #include "texture.h"
 #include "ww3d.h"
 #include "IRenderBackend.h"
@@ -20,4 +21,25 @@ Texture2DResidency &TextureClass::Get_Render2D_Residency()
 void TextureClass::Apply_Render2D_Texture(unsigned stage)
 {
     WW3D::Get_Render_Backend()->Apply_Render2D_Texture(*this, stage);
+}
+
+TextureClass::TextureClass(const Texture2DCPUContent &content)
+    : TextureBaseClass(content.Describe().width, content.Describe().height,
+                       MIP_LEVELS_1, POOL_MANAGED, false, false),
+      TextureFormat(WW3D_FORMAT_A4R4G4B4), Filter(MIP_LEVELS_1)
+{
+    Initialized = true;
+    IsProcedural = true;
+    IsReducible = false;
+    Render2DUsed = true;
+    Render2DCPUContent = content.Snapshot();
+    LastAccessed = WW3D::Get_Sync_Time();
+}
+
+TextureClass::~TextureClass() { Discard_Render2D_CPU_Content(); }
+
+void TextureClass::Discard_Render2D_CPU_Content()
+{
+    if (Render2DCPUContent) Render2DCPUContent->Release_Ref();
+    Render2DCPUContent = nullptr;
 }

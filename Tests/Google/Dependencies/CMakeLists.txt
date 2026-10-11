@@ -40,3 +40,20 @@ target_include_directories(render2d_submission_test PRIVATE
 target_compile_definitions(render2d_submission_test PRIVATE DISABLE_GAMEMEMORY)
 target_link_libraries(render2d_submission_test PRIVATE deps_utility GTest::gtest_main)
 add_test(NAME render2d_submission_test COMMAND render2d_submission_test)
+
+# Real GDI sentence glyph producer + CPU backing. No engine/DX8 archive, SDK
+# directory or graphics fake is linked. GDI is rasterization, not a D3D device.
+add_executable(sentence_content_test
+    ../Core/Libraries/SentenceContentTest.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/FontChars.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib/wwstring.cpp
+)
+target_include_directories(sentence_content_test PRIVATE
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Include
+)
+target_compile_definitions(sentence_content_test PRIVATE DISABLE_GAMEMEMORY)
+target_link_libraries(sentence_content_test PRIVATE deps_utility GTest::gtest_main user32 gdi32)
+add_test(NAME sentence_content_test COMMAND sentence_content_test)

@@ -158,7 +158,7 @@ public:
 
 	// texture accessors (dx8)
 	IDirect3DBaseTexture8 *Peek_D3D_Base_Texture() const;
-	void Set_D3D_Base_Texture(IDirect3DBaseTexture8* tex);
+	virtual void Set_D3D_Base_Texture(IDirect3DBaseTexture8* tex);
 
 	PoolType Get_Pool() const { return Pool; }
 
@@ -266,12 +266,22 @@ private:
 ** modes.
 **
 *************************************************************************/
+class Texture2DCPUContent;
+
 class TextureClass : public TextureBaseClass
 {
 	W3DMPO_CODE(TextureClass)
 //	friend DX8Wrapper;
 
 public:
+
+	// Immutable initial content for the bounded sentence path. No GPU allocation.
+	explicit TextureClass(const Texture2DCPUContent &content);
+	~TextureClass() override;
+	const Texture2DCPUContent *Get_Render2D_CPU_Content() const { return Render2DCPUContent; }
+	void Discard_Render2D_CPU_Content();
+	void Set_D3D_Base_Texture(IDirect3DBaseTexture8 *tex) override
+	{ Discard_Render2D_CPU_Content(); TextureBaseClass::Set_D3D_Base_Texture(tex); }
 
 	void Use_For_Render2D() { if (Get_Asset_Type() == TEX_REGULAR) Render2DUsed = true; }
 	void Prepare_Render2D_Texture();
@@ -356,6 +366,7 @@ protected:
 
 private:
 	bool Render2DUsed = false;
+	Texture2DCPUContent *Render2DCPUContent = nullptr;
 };
 
 class ZTextureClass : public TextureBaseClass

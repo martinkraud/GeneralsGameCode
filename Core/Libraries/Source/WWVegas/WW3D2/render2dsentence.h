@@ -43,101 +43,8 @@
 #include "WWLib/wwstring.h"
 #include "WWLib/win.h"
 
-/*
-** FontCharsClass
-*/
-class	SurfaceClass;
-
-//
-//	Private data structures
-//
-class FontCharsClassCharDataStruct
-{
-	W3DMPO_CODE(FontCharsClassCharDataStruct)
-public:
-	WCHAR				Value;
-	short				Width;
-	uint16 *		Buffer;
-};
-
-enum { CHAR_BUFFER_LEN		= 32768 };
-
-class FontCharsBuffer
-{
-public:
-	FontCharsBuffer() : Length( 0 ), Buffer( nullptr ) {}
-	FontCharsBuffer( int length, uint16 *buffer ) : Length( length ), Buffer( buffer ) {}
-
-	bool operator== (const FontCharsBuffer &src) const { return Length == src.Length && Buffer == src.Buffer; }
-	bool operator!= (const FontCharsBuffer &src) const { return !(*this == src); }
-
-	int				Length;
-	uint16 *		Buffer;
-};
-
-
-class FontCharsClass : public RefCountClass
-{
-	W3DMPO_CODE(FontCharsClass)
-
-public:
-	FontCharsClass();
-	virtual ~FontCharsClass() override;
-
-	// TR: Hack for unicode font support
-	FontCharsClass					*AlternateUnicodeFont;
-
-
-	bool	Initialize_GDI_Font( const char *font_name, int point_size, bool is_bold );
-	bool	Is_Font( const char *font_name, int point_size, bool is_bold );
-	const char * Get_Name()			{ return Name; }
-
-	int	Get_Char_Height()			{ return CharHeight; }
-	int	Get_Char_Width( WCHAR ch );
-	int	Get_Char_Spacing( WCHAR ch );
-
-	int Get_Extra_Overlap() {return PixelOverlap;}
-
-	void	Blit_Char( WCHAR ch, uint16 *dest_ptr, int dest_stride, int x, int y );
-
-private:
-
-	//
-	//	Private methods
-	//
-	bool							Create_GDI_Font( const char *font_name );
-	void							Free_GDI_Font();
-	const FontCharsClassCharDataStruct *	Store_GDI_Char( WCHAR ch );
-	void							Update_Current_Buffer( int char_width );
-	const FontCharsClassCharDataStruct	*	Get_Char_Data( WCHAR ch );
-
-	void							Grow_Unicode_Array( WCHAR ch );
-	void							Free_Character_Arrays();
-
-	//
-	//	Private member data
-	//
-	StringClass							Name;
-	DynamicVectorClass<FontCharsBuffer>	BufferList;
-	int									CurrPixelOffset;
-	int									CharHeight;
-	int									CharAscent;
-	int									CharOverhang;
-	int									PixelOverlap;
-	int									PointSize;
-	StringClass							GDIFontName;
-	HFONT									OldGDIFont;
-	HBITMAP								OldGDIBitmap;
-	HBITMAP								GDIBitmap;
-	HFONT									GDIFont;
-	uint8 *								GDIBitmapBits;
-	HDC									MemDC;
-	FontCharsClassCharDataStruct *					ASCIICharArray[256];
-	FontCharsClassCharDataStruct **					UnicodeCharArray;
-	uint16								FirstUnicodeChar;
-	uint16								LastUnicodeChar;
-	bool									IsBold;
-};
+#include "FontChars.h"
+class Texture2DCPUContent;
 
 /*
 ** Render2DSentenceClass
@@ -210,7 +117,7 @@ private:
 	//	Private structures
 	//
 	struct SentenceDataStruct {
-		SurfaceClass *		Surface;
+		Texture2DCPUContent *		Surface;
 		RectClass			ScreenRect;
 		RectClass			UVRect;
 
@@ -219,7 +126,7 @@ private:
 	};
 
 	struct PendingSurfaceStruct {
-		SurfaceClass *								Surface;
+		Texture2DCPUContent *								Surface;
 		DynamicVectorClass<Render2DClass *>	Renderers;
 
 		bool operator== (const PendingSurfaceStruct &src)	{ return false; }
@@ -228,7 +135,7 @@ private:
 
 	struct RendererDataStruct {
 		Render2DClass *	Renderer;
-		SurfaceClass *		Surface;
+		Texture2DCPUContent *		Surface;
 
 		bool operator== (const RendererDataStruct &src)	{ return false; }
 		bool operator!= (const RendererDataStruct &src)	{ return true; }
@@ -258,7 +165,7 @@ private:
 	int													TextureStartX;
 	int													CurrTextureSize;
 	int													TextureSizeHint;
-	SurfaceClass *							CurSurface;
+	Texture2DCPUContent *							CurSurface;
 	bool												MonoSpaced;
 	float												WrapWidth;
 	bool												Centered;			// Determines whether or not to center each line

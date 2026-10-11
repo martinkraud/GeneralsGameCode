@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "DX8Backend.h"
 #include "WW3D2/Texture2D.h"
+#include "WW3D2/Texture2DCPUContent.h"
 #include "WW3D2/texture.h"
 #include "WW3D2/dx8wrapper.h"
 #include "WW3D2/formconv.h"
@@ -112,6 +113,24 @@ struct DX8Texture2DCommands
 
 Texture2DResidency *DX8Backend::Create_Render2D_Residency(TextureClass &texture)
 {
+    if (const auto *content = texture.Get_Render2D_CPU_Content()) {
+        const auto desc = content->Describe();
+        auto *native = DX8Wrapper::_Create_DX8_Texture(desc.width, desc.height,
+            desc.format, MIP_LEVELS_1, D3DPOOL_MANAGED, false);
+        // Install the legacy alias before Get_Surface_Level. Set retains one
+        // reference; the residency below adopts it, as for ordinary textures.
+        texture.TextureBaseClass::Set_D3D_Base_Texture(native);
+        native->Release();
+        SurfaceClass *source = new SurfaceClass(desc.width, desc.height, desc.format);
+        int pitch;
+        void *pixels = source->Lock(&pitch);
+        content->Copy_Rows(pixels, pitch);
+        source->Unlock();
+        SurfaceClass *destination = texture.Get_Surface_Level();
+        Copy_Render2D_Surface(*source, *destination);
+        destination->Release_Ref();
+        source->Release_Ref();
+    }
     return new DX8Texture2DResidency(texture);
 }
 

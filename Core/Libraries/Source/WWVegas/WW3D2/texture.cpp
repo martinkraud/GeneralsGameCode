@@ -885,6 +885,7 @@ void TextureClass::Apply_New_Surface
 	bool disable_auto_invalidation
 )
 {
+	Discard_Render2D_CPU_Content();
 	Peek_D3D_Base_Texture();
 	Release_D3D_Storage();
 
@@ -975,6 +976,7 @@ void TextureClass::Apply(unsigned int stage)
 */
 SurfaceClass *TextureClass::Get_Surface_Level(unsigned int level)
 {
+	if (Get_Render2D_CPU_Content() && !Peek_D3D_Base_Texture()) Get_Render2D_Residency();
 	if (!Peek_D3D_Texture())
 	{
 		WWASSERT_PRINT(0, "Get_Surface_Level: D3DTexture is null!");

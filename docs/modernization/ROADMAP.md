@@ -1,18 +1,18 @@
 # Incremental modernization roadmap
 
-## RendererBoundary.2 Texture2D boundary (2026-10-11)
+## RendererBoundary.3 CPU sentence content (2026-10-11)
 
-The Render2D texture path now has W3D descriptions, pitched content leases,
-backend residency ownership and sampler intent, with the DX8 reference adapter.
-Sentence copy/upload and deferred texture application preserve legacy ordering;
-loader, conversion, missing pixels and dynamic UI updates are retained.
-See [RENDERER_BOUNDARY_2_TEXTURE2D.md](RENDERER_BOUNDARY_2_TEXTURE2D.md) for exact
-scope, ownership, reference tests, SDK-free probes and validation limitations.
-**Next proposed task: RendererBoundary.3 - device-independent 2D/font/UI content
-backing and loading.** Existing producers still allocate/lock D3D8 resources;
-this is the one remaining prerequisite to actual textured D3D11.1 Render2D.
-No D3D11, visual-equivalence or playable Win64 claim is made; no game was launched.
-Pathfinding 2.0 remains backlog; Stage4A.3 remains PAUSED.
+The actual FontChars glyph producer now writes W3D CPU A4R4G4B4 backing.
+Sentence textures snapshot these bytes without native resource allocation;
+DX8Backend creates/uploads managed residency at first use. Layout/glyph/sampler
+semantics and retained legacy producers are protected by reference checks.
+See [RENDERER_BOUNDARY_3_CONTENT_BACKING.md](RENDERER_BOUNDARY_3_CONTENT_BACKING.md)
+for device-free real producer proof, validation and compatibility limitations.
+**Next proposed task: D3D11.1 - the bounded sentence textured Render2D slice.**
+Readiness is YES for that real content path, not all UI/Font3D/radar/video or the
+whole renderer. Native D3DX/tool ABI blockers remain. No game was launched;
+no visual-equivalence or playable Win64 claim is made. Pathfinding 2.0 remains
+backlog; Stage4A.3 remains PAUSED.
 
 The following X64.3 checkpoint is historical; this next-step state supersedes it.
 

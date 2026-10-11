@@ -16,6 +16,10 @@ class Texture2DReference(unittest.TestCase):
         new = current(CORE + "texture.cpp")
         branch = "if(Render2DUsed){Apply_Render2D_Texture(stage);return;}"
         flat = "".join(tokens(new))
+        self.assertEqual(flat.count("Discard_Render2D_CPU_Content();"), 1)
+        self.assertEqual(flat.count("if(Get_Render2D_CPU_Content()&&!Peek_D3D_Base_Texture())Get_Render2D_Residency();"), 1)
+        flat = flat.replace("Discard_Render2D_CPU_Content();", "")
+        flat = flat.replace("if(Get_Render2D_CPU_Content()&&!Peek_D3D_Base_Texture())Get_Render2D_Residency();", "")
         self.assertEqual(flat.count(branch), 1)
         flat = flat.replace(branch, "")
         signature = "void TextureBaseClass::Release_D3D_Storage()"
@@ -42,8 +46,10 @@ class Texture2DReference(unittest.TestCase):
             self.assertEqual(tokens(current(CORE + name)), tokens(old(name)), name)
 
     def test_sentence_copy_preserves_entire_producer_and_surface_lifetime(self):
-        new = current(CORE + "render2dsentence.cpp")
-        new = new.replace('#include "ww3d.h"', '')
+        # RB3 separately pins every sentence and extracted glyph token against
+        # RB2, reversing only the explicit CPU backing/window seams.
+        from test_sentence_content_reference import restored_sentence
+        new = restored_sentence().replace('#include "ww3d.h"', '')
         new = new.replace('#include "IRenderBackend.h"', '#include "dx8wrapper.h"')
         new = new.replace("WW3D::Get_Render_Backend()->Copy_Render2D_Surface(*curr_surface, *texture_surface)",
                           "DX8Wrapper::_Copy_DX8_Rects (curr_surface->Peek_D3D_Surface (), nullptr, 0, texture_surface->Peek_D3D_Surface (), nullptr)")

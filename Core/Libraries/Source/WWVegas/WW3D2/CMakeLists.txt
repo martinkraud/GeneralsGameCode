@@ -18,6 +18,8 @@ set(WW3D2_SRC
     Backend/DX8Render2D.cpp
     Backend/DX8Texture2D.cpp
     Texture2D.cpp
+    Texture2DCPUContent.cpp
+    FontChars.cpp
     Texture2D.h
     Backend/RenderBackend.h
     bitmaphandler.cpp
