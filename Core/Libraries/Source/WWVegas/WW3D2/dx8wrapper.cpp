@@ -51,6 +51,7 @@
 #endif
 
 #include "dx8wrapper.h"
+#include "LegacyTextureCreation.h"
 #include "dx8webbrowser.h"
 #include "dx8fvf.h"
 #include "dx8vertexbuffer.h"
@@ -2372,7 +2373,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	// Render target may return NOTAVAILABLE, in
 	// which case we return null.
 	if (rendertarget) {
-		unsigned ret=D3DXCreateTexture(
+		unsigned ret=LegacyD3DX::CreateTexture(
 			DX8Wrapper::_Get_D3D_Device8(),
 			width,
 			height,
@@ -2396,7 +2397,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 			// Invalidate the mesh cache
 			WW3D::_Invalidate_Mesh_Cache();
 
-			ret=D3DXCreateTexture(
+			ret=LegacyD3DX::CreateTexture(
 				DX8Wrapper::_Get_D3D_Device8(),
 				width,
 				height,
@@ -2427,7 +2428,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	// We should never run out of video memory when allocating a non-rendertarget texture.
 	// However, it seems to happen sometimes when there are a lot of textures in memory and so
 	// if it happens we'll release assets and try again (anything is better than crashing).
-	unsigned ret=D3DXCreateTexture(
+	unsigned ret=LegacyD3DX::CreateTexture(
 		DX8Wrapper::_Get_D3D_Device8(),
 		width,
 		height,
@@ -2446,7 +2447,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 		// Invalidate the mesh cache
 		WW3D::_Invalidate_Mesh_Cache();
 
-		ret=D3DXCreateTexture(
+		ret=LegacyD3DX::CreateTexture(
 			DX8Wrapper::_Get_D3D_Device8(),
 			width,
 			height,
@@ -2659,7 +2660,7 @@ IDirect3DCubeTexture8* DX8Wrapper::_Create_DX8_Cube_Texture
 	// which case we return null.
 	if (rendertarget)
 	{
-		unsigned ret=D3DXCreateCubeTexture
+		unsigned ret=LegacyD3DX::CreateCubeTexture
 		(
 			DX8Wrapper::_Get_D3D_Device8(),
 			width,
@@ -2686,7 +2687,7 @@ IDirect3DCubeTexture8* DX8Wrapper::_Create_DX8_Cube_Texture
 			// Invalidate the mesh cache
 			WW3D::_Invalidate_Mesh_Cache();
 
-			ret=D3DXCreateCubeTexture
+			ret=LegacyD3DX::CreateCubeTexture
 			(
 				DX8Wrapper::_Get_D3D_Device8(),
 				width,
@@ -2721,7 +2722,7 @@ IDirect3DCubeTexture8* DX8Wrapper::_Create_DX8_Cube_Texture
 	// We should never run out of video memory when allocating a non-rendertarget texture.
 	// However, it seems to happen sometimes when there are a lot of textures in memory and so
 	// if it happens we'll release assets and try again (anything is better than crashing).
-	unsigned ret=D3DXCreateCubeTexture
+	unsigned ret=LegacyD3DX::CreateCubeTexture
 	(
 		DX8Wrapper::_Get_D3D_Device8(),
 		width,
@@ -2742,7 +2743,7 @@ IDirect3DCubeTexture8* DX8Wrapper::_Create_DX8_Cube_Texture
 		// Invalidate the mesh cache
 		WW3D::_Invalidate_Mesh_Cache();
 
-		ret=D3DXCreateCubeTexture
+		ret=LegacyD3DX::CreateCubeTexture
 		(
 			DX8Wrapper::_Get_D3D_Device8(),
 			width,
@@ -2796,7 +2797,7 @@ IDirect3DVolumeTexture8* DX8Wrapper::_Create_DX8_Volume_Texture
 	// We should never run out of video memory when allocating a non-rendertarget texture.
 	// However, it seems to happen sometimes when there are a lot of textures in memory and so
 	// if it happens we'll release assets and try again (anything is better than crashing).
-	unsigned ret=D3DXCreateVolumeTexture
+	unsigned ret=LegacyD3DX::CreateVolumeTexture
 	(
 		DX8Wrapper::_Get_D3D_Device8(),
 		width,
@@ -2819,7 +2820,7 @@ IDirect3DVolumeTexture8* DX8Wrapper::_Create_DX8_Volume_Texture
 		// Invalidate the mesh cache
 		WW3D::_Invalidate_Mesh_Cache();
 
-		ret=D3DXCreateVolumeTexture
+		ret=LegacyD3DX::CreateVolumeTexture
 		(
 			DX8Wrapper::_Get_D3D_Device8(),
 			width,

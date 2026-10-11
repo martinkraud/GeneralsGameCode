@@ -11,6 +11,31 @@ target_link_libraries(depsi_googletest INTERFACE
     deps_utility
 )
 
+# Controlled DX8 COM recording is independent of graphics/device availability.
+add_executable(legacy_texture_creation_test ../Core/Libraries/LegacyTextureCreationTest.cpp)
+target_compile_features(legacy_texture_creation_test PRIVATE cxx_std_17)
+target_include_directories(legacy_texture_creation_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+target_link_libraries(legacy_texture_creation_test PRIVATE dx8_headers GTest::gtest_main)
+add_test(NAME legacy_texture_creation_test COMMAND legacy_texture_creation_test)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    add_executable(legacy_texture_creation_reference ../Core/Libraries/LegacyTextureCreationReference.cpp)
+    add_executable(legacy_texture_creation_comparison ../Core/Libraries/LegacyTextureCreationTest.cpp)
+    foreach(target legacy_texture_creation_reference legacy_texture_creation_comparison)
+        target_compile_features(${target} PRIVATE cxx_std_17)
+        target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+        target_link_libraries(${target} PRIVATE legacy_dx8_dependencies advapi32 gdi32)
+    endforeach()
+    target_compile_definitions(legacy_texture_creation_comparison PRIVATE LEGACY_TEXTURE_LIVE_REFERENCE)
+    target_link_libraries(legacy_texture_creation_comparison PRIVATE GTest::gtest_main)
+    add_test(NAME legacy_texture_creation_comparison COMMAND legacy_texture_creation_comparison)
+    # Separate real resource proof; system DX8 may be unavailable on a test host.
+    add_executable(legacy_texture_creation_device_test ../Core/Libraries/LegacyTextureCreationDeviceTest.cpp)
+    target_compile_features(legacy_texture_creation_device_test PRIVATE cxx_std_17)
+    target_include_directories(legacy_texture_creation_device_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
+    target_link_libraries(legacy_texture_creation_device_test PRIVATE legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32 user32)
+    add_test(NAME legacy_texture_creation_device_test COMMAND legacy_texture_creation_device_test)
+endif()
+
 # Integer-only FVF sizing. Independent tests use actual SDK/engine declarations
 # for layout assertions, but the production boundary needs only <cstdint>.
 add_executable(legacy_fvf_stride_test ../Core/Libraries/LegacyFVFStrideTest.cpp)

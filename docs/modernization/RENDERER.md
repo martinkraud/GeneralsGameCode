@@ -1,5 +1,22 @@
 # Renderer and display architecture
 
+## X64.6 legacy resource creation boundary (2026-10-11)
+
+The existing DX8 wrapper now routes its ten 2D/cube/volume creation calls through
+engine-owned LegacyD3DX requirement negotiation and real DX8 COM device calls.
+No D3D11 dependency or IRenderBackend policy expansion is introduced. Pinned
+Win32 transcripts and native policy tests pass; separate real Win32 DX8 resource
+validation matches 108 2D, 108 cube and 81 volume successful pairs plus failures.
+Default/cap/format/mip/ownership rules and wrapper retries are preserved. No file
+loading, filtering, surface conversion or shader implementation changed.
+
+Full Win32/CTest14 and native CTest8 (including accepted D3D11 slices) pass.
+Native game helpers fall 8 -> 5/title, but neither game links yet. Real AMD64
+resource availability and whole-game rendering remain unproven. DX8 stays the
+default and no game was launched. See [X64_6_TEXTURE_CREATION.md](X64_6_TEXTURE_CREATION.md)
+for evidence and the proposed X64.7 fixed legacy shader-bytecode task; it has
+not begun. Earlier architecture findings below remain historical context.
+
 Current D3D11 evidence (2026-10-11):
 [D3D11.2 UI file textures](D3D11_2_FILE_UI_TEXTURES.md) adds bounded TGA/DDS
 single-mip CPU content, explicit 16/32-bit policy, immutable D3D11 upload and

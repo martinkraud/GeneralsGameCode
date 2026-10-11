@@ -115,6 +115,16 @@ class Render2DReference(unittest.TestCase):
         for name in ("dx8vertexbuffer.cpp", "dx8indexbuffer.cpp", "dx8wrapper.cpp",
                      "texturefilter.cpp", "dx8fvf.cpp"):
             text = current(CORE + name)
+            if name == "dx8wrapper.cpp":
+                # X64.6 permits only the measured creation-helper substitutions.
+                include = '#include "LegacyTextureCreation.h"\n'
+                self.assertEqual(text.count(include), 1)
+                text = text.replace(include, "")
+                for helper, count in (("CreateTexture", 4), ("CreateCubeTexture", 4),
+                                      ("CreateVolumeTexture", 2)):
+                    replacement = "LegacyD3DX::" + helper
+                    self.assertEqual(text.count(replacement), count)
+                    text = text.replace(replacement, "D3DX" + helper)
             if name == "dx8fvf.cpp":
                 # X64.5 permits only this reference-tested integer substitution.
                 include = '#include "LegacyFVFStride.h"\n'

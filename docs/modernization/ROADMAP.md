@@ -1,6 +1,32 @@
 # Incremental modernization roadmap
 
-## X64.5 integer FVF stride compatibility (2026-10-11)
+## X64.6 DX8 texture creation compatibility (2026-10-11)
+
+The ten 2D/cube/volume creation calls now use engine-owned LegacyD3DX policy
+and actual DX8 COM creation. The pinned Win32 library and replacement match
+145,755 controlled full transcripts; 90 literal transcripts also pass natively.
+Real system Win32 DX8 validation ran without skipping: 108 2D, 108 cube and 81
+volume successful pairs match all mip descriptors, alongside matching failures.
+Measured defaults, format fallback/query ordering, caps, mip and output ownership
+rules are retained. Wrapper invalidation/retries and all other resource routes
+remain unchanged. DX8 remains default; no game was launched.
+
+Native probes remove exactly three helpers/title: 8 -> 5; combined LNK2019
+16 -> 10, LNK2001 remains 8, LNK1120 remains 2. Neither game links yet; all 30
+separate tool ABI errors are unchanged. Full Win32 Release/CTest14, direct149
+and focused75/title, native CTest8, math/FVF/Bezier, RB1/RB2/RB3 and D3D11.1/.2
+checks pass. Native policy proof does not establish real AMD64 resource runtime.
+See [X64_6_TEXTURE_CREATION.md](X64_6_TEXTURE_CREATION.md) for measured semantics,
+real-device evidence, exact file/helper inventories and limitations.
+
+**Next proposed task: X64.7 - pinned-reference fixed legacy pixel-shader bytecode
+compatibility for all four production D3DXAssembleShader strings.** Preserve
+exact tokens, device creation/reset/failure/ownership and conditional profiler
+coverage. The larger file/filter/surface group and diagnostics were weighed
+separately; they are not implemented here. No next task was started. Pathfinding
+2.0 remains backlog; Stage4A.3 remains PAUSED. Older checkpoints are historical.
+
+## X64.5 integer FVF stride compatibility (2026-10-11, historical checkpoint)
 
 The three production D3DXGetFVFVertexSize calls now use a header-only integer
 LegacyD3DX boundary. All 1,245,282 reference inputs match the actual pinned
