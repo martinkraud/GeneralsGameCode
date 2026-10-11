@@ -11,6 +11,17 @@ target_link_libraries(depsi_googletest INTERFACE
     deps_utility
 )
 
+# Characterization only: actual pinned Win32 helpers, never production migration.
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
+    add_executable(legacy_resource_characterization ../Core/Libraries/LegacyResourceCharacterizationTest.cpp)
+    target_compile_features(legacy_resource_characterization PRIVATE cxx_std_17)
+    target_compile_definitions(legacy_resource_characterization PRIVATE NOMINMAX
+        RESOURCE_EVIDENCE_DIR="${PROJECT_SOURCE_DIR}/build/x64-9-resource-evidence"
+        RESOURCE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+    target_link_libraries(legacy_resource_characterization PRIVATE legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32 user32)
+    add_test(NAME legacy_resource_characterization COMMAND legacy_resource_characterization)
+endif()
+
 # Fixed CPU diagnostics need neither a graphics SDK nor device implementation.
 add_executable(legacy_error_string_test ../Core/Libraries/LegacyErrorStringTest.cpp)
 target_include_directories(legacy_error_string_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)

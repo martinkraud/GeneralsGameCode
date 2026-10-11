@@ -1,5 +1,116 @@
 # Agent handoff
 
+## X64.9D numerical convergence complete (2026-10-11)
+
+The independent test-only RGB/DXT5 numerical checker closes **13/13 compressed
+gates and 9/9 overall X64.9 readiness gates** for the frozen production contract.
+It reproduces endpoint refinement, projection/rounding/ties, degenerate exits,
+six/eight-step alpha decisions, x87 binary32 store order and the pinned 8/7
+coefficient. Production resource helpers remain unchanged; DX8 remains default.
+
+All 1,710 existing direct encoder records and eighteen small-block extensions
+are predicted independently. One fixed 32-block validation set adds 96 complete
+encodings, all matching; all four RGB orientations and both DXT5 modes occur.
+The conventional-coefficient negative control differs on eighteen blocks.
+No lookup of reference outputs occurs in the numerical model. No further broad
+fixture expansion was needed. Earlier OPEN entries below are historical.
+
+Final validation: full Win32 Release build, CTest20/20 (resource target 8/8),
+direct149/title (six existing disabled/title), focused75/title, native independent
+CTest10/10, rendering Python28/28, performance Python16/16, PowerShell parser9,
+and preservation audit PASS. Six earlier evidence streams and all three compact
+reference corpora are unchanged. Native title link diagnostics still contain
+exactly the same three D3DX helpers/title; the fixed tool probe retains the exact
+30-error multiset. Native full-graph failure remains expected, not resolved.
+
+This checkpoint is the combined twelve-file X64.9 characterization commit,
+`X64.9: characterize legacy resource conversion and filtering`, based on
+`3283218029fea5eb5e1785d6220a661d5d965815`, on `dev/modern-engine`.
+Only these tests, compact references, CMake test registration and modernization
+documentation belong in the commit; generated evidence/logs/runtimes remain
+ignored. Commit/push to origin/dev/modern-engine is authorized after validation.
+No game was launched. See the final X64.9D section in
+[X64_9_RESOURCE_CHARACTERIZATION.md](X64_9_RESOURCE_CHARACTERIZATION.md).
+
+Exactly one recommended next task for developer review: **X64.10, implement and
+migrate the final bounded resource-helper group** (D3DXCreateTextureFromFileExA,
+D3DXFilterTexture, D3DXLoadSurfaceFromSurface) against this accumulated contract.
+Preserve file/RLE quarantine disposition, authored mip handling, packed fields,
+float filter handoff, exact DXT decisions, access/staging failure cleanup and
+snapshot-equivalent aliasing. Do not substitute a generic compressor or silently
+reassociate x87 arithmetic. No characterization blocker remains within this
+frozen matrix; production implementation and existing tool ABI failures remain.
+X64.10 is a recommendation only and was not started. Stage4A.3 stays paused.
+
+## X64.9C compressed encoder continuation (2026-10-11, review pending)
+
+Readiness remains **OPEN**. The pinned encoder route, RGB preconditioning,
+DXT1 transparency, periodic small-mip extension and float filter handoff are
+bounded. A test-only independent DXT3 alpha checker matches 762 inputs. New
+ignored evidence contains 1,899 CPU records and 171/171 real-device agreements;
+128 compact encoder references are exercised. Earlier 3,010/371 and 334/380
+streams and 58/94 references remain byte-identical.
+
+Exact RGB endpoint refinement/color-selector ties and DXT5 alpha fitting/ties
+still lack an independent numerical reproduction. Compressed gate items
+1/3/5/7/8/9/13 remain NO; overall readiness 5/9 remains NO. Next task: finish
+only that numerical decision checker in the same characterization harness,
+reusing the existing cases and pinned tables (including pD8's 8/7 anomaly).
+Do not migrate helpers or start X64.10. See the X64.9C sections in
+[X64_9_RESOURCE_CHARACTERIZATION.md](X64_9_RESOURCE_CHARACTERIZATION.md).
+
+Full Win32 Release/CTest20, direct149/title, focused75/title, native CTest10,
+Python28/16, parser9 and preservation checks pass. Three unresolved D3DX helpers
+per title are unchanged. The fixed baseline tool-target probe reproduces the
+exact 30-error multiset; the parallel full graph additionally reached two
+unchanged Generals WorldBuilder objects (four extra ABI errors), documented in
+the report. No tool ABI fix or native-link progress. All eleven combined files
+remain unstaged/uncommitted; no push or game launch. Earlier entries are
+historical checkpoints; DX8 remains default.
+
+
+## X64.9B sampling/access continuation (2026-10-11, review pending)
+
+The original X64.9 evidence/assertions are preserved byte-for-byte. Added 334
+CPU records, 94 compact references and 380 real-device/access records. Supported
+surface cases agree 294/294; sixteen DXT3/5 compressed mip levels also agree.
+BOX dispatch/odd-edge trimming, general TRIANGLE/2D float accumulation and native
+packed interaction are now bounded. Scaled owned/standalone/back-buffer access,
+allocation/readback/upload failures and snapshot-equivalent aliases were tested.
+
+**Readiness remains OPEN: required exact compressed re-encoding is not bounded.**
+Compressed SurfaceClass copies/mips are reachable; a generic DXT compressor is
+not an acceptable substitute. Next task: inspect only the required pinned
+D3DXEncodeDXT1/3/5 decisions and add distinguishing block fixtures in the same
+harness. Do not start X64.10 or migrate any helper. Full accepted regressions
+pass; native three-helper/title and 30-error tool multisets are unchanged.
+See [X64_9_RESOURCE_CHARACTERIZATION.md](X64_9_RESOURCE_CHARACTERIZATION.md),
+X64.9B sections, for confidence levels, exact findings and nine readiness answers.
+All ten combined files remain unstaged/uncommitted; no push or game launch.
+Earlier checkpoints below are historical; DX8 remains default.
+
+## X64.9 resource characterization (2026-10-11, review pending)
+
+No production D3DX helper was migrated. The pinned Win32 observer/device suite
+now records 3,010 CPU rows and 371 device rows; 58 compact exact CPU references
+and exhaustive packed expansion checks pass. All 108 matching surface copies
+and 40 readable mip levels agree between CPU recording and the real device.
+The remaining file/filter/surface helpers and exact native/tool diagnostics are
+unchanged. Full Win32 Release/CTest20, direct149/title, focused75/title,
+native CTest10, Python28/16, parser9 and preservation audit pass. No game launch.
+
+**Readiness decision C: additional characterization before migration.** Exact
+general BOX/TRIANGLE dispatch, edge and mixed-channel rounding rules, relevant
+compressed conversion and scaled/non-lockable staging boundaries remain open.
+Next task: complete that contract using the existing pinned oracle; do not begin
+X64.10 implementation. The isolated RLE decoder heap-corruption observation is
+explicitly quarantined, not treated as a proven production requirement.
+See [X64_9_RESOURCE_CHARACTERIZATION.md](X64_9_RESOURCE_CHARACTERIZATION.md) for
+caller classification, exact bytes/rules, device restrictions and validation.
+X64.9 is unstaged and uncommitted because its conditional acceptance gate has
+not passed. Older checkpoints below are historical; DX8 remains default,
+Stage4A.3 remains PAUSED and Pathfinding 2.0 remains backlog.
+
 ## X64.8 native CPU diagnostic compatibility (2026-10-11)
 
 Both DX8Wrapper error loggers now use engine-owned pinned-reference error text.
