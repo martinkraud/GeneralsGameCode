@@ -18,8 +18,19 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND MSVC)
     target_compile_definitions(legacy_resource_characterization PRIVATE NOMINMAX
         RESOURCE_EVIDENCE_DIR="${PROJECT_SOURCE_DIR}/build/x64-9-resource-evidence"
         RESOURCE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-    target_link_libraries(legacy_resource_characterization PRIVATE legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32 user32)
+    target_link_libraries(legacy_resource_characterization PRIVATE legacy_resource legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32 user32)
     add_test(NAME legacy_resource_characterization COMMAND legacy_resource_characterization)
+endif()
+
+# Run the unchanged characterization inputs/references through the candidate.
+if(MSVC)
+    add_executable(legacy_resource_comparison ../Core/Libraries/LegacyResourceCharacterizationTest.cpp)
+    target_compile_features(legacy_resource_comparison PRIVATE cxx_std_17)
+    target_compile_definitions(legacy_resource_comparison PRIVATE NOMINMAX LEGACY_RESOURCE_REPLACEMENT
+        RESOURCE_EVIDENCE_DIR="${PROJECT_SOURCE_DIR}/build/x64-10-resource-${CMAKE_SIZEOF_VOID_P}-evidence"
+        RESOURCE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+    target_link_libraries(legacy_resource_comparison PRIVATE legacy_resource legacy_dx8_dependencies GTest::gtest_main advapi32 gdi32 user32)
+    add_test(NAME legacy_resource_comparison COMMAND legacy_resource_comparison)
 endif()
 
 # Fixed CPU diagnostics need neither a graphics SDK nor device implementation.

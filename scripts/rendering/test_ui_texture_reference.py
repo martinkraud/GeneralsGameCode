@@ -1,7 +1,7 @@
 """Freeze real UI/loader policy while reversing only the explicit CPU init seam."""
 import subprocess
 import unittest
-from test_render2d_reference import ROOT, CORE, current, tokens, body
+from test_render2d_reference import ROOT, CORE, current, tokens, body, restore_resource_calls
 
 BASE = "0170ad1adc8594f06e953dad12894818dfa1c683"
 
@@ -17,7 +17,10 @@ class UITextureReference(unittest.TestCase):
                           "Core/Libraries/Source/WWVegas/WWLib/TARGA.cpp"] + [
                           f"{title}/Code/Libraries/Source/WWVegas/WW3D2/{name}" for title in ("Generals", "GeneralsMD")
                           for name in ("assetmgr.cpp", "assetmgr.h", "ddsfile.cpp", "ddsfile.h", "render2d.cpp")]:
-            self.assertEqual(tokens(current(path)), tokens(old(path)), path)
+            text = current(path)
+            if path == CORE + "missingtexture.cpp":
+                text = restore_resource_calls(self, text, (("LoadSurfaceFromSurface", 1),))
+            self.assertEqual(tokens(text), tokens(old(path)), path)
 
     def test_exact_init_and_install_seams_only(self):
         source = current(CORE + "texture.cpp").replace('#include "IRenderBackend.h"', '')

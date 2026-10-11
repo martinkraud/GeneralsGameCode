@@ -249,6 +249,15 @@ set(WW3D2_SRC
     ww3dtrig.h
 )
 
+add_library(legacy_resource STATIC LegacyResource.cpp LegacyResource.h LegacyResourceEncoding.h)
+target_compile_features(legacy_resource PUBLIC cxx_std_17)
+target_compile_definitions(legacy_resource PRIVATE NOMINMAX)
+target_link_libraries(legacy_resource PUBLIC dx8_headers)
+target_include_directories(legacy_resource PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(MSVC)
+    target_compile_options(legacy_resource PRIVATE /fp:strict)
+endif()
+
 add_library(corei_ww3d2 INTERFACE)
 
 target_sources(corei_ww3d2 INTERFACE ${WW3D2_SRC})
@@ -264,6 +273,7 @@ if (MSVC AND NOT IS_VS6_BUILD)
 endif()
 
 target_link_libraries(corei_ww3d2 INTERFACE
+    legacy_resource
     core_browserengine
     core_wwlib
     core_wwmath

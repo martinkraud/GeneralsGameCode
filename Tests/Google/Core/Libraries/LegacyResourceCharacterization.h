@@ -2,6 +2,15 @@
 #pragma once
 #include "LegacyTextureCreationStubs.h"
 #include <d3dx8.h>
+#if defined(_M_IX86)
+inline auto PinnedResourceSurfaceCopy=&::D3DXLoadSurfaceFromSurface;
+#endif
+#if defined(LEGACY_RESOURCE_REPLACEMENT)
+#include "LegacyResource.h"
+#define D3DXLoadSurfaceFromSurface LegacyD3DX::LoadSurfaceFromSurface
+#define D3DXFilterTexture LegacyD3DX::FilterTexture
+#define D3DXCreateTextureFromFileExA LegacyD3DX::CreateTextureFromFileExA
+#endif
 #include <vector>
 #include <string>
 #include <sstream>

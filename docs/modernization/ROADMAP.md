@@ -1,5 +1,27 @@
 # Incremental modernization roadmap
 
+## X64.10 completed; native title linkage unblocked (2026-10-11)
+
+Engine-owned replacements now implement the accepted X64.9 file/filter/surface
+resource contract. External D3DX resource helper count **3 -> 0/title**; actual
+Generals and Zero Hour AMD64 title links both succeed (exit0, x64 PE images,
+no D3DX imports). No new title linker blockers. The full native tool graph still
+fails with the unchanged ABI diagnostics; it was not repaired in this stage.
+
+Full Win32 Release/CTest21, pinned/replacement resource10 each, direct149/title,
+focused75/title, native independent CTest11 and supplemental regressions pass.
+All six Win32 and three native CPU evidence streams match accepted X64.9 bytes;
+58/94/128 compact references unchanged. Native device tests skip for absent
+AMD64 system D3D8. Neither native gameplay nor cross-architecture determinism is
+validated. No game launch; DX8 remains default; Stage4A.3 remains paused.
+See [X64_10_RESOURCE_COMPATIBILITY.md](X64_10_RESOURCE_COMPATIBILITY.md).
+
+Exactly one next task for developer review: **X64.11 native pre-launch readiness
+audit**. Bound both now-linking titles' renderer/dependency startup route and
+floating-point setup, then propose the smallest safe first runtime validation.
+Keep tool ABI fixes separate and do not launch either game automatically.
+Older next-step entries below describe historical checkpoints.
+
 ## X64.9D numerical convergence complete (2026-10-11)
 
 The independent test-only RGB/DXT5 numerical checker closes **13/13 compressed

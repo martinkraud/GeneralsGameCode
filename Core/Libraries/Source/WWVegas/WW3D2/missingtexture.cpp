@@ -17,6 +17,7 @@
 */
 
 // 08/05/02 KM Texture class redesign
+#include "WW3D2/LegacyResource.h"
 #include "missingtexture.h"
 #include "texture.h"
 #include "dx8wrapper.h"
@@ -102,7 +103,7 @@ void MissingTexture::_Init()
 		DX8_ErrorCode(tex->GetSurfaceLevel(i-1,&src));
 		DX8_ErrorCode(tex->GetSurfaceLevel(i,&dst));
 
-		DX8_ErrorCode(D3DXLoadSurfaceFromSurface(
+		DX8_ErrorCode(LegacyD3DX::LoadSurfaceFromSurface(
 			dst,
 			nullptr,	// palette
 			nullptr,	// rect

@@ -2,7 +2,7 @@
 import subprocess
 import re
 import unittest
-from test_render2d_reference import ROOT, CORE, current, tokens, body, calls
+from test_render2d_reference import ROOT, CORE, current, tokens, body, calls, restore_resource_calls
 
 BASE = "4911acc4cc52d75a95a3c6702ca29bea385aba12"
 
@@ -45,7 +45,11 @@ class Texture2DReference(unittest.TestCase):
         # conversion, reference counts, and every legacy surface update unchanged.
         for name in ("textureloader.cpp", "textureloader.h", "surfaceclass.cpp",
                      "surfaceclass.h", "missingtexture.cpp", "font3d.cpp", "texturefilter.cpp"):
-            self.assertEqual(tokens(current(CORE + name)), tokens(old(name)), name)
+            text = current(CORE + name)
+            if name in ("surfaceclass.cpp", "missingtexture.cpp"):
+                text = restore_resource_calls(self, text, (
+                    ("LoadSurfaceFromSurface", 2 if name == "surfaceclass.cpp" else 1),))
+            self.assertEqual(tokens(text), tokens(old(name)), name)
 
     def test_sentence_copy_preserves_entire_producer_and_surface_lifetime(self):
         # RB3 separately pins every sentence and extracted glyph token against

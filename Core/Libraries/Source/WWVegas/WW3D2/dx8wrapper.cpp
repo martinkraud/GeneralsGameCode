@@ -50,6 +50,7 @@
 #define WINVER 0x0500 // Required to access GetMonitorInfo in VC6.
 #endif
 
+#include "WW3D2/LegacyResource.h"
 #include "dx8wrapper.h"
 #include "LegacyTextureCreation.h"
 #include "LegacyErrorString.h"
@@ -2487,7 +2488,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	// NOTE: It is possible to get the size and format of the original image file from this
 	// function as well, so if we later want to second-guess D3DX's format conversion decisions
 	// we can do so after this function is called..
-	unsigned result = D3DXCreateTextureFromFileExA(
+	unsigned result = LegacyD3DX::CreateTextureFromFileExA(
 		_Get_D3D_Device8(),
 		filename,
 		D3DX_DEFAULT,
@@ -2539,13 +2540,13 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	// Copy the surface to the texture
 	IDirect3DSurface8 *tex_surface = nullptr;
 	texture->GetSurfaceLevel(0, &tex_surface);
-	DX8_ErrorCode(D3DXLoadSurfaceFromSurface(tex_surface, nullptr, nullptr, surface, nullptr, nullptr, D3DX_FILTER_BOX, 0));
+	DX8_ErrorCode(LegacyD3DX::LoadSurfaceFromSurface(tex_surface, nullptr, nullptr, surface, nullptr, nullptr, D3DX_FILTER_BOX, 0));
 	tex_surface->Release();
 
 	// Create mipmaps if needed
 	if (mip_level_count!=MIP_LEVELS_1)
 	{
-		DX8_ErrorCode(D3DXFilterTexture(texture, nullptr, 0, D3DX_FILTER_BOX));
+		DX8_ErrorCode(LegacyD3DX::FilterTexture(texture, nullptr, 0, D3DX_FILTER_BOX));
 	}
 
 	return texture;

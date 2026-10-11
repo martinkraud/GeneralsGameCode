@@ -6,7 +6,10 @@
 #include <map>
 #include <cmath>
 #include <float.h>
+#if defined(_M_IX86)
 #include "LegacyResourceEncoderModel.h"
+#endif
+#include "LegacyResource.h"
 
 // Internal pinned encoder entry points reached by CD3DXCodecDXT. Test-only
 // declarations allow exact float boundary probes; no replacement is supplied.
@@ -755,9 +758,13 @@ D3DXCOLOR ByteColor(unsigned r,unsigned g,unsigned b,unsigned a=255) {
     const float unit=1.0f/255.0f;return D3DXCOLOR(r*unit,g*unit,b*unit,a*unit);
 }
 HRESULT EncodeBlock(D3DFORMAT f,unsigned char *out,const EncoderBlock &block) {
+#if !defined(_M_IX86)
+    return LegacyD3DX::EncodeResourceBlock(f,out,block.data());
+#else
     if(f==D3DFMT_DXT1)return D3DXEncodeDXT1(out,block.data());
     if(f==D3DFMT_DXT3)return D3DXEncodeDXT3(out,block.data());
     return D3DXEncodeDXT5(out,block.data());
+#endif
 }
 std::string StorageActive(const Surface &s) {
     std::string value;for(unsigned y=0;y<StorageRows(s.desc.Format,s.desc.Height);++y)
@@ -821,12 +828,17 @@ std::array<unsigned char,8> CheckDXT3Alpha(const EncoderBlock &block) {
     std::array<unsigned char,8> result{};for(unsigned i=0;i<8;++i)result[i]=static_cast<unsigned char>(packed>>(i*8));return result;
 }
 std::string PredictEncoder(const EncoderBlock &block,D3DFORMAT format) {
+#if !defined(_M_IX86)
+    unsigned char output[16]={};EXPECT_EQ(LegacyD3DX::EncodeResourceBlock(format,output,block.data()),S_OK);
+    return Hex(output,RowBytes(format,4));
+#else
     auto color=ResourceEncoderModel::Color(block.data(),format==D3DFMT_DXT1);
     EXPECT_TRUE(color.valid);
     std::string bytes;
     if(format==D3DFMT_DXT3){auto alpha=CheckDXT3Alpha(block);bytes=Hex(alpha.data(),8);}
     if(format==D3DFMT_DXT5){auto alpha=ResourceEncoderModel::Alpha5(block.data());bytes=Hex(alpha.bytes.data(),8);}
     return bytes+Hex(color.bytes.data(),8);
+#endif
 }
 std::vector<Row> encoderResourceCases;
 void GenerateEncoderEvidence() {
@@ -921,6 +933,7 @@ void GenerateEncoderEvidence() {
 }
 TEST(LegacyResourceCharacterization, CompressedEncoderDecisions) {GenerateEncoderEvidence();}
 
+#if defined(_M_IX86)
 TEST(LegacyResourceCharacterization, NumericalEncoderDecisions) {
     unsigned orientations=0,colorLimit=0,alphaLimit=0,initial=0,final=0;
     _controlfp_s(&initial,0,0);
@@ -999,6 +1012,40 @@ TEST(LegacyResourceCharacterization, NumericalEncoderHoldout) {
     std::printf("Numerical holdout: 32 blocks / 96 full encodings; orientations=%u alpha_modes=%u max_iterations=%u/%u coefficient_mutations=%u\n",
         orientationMask,alphaModes,maxColorIterations,maxAlphaIterations,differences);
 }
+
+TEST(LegacyResourceCharacterization, ProductionEncoderCompatibility) {
+    auto check=[](const EncoderBlock &block){
+        for(auto format:{D3DFMT_DXT1,D3DFMT_DXT3,D3DFMT_DXT5}){
+            unsigned char oracle[16]={},actual[16]={};
+            ASSERT_EQ(EncodeBlock(format,oracle,block),S_OK);
+            ASSERT_EQ(LegacyD3DX::EncodeResourceBlock(format,actual,block.data()),S_OK);
+            EXPECT_EQ(Hex(actual,RowBytes(format,4)),Hex(oracle,RowBytes(format,4)));
+        }
+    };
+    for(const auto &fixture:EncoderFixtures()){SCOPED_TRACE(fixture.name);check(fixture.colors);}
+    for(const auto &block:EncoderValidationBlocks())check(block);
+    // GameLogic explicitly selects PC_24. Keep that Win32 caller contract even
+    // though the frozen X64.9 reference corpus was captured at PC_53.
+    unsigned original=0,ignored=0,after=0;_controlfp_s(&original,0,0);
+    _controlfp_s(&ignored,_PC_24,_MCW_PC);
+    for(const auto &fixture:EncoderFixtures()){SCOPED_TRACE(fixture.name);check(fixture.colors);}
+    for(const auto &block:EncoderValidationBlocks())check(block);
+    _controlfp_s(&after,0,0);EXPECT_EQ(after&_MCW_PC,_PC_24);
+    _controlfp_s(&ignored,original,_MCW_PC|_MCW_RC);
+}
+
+TEST(LegacyResourceCharacterization, ProductionDecodeCompatibility) {
+    std::vector<std::string> events;Device device(events);observerDevice=&device;
+    for(const auto &fixture:EncoderFixtures())for(auto format:{D3DFMT_DXT1,D3DFMT_DXT3,D3DFMT_DXT5}){
+        SCOPED_TRACE(fixture.name);Surface source("s",4,4,format,events),expected("a",4,4,D3DFMT_A8R8G8B8,events),actual("b",4,4,D3DFMT_A8R8G8B8,events);
+        ASSERT_EQ(EncodeBlock(format,source.bytes.data(),fixture.colors),S_OK);
+        ASSERT_EQ(PinnedResourceSurfaceCopy(&expected,nullptr,nullptr,&source,nullptr,nullptr,D3DX_FILTER_NONE,0),S_OK);
+        ASSERT_EQ(LegacyD3DX::LoadSurfaceFromSurface(&actual,nullptr,nullptr,&source,nullptr,nullptr,D3DX_FILTER_NONE,0),S_OK);
+        EXPECT_EQ(actual.bytes,expected.bytes);
+    }
+    observerDevice=nullptr;
+}
+#endif
 
 TEST(LegacyResourceCharacterization, RealCompressedEncoderDecisions) {
     if(encoderResourceCases.empty())GenerateEncoderEvidence();

@@ -45,6 +45,7 @@
 //-----------------------------------------------------------------------------
 //         Includes
 //-----------------------------------------------------------------------------
+#include "WW3D2/LegacyResource.h"
 #include <stdlib.h>
 #include "WWMath/LegacyD3DXMath.h"
 
@@ -196,7 +197,7 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 	}
 	surface_level->UnlockRect();
 	surface_level->Release();
-	DX8_ErrorCode(D3DXFilterTexture(Peek_D3D_Texture(), nullptr, 0, D3DX_FILTER_BOX));
+	DX8_ErrorCode(LegacyD3DX::FilterTexture(Peek_D3D_Texture(), nullptr, 0, D3DX_FILTER_BOX));
 	if (WW3D::Get_Texture_Reduction()) {
 		Peek_D3D_Texture()->SetLOD(WW3D::Get_Texture_Reduction());
 	}
@@ -353,7 +354,7 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 	}
 	surface_level->UnlockRect();
 	surface_level->Release();
-	DX8_ErrorCode(D3DXFilterTexture(D3DTexture, nullptr, 0, D3DX_FILTER_BOX));
+	DX8_ErrorCode(LegacyD3DX::FilterTexture(D3DTexture, nullptr, 0, D3DX_FILTER_BOX));
 	return(surface_desc.Height);
 }
 #endif
@@ -426,7 +427,7 @@ Bool TerrainTextureClass::updateFlat(WorldHeightMap *htMap, Int xCell, Int yCell
 
 	surface_level->UnlockRect();
 	surface_level->Release();
-	DX8_ErrorCode(D3DXFilterTexture(Peek_D3D_Texture(), nullptr, 0, D3DX_FILTER_BOX));
+	DX8_ErrorCode(LegacyD3DX::FilterTexture(Peek_D3D_Texture(), nullptr, 0, D3DX_FILTER_BOX));
 	return(surface_desc.Height);
 }
 
@@ -838,7 +839,7 @@ int AlphaEdgeTextureClass::update(WorldHeightMap *htMap)
 	}
 	surface_level->UnlockRect();
 	surface_level->Release();
-	DX8_ErrorCode(D3DXFilterTexture(Peek_D3D_Texture(), nullptr, 0, D3DX_FILTER_BOX));
+	DX8_ErrorCode(LegacyD3DX::FilterTexture(Peek_D3D_Texture(), nullptr, 0, D3DX_FILTER_BOX));
 	return(surface_desc.Height);
 }
 

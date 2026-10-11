@@ -25,6 +25,18 @@ def current(path):
     return (ROOT / path).read_text()
 
 
+def restore_resource_calls(test, text, helpers):
+    """Reverse only X64.10's explicitly counted compatibility substitutions."""
+    include = '#include "WW3D2/LegacyResource.h"\n'
+    test.assertEqual(text.count(include), 1)
+    text = text.replace(include, "")
+    for helper, count in helpers:
+        replacement = "LegacyD3DX::" + helper + "("
+        test.assertEqual(text.count(replacement), count)
+        text = text.replace(replacement, "D3DX" + helper + "(")
+    return text
+
+
 def tokens(text):
     text = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
     return re.findall(r"\w+|[^\s]", text)
@@ -116,6 +128,9 @@ class Render2DReference(unittest.TestCase):
                      "texturefilter.cpp", "dx8fvf.cpp"):
             text = current(CORE + name)
             if name == "dx8wrapper.cpp":
+                text = restore_resource_calls(self, text, (
+                    ("CreateTextureFromFileExA", 1), ("LoadSurfaceFromSurface", 1),
+                    ("FilterTexture", 1)))
                 # X64.8 permits only two CPU diagnostic substitutions.
                 include = '#include "LegacyErrorString.h"\n'
                 self.assertEqual(text.count(include), 1)

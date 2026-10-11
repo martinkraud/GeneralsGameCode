@@ -1,5 +1,50 @@
 # Agent handoff
 
+## X64.10 resource migration complete (2026-10-11)
+
+Current checkpoint supersedes historical next-step entries below. From accepted
+`9afa8cfac0ae78d4ec3d3838e9574b172b68e0c2`, engine-owned replacements now serve
+the final file/filter/surface resource helpers. External D3DX resource count is
+**3 -> 0/title**. Actual Generals and Zero Hour AMD64 title link probes both
+exit **0**, with dumpbin confirming x64 machine type and no D3DX imports.
+There are no new native title linker blockers. DX8 remains default; no game launched.
+
+The complete accepted X64.9/X64.9B/C/D contract remains binding: packed fields,
+BOX/TRIANGLE arithmetic and edge policy, exact DXT RGB/alpha decisions and 8/7
+coefficient, float codec handoff, periodic small blocks, authored mips, file/RLE
+quarantine, staging/access/failure ownership and aliases. Do not substitute a
+generic codec or broaden unsupported flags/palettes. Win32 retains caller x87
+precision; production encoder tests match the pinned encoder under PC_53 and
+the game's PC_24. AMD64 matches the accepted PC_53 corpus; simulation precision
+equivalence is not claimed. Old unequal-extent NONE prose is clarified by the
+unchanged reference bytes: uncovered output is zero-filled before conversion.
+
+Validation: full Win32 Release/CTest **21/21**, both resource suites **10/10**,
+direct **149/title** (six existing disabled), focused **75/title**, producer5/
+render2D15, AMD64 independent CTest **11/11**, Python rendering28/performance16,
+PowerShell parse9 and preservation audit PASS. Six Win32 and three native CPU
+evidence streams are byte-identical to X64.9; all compact corpora unchanged.
+Native resource results are three CPU passes and three device skips (no system
+AMD64 D3D8). Unfiltered native CTest's two unbuilt title tests were Not Run;
+only the established independent native targets are claimed as tested.
+
+Full native graph still fails in tools: broad34 compiler diagnostics; fixed
+probe exactly the same30 (C2065=8/C2440=6/C2555=4/C2664=8/C2737=4). No tool fixes.
+Successful title linkage does not establish a usable native renderer/audio/video
+or safe FP startup. Existing PC_24 setup needs an AMD64 policy review.
+
+This is the coherent nineteen-file X64.10 implementation/test/documentation
+checkpoint, authorized for commit and push only to `origin/dev/modern-engine`.
+Generated evidence/logs/scripts, captures, binaries and runtime copies remain
+ignored and preserved. See [X64_10_RESOURCE_COMPATIBILITY.md](X64_10_RESOURCE_COMPATIBILITY.md)
+for exact implementation, validation commands, logs, limits and native results.
+Stage4A.3 remains paused; no performance optimization work was resumed.
+
+Exactly one next task for developer review: **X64.11 native pre-launch readiness
+audit**, bounding both titles' renderer/dependency startup and FP setup before
+proposing a safe first-runtime-validation scope. Do not launch automatically,
+begin tool ABI repair or infer lockstep compatibility from the resource tests.
+
 ## X64.9D numerical convergence complete (2026-10-11)
 
 The independent test-only RGB/DXT5 numerical checker closes **13/13 compressed
