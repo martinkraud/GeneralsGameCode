@@ -87,6 +87,25 @@ class OrdinaryGameContract(unittest.TestCase):
         self.assertIn("ThePlayerList->getPlayerCount() >= 2", loop)
         self.assertIn('"FP_summary"', loop)
 
+    def test_world_renderer_work_is_not_enabled_in_the_validation_profiles(self):
+        # X64.24 validates GameLogic only: the CPU-backed geometry mode is an explicit
+        # opt-in that no startup profile, window code or display host turns on.
+        import subprocess
+        hits = subprocess.check_output(["git", "grep", "-l", "Enable_CPU_Backed_Geometry"], cwd=ROOT).decode().split()
+        allowed = {"Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
+                   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp",
+                   "Tests/Google/Core/Libraries/NativeTerrainTest.cpp",
+                   "scripts/native-runtime/test_ordinary_game_contract.py"}
+        self.assertEqual(set(hits) - allowed, set())
+        backend = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp")
+        self.assertIn("cpuBackedGeometry{false}", backend)
+        for path in ("Core/Libraries/Source/WWVegas/WW3D2/dx8vertexbuffer.cpp",
+                     "Core/Libraries/Source/WWVegas/WW3D2/dx8indexbuffer.cpp"):
+            self.assertIn("CPU_Backed_Geometry_Enabled()", read(path))
+        # Depth buffer stays opt-in and the native presentation config never sets it.
+        self.assertIn("bool depth_buffer = false;", read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h"))
+        self.assertNotIn("depth_buffer", read("Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp"))
+
     def test_launcher_requires_live_logic_evidence(self):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         for term in ("-nativeOrdinaryGame", "Fewer than 150 logic frames in game", "Shell push boundary reached",

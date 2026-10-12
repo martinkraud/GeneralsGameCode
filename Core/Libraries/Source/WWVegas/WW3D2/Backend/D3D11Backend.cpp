@@ -608,6 +608,9 @@ unsigned D3D11Backend::Texture_Creations() const { return impl->textures; }
 unsigned D3D11Backend::Buffer_Creations() const { return impl->buffers; }
 unsigned D3D11Backend::Draw_Count() const { return impl->draws; }
 unsigned D3D11Backend::Live_Residencies() { return liveResidencies.load(); }
+static std::atomic<bool> cpuBackedGeometry{false};
+void D3D11Backend::Enable_CPU_Backed_Geometry(bool enable) { cpuBackedGeometry = enable; }
+bool D3D11Backend::CPU_Backed_Geometry_Enabled() { return cpuBackedGeometry.load(); }
 bool D3D11Backend::Has_Depth_Buffer() const { return impl->dsv != nullptr; }
 Texture2DResidency *D3D11Backend::Create_Mipped_Rgba8_Residency(unsigned width, unsigned height,
                                                                 const std::vector<std::vector<unsigned char>> &mips)

@@ -70,7 +70,8 @@ static int _DX8VertexBufferCount=0;
 // then CPU-backed content instead of IDirect3DVertexBuffer8 COM objects.
 static bool NativeCpuBackedBuffers()
 {
-	return dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend()) != nullptr;
+	return D3D11Backend::CPU_Backed_Geometry_Enabled() &&
+		dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend()) != nullptr;
 }
 #else
 static bool NativeCpuBackedBuffers() { return false; }

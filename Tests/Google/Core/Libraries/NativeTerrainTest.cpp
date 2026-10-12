@@ -75,10 +75,12 @@ struct NativeScope {
         try {
             PresentationConfiguration config; config.window = window;
             WW3D::Init_Native_Presentation(config);
+            D3D11Backend::Enable_CPU_Backed_Geometry(true);
             ok = true;
         } catch (...) { ok = false; }
     }
     ~NativeScope() {
+        D3D11Backend::Enable_CPU_Backed_Geometry(false);
         if (ok) WW3D::Shutdown_Native_Presentation();
         if (window) DestroyWindow(window);
         UnregisterClassA("NativeTerrainTestWindow", GetModuleHandleA(nullptr));

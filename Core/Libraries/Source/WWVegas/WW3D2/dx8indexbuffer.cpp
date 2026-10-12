@@ -186,7 +186,8 @@ void IndexBufferClass::Copy(unsigned short* indices,unsigned first_index,unsigne
 #include "Backend/D3D11Backend.h"
 static bool NativeCpuBackedIndexBuffers()
 {
-	return dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend()) != nullptr;
+	return D3D11Backend::CPU_Backed_Geometry_Enabled() &&
+		dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend()) != nullptr;
 }
 #else
 static bool NativeCpuBackedIndexBuffers() { return false; }

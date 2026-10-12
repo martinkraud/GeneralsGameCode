@@ -52,6 +52,11 @@ public:
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;
+    // Opt-in (default off) for the world renderer: legacy DX8 vertex/index buffers become
+    // CPU-backed while this backend owns WW3D. Profiles that do not render the world
+    // (X64.22-24) keep the exact previous runtime behavior.
+    static void Enable_CPU_Backed_Geometry(bool enable);
+    static bool CPU_Backed_Geometry_Enabled();
     // World (R1/R2): neutral geometry residency and purpose-built material draws.
     GeometryResidency *Create_Geometry_Residency(const GeometryCPUContent &);
     // Immutable RGBA8 texture with a full caller-supplied mip chain (terrain atlas).
