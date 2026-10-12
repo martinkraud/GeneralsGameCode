@@ -171,6 +171,18 @@ flat/grayscale. Next: Skirmish setup -> map load -> first world frame; see
 `X64_24_SKIRMISH_WORLD_AUDIT.md`. Class C (GameLogic/world) is opened only through
 the bounded first-world-frame boundary defined there.
 
+**X64.24 (2026-10-12): Skirmish -> map load on the ordinary engine loop IMPLEMENTED and
+offline-validated, awaiting the developer's first native run.** Commit `bc55d3744`,
+doc `X64_24_SKIRMISH_WORLD_AUDIT.md` (path map, renderer inventory, staged R0-R5 plan,
+open fidelity-target question). Profile `-nativeOrdinaryGame`: ordinary
+`Win32GameEngine::update`+FramePacer loop, live GameLogic on the headless world
+selection, UI-only draw (no world rendering), audio off, Shell push allow-list
+MainMenu/SkirmishGameOptionsMenu, 1800-logic-frame + 15 min bounds, CRC milestones.
+Stage `x64-24-ordinary-game` (EXE SHA256 `0C68A6EC...F0E1C`, PDB `4AC44F99...F8034`,
+age 69) preflighted, never executed, not to be rebuilt. Not accepted until reviewed.
+World rendering is NOT started: next is renderer stage R0/R1 once the fidelity target
+in the audit is confirmed.
+
 | Class | Known source facts and audit questions |
 | --- | --- |
 | A: required for interactive menu | Real ApplicationHWnd creation/ownership, checked creation/focus/message handling, truthful modern device/configuration/size lifecycle, real WindowManager/layout callbacks, menu event routing, cursor/keyboard/IME, resource ownership and graceful partial-init/exit. Determine exact minimum from reachable source; not every legacy feature is automatically required. |
