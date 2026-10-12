@@ -287,3 +287,29 @@ later increments. `TerrainBase`/`TerrainBlend` are exactly passes 0/1.
 Steps 1-4 produce the first D3D11 terrain frame; they require a
 developer-run candidate to be judged visually, and are sequenced after the X64.24
 fix1 result confirms that logic runs on AMD64.
+
+## fix2 candidate (supersedes fix1; same X64.24 contract)
+
+The fix1 preflight was blocked ("Build changed; stage a fresh runtime") because the
+independent renderer work rebuilt the shared outputs after fix1 was staged. A fresh
+candidate was staged from clean HEAD `00fb1ce2c`. To keep the validation equal to
+fix1 the CPU-backed legacy geometry (R1b), which keyed only on the D3D11 backend
+owning WW3D (true in this profile), is now an explicit opt-in
+(`D3D11Backend::Enable_CPU_Backed_Geometry`, default off; only tests and the future
+terrain renderer enable it). The depth buffer is also opt-in and not enabled. The
+profile's runtime behavior is therefore unchanged: same loop, push allow-list,
+audio-off, bounded FP receipts and start-after-load evidence as `18f0be5ab`.
+
+`x64-24-ordinary-game-fix2`: GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age 72,
+EXE SHA256 `40A35EEFA001E98BF93B570D5B39A289C6BD4D2F40C1E065D9E7005C29BD5199`,
+PDB SHA256 `1D07582141251A0EF671A03231244883C08F64C3EFCDFAE088604F6CF96B2BF9`,
+30 imports, no app-local DLLs, no `runs` directory, preflighted, never executed.
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeOrdinaryGame.ps1 -Title Generals -Name x64-24-ordinary-game-fix2
+./scripts/native-runtime/Invoke-NativeOrdinaryGame.ps1 -Title Generals -Name x64-24-ordinary-game-fix2 -RunReviewedOrdinaryGame
+```
+
+Interaction, expectations and PASS/FAIL are those of the original X64.24 section.
+`fix1` must not be used (its stage no longer matches the build).

@@ -182,6 +182,12 @@ load, capacity named in the classifier). Fresh candidate
 `x64-24-ordinary-game-fix1` (EXE SHA256 `2C62BD2A...D0A9`, PDB `EA421748...656F`,
 age 70) preflighted, never executed. Doc: `X64_24_SKIRMISH_WORLD_AUDIT.md`.
 
+**Current X64.24 candidate: `x64-24-ordinary-game-fix2`** (clean HEAD `00fb1ce2c`, EXE
+SHA256 `40A35EEF...D5199`, PDB `1D075821...B2BF9`, age 72), preflighted, never
+executed. fix1 is superseded (stage/build mismatch after renderer work). The
+renderer opt-ins (CPU-backed geometry, depth buffer) are off in this profile so the
+run validates GameLogic only. Commands in `X64_24_SKIRMISH_WORLD_AUDIT.md`.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a
