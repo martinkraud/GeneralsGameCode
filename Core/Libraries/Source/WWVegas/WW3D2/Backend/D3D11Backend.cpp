@@ -129,6 +129,56 @@ float4 PSGray(P p) : SV_TARGET {
     return float4(g, g, g, t.a);
 }
 )";
+const char worldShaderSource[] = R"(
+cbuffer World : register(b0) { row_major float4x4 wvp; float4 flags; };
+Texture2D image : register(t0); SamplerState imageSampler : register(s0);
+struct VW { float3 pos : POSITION; float4 col : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; };
+struct PW { float4 pos : SV_POSITION; float4 col : COLOR; float2 uv : TEXCOORD0; };
+PW VSWorld(VW v) {
+    PW o;
+    o.pos = mul(float4(v.pos, 1), wvp);
+    o.col = v.col.bgra;               // packed ARGB (D3DCOLOR) bytes are B,G,R,A
+    o.uv = flags.x > 0.5 ? v.uv1 : v.uv0;
+    return o;
+}
+// Terrain combiner: rgb = tex * diffuse; alpha only participates in the blend pass.
+float4 PSTerrain(PW p) : SV_TARGET {
+    float4 t = image.Sample(imageSampler, p.uv);
+    float a = flags.y > 0.5 ? t.a * p.col.a : 1.0;
+    return float4(t.rgb * p.col.rgb, a);
+}
+)";
+ComPtr<ID3DBlob> CompileWorld(const char *entry, const char *profile)
+{
+    ComPtr<ID3DBlob> code, errors;
+    HRESULT result = D3DCompile(worldShaderSource, sizeof(worldShaderSource) - 1, "D3D11World",
+        nullptr, nullptr, entry, profile, D3DCOMPILE_ENABLE_STRICTNESS, 0, &code, &errors);
+    if (FAILED(result) && errors)
+        throw std::runtime_error(std::string(static_cast<const char *>(errors->GetBufferPointer()), errors->GetBufferSize()));
+    Check(result, "D3DCompile world");
+    return code;
+}
+// Row-vector matrix product (Direct3D convention): out = a * b.
+void Multiply(const float *a, const float *b, float *out)
+{
+    float r[16];
+    for (int i = 0; i < 4; ++i) for (int j = 0; j < 4; ++j) {
+        float v = 0;
+        for (int k = 0; k < 4; ++k) v += a[i * 4 + k] * b[k * 4 + j];
+        r[i * 4 + j] = v;
+    }
+    std::memcpy(out, r, sizeof(r));
+}
+class GeoResidency final : public GeometryResidency {
+public:
+    GeoResidency() { ++liveResidencies; }
+    ~GeoResidency() override { --liveResidencies; }
+    ComPtr<ID3D11Device> device;
+    ComPtr<ID3D11Buffer> vertices, indices;
+    unsigned vertexCount = 0, indexCount = 0;
+    unsigned Vertex_Count() const override { return vertexCount; }
+    unsigned Index_Count() const override { return indexCount; }
+};
 ComPtr<ID3DBlob> Compile(const char *entry, const char *profile)
 {
     ComPtr<ID3DBlob> code, errors;
@@ -159,6 +209,17 @@ struct D3D11Backend::Impl {
     std::map<unsigned, ComPtr<ID3D11SamplerState>> uiSamplers;
     ComPtr<ID3D11SamplerState> boundSampler;
     ComPtr<ID3D11Buffer> vertices, indices, placement;
+    // World pipeline (created lazily on the first world submission).
+    ComPtr<ID3D11Texture2D> depthTexture;
+    ComPtr<ID3D11DepthStencilView> dsv;
+    ComPtr<ID3D11VertexShader> worldVS;
+    ComPtr<ID3D11PixelShader> terrainPS;
+    ComPtr<ID3D11InputLayout> worldLayout;
+    ComPtr<ID3D11Buffer> worldCB;
+    ComPtr<ID3D11RasterizerState> worldRaster;
+    ComPtr<ID3D11DepthStencilState> depthWrite, depthTestOnly;
+    std::map<unsigned, ComPtr<ID3D11SamplerState>> worldSamplers;
+    bool worldReady = false;
     ComPtr<ID3D11ShaderResourceView> white, bound;
     unsigned vertexCapacity = 0, indexCapacity = 0;
     unsigned textures = 0, buffers = 0, draws = 0;
@@ -177,6 +238,41 @@ struct D3D11Backend::Impl {
             Check(device->CreateTexture2D(&d, nullptr, &target), "Create offscreen target");
         }
         Check(device->CreateRenderTargetView(target.Get(), nullptr, &rtv), "Create RTV");
+        depthTexture.Reset(); dsv.Reset();
+        if (config.depth_buffer) {
+            D3D11_TEXTURE2D_DESC z{};
+            z.Width = config.width; z.Height = config.height; z.MipLevels = z.ArraySize = 1;
+            z.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; z.SampleDesc.Count = 1;
+            z.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+            Check(device->CreateTexture2D(&z, nullptr, &depthTexture), "Create depth buffer");
+            Check(device->CreateDepthStencilView(depthTexture.Get(), nullptr, &dsv), "Create DSV");
+        }
+    }
+    void EnsureWorld()
+    {
+        if (worldReady) return;
+        auto vsCode = CompileWorld("VSWorld", "vs_4_0");
+        Check(device->CreateVertexShader(vsCode->GetBufferPointer(), vsCode->GetBufferSize(), nullptr, &worldVS), "Create world VS");
+        auto psCode = CompileWorld("PSTerrain", "ps_4_0");
+        Check(device->CreatePixelShader(psCode->GetBufferPointer(), psCode->GetBufferSize(), nullptr, &terrainPS), "Create terrain PS");
+        const D3D11_INPUT_ELEMENT_DESC e[] = {
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0}};
+        Check(device->CreateInputLayout(e, 4, vsCode->GetBufferPointer(), vsCode->GetBufferSize(), &worldLayout), "Create world layout");
+        D3D11_BUFFER_DESC cb{}; cb.ByteWidth = 80; cb.Usage = D3D11_USAGE_DEFAULT; cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        Check(device->CreateBuffer(&cb, nullptr, &worldCB), "Create world constants");
+        // Legacy default D3DCULL_CCW: clockwise triangles are front faces.
+        D3D11_RASTERIZER_DESC r{}; r.FillMode = D3D11_FILL_SOLID; r.CullMode = D3D11_CULL_BACK;
+        r.FrontCounterClockwise = FALSE; r.DepthClipEnable = TRUE;
+        Check(device->CreateRasterizerState(&r, &worldRaster), "Create world raster state");
+        D3D11_DEPTH_STENCIL_DESC d{}; d.DepthEnable = TRUE; d.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+        d.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+        Check(device->CreateDepthStencilState(&d, &depthWrite), "Create depth-write state");
+        d.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+        Check(device->CreateDepthStencilState(&d, &depthTestOnly), "Create depth-test state");
+        worldReady = true;
     }
     void Buffer(ComPtr<ID3D11Buffer> &buffer, unsigned &capacity, unsigned needed, unsigned bind)
     {
@@ -465,10 +561,14 @@ void D3D11Backend::Flip_To_Primary() {
     Check(result, "Present");
 }
 D3D11Backend::Presentation D3D11Backend::Last_Presentation() const { return impl->lastPresent; }
-void D3D11Backend::Clear(bool color, bool depth, const Vector3 &rgb, float alpha, float, unsigned)
+void D3D11Backend::Clear(bool color, bool depth, const Vector3 &rgb, float alpha, float depth_value, unsigned stencil)
 {
-    if (depth) Unsupported();
+    if (depth && !impl->dsv) Unsupported(); // depth clear needs the opt-in depth buffer
     if (color) { const float rgba[] = {rgb.X, rgb.Y, rgb.Z, alpha}; impl->context->ClearRenderTargetView(impl->rtv.Get(), rgba); }
+    if (depth) {
+        const float z = std::isfinite(depth_value) && depth_value >= 0 && depth_value <= 1 ? depth_value : 1.0f;
+        impl->context->ClearDepthStencilView(impl->dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, z, static_cast<UINT8>(stencil));
+    }
 }
 void D3D11Backend::Set_Viewport(const RenderBackendViewport &v)
 {
@@ -483,7 +583,7 @@ void D3D11Backend::Resize(unsigned width, unsigned height)
 {
     if (impl->scene || !width || !height || width > 16384 || height > 16384) Unsupported();
     impl->context->OMSetRenderTargets(0, nullptr, nullptr);
-    impl->rtv.Reset(); impl->target.Reset();
+    impl->rtv.Reset(); impl->target.Reset(); impl->dsv.Reset(); impl->depthTexture.Reset();
     if (impl->swapchain) Check(impl->swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0), "ResizeBuffers");
     impl->config.width = width; impl->config.height = height; impl->Target();
     Set_Viewport({0, 0, width, height, 0, 1});
@@ -508,6 +608,92 @@ unsigned D3D11Backend::Texture_Creations() const { return impl->textures; }
 unsigned D3D11Backend::Buffer_Creations() const { return impl->buffers; }
 unsigned D3D11Backend::Draw_Count() const { return impl->draws; }
 unsigned D3D11Backend::Live_Residencies() { return liveResidencies.load(); }
+bool D3D11Backend::Has_Depth_Buffer() const { return impl->dsv != nullptr; }
+GeometryResidency *D3D11Backend::Create_Geometry_Residency(const GeometryCPUContent &content)
+{
+    if (!content.Valid()) Unsupported();
+    auto result = std::make_unique<GeoResidency>();
+    result->device = impl->device;
+    result->vertexCount = static_cast<unsigned>(content.vertices.size());
+    result->indexCount = static_cast<unsigned>(content.indices.size());
+    D3D11_BUFFER_DESC vb{}; vb.ByteWidth = result->vertexCount * sizeof(WorldVertexXYZDUV2);
+    vb.Usage = D3D11_USAGE_DEFAULT; vb.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA vd{content.vertices.data(), 0, 0};
+    Check(impl->device->CreateBuffer(&vb, &vd, &result->vertices), "Create geometry vertices");
+    D3D11_BUFFER_DESC ib{}; ib.ByteWidth = result->indexCount * sizeof(unsigned short);
+    ib.Usage = D3D11_USAGE_IMMUTABLE; ib.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA id{content.indices.data(), 0, 0};
+    Check(impl->device->CreateBuffer(&ib, &id, &result->indices), "Create geometry indices");
+    impl->buffers += 2;
+    return result.release();
+}
+void D3D11Backend::Update_Geometry_Vertices(GeometryResidency &geometry, unsigned first, const WorldVertexXYZDUV2 *vertices, unsigned count)
+{
+    auto *g = dynamic_cast<GeoResidency *>(&geometry);
+    if (!g || g->device.Get() != impl->device.Get() || !vertices || !count || first > g->vertexCount ||
+        count > g->vertexCount - first) Unsupported();
+    D3D11_BOX box{first * static_cast<UINT>(sizeof(WorldVertexXYZDUV2)), 0, 0,
+                  (first + count) * static_cast<UINT>(sizeof(WorldVertexXYZDUV2)), 1, 1};
+    impl->context->UpdateSubresource(g->vertices.Get(), 0, &box, vertices, 0, 0);
+}
+void D3D11Backend::Submit_World(const WorldSubmission &s)
+{
+    if (!s.index_count) return;
+    auto *g = dynamic_cast<GeoResidency *>(s.geometry);
+    if (!impl->scene || !impl->dsv || !g || g->device.Get() != impl->device.Get() || s.index_count % 3 ||
+        s.first_index > g->indexCount || s.index_count > g->indexCount - s.first_index) Unsupported();
+    if (s.material != WorldMaterial::TerrainBase && s.material != WorldMaterial::TerrainBlend) Unsupported();
+    if (!s.texture) Unsupported();
+    auto *texture = dynamic_cast<Residency *>(s.texture);
+    if (!texture || texture->device.Get() != impl->device.Get()) Unsupported();
+    for (int i = 0; i < 16; ++i)
+        if (!std::isfinite(s.world[i]) || !std::isfinite(s.view[i]) || !std::isfinite(s.projection[i])) Unsupported();
+    impl->EnsureWorld();
+    Set_Viewport(s.viewport);
+
+    float wvp[16];
+    Multiply(s.world, s.view, wvp);
+    Multiply(wvp, s.projection, wvp);
+    float constants[20];
+    std::memcpy(constants, wvp, sizeof(wvp));
+    constants[16] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // UV set
+    constants[17] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // use texture/diffuse alpha
+    constants[18] = constants[19] = 0.0f;
+    impl->context->UpdateSubresource(impl->worldCB.Get(), 0, nullptr, constants, 0, 0);
+
+    const unsigned samplerKey = (s.linear ? 1u : 0u) | (s.mip_linear ? 2u : 0u) | (s.clamp ? 4u : 0u);
+    auto &sampler = impl->worldSamplers[samplerKey];
+    if (!sampler) {
+        D3D11_SAMPLER_DESC d{};
+        d.Filter = s.linear ? (s.mip_linear ? D3D11_FILTER_MIN_MAG_MIP_LINEAR : D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT)
+                            : (s.mip_linear ? D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR : D3D11_FILTER_MIN_MAG_MIP_POINT);
+        d.AddressU = d.AddressV = d.AddressW = s.clamp ? D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
+        d.ComparisonFunc = D3D11_COMPARISON_NEVER; d.MaxAnisotropy = 1; d.MinLOD = 0; d.MaxLOD = D3D11_FLOAT32_MAX;
+        Check(impl->device->CreateSamplerState(&d, &sampler), "Create world sampler");
+    }
+    const unsigned stride = sizeof(WorldVertexXYZDUV2), offset = 0;
+    auto *vb = g->vertices.Get(); auto *cb = impl->worldCB.Get(); auto *rtv = impl->rtv.Get();
+    auto *srv = texture->view.Get(); auto *smp = sampler.Get();
+    impl->context->OMSetRenderTargets(1, &rtv, impl->dsv.Get());
+    impl->context->OMSetBlendState(s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get(),
+                                   nullptr, 0xffffffff);
+    impl->context->OMSetDepthStencilState(s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get(), 0);
+    impl->context->RSSetState(impl->worldRaster.Get());
+    impl->context->IASetInputLayout(impl->worldLayout.Get());
+    impl->context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
+    impl->context->IASetIndexBuffer(g->indices.Get(), DXGI_FORMAT_R16_UINT, 0);
+    impl->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    impl->context->VSSetShader(impl->worldVS.Get(), nullptr, 0);
+    impl->context->VSSetConstantBuffers(0, 1, &cb);
+    impl->context->PSSetShader(impl->terrainPS.Get(), nullptr, 0);
+    impl->context->PSSetConstantBuffers(0, 1, &cb);
+    impl->context->PSSetShaderResources(0, 1, &srv);
+    impl->context->PSSetSamplers(0, 1, &smp);
+    impl->context->DrawIndexed(s.index_count, s.first_index, 0);
+    ++impl->draws;
+    // The Render2D path binds its own pipeline per draw; leave no stale depth state.
+    impl->bound.Reset();
+}
 unsigned D3D11Backend::Feature_Level() const { return impl->level; }
 void D3D11Backend::Invalidate_Cached_Render_States() { impl->bound.Reset(); } // pipeline is explicitly bound each draw
 void D3D11Backend::Set_Gamma(float, float, float, bool, bool) { Unsupported(); }

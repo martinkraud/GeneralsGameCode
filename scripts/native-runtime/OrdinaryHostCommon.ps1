@@ -209,6 +209,9 @@ function Test-NativeOrdinaryGameEvidence([string]$Log,[int]$ProcessId,$Receipt) 
         $rows+=,[pscustomobject]@{Stage=$f[5];Status=$f[6];Code=$code;Detail=$f[8]}
     }
     function Completions([string]$Stage){@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $Stage -and $rows[$i].Status -eq 'complete'){$i}})}
+    # The in-process log is capped at 2048 records and fails closed; a run that fills it
+    # lost its tail evidence (X64.24 run 20261012T2112467768379Z: unthrottled FP receipts).
+    if($rows.Count -ge 2000){$errors.Add('Startup log capacity exhausted; tail evidence lost')}
     $route=@('app_window_class','app_window','TheKeyboard.init','display_config','graphics_device','display_module_audit',
         'display_size','display_ordinary_init','TheWindowManager.init','TheShell.init','TheMouse.init','engine_init',
         'graphics_present','game_start','game_summary','ordinary_host_boundary','ui_residency_release',

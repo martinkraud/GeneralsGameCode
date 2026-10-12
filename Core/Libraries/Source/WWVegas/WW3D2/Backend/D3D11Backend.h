@@ -3,6 +3,7 @@
 #include "WW3D2/PresentationLifecycle.h"
 #include "WW3D2/IRenderBackend.h"
 #include "WW3D2/Texture2D.h"
+#include "WW3D2/WorldSubmission.h"
 #include <memory>
 #include <vector>
 
@@ -19,6 +20,7 @@ public:
         unsigned width = 128, height = 96;
         bool software = false; // explicit WARP selection for automated validation
         bool diagnostic_windowed = false; // opt-in: suppress DXGI Alt-Enter
+        bool depth_buffer = false; // opt-in D24S8 depth/stencil for world submissions (R0)
         DiagnosticSink diagnostic = nullptr;
         void *diagnostic_context = nullptr;
         TextureFilterClass::TextureFilterMode ui_filter = TextureFilterClass::TEXTURE_FILTER_BILINEAR;
@@ -50,7 +52,13 @@ public:
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;
-    // Process-wide count of live logical texture residencies (all backends).
+    // World (R1/R2): neutral geometry residency and purpose-built material draws.
+    GeometryResidency *Create_Geometry_Residency(const GeometryCPUContent &);
+    // Replace vertices [first, first+count) in place (dynamic terrain).
+    void Update_Geometry_Vertices(GeometryResidency &, unsigned first, const WorldVertexXYZDUV2 *vertices, unsigned count);
+    void Submit_World(const WorldSubmission &);
+    bool Has_Depth_Buffer() const;
+    // Process-wide count of live logical GPU residencies (textures and geometry, all backends).
     static unsigned Live_Residencies();
     unsigned Feature_Level() const;
     Presentation Last_Presentation() const;

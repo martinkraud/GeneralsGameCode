@@ -484,6 +484,7 @@ int W3DDisplay::runOrdinaryMenuHost()
 // allow-list below, a logic-frame bound and a wall-clock bound.
 // ---------------------------------------------------------------------------
 #if RTS_GENERALS
+extern unsigned nativeFloatingPointModeCalls(); // GameLogic.cpp
 namespace {
 Bool GamePushGuard(const AsciiString &filename) {
     if (filename.compareNoCase("Menus/MainMenu.wnd") == 0 ||
@@ -540,7 +541,11 @@ int W3DDisplay::runOrdinaryGameHost()
             }
             elapsed = static_cast<unsigned>(GetTickCount64() - start);
 
-            const bool nowInGame = TheGameLogic->isInGame() && !TheGameLogic->isInShellGame();
+            // MSG_NEW_GAME sets the game mode one logic update BEFORE startNewGame runs
+            // (m_startNewGame), so mode alone is not "started": require loading finished
+            // and the player list built (neutral + at least two skirmish sides).
+            const bool nowInGame = TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() &&
+                !TheGameLogic->isLoadingMap() && ThePlayerList && ThePlayerList->getPlayerCount() >= 2;
             if (nowInGame && !inGame) {
                 inGame = true;
                 startFrame = TheGameLogic->getFrame();
@@ -592,6 +597,8 @@ int W3DDisplay::runOrdinaryGameHost()
         sprintf_s(detail, "reason=%s %s", g_menuBoundary.reason, g_menuBoundary.detail);
         StartupDiagnostics::checkpoint("menu_boundary", "observed", detail);
     }
+    sprintf_s(detail, "calls=%u (first receipts bounded; verified every call)", nativeFloatingPointModeCalls());
+    StartupDiagnostics::checkpoint("FP_summary", "observed", detail);
     sprintf_s(detail, "presents=%u updates=%u elapsed_ms=%u game=%u logic_frames=%u exit=%s driver=hardware",
         m_hostPresents, updates, elapsed, inGame ? 1u : 0u,
         inGame ? lastFrame - startFrame : 0u, exitReason);

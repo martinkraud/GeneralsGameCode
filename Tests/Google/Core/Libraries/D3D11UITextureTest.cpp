@@ -433,3 +433,142 @@ TEST(UIStateTest, UnrelatedStatesStillFailExplicitly)
     // Grayscale requires the normal textured Render2D shader.
     EXPECT_THROW(f.Textured(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ONE), true), std::runtime_error);
 }
+
+// World (R0/R1) contract: depth buffer, neutral geometry residency and the
+// purpose-built terrain combiner, checked on WARP against CPU-computed products.
+namespace {
+unsigned Argb(unsigned a, unsigned r, unsigned g, unsigned b) { return (a << 24) | (r << 16) | (g << 8) | b; }
+struct WorldFixture {
+    std::unique_ptr<D3D11Backend> backend;
+    std::unique_ptr<Texture2DResidency> texture;
+    explicit WorldFixture(bool depth = true) {
+        D3D11Backend::Configuration c; c.software = true; c.width = c.height = 8; c.depth_buffer = depth;
+        backend = D3D11Backend::Create(c);
+        // 2x1 texture: left texel red, right texel blue (A8R8G8B8 = B,G,R,A bytes).
+        UITextureContent content(new Texture2DCPUContent(2, 1, WW3D_FORMAT_A8R8G8B8, 8));
+        int pitch; auto *p = static_cast<unsigned char *>(content->Lock(&pitch));
+        const unsigned char texels[8] = {0, 0, 255, 255, 255, 0, 0, 255};
+        std::memcpy(p, texels, 8); content->Unlock();
+        texture.reset(backend->Create_Content_Residency(*content));
+    }
+    // Full-screen clip-space quad (clockwise on screen) at depth z.
+    static GeometryCPUContent Quad(float z, unsigned diffuse, float u0, float v0, float u1, float v1) {
+        GeometryCPUContent g;
+        g.vertices = {{-1, 1, z, diffuse, u0, v0, u1, v1}, {1, 1, z, diffuse, u0, v0, u1, v1},
+                      {1, -1, z, diffuse, u0, v0, u1, v1}, {-1, -1, z, diffuse, u0, v0, u1, v1}};
+        g.indices = {0, 1, 2, 0, 2, 3};
+        return g;
+    }
+    WorldSubmission Submission(GeometryResidency *g, WorldMaterial m, bool write) {
+        WorldSubmission s{};
+        s.geometry = g; s.index_count = g->Index_Count();
+        World_Identity(s.world); World_Identity(s.view); World_Identity(s.projection);
+        s.texture = texture.get(); s.linear = false; s.mip_linear = false; s.clamp = true;
+        s.material = m; s.depth_write = write; s.viewport = {0, 0, 8, 8, 0, 1};
+        return s;
+    }
+    std::vector<unsigned char> Frame(const std::vector<WorldSubmission> &draws) {
+        backend->Clear(true, true, Vector3(0, 0, 0), 1.0f, 1.0f, 0);
+        backend->Begin_Scene();
+        for (const auto &d : draws) backend->Submit_World(d);
+        backend->End_Scene(false);
+        return backend->Readback_RGBA8();
+    }
+};
+}
+
+TEST(WorldTest, DepthTestOrdersGeometryIndependentOfDrawOrder)
+{
+    WorldFixture f;
+    std::unique_ptr<GeometryResidency> red(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));
+    std::unique_ptr<GeometryResidency> blue(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.25f, Argb(255, 255, 255, 255), 1, 0, 1, 0)));
+    // u=0 samples the red texel, u=1 the blue texel (clamp, point).
+    const auto far_ = f.Submission(red.get(), WorldMaterial::TerrainBase, true);
+    const auto near_ = f.Submission(blue.get(), WorldMaterial::TerrainBase, true);
+    for (const auto &order : {std::vector<WorldSubmission>{far_, near_}, std::vector<WorldSubmission>{near_, far_}}) {
+        const auto px = f.Frame(order);
+        for (unsigned i = 0; i < 64; ++i) { EXPECT_EQ(px[i * 4], 0); EXPECT_EQ(px[i * 4 + 2], 255); } // nearer blue wins
+    }
+}
+
+TEST(WorldTest, DepthWriteOffTestsButDoesNotOccludeLaterGeometry)
+{
+    WorldFixture f;
+    std::unique_ptr<GeometryResidency> near_(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.25f, Argb(255, 255, 255, 255), 1, 0, 1, 0)));
+    std::unique_ptr<GeometryResidency> far_(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));
+    // near (blue) without depth write, then far (red): far still passes and overdraws.
+    auto px = f.Frame({f.Submission(near_.get(), WorldMaterial::TerrainBase, false),
+                       f.Submission(far_.get(), WorldMaterial::TerrainBase, true)});
+    EXPECT_EQ(px[0], 255); EXPECT_EQ(px[2], 0);
+    // With depth write the near surface keeps the pixel.
+    px = f.Frame({f.Submission(near_.get(), WorldMaterial::TerrainBase, true),
+                  f.Submission(far_.get(), WorldMaterial::TerrainBase, true)});
+    EXPECT_EQ(px[0], 0); EXPECT_EQ(px[2], 255);
+}
+
+TEST(WorldTest, TerrainBaseModulatesDiffuseAndBlendPassUsesSecondUVSetAndAlpha)
+{
+    WorldFixture f;
+    // uv0 -> red texel, uv1 -> blue texel; diffuse (a=0x80, rgb=128,255,64).
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(0x80, 128, 255, 64), 0, 0, 1, 0)));
+    const auto base = f.Frame({f.Submission(g.get(), WorldMaterial::TerrainBase, true)});
+    EXPECT_NEAR(base[0], 255 * 128 / 255.0, 1); EXPECT_NEAR(base[1], 0, 1); EXPECT_NEAR(base[2], 0, 1);
+    // Base pass is opaque regardless of diffuse alpha.
+    EXPECT_EQ(base[3], 255);
+    auto blendDraw = f.Submission(g.get(), WorldMaterial::TerrainBlend, false);
+    const auto both = f.Frame({f.Submission(g.get(), WorldMaterial::TerrainBase, true), blendDraw});
+    // blend source: tex(uv1)=blue*diffuse = (0,0,64); alpha = 1 * 0x80/255
+    const double a = 0x80 / 255.0;
+    EXPECT_NEAR(both[0], (255 * 128 / 255.0) * (1 - a), 1.5);
+    EXPECT_NEAR(both[1], 0, 1.5);
+    EXPECT_NEAR(both[2], 64 * a, 1.5);
+}
+
+TEST(WorldTest, LegacyBackFaceCullingAndInPlaceVertexUpdate)
+{
+    WorldFixture f;
+    auto content = WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0);
+    std::swap(content.indices[1], content.indices[2]); std::swap(content.indices[4], content.indices[5]); // CCW
+    std::unique_ptr<GeometryResidency> ccw(f.backend->Create_Geometry_Residency(content));
+    auto px = f.Frame({f.Submission(ccw.get(), WorldMaterial::TerrainBase, true)});
+    for (unsigned i = 0; i < 64; ++i) { EXPECT_EQ(px[i * 4], 0); EXPECT_EQ(px[i * 4 + 1], 0); EXPECT_EQ(px[i * 4 + 2], 0); }
+    std::unique_ptr<GeometryResidency> cw(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));
+    px = f.Frame({f.Submission(cw.get(), WorldMaterial::TerrainBase, true)});
+    EXPECT_EQ(px[0], 255);
+    // In-place update: tint all vertices green-only diffuse.
+    WorldVertexXYZDUV2 v[4];
+    auto q = WorldFixture::Quad(0.5f, Argb(255, 0, 255, 0), 0, 0, 0, 0);
+    for (int i = 0; i < 4; ++i) v[i] = q.vertices[i];
+    f.backend->Update_Geometry_Vertices(*cw, 0, v, 4);
+    px = f.Frame({f.Submission(cw.get(), WorldMaterial::TerrainBase, true)});
+    EXPECT_EQ(px[0], 0); EXPECT_EQ(px[1], 0); // red texel * green diffuse = black
+}
+
+TEST(WorldTest, ResidencyCountingAndExplicitUnsupportedCases)
+{
+    const unsigned baseline = D3D11Backend::Live_Residencies();
+    {
+        WorldFixture f;
+        EXPECT_TRUE(f.backend->Has_Depth_Buffer());
+        std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));
+        EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline + 2); // texture + geometry
+        GeometryCPUContent invalid; invalid.vertices.resize(3); invalid.indices = {0, 1, 7};
+        EXPECT_THROW(f.backend->Create_Geometry_Residency(invalid), std::runtime_error);
+        auto bad = f.Submission(g.get(), WorldMaterial::TerrainBase, true);
+        bad.texture = nullptr;
+        f.backend->Begin_Scene();
+        EXPECT_THROW(f.backend->Submit_World(bad), std::runtime_error);   // texture required
+        bad = f.Submission(g.get(), WorldMaterial::TerrainBase, true); bad.index_count = 9;
+        EXPECT_THROW(f.backend->Submit_World(bad), std::runtime_error);   // range
+        f.backend->End_Scene(false);
+    }
+    EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline);
+    WorldFixture noDepth(false);
+    EXPECT_FALSE(noDepth.backend->Has_Depth_Buffer());
+    EXPECT_THROW(noDepth.backend->Clear(false, true, Vector3(0, 0, 0)), std::runtime_error);
+    std::unique_ptr<GeometryResidency> g(noDepth.backend->Create_Geometry_Residency(WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));
+    noDepth.backend->Begin_Scene();
+    EXPECT_THROW(noDepth.backend->Submit_World(noDepth.Submission(g.get(), WorldMaterial::TerrainBase, true)), std::runtime_error);
+    noDepth.backend->End_Scene(false);
+}

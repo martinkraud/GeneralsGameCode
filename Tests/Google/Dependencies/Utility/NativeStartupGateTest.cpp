@@ -569,6 +569,19 @@ TEST(NativeOrdinaryMenuGate, ConfigureEnablesMenuImpliesHostAndNoDiagnosticModes
 // ---------------------------------------------------------------------------
 // Ordinary-game profile (X64.24): same strict profile, third distinct token.
 // ---------------------------------------------------------------------------
+TEST(NativeOrdinaryGameGate, RepeatedReceiptsAreBoundedBelowTheLogCapacity) {
+    // Regression: X64.24 run 20261012T2112467768379Z filled the 2048-record log with
+    // one receipt per logic step and lost its tail evidence.
+    StartupDiagnostics::RepeatGate gate;
+    unsigned admitted = 0;
+    for (unsigned i = 0; i < 1000000; ++i) admitted += gate.admit(32) ? 1u : 0u;
+    EXPECT_EQ(admitted, 32u);
+    EXPECT_EQ(gate.calls, 1000000u);
+    StartupDiagnostics::RepeatGate other;
+    EXPECT_TRUE(other.admit(1));
+    EXPECT_FALSE(other.admit(1));
+}
+
 TEST(NativeOrdinaryGameGate, DistinctStrictTokenAndImplications) {
     HostArgs args;
     char *copy[12] = {};

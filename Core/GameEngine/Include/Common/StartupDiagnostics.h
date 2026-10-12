@@ -178,6 +178,15 @@ inline void close() {
         CloseHandle(s.file); s.file = nullptr; s.healthy = false;
     }
 }
+// Bounded admission for per-call/per-frame receipts. The 2048-record log is a
+// fail-closed capacity guard (X64.24 run 20261012T2112467768379Z overflowed it with
+// one FP receipt per logic step); repeated hot-path receipts must admit only the
+// first `limit` calls plus state changes, and report the total once at the end.
+struct RepeatGate {
+    unsigned calls = 0, logged = 0;
+    bool admit(unsigned limit = 64) { ++calls; if (logged < limit) { ++logged; return true; } return false; }
+};
+
 // Scoped init phase: a missing completion or unwind is visible without a debugger.
 struct Phase {
     const char *name;

@@ -186,16 +186,30 @@ static Waypoint * findNamedWaypoint(AsciiString name)
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
+// Number of setFPMode() calls (AMD64 diagnostics only), for the end-of-run summary.
+static unsigned s_fpModeCalls = 0;
+unsigned nativeFloatingPointModeCalls() { return s_fpModeCalls; }
+
 void setFPMode()
 {
 #if defined(_M_AMD64)
 	const int result = NativeFloatingPoint::reset();
+	++s_fpModeCalls;
 	if (StartupDiagnostics::enabled())
 	{
+		// Every call is still verified; only the receipt volume is bounded.
+		static StartupDiagnostics::RepeatGate gate;
+		static unsigned lastControl = 0, lastMxcsr = 0;
 		char fpState[96]; unsigned control = 0;
 		_controlfp_s(&control, 0, 0);
-		sprintf_s(fpState, "control=%08x mxcsr=%08x", control, _mm_getcsr());
-		StartupDiagnostics::checkpoint("FP", result ? "fail" : "complete", fpState, result);
+		const unsigned mxcsr = _mm_getcsr();
+		const bool changed = gate.calls != 0 && (control != lastControl || mxcsr != lastMxcsr);
+		lastControl = control; lastMxcsr = mxcsr;
+		if (result != 0 || changed || gate.admit(32))
+		{
+			sprintf_s(fpState, "control=%08x mxcsr=%08x", control, mxcsr);
+			StartupDiagnostics::checkpoint("FP", result ? "fail" : "complete", fpState, result);
+		}
 	}
 	if (result != 0) RELEASE_CRASH(("Native floating-point initialization failed"));
 #else

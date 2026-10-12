@@ -74,6 +74,19 @@ class OrdinaryGameContract(unittest.TestCase):
         zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")
         self.assertNotIn("ordinaryGame", zh)
 
+    def test_hot_path_fp_receipts_are_bounded_and_start_waits_for_loading(self):
+        logic = read("Generals/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp")
+        fp = body(logic, "void setFPMode()")
+        self.assertIn("StartupDiagnostics::RepeatGate", fp)
+        self.assertIn("gate.admit(32)", fp)
+        # The verification itself is not throttled: every call still resets and checks.
+        self.assertLess(fp.index("NativeFloatingPoint::reset()"), fp.index("gate.admit(32)"))
+        self.assertIn('RELEASE_CRASH(("Native floating-point initialization failed"))', fp)
+        loop = body(read(HOST), "int W3DDisplay::runOrdinaryGameHost()")
+        self.assertIn("!TheGameLogic->isLoadingMap()", loop)
+        self.assertIn("ThePlayerList->getPlayerCount() >= 2", loop)
+        self.assertIn('"FP_summary"', loop)
+
     def test_launcher_requires_live_logic_evidence(self):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         for term in ("-nativeOrdinaryGame", "Fewer than 150 logic frames in game", "Shell push boundary reached",

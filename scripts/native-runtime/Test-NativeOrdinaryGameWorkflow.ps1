@@ -66,6 +66,17 @@ Verify ($log + "`n99`t0`t0`t123`t456`tmenu_boundary`tobserved`t0`treason=shell_p
 foreach($stage in 'app_window','TheKeyboard.init','TheWindowManager.init','game_start','game_summary','ui_residency_release','app_window_release'){
     Verify ($log.Replace("`t$stage`tcomplete","`t$stage`tmissing")) $false "missing $stage"
 }
+# Capacity regression: a flood of repeated receipts fills the capped log.
+$flood=[Collections.Generic.List[string]]::new()
+$flood.AddRange([string[]]($log -split "`n"))
+$at=$flood.FindIndex({param($l) $l -like "*`tgame_start`tcomplete*"})
+for($i=0;$i -lt 2100;$i++){$flood.Insert($at,"0`t2026-10-12`t0`t123`t456`tFP`tcomplete`t0`tcontrol=0008001f mxcsr=00001f80")}
+$n=0;$renumbered=foreach($l in $flood){$n++;($l -replace '^\d+',"$n")}
+Verify ($renumbered -join "`n") $false 'log capacity exhausted'
+$r=Test-NativeOrdinaryGameEvidence ($renumbered -join "`n") 123 $receipt
+if(@($r.Errors|Where-Object{$_ -like '*capacity exhausted*'}).Count -ne 1){throw 'Capacity exhaustion not named'};$checks++
+# Mode set but loading not finished (MSG_NEW_GAME precedes startNewGame): one player is not a started game.
+Verify ($log.Replace('players=3','players=1')) $false 'pre-start player list'
 $expected=@('-win','-xres','800','-yres','600','-nologo','-noshellmap','-winCursors','-nativeOrdinaryGame','C:\run')
 if(((Get-NativeOrdinaryGameArguments 'C:\run') -join ' ') -ne ($expected -join ' ')){throw 'Wrong strict argument list'};$checks++
 foreach($other in (Get-NativeOrdinaryMenuMode),(Get-NativeOrdinaryHostMode)){if((Get-NativeOrdinaryGameMode) -eq $other){throw 'Modes must differ'}};$checks++
