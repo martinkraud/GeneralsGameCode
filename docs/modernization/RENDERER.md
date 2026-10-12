@@ -1,5 +1,26 @@
 # Renderer and display architecture
 
+## X64.18 original-menu image gate; Generals X64.17 accepted
+
+Reviewed Generals X64.17 run20261012T1243165104474Z is accepted: OS exit0,
+293 checkpoints,hardware Intel Graphics/11.0,239 visible frames/5000ms,
+ordered display/backend/HWND/engine/MiniDumper/late cleanup,empty observer/no dump,
+matching stage identity and developer blue-window confirmation. Original evidence
+is immutable; Zero Hour X64.17 remains unexecuted. See the X64.17 report.
+
+The next bounded integration retains W3DDisplay/WW3D and adds strict opt-in
+nativeUIImageSmoke: actual original GeneralsLogo mapped UVs/menu rectangle through
+unchanged W3DDisplay::drawImage/Render2D and existing D3D11 file texture bridge.
+Private texture/helper ownership ends before device detach; normal headless init
+and cleanup remain. No shell/menu callbacks,ordinary draw,input,execute/update,
+replay/simulation/GameLogic/world. See [X64.18 report](X64_18_UI_IMAGE_GATE.md)
+for ownership,validation,limitations and exact guarded commands.
+
+Exactly one next task: separately reviewed Generals-only X64.18 original-menu
+image confirmation. Stop at that manual/visual gate; do not launch either title
+automatically. Older requested confirmation steps below are historical/superseded.
+
+
 ## Retained-owner lifecycle integration (X64.17)
 
 Developer selected W3DDisplay/WW3D as the shared frontend/backend owner, rather

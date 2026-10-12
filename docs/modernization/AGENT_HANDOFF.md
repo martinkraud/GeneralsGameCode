@@ -1,5 +1,35 @@
 # Agent handoff
 
+## X64.18 original-menu image gate; Generals X64.17 accepted
+
+Reviewed Generals X64.17 run20261012T1243165104474Z is accepted: OS exit0,
+293 checkpoints,hardware Intel Graphics/11.0,239 visible frames/5000ms,
+ordered display/backend/HWND/engine/MiniDumper/late cleanup,empty observer/no dump,
+matching stage identity and developer blue-window confirmation. Original evidence
+is immutable; Zero Hour X64.17 remains unexecuted. See the X64.17 report.
+
+The next bounded integration retains W3DDisplay/WW3D and adds strict opt-in
+nativeUIImageSmoke: actual original GeneralsLogo mapped UVs/menu rectangle through
+unchanged W3DDisplay::drawImage/Render2D and existing D3D11 file texture bridge.
+Private texture/helper ownership ends before device detach; normal headless init
+and cleanup remain. No shell/menu callbacks,ordinary draw,input,execute/update,
+replay/simulation/GameLogic/world. See [X64.18 report](X64_18_UI_IMAGE_GATE.md)
+for ownership,validation,limitations and exact guarded commands.
+
+Final Win32 Release/CTest25,149 direct and75 focused per title; AMD64 independent
+CTest15/both native links; startup11 AMD64/GPU UI10; source14/renderer28/perf16;
+graphics46/native6 guards/all10 script parses PASS. Both x64-18-final UIImage
+stages preflight matching symbols/assets/hashes/dependencies,30 imports/no delay
+or D3D8/D3DX; no runs. Old mode rejects. All27 evidence files and older16/17
+stage EXE/PDB copies rehashed unchanged. Source is validated; generated build,
+stage,audit helpers/evidence remain ignored. Coherent X64.18 work follows
+acceptance commit8c74fdbb1; push only origin/dev/modern-engine.
+
+Exactly one next task: separately reviewed Generals-only X64.18 original-menu
+image confirmation. Stop at that manual/visual gate; do not launch either title
+automatically. Older requested confirmation steps below are historical/superseded.
+
+
 ## X64.17 retained display ownership selected; offline integration gate
 
 Developer explicitly selected retaining W3DDisplay/WW3D and neutral lifecycle

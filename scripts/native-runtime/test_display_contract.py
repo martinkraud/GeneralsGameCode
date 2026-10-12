@@ -38,4 +38,13 @@ class DisplayContracts(unittest.TestCase):
   self.assertIn("if($DisplayLifecycle){'-nativeDisplaySmoke'}else{'-nativeGraphicsSmoke'}",s)
   self.assertIn('-DisplayLifecycle:$DisplayLifecycle',s)
   for term in ['$exit -eq 0','$shutdownBytes -eq 0','$dumps.Count -eq 0','$evidence.Valid']:self.assertIn(term,s)
+ def test_image_gate_scoped_ownership_and_reference_route(self):
+  s=read('Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp')
+  for term in ['StartupDiagnostics::uiImageSmoke()', 'findImageByName("GeneralsLogo")', 'MIP_LEVELS_1', 'display.drawImage(image,504,16,791,110,0xffffffff,Display::DRAW_IMAGE_ALPHA)', 'Render2DClass::Set_Screen_Resolution(previousScreen)']:
+   self.assertIn(term,s)
+  cleanup=s.split('void Shutdown() noexcept override',1)[1]
+  self.assertLess(cleanup.index('delete display.m_2DRender'),cleanup.index('texture->Release_Ref()'))
+  self.assertLess(cleanup.index('texture->Release_Ref()'),cleanup.index('WW3D::Shutdown_Native_Presentation()'))
+  for term in ['Get_Texture(', 'showShell(', '->update(', '->execute(', 'm_headless =']:
+   self.assertNotIn(term,s)
 if __name__=='__main__':unittest.main()

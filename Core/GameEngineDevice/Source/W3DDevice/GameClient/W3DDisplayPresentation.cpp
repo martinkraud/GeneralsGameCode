@@ -5,6 +5,10 @@
 #include "Common/StartupDiagnostics.h"
 #include "WW3D2/ww3d.h"
 #include "WW3D2/Backend/NativeGraphicsSmoke.h"
+#include "GameClient/Image.h"
+#include "WW3D2/render2d.h"
+#include "WW3D2/texture.h"
+#include "WW3D2/Texture2DCPUContent.h"
 #include <stdexcept>
 #endif
 #if defined(_WIN64)
@@ -22,7 +26,11 @@ int W3DDisplay::runNativePresentationSmoke()
         W3DDisplay &display;
         Int width, height, bits;
         Bool windowed;
-        bool attached = false, firstBegin = true, firstEnd = true;
+        bool attached = false, firstBegin = true, firstEnd = true, firstImage = true;
+        const bool imageMode = StartupDiagnostics::uiImageSmoke();
+        TextureClass *texture = nullptr;
+        Image *image = nullptr;
+        RectClass previousScreen = Render2DClass::Get_Screen_Resolution();
         explicit Driver(W3DDisplay &value) : display(value), width(value.getWidth()),
             height(value.getHeight()), bits(value.getBitDepth()), windowed(value.getWindowed()) {}
         static void Log(void *, const char *stage, const char *status, const char *detail, unsigned code) {
@@ -44,6 +52,34 @@ int W3DDisplay::runNativePresentationSmoke()
                 throw std::runtime_error("Native display/target dimensions disagree");
             Log(nullptr,"display_size","complete","device=800x600 target=800x600 bits=32 windowed=1",0);
             Log(nullptr,"display_attach","complete","W3DDisplay -> WW3D active backend; presentation-only",0);
+            if(imageMode) {
+                Log(nullptr,"ui_image_load","begin","GeneralsLogo",0);
+                const Image *mapped = TheMappedImageCollection ?
+                    TheMappedImageCollection->findImageByName("GeneralsLogo") : nullptr;
+                if(!mapped || mapped->getStatus()!=IMAGE_STATUS_NONE ||
+                    mapped->getFilename().isEmpty())
+                    throw std::runtime_error("Expected ordinary GeneralsLogo mapped image unavailable");
+                // Private ownership avoids leaving a device residency in the global
+                // asset cache after this short attachment. Original metadata is read-only.
+                texture = new TextureClass(mapped->getFilename().str(), nullptr, MIP_LEVELS_1);
+                texture->Prepare_Render2D_Texture();
+                const auto *content = texture->Get_Render2D_CPU_Content();
+                if(!content || content->Describe().width != unsigned(mapped->getTextureSize()->x) ||
+                    content->Describe().height != unsigned(mapped->getTextureSize()->y))
+                    throw std::runtime_error("Menu atlas dimensions disagree with mapped metadata");
+                Region2D uv = *mapped->getUV();
+                image = newInstance(Image);
+                image->setUV(&uv); image->setRawTextureData(texture);
+                image->setStatus(IMAGE_STATUS_RAW_TEXTURE);
+                display.m_2DRender = new Render2DClass;
+                Render2DClass::Set_Screen_Resolution(RectClass(0,0,800,600));
+                display.m_2DRender->Set_Coordinate_Range(RectClass(0,0,800,600));
+                char detail[512];
+                sprintf_s(detail,"name=GeneralsLogo file=%s atlas=%dx%d uv=%.9g,%.9g,%.9g,%.9g rect=504,16,791,110",
+                    mapped->getFilename().str(),mapped->getTextureSize()->x,mapped->getTextureSize()->y,
+                    uv.lo.x,uv.lo.y,uv.hi.x,uv.hi.y);
+                Log(nullptr,"ui_image_load","complete",detail,0);
+            }
         }
         void BeginClear() override {
             if(WW3D::Begin_Render(true,false,Vector3(0.08f,0.32f,0.55f),1)!=WW3D_ERROR_OK)
@@ -51,6 +87,15 @@ int W3DDisplay::runNativePresentationSmoke()
             if(firstBegin) { firstBegin=false; Log(nullptr,"display_frame_begin","complete","WW3D::Begin_Render color-only",0); }
         }
         void EndPresent() override {
+            if(imageMode) {
+                if(firstImage) Log(nullptr,"ui_image_draw","begin","W3DDisplay::drawImage",0);
+                display.drawImage(image,504,16,791,110,0xffffffff,Display::DRAW_IMAGE_ALPHA);
+                if(firstImage) {
+                    firstImage=false;
+                    Log(nullptr,"ui_image_draw","complete",
+                        "W3DDisplay::drawImage -> Render2D -> D3D11; original GeneralsLogo; alpha",0);
+                }
+            }
             if(WW3D::End_Render(true)!=WW3D_ERROR_OK)
                 throw std::runtime_error("Native display End_Render failed");
             if(firstEnd) { firstEnd=false; Log(nullptr,"display_frame_end","complete","WW3D::End_Render Present",0); }
@@ -60,6 +105,15 @@ int W3DDisplay::runNativePresentationSmoke()
         }
         void Shutdown() noexcept override {
             Log(nullptr,"display_detach","begin","",0);
+            if(imageMode) {
+                // Render2D retains its texture reference. Drop it before our owner,
+                // then detach the device; no resource survives this attachment.
+                delete display.m_2DRender; display.m_2DRender=nullptr;
+                if(texture) { texture->Release_Ref(); texture=nullptr; }
+                if(image) { deleteInstance(image); image=nullptr; }
+                Render2DClass::Set_Screen_Resolution(previousScreen);
+                Log(nullptr,"ui_image_release","complete","Render2D/texture released before device detach",0);
+            }
             if(attached) { WW3D::Shutdown_Native_Presentation(); attached=false; }
             display.Display::setWidth(width); display.Display::setHeight(height);
             display.setBitDepth(bits); display.setWindowed(windowed);

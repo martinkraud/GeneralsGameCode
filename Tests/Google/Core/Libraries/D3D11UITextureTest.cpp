@@ -287,3 +287,32 @@ TEST(UITextureTest, ActualSixteenBitReferencePolicyQuantizesBeforeUpload)
         EXPECT_EQ(pixels[63], 255);
     }
 }
+
+TEST(UITextureTest, MenuRectangleAtlasCropBlendsOverDiagnosticClear)
+{
+    // Synthetic atlas only: original Generals MainMenu.wnd logo rectangle.
+    // Existing TGA decoder + actual D3D11 UI shader, with CPU readback.
+    auto b=TGA();
+    for(unsigned i=0;i<16;++i) {
+        b[18+i*4]=0; b[19+i*4]=0; b[20+i*4]=255; b[21+i*4]=128;
+    }
+    auto content=Decode(b); ASSERT_EQ(content.status,UITextureStatus::Ready);
+    D3D11Backend::Configuration c; c.software=true; c.width=800; c.height=600;
+    auto backend=D3D11Backend::Create(c);
+    Quad q(800,600); q.color.fill(0xffffffff);
+    const float left=2.f*504/800-1-1.f/800, right=2.f*791/800-1-1.f/800;
+    const float top=1-2.f*16/600+1.f/600, bottom=1-2.f*110/600+1.f/600;
+    q.p={Vector2(left,top),Vector2(left,bottom),Vector2(right,top),Vector2(right,bottom)};
+    q.uv={Vector2(.25f,.25f),Vector2(.25f,.75f),Vector2(.75f,.25f),Vector2(.75f,.75f)};
+    std::unique_ptr<Texture2DResidency> r(backend->Create_Content_Residency(*content.content));
+    backend->Begin_Scene(); backend->Clear(true,false,Vector3(.08f,.32f,.55f));
+    backend->Submit_Render2D_Content(q.s,r.get(),UISampler()); backend->End_Scene(false);
+    const auto pixels=backend->Readback_RGBA8();
+    const auto outside=(300*800+400)*4, inside=(60*800+650)*4;
+    EXPECT_NEAR(pixels[outside],20,1); EXPECT_NEAR(pixels[outside+1],82,1);
+    EXPECT_NEAR(pixels[outside+2],140,1);
+    EXPECT_NEAR(pixels[inside],138,1); EXPECT_NEAR(pixels[inside+1],41,1);
+    EXPECT_NEAR(pixels[inside+2],70,1);
+    EXPECT_EQ(backend->Texture_Creations(),1u);
+    r.reset(); // residency released while backend is alive
+}

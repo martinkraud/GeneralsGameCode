@@ -77,6 +77,30 @@ VerifyDisplay ($displayLog.Replace('device=800x600','device=1024x768')) $false
 VerifyDisplay ($displayLog.Replace('AMD64 display smoke','AMD64 graphics smoke')) $false
 VerifyDisplay ($displayLog.Replace('display_frame_begin','temporary').Replace('display_frame_end','display_frame_begin').Replace('temporary','display_frame_end')) $false
 if((Get-NativeGraphicsMode) -eq (Get-NativeGraphicsMode -DisplayLifecycle)){throw 'Modes must be distinct'};$checks++
+# Original-menu image is a separate stage/mode, with draw and resource release required.
+$uiLines=[Collections.Generic.List[string]]::new()
+foreach($line in $displayLines){
+    $f=$line -split "`t",9
+    if($f[5] -eq 'display_frame_begin'){$uiLines.Add("0`t0`t0`t123`t456`tui_image_load`tcomplete`t0`tname=GeneralsLogo file=atlas.tga atlas=512x512 uv=0,0,1,1 rect=504,16,791,110")}
+    if($f[5] -eq 'display_frame_end'){$uiLines.Add("0`t0`t0`t123`t456`tui_image_draw`tcomplete`t0`tdraw")}
+    if($f[5] -eq 'display_detach'){$uiLines.Add("0`t0`t0`t123`t456`tui_image_release`tcomplete`t0`treleased")}
+    $uiLines.Add($line)
+}
+$uiLog=(@(for($i=0;$i -lt $uiLines.Count;$i++){($i+1).ToString()+$uiLines[$i].Substring($uiLines[$i].IndexOf("`t"))}) -join "`n")
+$uiLog=$uiLog.Replace('AMD64 display smoke','AMD64 UI image smoke')
+function VerifyUI([string]$Text,[bool]$Valid){
+    $r=Test-NativeGraphicsEvidence $Text 123 $receipt -UIImage
+    if($r.Valid -ne $Valid){throw "Unexpected UI classifier: $($r.Errors -join '; ')"};$script:checks++
+}
+VerifyUI $uiLog $true
+VerifyUI $displayLog $false
+VerifyDisplay $uiLog $false
+foreach($phase in 'ui_image_load','ui_image_draw','ui_image_release'){
+    VerifyUI ($uiLog.Replace($phase,'missing_'+$phase)) $false
+}
+VerifyUI ($uiLog.Replace('GeneralsLogo','invented')) $false
+VerifyUI ($uiLog.Replace('504,16,791,110','0,0,800,600')) $false
+if((Get-NativeGraphicsMode -UIImage) -eq (Get-NativeGraphicsMode -DisplayLifecycle)){throw 'UI mode must be distinct'};$checks++
 # Run the actual launcher post-processing block with synthetic process outcomes.
 # The original empty-directory expression emits zero pipeline objects, yielding
 # $null under StrictMode; a single FileInfo also must remain a collection.
