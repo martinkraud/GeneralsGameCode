@@ -144,21 +144,18 @@ ApplicationHWnd, profile-selected native-presentation `W3DDisplay::init`, bounde
 UI-only frames). The class table below is the original question list; the audit
 answers it.
 
-**Status (2026-10-12): audit approved; A9 UI-without-world profile approved and the
-first slice IMPLEMENTED and offline-validated, awaiting the developer's first
-native run.** Implementation commit `66d23d7d1` (profile `-nativeOrdinaryHost`,
-Generals AMD64 only): real checked ApplicationHWnd + existing WndProc, ordinary
-`W3DDisplay::init/draw/~W3DDisplay` on the established WW3D native presentation,
-bounded UI-only gate, residency verdict before backend, HWND destroyed last.
-`m_headless` is NOT flipped; world/audio/radar/input stay on the accepted headless
-variants. Fresh stage `x64-22-ordinary-host` (EXE SHA256 `A0BDFA5C...3E66`, PDB
-`718C6A95...6CA`, GUID `c7323867-...`, age 65) is preflighted, never executed, not
-to be rebuilt. Exact commands, visual expectation and PASS/FAIL are in the
-"First reviewed native run" section of `X64_22_ORDINARY_STARTUP_AUDIT.md`. The
-slice is NOT accepted until that run is reviewed. After acceptance the next
-target is a larger batch: real WindowManager -> Shell -> original MainMenu ->
-cursor/input -> bounded menu-only event loop (class C stays closed). Do not expand
-synthetic `-nativeUIMenuSmoke` further.
+**Status (2026-10-12): X64.22 ordinary-lifetime presentation host FORMALLY
+ACCEPTED** from run `build/dev-runtimes/native/Generals/x64-22-ordinary-host/runs/20261012T2015215339111Z`
+(exit 0, 292 checkpoints, zero fail rows, hardware Intel 8086/7D45 feature 0xB000,
+239 visible S_OK frames, `live_residencies=0` before backend, HWND destroyed last,
+no dumps; EXE `A0BDFA5C...3E66`, age 65; developer visual PASS). Implementation
+commit `66d23d7d1`; profile `-nativeOrdinaryHost` (Generals AMD64 only) with the
+A9 UI-without-world selection (`m_headless` stays TRUE; only the application
+window and `W3DDisplay` lifetime are real). Details and limits: "Acceptance"
+section of `X64_22_ORDINARY_STARTUP_AUDIT.md`. Next: the larger offline batch
+real WindowManager -> Shell -> original MainMenu -> transitions -> cursor/input
+-> bounded menu-only event loop (see the X64.23 section there). Class C stays
+closed; do not expand synthetic `-nativeUIMenuSmoke`.
 
 | Class | Known source facts and audit questions |
 | --- | --- |

@@ -311,3 +311,39 @@ launcher message `Ordinary-host validation failed`. The run directory
 `build/dev-runtimes/native/Generals/x64-22-ordinary-host/runs/<timestamp>` is
 preserved untouched and nothing reruns automatically. Report that path, the
 console output and `startup.log`; do not delete or edit the run.
+
+## Acceptance: X64.22 ordinary-lifetime presentation host - FORMALLY ACCEPTED
+
+Reviewed run (never rerun, immutable):
+`build/dev-runtimes/native/Generals/x64-22-ordinary-host/runs/20261012T2015215339111Z`.
+
+Independent machine review (not just the launcher verdict):
+
+- OS exit 0, no timeout/error, PID 24172 / thread 2628 on all 292 contiguous
+  checkpoints, zero `fail` rows, no `native_shutdown exception`,
+  `shutdown-exception.bin` empty, no crash dumps, isolated paths match.
+- Staged EXE/PDB SHA256 re-hashed and equal to the launch receipt
+  (`A0BDFA5C...3E66` / `718C6A95...6CA`, age 65).
+- Exact strict argv in `launch.json`; real `ApplicationHWnd` created with checks
+  before engine init (`client=800x600 windowed=1`).
+- Display configuration and six receipted DX8 bypasses precede device creation;
+  hardware Intel(R) Graphics vendor 0x8086 device 0x7D45, feature 0xB000, 800x600;
+  module audit `d3d8=0 d3dx8=0 d3d11=1 dxgi=1` (no D3D8 load).
+- Ordinary `TheDisplay.init` -> `TheWindowManager`/`TheShell`/`TheInGameUI`/
+  `TheTerrainVisual` init completed with the backend active: the unverified
+  "eager TextureClass::Init" risk did not occur.
+- Original `GeneralsLogo` through the **global asset cache**, original label and
+  DisplayString caption drawn by ordinary `W3DDisplay::draw`; first Present
+  S_OK, unoccluded; 239 visible frames in 5000 ms.
+- Teardown: `live_residencies=0` before backend release, backend/device before
+  engine cleanup, `DestroyWindow` after engine cleanup, MiniDumper shutdown,
+  late observer, final `WinMain complete`.
+- Developer visual confirmation: expected blue 800x600 window with original UI
+  composition and the white caption, normal close, no corruption.
+
+Proves: ordinary WinMain/ApplicationHWnd/WndProc ownership, ordinary headless
+engine init coexisting with the modern presentation, ordinary W3DDisplay
+init/draw/destructor ownership, global texture residency release order.
+Does NOT prove: real window manager, Shell, MainMenu callbacks, transitions,
+input/cursor, IME behavior, hover/pressed/disabled draw states, audio/video,
+Zero Hour, any class C behavior.
