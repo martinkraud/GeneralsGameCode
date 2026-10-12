@@ -26,7 +26,10 @@ D3D11 accepts one additional exact shader bit pattern: existing normal sentence
 state with texturing disabled. A dedicated PSColor returns interpolated vertex
 color; existing SRC_ALPHA/INV_SRC_ALPHA blend,depth/raster/viewport and pixel
 mapping remain. No white-asset emulation or generic DX8 layer is introduced.
-Diffuse submissions carrying a texture/residency reject rather than ignore it.
+The initial implementation rejected diffuse submissions carrying a logical
+texture or residency. The reviewed failure below establishes that a retained
+inactive logical texture is valid; fix1 corrects only that backend restriction.
+Explicit neutral GPU residency remains rejected for diffuse submissions.
 Ordinary Submit_Render2D clears prior residency before diffuse draw; the following
 textured draw restores the existing pixel shader. Other unimplemented states,
 including additive,grayscale and alpha-test,continue to fail closed.
@@ -162,3 +165,116 @@ The superseded,unexecuted x64-20-final stages are also preserved. Final source
 explicitly qualifies GameWindowManager base primitive calls,ensuring real
 forwarding even if a derived manager later overrides those virtual methods.
 The final-2 stages contain this exact source; do not execute the earlier stage.
+
+## First reviewed failure and bounded fix1 (2026-10-12)
+
+Preserved exact failed Generals run:
+`build/dev-runtimes/native/Generals/x64-20-final-2/runs/20261012T1731053035584Z`.
+PID17716 actually exited1,Started true,no timeout or launcher error,PathsMatch
+true. This is a real runtime gate failure,not a PowerShell classification bug.
+The complete317-record log has coherent sequence numbers. Full stage preflight
+before edits verified actual matching EXE/PDB hashes/GUID-age and original assets;
+Generals GUID c7323867-d82e-41f3-b190-20a5da4eae06,age55,with final-2 hashes above.
+The immutable failed run is not overwritten,reused or reclassified as PASS.
+
+Initialization completed. Hardware Intel8086:7D45/11.0,800x600 target,retained
+display attachment,original logo metadata/CPU content/helper,sentence/font/build
+all completed. First panel draw(record289),image291,sentence293,End294 and
+Present295 completed; actual HRESULT0,visible1,occluded0,removed0. Then record296
+reports Unsupported D3D11.1 renderer state/operation. The summary is FAIL:
+1 visible frame,0 occluded,47ms. Present/removed still report0: graphics_present
+is the host's coarse drawing/presentation exception boundary,not evidence of a
+failed DXGI Present. Engine/MiniDumper cleanup and late observer completed;
+WinMain reports fail/exit1. shutdown-exception.bin exists and is empty; no dump
+or late-exception trailer. Execute/update/replay/simulation/GameLogic stayed
+skipped. The required five-second visible loop was not satisfied: X64.20 is
+NOT accepted. No developer visual result is inferred from console output.
+
+Concrete root cause: W3DDisplay::setup2DRenderState(nullptr,...) resets geometry
+and disables texturing but deliberately does not Set_Texture(nullptr).
+Render2DClass::Reset clears vertices/UVs/colors/indices only; Enable_Texturing
+changes the shader bit only. After first-frame logo drawing,the reusable helper
+therefore retains the actual logo TextureClass/refcount. The next panel submits
+that non-null pointer with the exact valid untextured shader. X64.20's new
+D3D11Backend::Submit_Render2D explicitly rejected this pair before drawing.
+The first frame had no retained texture and succeeded. This explains the
+second-frame divergence without assuming device loss,allocator corruption or
+an asset failure. The logo's retained identity is needed for later image draws.
+
+Before production edits,the new isolated WARP repeated-panel/image regression
+reproduced the identical unsupported-state exception on frames2/3 while frame1
+succeeded. Both title-linked actual Render2D tests independently confirmed
+Reset/disable preserve the real TextureClass identity and exact reference count.
+These tests close the gap in the original X64.20 tests,which cleared backend
+GPU residency but left submission.texture null on every diffuse draw.
+
+Small backend-only fix: for the exact supported diffuse-alpha shader,copy the
+submission,normalize only the local inactive texture pointer to null,clear the
+backend binding,and Draw the diffuse shader. Never dereference,prepare,upload or
+sample that inactive logical pointer. The caller's pointer/refcount/producer
+state remains intact and the next textured draw follows its original route.
+Shader-disabled texturing is implemented explicitly; this is not a no-op for
+unsupported drawing or missing content. Other states still reject. The explicit
+neutral-content API's non-null GPU residency rejection remains; Draw's strict
+normalized-state validation remains. No original producer,W3DDisplay,DX8,
+resource ownership,layout or acceptance criteria is changed.
+
+Regression coverage: three successive panel/image transitions,first-use versus
+retained identity,actual diffuse pixel readback,textured glyph readback afterwards,
+cleared stale GPU binding,unchanged caller pointer,six real draws and exactly one
+residency creation. The actual title-linked producer verifies real texture
+retention/refcounts across Reset,disable,re-enable and final explicit release.
+The old unsupported-state and neutral-residency rejection tests remain green.
+
+Fix1 validation and final isolated stage identities are recorded below. The
+original x64-20-final/x64-20-final-2 candidates and all reviewed evidence remain
+preserved. Do not rerun the failed stage. The command below supersedes the
+original first-run procedure; neither title is launched during repair.
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-20-fix1 -UIPanel
+./scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-20-fix1 -UIPanel -RunReviewedGraphicsSmoke
+```
+
+Expected blue800x600 window,original logo,readable yellow difficulty label and
+dark translucent MapBorder2 with thin gold border for about5seconds,then automatic
+normal exit0. No interaction. The evidence directory is
+build/dev-runtimes/native/Generals/x64-20-fix1/runs/<UTC>/ with launch.json,
+exit.json,startup.log,shutdown-exception.bin and userdata/CrashDumps.
+Stop on preflight failure before Invoke. Any error or visual defect: preserve
+all evidence and stop; no rerun,Zero Hour execution,rebuild/restage or workaround.
+Exactly one next task: separately reviewed Generals-only X64.20-fix1 panel
+confirmation,then machine and visual evidence review. Full original menu,
+application input,world/gameplay,replay/save/multiplayer/performance/determinism
+remain unvalidated and outside this repair.
+
+## Fix1 final validation and replacement-stage identity
+
+Full Win32 Release build/CTest25 of25 PASS;154 direct and80 focused tests per
+title PASS(six existing disabled direct tests); sentence5/Render2D15 PASS.
+AMD64 independent CTest15 of15,both native title links and12 production-memory
+texture/UI tests per title PASS. The new WARP regression fails on the unchanged
+backend before repair and passes in both final architecture suites after repair;
+all11 isolated D3D11 sentence/state tests per architecture pass. Existing startup
+15 AMD64/14 Win32 tests are retained by the full suite. Renderer30,native16,
+performance16 Python checks,graphics67/native6 workflow guards and all10 script
+parses PASS. git diff --check PASS. No title process was launched.
+
+Fresh per-title x64-20-fix1 panel stages were created only after final validation.
+Both full preflights PASS: actual matching EXE/PDB hashes/GUID-age,original asset
+inventory,AMD64 system D3D11/DXGI/compiler/dependencies. Both have30 imports,
+no delay/D3D8/D3DX imports,no app-local DLL replacements. UISentence-only mode
+rejects each panel stage. Neither has a runs directory. No runtime/visual PASS
+is claimed for fix1; the developer-reviewed Generals execution is still required.
+
+- Generals: GUID `c7323867-d82e-41f3-b190-20a5da4eae06`,age56; EXE SHA256 `21A2A3DE7F9DE9BF3E7B222DC29902BF10C7EAE4CF5A5DDEB57BEAE139101522`; PDB SHA256 `5CAC5FE967670803741D98A96E19C32B730C9639EC4D4C0FCFDB96FBBEE568A3`.
+
+- ZeroHour: GUID `7a285453-4110-4cad-a6c8-e5336ba19b1c`,age57; EXE SHA256 `56FE4757BF9ADF9EB49D807781A58C24D1C37013D2F5597BCCEE67B5DC5A146A`; PDB SHA256 `453E33C456E64F06E6F37F6C66955D321249ACD6D847C2776E795792D3074A94`.
+
+All43 inventoried reviewed evidence files and28 previous stage EXE/PDB copies
+remain hash-identical. Failed run/stage and all accepted evidence are preserved.
+Generated logs,repro helpers,analysis/inventory JSON,assets and stages remain
+ignored and excluded from the coherent backend/test/documentation commit.
+Push is authorized only to origin/dev/modern-engine; exact commit/push state is
+reported to the developer. Do not rebuild/restage the final candidate casually.

@@ -333,7 +333,16 @@ void D3D11Backend::Submit_Render2D_Content(const Render2DSubmission &s, Texture2
 void D3D11Backend::Submit_Render2D(const Render2DSubmission &s)
 {
     if (!s.index_count) return;
-    if (s.shader && s.shader->Get_Bits() == DiffuseAlphaShader().Get_Bits() && s.texture) Unsupported();
+    if (s.shader && s.shader->Get_Bits() == DiffuseAlphaShader().Get_Bits()) {
+        // Legacy Render2D keeps Texture across Reset/Enable_Texturing(false).
+        // This exact shader does not sample it. Normalize only the backend draw,
+        // preserving the producer's identity/refcount for its next image draw.
+        Render2DSubmission diffuse = s;
+        diffuse.texture = nullptr;
+        Bind_Content(nullptr, SentenceSampler());
+        Draw(diffuse);
+        return;
+    }
     if (s.texture) Apply_Render2D_Texture(*s.texture, 0);
     else Bind_Content(nullptr, SentenceSampler());
     Draw(s);

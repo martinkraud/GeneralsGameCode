@@ -1,5 +1,42 @@
 # Incremental modernization roadmap
 
+## X64.20 first runtime failure repaired; fix1 manual boundary
+
+Generals x64-20-final-2 run20261012T1731053035584Z FAILED: actual exit1,no
+timeout/launcher error,317 coherent checkpoints,one visible hardware S_OK frame,
+47ms loop,then unsupported renderer state on second-frame drawing. Normal
+UI/device/HWND/engine/MiniDumper cleanup and armed late observer; empty shutdown
+evidence,no dump. Do not rerun or mutate this failed stage/run. X64.19 remains
+accepted. See [X64.20 failure/repair](X64_20_UI_PANEL_GATE.md).
+
+Root cause was reproduced offline before production repair: actual Render2D
+Reset/Enable_Texturing(false) retains its logo TextureClass pointer/refcount,
+but the new diffuse D3D11 route wrongly rejected that valid inactive binding.
+Frame1 has no retained texture; the next panel draw fails before the next
+Present. Fix1 locally normalizes only the supported untextured submission and
+clears backend sampling state,without touching producer ownership or Win32/DX8.
+No shaders,layout,gameplay,simulation,acceptance bypass or fallback are added.
+Actual ownership and three-frame GPU pixel/state regressions cover the failure.
+
+All43 inventoried reviewed evidence files and28 previous staged EXE/PDB copies
+rehash unchanged. Original/failed stages remain preserved. No game is launched
+in repair. Full main-menu/font/layout/widget/cache/input blockers remain as
+previously documented; W3DDisplay/WW3D retain ownership.
+
+
+Final fix1 validation: Win32 Release/CTest25,154 direct/80 focused per title;
+AMD64 independent CTest15,both links,12 texture/UI per title; isolated GPU11 per
+architecture; renderer30/native16/performance16 references; graphics67/native6
+guards/all10 script parses PASS. Fresh both-title x64-20-fix1 stages passed exact
+symbols/assets/imports/system graphics preflight;30 imports,no delay/D3D8/D3DX,
+wrong-mode rejection,no runs. No title launch; generated files remain ignored.
+Only backend/tests/docs are intended for coherent commit/push to origin/dev/modern-engine.
+
+Exactly one next task: separately reviewed Generals-only X64.20-fix1 original
+panel composition confirmation,then preserved machine/visual evidence review.
+Use the report's x64-20-fix1 -UIPanel commands; do not execute the failed stage,
+automatically rerun or launch Zero Hour. Earlier next-task sections are historical.
+
 ## Generals X64.19 accepted; X64.20 original panel composition gate
 
 Reviewed Generals x64-19-final run20261012T1653491849657Z is formally accepted:

@@ -301,3 +301,27 @@ TEST(D3D11SentenceTest, DiffuseAlphaRejectsTextureResidencyAdditiveAndAlphaTest)
     EXPECT_THROW(backend->Submit_Render2D(q.s),std::runtime_error);
     backend->End_Scene(false);EXPECT_EQ(backend->Draw_Count(),0u);
 }
+
+TEST(D3D11SentenceTest, RepeatedPanelImageFramesPreserveInactiveLogicalTexture)
+{
+    auto backend=Device();Quad q;auto content=Glyph();
+    std::unique_ptr<Texture2DResidency> residency(backend->Create_Content_Residency(*content));
+    char identity; // logical identity only: disabled texturing must never dereference it
+    auto *retained=reinterpret_cast<TextureClass *>(&identity);
+    const auto pos=(20*128+30)*4;
+    for(unsigned frame=0;frame<3;++frame) {
+        backend->Clear(true,false,Vector3(0,0,0),1);backend->Begin_Scene();
+        q.shader=Shader();q.shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+        q.s.texture=frame ? retained : nullptr;q.colors.fill(0xffffbb00);
+        EXPECT_NO_THROW(backend->Submit_Render2D(q.s)) << "frame=" << frame;
+        EXPECT_EQ(q.s.texture,frame ? retained : nullptr); // caller ownership/state unchanged
+        backend->End_Scene(false);
+        auto image=backend->Readback_RGBA8();
+        EXPECT_EQ(image[pos],255);EXPECT_EQ(image[pos+1],187);EXPECT_EQ(image[pos+2],0);
+        q.shader=Shader();q.s.texture=nullptr;q.colors.fill(0xffffffff);
+        backend->Clear(true,false,Vector3(0,0,0));backend->Begin_Scene();
+        backend->Submit_Render2D_Content(q.s,residency.get(),Sampler());backend->End_Scene(false);
+        image=backend->Readback_RGBA8();EXPECT_EQ(image[pos],0);
+    }
+    EXPECT_EQ(backend->Draw_Count(),6u);EXPECT_EQ(backend->Texture_Creations(),1u);
+}

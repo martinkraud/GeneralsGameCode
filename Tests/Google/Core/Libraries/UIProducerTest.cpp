@@ -3,6 +3,7 @@
 #include "WW3D2/render2d.h"
 #include "WW3D2/render2dsentence.h"
 #include "WW3D2/ww3d.h"
+#include "WW3D2/texture.h"
 #include <memory>
 
 namespace {
@@ -89,4 +90,20 @@ TEST(UIProducerTest, ActualPanelProducerUsesExactDiffuseAlphaShaderAndGeometry)
     EXPECT_NEAR((1-q.Position(0).Y)*300+0.5f,109,0.0001f);
     EXPECT_NEAR((q.Position(2).X-q.Position(0).X)*400,222,0.0001f);
     EXPECT_NEAR((q.Position(0).Y-q.Position(1).Y)*300,250,0.0001f);
+}
+
+TEST(UIProducerTest, ResetAndDisableTexturingRetainActualLogoTextureOwnership)
+{
+    UIState state;QuadProbe q;
+    TextureClass *texture=new TextureClass("unused-retained-logo.tga",nullptr,MIP_LEVELS_1);
+    EXPECT_EQ(texture->Num_Refs(),1);
+    q.Set_Texture(texture);EXPECT_EQ(texture->Num_Refs(),2);
+    q.Enable_Texturing(true);q.Add_Quad(RectClass(504,16,791,110));
+    q.Reset();q.Enable_Texturing(false);q.Enable_Additive(false);q.Enable_Alpha(true);
+    q.Add_Rect(RectClass(533,109,755,359),0,0,0x7e000000);
+    EXPECT_EQ(q.Peek_Texture(),texture);EXPECT_EQ(texture->Num_Refs(),2);
+    EXPECT_EQ(q.Get_Shader()->Get_Texturing(),ShaderClass::TEXTURING_DISABLE);
+    q.Reset();EXPECT_EQ(q.Peek_Texture(),texture);EXPECT_EQ(texture->Num_Refs(),2);
+    q.Enable_Texturing(true);EXPECT_EQ(q.Peek_Texture(),texture);
+    q.Set_Texture(static_cast<TextureClass *>(nullptr));EXPECT_EQ(texture->Num_Refs(),1);texture->Release_Ref();
 }
