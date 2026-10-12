@@ -592,6 +592,7 @@ static PoolSizeRec PoolSizes[] =
 	{ "AABoxRenderObjClass", 32, 32 },
 	{ "VertexMaterialClass", 16384, 32 },
 	{ "TextureClass", 1024, 32 },
+	{ "Texture2DCPUContent", 16, 16 },
 	{ "CloudMapTerrainTextureClass", 32, 32 },
 	{ "ScorchTextureClass", 32, 32 },
 	{ "LightMapTerrainTextureClass", 32, 32 },

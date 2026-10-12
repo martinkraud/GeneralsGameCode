@@ -1,5 +1,36 @@
 # Renderer and display architecture
 
+## X64.18 first runtime failure repaired; replacement manual gate
+
+Generals reviewed run20261012T1357003637599Z in x64-18-final failed with OS exit1,
+no timeout/error/dump,empty observer. Engine/device/retained display attachment
+succeeded; ui_image_load began then a non-standard exception was caught before
+any frame. Cleanup/MiniDumper/late observer completed; WinMain reported fail/exit1.
+Do not rerun or overwrite that stage/run. X64.17 acceptance remains intact.
+
+Root defect is the missing Texture2DCPUContent W3DMPO pool entry in both title
+pool tables. Actual engine-memory TGA decoding reproduced ERROR_OUT_OF_MEMORY
+0xDEAD0002 before repair in BOTH title test executables; isolated GPU tests had
+DISABLE_GAMEMEMORY and missed the registration. Add only16 initial/16 overflow
+metadata objects for this new pool; all existing entries are preserved exactly.
+UIImage load now logs metadata,texture creation,CPU preparation,Render2D setup
+and typed engine errors. Decoder/rendering/ownership/acceptance are unchanged.
+No title execution in repair. See [X64.18 report](X64_18_UI_IMAGE_GATE.md).
+
+Full Win32 CTest25,150 direct/76 focused per title; AMD64 independent CTest15,
+both native links and engine-memory texture8 per title; renderer30/startup14/
+performance16 references; graphics46/native6 guards/all10 script parses PASS.
+New isolated per-title x64-18-fix1 UIImage stages are prepared/preflighted only
+after final validation. Reviewed evidence and previous stages remain immutable.
+Generated evidence/audit/build/stage files are ignored and excluded from commits.
+
+Exactly one next task: separately reviewed Generals-only x64-18-fix1 UIImage
+confirmation using the report's guarded commands, then evidence/visual review.
+No automatic rerun or Zero Hour launch. Ordinary shell/menu/input/execute/update,
+simulation/replay/GameLogic/world remain outside this gate. Push only to
+origin/dev/modern-engine. Earlier stage states below are historical/superseded.
+
+
 ## X64.18 original-menu image gate; Generals X64.17 accepted
 
 Reviewed Generals X64.17 run20261012T1243165104474Z is accepted: OS exit0,

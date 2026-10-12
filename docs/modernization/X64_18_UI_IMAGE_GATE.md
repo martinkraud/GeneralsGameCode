@@ -1,5 +1,10 @@
 # X64.18 - retained-display original menu image gate
 
+Current state: first reviewed X64.18 runtime FAILED before the first frame.
+Missing Texture2DCPUContent pool registration is reproduced and repaired offline.
+Use only the new x64-18-fix1 candidate after review; do not rerun/reuse the failed
+x64-18-final stage. Full failure/repair evidence is recorded below.
+
 ## Scope and route
 
 Generals X64.17 is formally accepted from reviewed run
@@ -95,8 +100,8 @@ From PowerShell7, after developer review, use only this Generals stage:
 
 ```powershell
 Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
-./scripts/native-runtime/Test-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-18-final -UIImage
-./scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-18-final -UIImage -RunReviewedGraphicsSmoke
+./scripts/native-runtime/Test-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-18-fix1 -UIImage
+./scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-18-fix1 -UIImage -RunReviewedGraphicsSmoke
 ```
 
 Preflight launches nothing. Invoke starts exactly one isolated native process,
@@ -106,7 +111,7 @@ about5seconds then automatic close/exit0. This is an image probe, not the menu.
 Do not click, resize, minimize, press Escape or close it; no intervention needed.
 On any error or missing/incorrect logo, preserve evidence and stop: no automatic
 rerun, rebuild/restage or Zero Hour launch. Send the exact new directory under
-`build/dev-runtimes/native/Generals/x64-18-final/runs/<UTC>` and visual observations,
+`build/dev-runtimes/native/Generals/x64-18-fix1/runs/<UTC>` and visual observations,
 including launch.json,exit.json,startup.log,shutdown-exception.bin and CrashDumps.
 
 Exactly one recommended next task: separately reviewed Generals-only X64.18
@@ -139,3 +144,71 @@ assets,stages,build/test logs remain ignored and are excluded from commits.
 Implementation/reference/guard changes and these docs are the coherent X64.18
 change on dev/modern-engine, following X64.17 acceptance commit8c74fdbb1.
 Only origin/dev/modern-engine is an authorized push destination.
+
+## First reviewed failure and established repair (2026-10-12)
+
+Preserved Generals run20261012T1357003637599Z under x64-18-final failed normally
+with OS exit1,PID27192,no timeout/launcher error,matching isolated paths and
+GUID/age50/EXE/PDB identity above. Complete log contains287 sequential records.
+Initialization246,hardware device255 (same Intel8086:7D45/11.0),target259,
+setup261,viewport263,display size264 and attach265 succeed. ui_image_load266
+begins,then graphics_backend267 catches an unknown exception. No load completion,
+frame Begin/End,clear,draw or Present occurs; summary277 records0 frames/0ms.
+Cleanup is ordered:ui release270,display detach271,backend272,HWND274,class276,
+engine283,MiniDumper285,late observer286,WinMain287 fail/exit1. Observer0 bytes,
+no trailer/dump. This is a caught startup resource failure, not a late crash.
+The X64.17 display lifecycle still reaches the same successful attachment.
+
+Root defect: Texture2DCPUContent declares W3DMPO_CODE but neither title registers
+that name in GameMemoryInitPools. UITextureContent's ordinary TGA decoder first
+allocates this class before writing pixels. createW3DMemPool requests counts0/0;
+userMemoryAdjustPoolSize cannot find the name; createMemoryPool consequently
+throws engine ErrorCode ERROR_OUT_OF_MEMORY (0xDEAD0002). The host only caught
+std::exception specifically; this enum was reduced to unknown exception.
+An engine-linked test reproduces the actual raw32-bit TGA route and exact enum
+3735879682 in BOTH title test executables before the fix. Isolated UI/sentence
+tests define DISABLE_GAMEMEMORY and therefore missed this integration defect.
+The reviewed log has no throw-site stack or resolved asset sub-checkpoint; root
+attribution rests on the deterministic production-memory reproduction and source
+contract, not a claimed captured stack. No unrelated allocation/ownership cause
+is inferred. The atlas format/metadata are established from staged assets; the
+failed log itself does not prove file resolution/CPU decoding completed.
+
+Repair registers only Texture2DCPUContent with16 initial/16 overflow metadata
+objects per title. All existing pool entries/capacities/layouts are unchanged.
+Regression additionally covers40 simultaneous objects (overflow),snapshot bytes,
+release and repeat allocation/reuse under actual engine memory. Load diagnostics
+are split into resolved metadata,TextureClass creation,CPU-content preparation
+and Render2D construction; engine enum errors retain their value. No fallback,
+original-logo substitution,decoder/shader/ownership/acceptance relaxation or
+engine update is added. New candidate is x64-18-fix1; do not reuse x64-18-final.
+Final repair validation/stage identity follows below.
+
+## Fix1 final validation and immutable replacement stage
+
+Before repair, both engine-linked Win32 test executables fail the real raw-TGA
+allocation with ErrorCode3735879682/0xDEAD0002. After repair: full Win32 Release
+build/CTest25/25,150 direct tests per title (six existing disabled),76 focused
+tests per title PASS. AMD64 independent CTest15/15,both native title links,
+and BOTH actual engine-memory Texture2DTest suites8/8 PASS. This specifically
+closes the DISABLE_GAMEMEMORY coverage gap. Existing WARP UI10/10,sentence,
+startup/shutdown,resource/reference and pool regression targets remain green.
+Renderer references30,startup/display14,performance16 PASS; graphics46/native6
+workflow checks and all10 PowerShell parses PASS; git diff --check PASS.
+Pool preservation tests verify every pre-existing entry/value is unchanged.
+
+Both new x64-18-fix1 UIImage stages were created only after final builds/tests.
+Preflight verifies matching AMD64 EXE/PDB identity/hash,assets,system graphics
+dependencies;30 imports per title,no delay imports,no D3D8/D3DX. Old-mode
+preflight rejects; neither stage has a runs directory. No game was launched.
+
+- Generals: GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age51; EXE SHA256 `2C8C218F2F6C07C67462021EAFC81D4BB263318E7F0E23A354EF066AFEFD9BA4`; PDB SHA256 `7ED24CB7591EA447DA1AD83B7EABA18267662B40AD38947CD6A872B4E4494A3F`.
+- ZeroHour: GUID `7a285453-4110-4cad-a6c8-e5336ba19b1c`, age52; EXE SHA256 `286AA732E09D140A1D3E937FAEDCC069CF7A10C622D9C159F98BD850155AF763`; PDB SHA256 `32EC9279DFB651D5EA0CEBF5395AB8EA4CA9CDFA28A9E19935980B55D73F0C40`.
+
+All31 inventoried accepted/failed evidence files and both titles' original
+X64.16-final-2/X64.17-final/X64.18-final EXE/PDB copies rehash unchanged.
+The original failed run remains preserved,not edited/reused/reclassified as PASS.
+Generated assets/stages/evidence/reproduction helpers/logs are ignored and
+excluded from the repair commit. Runtime repair acceptance remains pending the
+separately reviewed Generals-only x64-18-fix1 run; use the procedure above.
+No source change beyond the two new pool entries and diagnostic load boundaries.

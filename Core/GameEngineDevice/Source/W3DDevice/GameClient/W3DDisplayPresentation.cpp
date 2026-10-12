@@ -2,6 +2,7 @@
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "Common/GlobalData.h"
+#include "Common/Errors.h"
 #include "Common/StartupDiagnostics.h"
 #include "WW3D2/ww3d.h"
 #include "WW3D2/Backend/NativeGraphicsSmoke.h"
@@ -54,31 +55,43 @@ int W3DDisplay::runNativePresentationSmoke()
             Log(nullptr,"display_attach","complete","W3DDisplay -> WW3D active backend; presentation-only",0);
             if(imageMode) {
                 Log(nullptr,"ui_image_load","begin","GeneralsLogo",0);
-                const Image *mapped = TheMappedImageCollection ?
-                    TheMappedImageCollection->findImageByName("GeneralsLogo") : nullptr;
-                if(!mapped || mapped->getStatus()!=IMAGE_STATUS_NONE ||
-                    mapped->getFilename().isEmpty())
-                    throw std::runtime_error("Expected ordinary GeneralsLogo mapped image unavailable");
-                // Private ownership avoids leaving a device residency in the global
-                // asset cache after this short attachment. Original metadata is read-only.
-                texture = new TextureClass(mapped->getFilename().str(), nullptr, MIP_LEVELS_1);
-                texture->Prepare_Render2D_Texture();
-                const auto *content = texture->Get_Render2D_CPU_Content();
-                if(!content || content->Describe().width != unsigned(mapped->getTextureSize()->x) ||
-                    content->Describe().height != unsigned(mapped->getTextureSize()->y))
-                    throw std::runtime_error("Menu atlas dimensions disagree with mapped metadata");
-                Region2D uv = *mapped->getUV();
-                image = newInstance(Image);
-                image->setUV(&uv); image->setRawTextureData(texture);
-                image->setStatus(IMAGE_STATUS_RAW_TEXTURE);
-                display.m_2DRender = new Render2DClass;
-                Render2DClass::Set_Screen_Resolution(RectClass(0,0,800,600));
-                display.m_2DRender->Set_Coordinate_Range(RectClass(0,0,800,600));
-                char detail[512];
-                sprintf_s(detail,"name=GeneralsLogo file=%s atlas=%dx%d uv=%.9g,%.9g,%.9g,%.9g rect=504,16,791,110",
-                    mapped->getFilename().str(),mapped->getTextureSize()->x,mapped->getTextureSize()->y,
-                    uv.lo.x,uv.lo.y,uv.hi.x,uv.hi.y);
-                Log(nullptr,"ui_image_load","complete",detail,0);
+                try {
+                    const Image *mapped = TheMappedImageCollection ?
+                        TheMappedImageCollection->findImageByName("GeneralsLogo") : nullptr;
+                    if(!mapped || mapped->getStatus()!=IMAGE_STATUS_NONE ||
+                        mapped->getFilename().isEmpty())
+                        throw std::runtime_error("Expected ordinary GeneralsLogo mapped image unavailable");
+                    Region2D uv = *mapped->getUV();
+                    char detail[512];
+                    sprintf_s(detail,"name=GeneralsLogo file=%s atlas=%dx%d uv=%.9g,%.9g,%.9g,%.9g rect=504,16,791,110",
+                        mapped->getFilename().str(),mapped->getTextureSize()->x,mapped->getTextureSize()->y,
+                        uv.lo.x,uv.lo.y,uv.hi.x,uv.hi.y);
+                    Log(nullptr,"ui_image_metadata","complete",detail,0);
+                    // Private ownership avoids leaving a device residency in the global
+                    // asset cache after this short attachment. Original metadata is read-only.
+                    Log(nullptr,"ui_texture_create","begin","TextureClass",0);
+                    texture = new TextureClass(mapped->getFilename().str(), nullptr, MIP_LEVELS_1);
+                    Log(nullptr,"ui_texture_create","complete","TextureClass",0);
+                    Log(nullptr,"ui_texture_content","begin","ordinary single-mip file decode",0);
+                    texture->Prepare_Render2D_Texture();
+                    const auto *content = texture->Get_Render2D_CPU_Content();
+                    if(!content || content->Describe().width != unsigned(mapped->getTextureSize()->x) ||
+                        content->Describe().height != unsigned(mapped->getTextureSize()->y))
+                        throw std::runtime_error("Menu atlas dimensions disagree with mapped metadata");
+                    Log(nullptr,"ui_texture_content","complete","CPU content dimensions verified",0);
+                    image = newInstance(Image);
+                    image->setUV(&uv); image->setRawTextureData(texture);
+                    image->setStatus(IMAGE_STATUS_RAW_TEXTURE);
+                    Log(nullptr,"ui_render2d_create","begin","Render2DClass",0);
+                    display.m_2DRender = new Render2DClass;
+                    Render2DClass::Set_Screen_Resolution(RectClass(0,0,800,600));
+                    display.m_2DRender->Set_Coordinate_Range(RectClass(0,0,800,600));
+                    Log(nullptr,"ui_render2d_create","complete","800x600 coordinates/screen",0);
+                    Log(nullptr,"ui_image_load","complete",detail,0);
+                } catch(ErrorCode error) {
+                    Log(nullptr,"ui_image_load","fail","engine ErrorCode",static_cast<unsigned>(error));
+                    throw;
+                }
             }
         }
         void BeginClear() override {

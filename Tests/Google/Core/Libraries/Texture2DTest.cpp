@@ -200,3 +200,48 @@ TEST(Texture2DTest, ActualResidencyOwnerCreatesOneViewAndReleasesExactlyOnce)
     }
     EXPECT_EQ(releases, 2u);
 }
+
+#if !defined(DISABLE_GAMEMEMORY)
+// Engine-linked test: unlike isolated GPU tests, the production named memory
+// pools are enabled. First allocation previously threw ERROR_OUT_OF_MEMORY.
+#include "WW3D2/Texture2DCPUContent.h"
+#include "WW3D2/UITextureContent.h"
+#include "Common/Errors.h"
+TEST(Texture2DTest, ProductionCPUContentPoolAllocatesSnapshotsAndReusesBlocks)
+{
+    // The same raw32-bit TGA decoder route reached by the original menu atlas.
+    std::vector<unsigned char> tga(18+4*4*4,0);
+    tga[2]=2; tga[12]=tga[14]=4; tga[16]=32;
+    UITexturePolicy policy; policy.allow_compression=false;
+    auto decoded=[&]() {
+        try {
+            return Load_UI_Texture_Content("pool.tga",policy,[&](const std::string &) {
+                return UITextureBytes{UITextureStatus::Ready,tga};
+            });
+        } catch(ErrorCode code) {
+            ADD_FAILURE() << "Production TGA allocation threw engine error " << static_cast<unsigned>(code);
+            throw;
+        }
+    }();
+    ASSERT_EQ(decoded.status,UITextureStatus::Ready);
+    for(unsigned iteration=0;iteration<2;++iteration) {
+        std::vector<Texture2DCPUContent *> contents;
+        try {
+            for(unsigned i=0;i<40;++i) {
+                contents.push_back(new Texture2DCPUContent(4,4));
+                int pitch; auto *bytes=static_cast<unsigned char *>(contents.back()->Lock(&pitch));
+                for(int b=0;b<pitch*4;++b) bytes[b]=0x5a;
+                contents.back()->Unlock();
+            }
+            auto *copy=contents[0]->Snapshot();
+            EXPECT_EQ(copy->Describe().width,4u);
+            EXPECT_EQ(copy->Pixels()[0],0x5a);
+            copy->Release_Ref();
+        } catch (...) {
+            for(auto *content:contents) content->Release_Ref();
+            throw;
+        }
+        for(auto *content:contents) content->Release_Ref();
+    }
+}
+#endif
