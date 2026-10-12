@@ -130,6 +130,11 @@ public:
 
 	// pseudo-stack operations for manipulating layouts
 	void push( AsciiString filename, Bool shutdownImmediate = FALSE );	///< load new screen on top, optionally doing an immediate shutdown
+
+	/** Optional veto for pushes. Returning FALSE refuses the push explicitly (the
+		* guard owns the receipt). Null by default, which preserves legacy behavior. */
+	typedef Bool (*PushGuard)( const AsciiString &filename );
+	void setPushGuard( PushGuard guard ) { m_pushGuard = guard; }
 	void pop();																				///< pop top layout
 	void popImmediate();															///< pop now
 	void showShell( Bool runInit = TRUE );									///< init the top of stack
@@ -177,6 +182,7 @@ protected:
 	Bool m_clearBackground;																	///< Flag if we're going to clear the background or not
 
 	Bool m_pendingPush;																			///< TRUE when a push is pending
+	PushGuard m_pushGuard;																	///< optional push veto, null normally
 	Bool m_pendingPop;																			///< TRUE when a pop is pending
 	AsciiString m_pendingPushName;													///< layout name to be pushed
 	Bool m_isShellActive;																		///< TRUE when the shell is active

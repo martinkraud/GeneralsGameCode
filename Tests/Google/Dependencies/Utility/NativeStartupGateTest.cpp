@@ -502,3 +502,66 @@ TEST(NativeOrdinaryHostAudit, LegacyModulesAreDetectedAndTestProcessHasNone) {
     EXPECT_TRUE(NativeOrdinaryHost::residencyReleasedBeforeBackend(0));
     EXPECT_FALSE(NativeOrdinaryHost::residencyReleasedBeforeBackend(1));
 }
+
+// ---------------------------------------------------------------------------
+// Ordinary-menu profile (X64.23): same strict profile, distinct mode token.
+// ---------------------------------------------------------------------------
+TEST(NativeOrdinaryMenuGate, DistinctStrictTokenSharesTheHostGrammar) {
+    HostArgs args;
+    char *copy[12] = {};
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    // The host token is not the menu token and vice versa.
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(11, copy));
+    char menu[] = "-nativeOrdinaryMenu";
+    copy[9] = menu;
+#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(11, copy));
+#else
+    EXPECT_TRUE(StartupDiagnostics::validOrdinaryMenuArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryHostArguments(11, copy));
+    // Every other token is as strict as for the host profile.
+    for (int position = 1; position <= 8; ++position) {
+        char *mutated[12] = {};
+        for (int i = 0; i < 11; ++i) mutated[i] = copy[i];
+        char other[] = "-other"; mutated[position] = other;
+        EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(11, mutated)) << position;
+    }
+    char extra[] = "-simulateReplays"; copy[11] = extra;
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(12, copy));
+#endif
+}
+
+#if defined(_WIN64) && !(defined(RTS_ZEROHOUR) && RTS_ZEROHOUR)
+TEST(NativeOrdinaryMenuGate, ConfigureEnablesMenuImpliesHostAndNoDiagnosticModes) {
+    char temp[MAX_PATH], unique[MAX_PATH];
+    ASSERT_NE(GetTempPathA(MAX_PATH, temp), 0u);
+    ASSERT_NE(GetTempFileNameA(temp, "x23", 0, unique), 0u);
+    ASSERT_TRUE(DeleteFileA(unique)); ASSERT_TRUE(CreateDirectoryA(unique, nullptr));
+    std::string root(unique), data = root + "\\userdata", dump = data + "\\CrashDumps", log = root + "\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(), nullptr)); ASSERT_TRUE(CreateDirectoryA(dump.c_str(), nullptr));
+    HostArgs args;
+    std::strcpy(args.root, unique);
+    char menu[] = "-nativeOrdinaryMenu";
+    char *copy[11];
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    copy[9] = menu;
+    StartupDiagnostics::state() = {};
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryMenu());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryHost()); // shared display/window lifetime
+    EXPECT_FALSE(StartupDiagnostics::displaySmoke());
+    EXPECT_FALSE(StartupDiagnostics::uiMenuSmoke());
+    EXPECT_EQ(std::string(StartupDiagnostics::userData()), data + "\\");
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    // Host mode never implies the menu loop.
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    copy[9] = const_cast<char *>("-nativeOrdinaryHost");
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryHost());
+    EXPECT_FALSE(StartupDiagnostics::ordinaryMenu());
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
+}
+#endif

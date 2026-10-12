@@ -18,6 +18,15 @@
 #include "GameClient/DisplayString.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/GameFont.h"
+#include "GameClient/Anim2D.h"
+#include "GameClient/GameWindowManager.h"
+#include "GameClient/Keyboard.h"
+#include "GameClient/Mouse.h"
+#include "GameClient/Shell.h"
+#include "GameClient/WindowLayout.h"
+#include "GameClient/WindowXlat.h"
+#include "GameClient/GameClient.h"
+#include "Common/GameDefines.h"
 #include <memory>
 #include <stdexcept>
 
@@ -248,5 +257,213 @@ int W3DDisplay::runOrdinaryHostGate()
     StartupDiagnostics::checkpoint("ordinary_host_summary", result ? "fail" : "complete", summary, result);
     if (result) StartupDiagnostics::markFailed();
     return result;
+}
+// ---------------------------------------------------------------------------
+// Ordinary-menu profile (StartupDiagnostics::ordinaryMenu): the original
+// interactive main menu on the ordinary application/display lifetime, driven by
+// a bounded menu-only loop. World/audio/radar/view selection stays headless;
+// GameLogic::update, GameClient::update, GameEngine::update/execute and message
+// propagation through gameplay translators are never run. Any request that would
+// leave the UI (new game, network, any other Shell screen) is an explicit
+// boundary stop, never an emulated success.
+// ---------------------------------------------------------------------------
+#if RTS_GENERALS
+namespace {
+struct MenuBoundary {
+    bool hit = false;
+    char reason[64] = {};
+    char detail[160] = {};
+} g_menuBoundary;
+
+void RecordBoundary(const char *reason, const char *detail) {
+    if (g_menuBoundary.hit) return;
+    g_menuBoundary.hit = true;
+    strcpy_s(g_menuBoundary.reason, reason);
+    strcpy_s(g_menuBoundary.detail, detail);
+}
+
+// Only the original main menu may be pushed; every other screen is outside the
+// audited UI-only boundary (several touch DX8 enumeration, shell map or world).
+Bool MenuPushGuard(const AsciiString &filename) {
+    if (filename.compareNoCase("Menus/MainMenu.wnd") == 0) return TRUE;
+    RecordBoundary("shell_push", filename.str());
+    return FALSE;
+}
+
+struct MenuCounters {
+    unsigned frames = 0, visibleFrames = 0, occludedFrames = 0;
+    unsigned mouseMoves = 0, leftDown = 0, leftUp = 0, keyDown = 0;
+    ICoord2D lastMouse = { -1, -1 };
+    bool closeRequested = false;
+};
+
+// Routes raw input to the window system only; consumes and deletes every stream
+// message. Gameplay translators are not attached to this path.
+void DrainMenuStream(WindowTranslator &translator, MenuCounters &c, bool route) {
+    GameMessage *msg;
+    while ((msg = TheMessageStream->getFirstMessage()) != nullptr) {
+        const GameMessage::Type type = msg->getType();
+        switch (type) {
+        case GameMessage::MSG_RAW_MOUSE_POSITION: {
+            const ICoord2D p = msg->getArgument(0)->pixel;
+            if (p.x != c.lastMouse.x || p.y != c.lastMouse.y) { ++c.mouseMoves; c.lastMouse = p; }
+            if (route) translator.translateGameMessage(msg);
+            break;
+        }
+        case GameMessage::MSG_RAW_MOUSE_LEFT_BUTTON_DOWN: ++c.leftDown; if (route) translator.translateGameMessage(msg); break;
+        case GameMessage::MSG_RAW_MOUSE_LEFT_BUTTON_UP: ++c.leftUp; if (route) translator.translateGameMessage(msg); break;
+        case GameMessage::MSG_RAW_KEY_DOWN: ++c.keyDown; if (route) translator.translateGameMessage(msg); break;
+        case GameMessage::MSG_META_DEMO_INSTANT_QUIT: c.closeRequested = true; break; // WM_CLOSE / quit
+        case GameMessage::MSG_NEW_GAME: RecordBoundary("new_game", "MSG_NEW_GAME requested by the menu"); break;
+        case GameMessage::MSG_CLEAR_GAME_DATA: RecordBoundary("clear_game_data", "MSG_CLEAR_GAME_DATA requested"); break;
+        default:
+            if (type >= GameMessage::MSG_BEGIN_NETWORK_MESSAGES && type <= GameMessage::MSG_END_NETWORK_MESSAGES)
+                RecordBoundary("network_message", "network message requested by the menu");
+            else if (route)
+                translator.translateGameMessage(msg); // remaining raw input (mouse buttons/wheel, key up)
+            break;
+        }
+        deleteInstance(msg);
+    }
+}
+} // namespace
+#endif
+
+void W3DDisplay::drawOrdinaryMenuFrame()
+{
+    // Black clear like the legacy no-shell-map menu; windows then the cursor layer.
+    if (WW3D::Begin_Render(true, false, Vector3(0.0f, 0.0f, 0.0f), 1.0f) != WW3D_ERROR_OK)
+        throw std::runtime_error("Ordinary menu Begin_Render failed");
+    try {
+        if (TheWindowManager) TheWindowManager->winRepaint();
+        if (TheMouse) TheMouse->DRAW();
+    } catch (...) {
+        try { WW3D::End_Render(false); } catch (...) {}
+        throw;
+    }
+    if (WW3D::End_Render(true) != WW3D_ERROR_OK)
+        throw std::runtime_error("Ordinary menu End_Render failed");
+}
+
+int W3DDisplay::runOrdinaryMenuHost()
+{
+#if !RTS_GENERALS
+    StartupDiagnostics::checkpoint("menu_host", "fail", "Generals only", 1);
+    return 1;
+#else
+    using NativeGraphicsSmoke::Decision;
+    if (!StartupDiagnostics::ordinaryMenu() || !m_initialized || !m_2DRender || !TheGameEngine ||
+        !TheMessageStream || !ApplicationHWnd || !TheShell || !TheWindowManager || !TheMouse ||
+        !TheKeyboard || !TheGameClient || !TheDisplayStringManager) {
+        StartupDiagnostics::checkpoint("menu_host", "fail", "preconditions", 1);
+        return 1;
+    }
+    // 10 minutes absolute, 2 minutes without any input: both are normal bounded ends.
+    const unsigned kTotalMs = 600000, kIdleMs = 120000;
+    MenuCounters c;
+    int result = 1;
+    const char *exitReason = "failure";
+    unsigned elapsed = 0;
+    const char *phase = "menu_shell";
+    WindowTranslator translator;
+    try {
+        TheShell->setPushGuard(MenuPushGuard);
+        StartupDiagnostics::checkpoint(phase, "begin", "intro finished (movies off); showShell -> push MainMenu.wnd; shell map off");
+        TheGameClient->startMenuOnlyShell();
+        WindowLayout *top = TheShell->top();
+        if (!top || top->getFilename().compareNoCase("Menus/MainMenu.wnd") != 0)
+            throw std::runtime_error("Shell did not present Menus/MainMenu.wnd");
+        char detail[192];
+        sprintf_s(detail, "top=%s screens=%d winCursors=%d windows loaded by the real manager; transitions real",
+            top->getFilename().str(), static_cast<int>(TheShell->getScreenCount()),
+            TheGlobalData->m_winCursors ? 1 : 0);
+        StartupDiagnostics::checkpoint(phase, "complete", detail);
+
+        phase = "menu_loop";
+        StartupDiagnostics::checkpoint(phase, "begin", "serviceWindowsOS; keyboard/mouse; WindowTranslator; window manager; shell; draw");
+        const ULONGLONG start = GetTickCount64();
+        ULONGLONG lastInput = start;
+        unsigned lastInputCount = 0;
+        bool lastVisible = false;
+        for (;;) {
+            TheGameEngine->serviceWindowsOS(); // ordinary WndProc -> Win32Mouse events, WM_CLOSE
+            if (!IsWindow(ApplicationHWnd)) throw std::runtime_error("Application window destroyed");
+            const bool iconic = IsIconic(ApplicationHWnd) != FALSE;
+            if (!iconic && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
+                throw std::runtime_error("Unsupported resize: client is not 800x600");
+
+            TheKeyboard->UPDATE(); TheKeyboard->createStreamMessages();
+            TheMouse->UPDATE(); TheMouse->createStreamMessages();
+            DrainMenuStream(translator, c, true);
+
+            if (TheAnim2DCollection) TheAnim2DCollection->UPDATE();
+            TheWindowManager->UPDATE();            // processes destroy list + transitions
+            TheDisplay->DRAW();                    // ordinary entry: winRepaint + cursor, UI only
+            TheDisplayStringManager->update();
+            TheShell->UPDATE();                    // layout updates (MainMenuUpdate, animations)
+            DrainMenuStream(translator, c, false); // requests raised by callbacks
+
+            const bool visible = IsWindowVisible(ApplicationHWnd) && !iconic;
+            if (!iconic) {
+                const PresentationStatus present = WW3D::Native_Presentation_Status();
+                if (present.result != 0) {
+                    sprintf_s(detail, "Present HRESULT=0x%08X removed=0x%08X frame=%u", present.result, present.removed_reason, c.frames + 1);
+                    throw std::runtime_error(detail);
+                }
+                ++c.frames; if (present.occluded) ++c.occludedFrames;
+                lastVisible = visible && !present.occluded;
+                if (lastVisible) ++c.visibleFrames;
+                if (c.frames == 1) {
+                    sprintf_s(detail, "HRESULT=0x%08X visible=%u occluded=%u removed=0x%08X frame=%u",
+                        present.result, visible ? 1u : 0u, present.occluded ? 1u : 0u, present.removed_reason, c.frames);
+                    StartupDiagnostics::checkpoint("graphics_present", lastVisible ? "complete" : "observed", detail, present.result);
+                }
+            }
+            const unsigned inputCount = c.mouseMoves + c.leftDown + c.leftUp + c.keyDown;
+            if (inputCount != lastInputCount) {
+                if (lastInputCount == 0) {
+                    sprintf_s(detail, "first input: moves=%u down=%u up=%u keys=%u top=%s", c.mouseMoves, c.leftDown, c.leftUp, c.keyDown,
+                        TheShell->top() ? TheShell->top()->getFilename().str() : "none");
+                    StartupDiagnostics::checkpoint("menu_input", "observed", detail);
+                }
+                lastInputCount = inputCount; lastInput = GetTickCount64();
+            }
+            elapsed = static_cast<unsigned>(GetTickCount64() - start);
+            if (g_menuBoundary.hit) { exitReason = "boundary"; break; }
+            if (c.closeRequested) { exitReason = "window_close"; break; }
+            if (TheGameEngine->getQuitting()) { exitReason = "menu_exit"; break; }
+            if (elapsed >= kTotalMs) { exitReason = "time_bound"; break; }
+            if (GetTickCount64() - lastInput >= kIdleMs) { exitReason = "idle_bound"; break; }
+            Sleep(15);
+        }
+        result = c.frames ? 0 : 1;
+        if (!c.visibleFrames) {
+            StartupDiagnostics::checkpoint(phase, "fail", "no visible unoccluded frame", 1);
+            result = 1;
+        }
+    } catch (const std::exception &error) {
+        StartupDiagnostics::checkpoint(phase, "fail", error.what(), 1);
+        result = 1;
+    } catch (const ErrorCode error) {
+        StartupDiagnostics::checkpoint(phase, "fail", "engine ErrorCode", static_cast<unsigned>(error));
+        result = 1;
+    } catch (...) {
+        StartupDiagnostics::checkpoint(phase, "fail", "unknown exception", 1);
+        result = 1;
+    }
+    TheShell->setPushGuard(nullptr);
+    ClipCursor(nullptr); // never leave the cursor clipped to the game window
+    if (g_menuBoundary.hit) {
+        char detail[256];
+        sprintf_s(detail, "reason=%s %s", g_menuBoundary.reason, g_menuBoundary.detail);
+        StartupDiagnostics::checkpoint("menu_boundary", "observed", detail);
+    }
+    char summary[256];
+    sprintf_s(summary, "frames=%u visible_frames=%u occluded_frames=%u elapsed_ms=%u moves=%u down=%u up=%u keys=%u exit=%s driver=hardware",
+        c.frames, c.visibleFrames, c.occludedFrames, elapsed, c.mouseMoves, c.leftDown, c.leftUp, c.keyDown, exitReason);
+    StartupDiagnostics::checkpoint("menu_summary", result ? "fail" : "complete", summary, result);
+    if (result) StartupDiagnostics::markFailed();
+    return result;
+#endif
 }
 #endif

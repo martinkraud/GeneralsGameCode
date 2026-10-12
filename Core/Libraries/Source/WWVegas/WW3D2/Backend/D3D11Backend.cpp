@@ -51,6 +51,39 @@ ShaderClass DiffuseAlphaShader()
     shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
     return shader;
 }
+// Render2D state set the UI actually produces: normal alpha, additive and
+// opaque ("solid") blends, each textured or flat, plus the disabled-button
+// grayscale combiner. Anything else stays an explicit unsupported failure.
+enum class Pipe { Textured, Flat, Gray };
+enum class BlendMode { Alpha, Additive, Opaque };
+struct Render2DMode { Pipe pipe; BlendMode blend; };
+unsigned BlendVariantBits(ShaderClass base, ShaderClass::SrcBlendFuncType src, ShaderClass::DstBlendFuncType dst)
+{
+    base.Set_Src_Blend_Func(src);
+    base.Set_Dst_Blend_Func(dst);
+    return base.Get_Bits();
+}
+bool ClassifyRender2D(unsigned bits, bool grayscale, Render2DMode &mode)
+{
+    const ShaderClass textured = SentenceShader(), flat = DiffuseAlphaShader();
+    if (grayscale) {
+        // Legacy: Set_Opaque_Shader + DOT3 luminance combiner over the bound texture.
+        if (bits != textured.Get_Bits()) return false;
+        mode = { Pipe::Gray, BlendMode::Opaque };
+        return true;
+    }
+    struct Candidate { const ShaderClass &base; Pipe pipe; };
+    for (const Candidate &c : { Candidate{textured, Pipe::Textured}, Candidate{flat, Pipe::Flat} }) {
+        if (bits == c.base.Get_Bits()) { mode = { c.pipe, BlendMode::Alpha }; return true; }
+        if (bits == BlendVariantBits(c.base, ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ONE)) {
+            mode = { c.pipe, BlendMode::Additive }; return true;
+        }
+        if (bits == BlendVariantBits(c.base, ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ZERO)) {
+            mode = { c.pipe, BlendMode::Opaque }; return true;
+        }
+    }
+    return false;
+}
 bool ValidateSampler(const Texture2DSampler &s)
 {
     const auto expected = SentenceSampler();
@@ -87,6 +120,14 @@ P VS(V v) {
 Texture2D image : register(t0); SamplerState imageSampler : register(s0);
 float4 PS(P p) : SV_TARGET { return image.Sample(imageSampler, p.uv) * p.color; }
 float4 PSColor(P p) : SV_TARGET { return p.color; }
+// Legacy disabled-button combiner: 4*dot(0.5*tex, tfactor-0.5) with tfactor
+// 0x80A5CA8E gives luminance weights (0.294118, 0.584314, 0.113725); vertex RGB
+// does not participate and the opaque shader overwrites the destination.
+float4 PSGray(P p) : SV_TARGET {
+    float4 t = image.Sample(imageSampler, p.uv);
+    float g = saturate(dot(t.rgb, float3(0.294118, 0.584314, 0.113725)));
+    return float4(g, g, g, t.a);
+}
 )";
 ComPtr<ID3DBlob> Compile(const char *entry, const char *profile)
 {
@@ -109,9 +150,9 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11Texture2D> target;
     ComPtr<ID3D11RenderTargetView> rtv;
     ComPtr<ID3D11VertexShader> vs;
-    ComPtr<ID3D11PixelShader> ps, colorPS;
+    ComPtr<ID3D11PixelShader> ps, colorPS, grayPS;
     ComPtr<ID3D11InputLayout> layout;
-    ComPtr<ID3D11BlendState> blend;
+    ComPtr<ID3D11BlendState> blend, blendAdditive, blendOpaque;
     ComPtr<ID3D11DepthStencilState> depth;
     ComPtr<ID3D11RasterizerState> raster;
     ComPtr<ID3D11SamplerState> sampler;
@@ -214,6 +255,20 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
     rt.DestBlend = rt.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     rt.BlendOp = rt.BlendOpAlpha = D3D11_BLEND_OP_ADD; rt.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
     Check(impl->device->CreateBlendState(&b, &impl->blend), "Create blend state");
+    {
+        auto grayPS = Compile("PSGray", "ps_4_0");
+        Check(impl->device->CreatePixelShader(grayPS->GetBufferPointer(), grayPS->GetBufferSize(), nullptr, &impl->grayPS), "Create grayscale UI PS");
+        D3D11_BLEND_DESC add{}; auto &a = add.RenderTarget[0];
+        a.BlendEnable = TRUE; a.SrcBlend = a.SrcBlendAlpha = D3D11_BLEND_ONE;
+        a.DestBlend = a.DestBlendAlpha = D3D11_BLEND_ONE;
+        a.BlendOp = a.BlendOpAlpha = D3D11_BLEND_OP_ADD; a.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        Check(impl->device->CreateBlendState(&add, &impl->blendAdditive), "Create additive blend state");
+        D3D11_BLEND_DESC opaque{}; auto &o = opaque.RenderTarget[0];
+        o.BlendEnable = FALSE; o.SrcBlend = o.SrcBlendAlpha = D3D11_BLEND_ONE;
+        o.DestBlend = o.DestBlendAlpha = D3D11_BLEND_ZERO;
+        o.BlendOp = o.BlendOpAlpha = D3D11_BLEND_OP_ADD; o.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        Check(impl->device->CreateBlendState(&opaque, &impl->blendOpaque), "Create opaque blend state");
+    }
     D3D11_DEPTH_STENCIL_DESC d{}; d.DepthEnable = FALSE; d.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
     d.DepthFunc = D3D11_COMPARISON_ALWAYS;
     Check(impl->device->CreateDepthStencilState(&d, &impl->depth), "Create depth state");
@@ -337,9 +392,10 @@ void D3D11Backend::Submit_Render2D_Content(const Render2DSubmission &s, Texture2
 void D3D11Backend::Submit_Render2D(const Render2DSubmission &s)
 {
     if (!s.index_count) return;
-    if (s.shader && s.shader->Get_Bits() == DiffuseAlphaShader().Get_Bits()) {
+    Render2DMode submitted = {};
+    if (s.shader && !s.grayscale && ClassifyRender2D(s.shader->Get_Bits(), false, submitted) && submitted.pipe == Pipe::Flat) {
         // Legacy Render2D keeps Texture across Reset/Enable_Texturing(false).
-        // This exact shader does not sample it. Normalize only the backend draw,
+        // A flat shader does not sample it. Normalize only the backend draw,
         // preserving the producer's identity/refcount for its next image draw.
         Render2DSubmission diffuse = s;
         diffuse.texture = nullptr;
@@ -354,10 +410,10 @@ void D3D11Backend::Submit_Render2D(const Render2DSubmission &s)
 void D3D11Backend::Draw(const Render2DSubmission &s)
 {
     if (!s.index_count) return;
-    const bool diffuse = s.shader && s.shader->Get_Bits() == DiffuseAlphaShader().Get_Bits();
-    if (!impl->scene || !s.shader || s.grayscale ||
-        (!diffuse && s.shader->Get_Bits() != SentenceShader().Get_Bits()) ||
-        (diffuse && (s.texture || impl->bound)) ||
+    Render2DMode mode = {};
+    if (!impl->scene || !s.shader || !ClassifyRender2D(s.shader->Get_Bits(), s.grayscale, mode) ||
+        (mode.pipe == Pipe::Flat && (s.texture || impl->bound)) ||
+        (mode.pipe == Pipe::Gray && !impl->bound) ||
         s.vertex_count <= 0 || s.vertex_count > 65535 || s.index_count < 0 || s.index_count > 65535 ||
         s.index_count % 3 || !s.positions || !s.uvs || !s.colors || !s.indices ||
         !std::isfinite(s.z) || s.z < 0 || s.z > 1) Unsupported();
@@ -380,7 +436,9 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     auto *vb = impl->vertices.Get(); auto *cb = impl->placement.Get(); auto *rtv = impl->rtv.Get();
     auto *srv = impl->bound ? impl->bound.Get() : impl->white.Get(); auto *sampler = impl->boundSampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, nullptr);
-    impl->context->OMSetBlendState(impl->blend.Get(), nullptr, 0xffffffff);
+    auto *blendState = mode.blend == BlendMode::Additive ? impl->blendAdditive.Get()
+        : mode.blend == BlendMode::Opaque ? impl->blendOpaque.Get() : impl->blend.Get();
+    impl->context->OMSetBlendState(blendState, nullptr, 0xffffffff);
     impl->context->OMSetDepthStencilState(impl->depth.Get(), 0);
     impl->context->RSSetState(impl->raster.Get());
     impl->context->IASetInputLayout(impl->layout.Get());
@@ -390,7 +448,8 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     impl->context->VSSetShader(impl->vs.Get(), nullptr, 0);
     impl->context->VSSetConstantBuffers(0, 1, &cb);
     impl->context->GSSetShader(nullptr, nullptr, 0);
-    impl->context->PSSetShader(diffuse ? impl->colorPS.Get() : impl->ps.Get(), nullptr, 0);
+    impl->context->PSSetShader(mode.pipe == Pipe::Gray ? impl->grayPS.Get()
+        : mode.pipe == Pipe::Flat ? impl->colorPS.Get() : impl->ps.Get(), nullptr, 0);
     impl->context->PSSetShaderResources(0, 1, &srv);
     impl->context->PSSetSamplers(0, 1, &sampler);
     impl->context->DrawIndexed(s.index_count, 0, 0); ++impl->draws;

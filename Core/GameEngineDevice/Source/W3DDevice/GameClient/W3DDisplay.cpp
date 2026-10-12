@@ -1872,7 +1872,10 @@ void W3DDisplay::draw()
 	// GameLogic state. Every other headless caller returns exactly as before.
 	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryHost() && m_2DRender)
 	{
-		drawOrdinaryHostFrame();
+		if (StartupDiagnostics::ordinaryMenu())
+			drawOrdinaryMenuFrame();
+		else
+			drawOrdinaryHostFrame();
 		return;
 	}
 #endif

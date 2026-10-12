@@ -151,6 +151,7 @@ public:
 	void incrementRenderedObjectCount() { m_renderedObjectCount++; }
 
 	Bool skipCurrentIntroStage();
+	void startMenuOnlyShell();  ///< ordinary-menu profile only; see GameClient.cpp
 	// Read-only readiness for gated developer scenario startup, including inter-movie gaps.
 	Bool isStartupIntroComplete() const { return m_intro == nullptr; }
 

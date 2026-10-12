@@ -87,3 +87,88 @@ function Test-NativeOrdinaryHostEvidence([string]$Log,[int]$ProcessId,$Receipt) 
     }
     return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
 }
+
+# ---------------------------------------------------------------------------
+# Ordinary-menu profile (X64.23): original interactive MainMenu, bounded
+# menu-only loop. Same strict grammar with a distinct mode token.
+# ---------------------------------------------------------------------------
+function Get-NativeOrdinaryMenuMode {
+    return 'nativeOrdinaryMenu; ordinary WinMain/ApplicationHWnd/W3DDisplay + real WindowManager/Shell/mouse/keyboard; headless world selection; hardware D3D11 native presentation; bounded menu-only loop; no GameLogic/execute'
+}
+function Get-NativeOrdinaryMenuArguments([string]$Root) {
+    return @('-win','-xres','800','-yres','600','-nologo','-noshellmap','-winCursors','-nativeOrdinaryMenu',$Root)
+}
+function Read-NativeOrdinaryMenuStage([string]$Title,[string]$Name) {
+    if($Title -ne 'Generals'){throw 'The ordinary menu profile validates Generals only'}
+    $manifest=Read-NativeStage $Title $Name
+    $path=Join-Path $manifest.StagePath 'ordinarymenu.json'
+    if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw 'Not an ordinary-menu stage'}
+    $menu=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if($menu.Mode -ne (Get-NativeOrdinaryMenuMode) -or $menu.StagePath -ne $manifest.StagePath -or
+        $menu.ManifestSHA256 -ne (Get-FileHash -LiteralPath (Join-Path $manifest.StagePath 'manifest.json')).Hash){
+        throw 'Not an intact reviewed ordinary-menu stage'
+    }
+    $manifest.Dependencies=@(Assert-NativeGraphicsDependencies (Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))) $manifest.GamePath)
+    return $manifest
+}
+
+function Test-NativeOrdinaryMenuEvidence([string]$Log,[int]$ProcessId,$Receipt) {
+    $rows=@();$errors=[Collections.Generic.List[string]]::new()
+    foreach($line in ($Log -split "`n")) {
+        if(!$line){continue}; $f=$line.TrimEnd("`r") -split "`t",9
+        if($f.Count -ne 9 -or $f[0] -notmatch '^\d+$' -or $f[3] -notmatch '^\d+$' -or $f[7] -notmatch '^\d+$'){$errors.Add('Malformed checkpoint/trailer');continue}
+        $sequence=0;$rowPid=0;$code=[uint32]0
+        if(![int]::TryParse($f[0],[ref]$sequence) -or ![int]::TryParse($f[3],[ref]$rowPid) -or ![uint32]::TryParse($f[7],[ref]$code)){$errors.Add('Numeric checkpoint overflow');continue}
+        if($sequence -ne $rows.Count+1 -or $rowPid -ne $ProcessId){$errors.Add('Sequence/PID mismatch')}
+        if($f[6] -eq 'fail'){$errors.Add("Failed phase $($f[5])")}
+        $rows+=,[pscustomobject]@{Stage=$f[5];Status=$f[6];Code=$code;Detail=$f[8]}
+    }
+    function Completions([string]$Stage){@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $Stage -and $rows[$i].Status -eq 'complete'){$i}})}
+    $route=@('app_window_class','app_window','TheKeyboard.init','display_config','graphics_device','display_module_audit',
+        'display_size','display_ordinary_init','TheWindowManager.init','TheIMEManager.init','TheShell.init',
+        'TheMouse.init','engine_init','menu_shell','graphics_present','menu_summary','ordinary_host_boundary',
+        'ui_residency_release','display_detach','engine_cleanup','app_window_release','minidumper_shutdown','WinMain')
+    $completed=@{};$previous=-1
+    foreach($stage in $route){
+        $at=@(Completions $stage)
+        if($at.Count -ne 1){$errors.Add("Missing/duplicate completion $stage");$completed[$stage]=[pscustomobject]@{Detail='';Code=1};continue}
+        $completed[$stage]=$rows[$at[0]]
+        if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Order/code mismatch $stage")};$previous=$at[0]
+    }
+    foreach($key in 'module','userdata','dump_path','startup_parse'){
+        $want=switch($key){module{$Receipt.Executable};userdata{$Receipt.UserData};dump_path{$Receipt.DumpPath+'\'};startup_parse{$Receipt.WorkingDirectory}}
+        $found=@($rows|Where-Object{$_.Stage -eq $key -and $_.Status -ne 'begin'})
+        if($found.Count -ne 1 -or $found[0].Detail -ne $want){$errors.Add("Path mismatch $key")}
+    }
+    if(@($rows|Where-Object{$_.Stage -eq 'WinMain' -and $_.Status -eq 'begin' -and $_.Detail -match 'Generals AMD64 ordinary menu$'}).Count -ne 1){$errors.Add('Wrong mode identity')}
+    if($completed['app_window'].Detail -ne 'client=800x600 windowed=1 class=Game Window'){$errors.Add('Wrong application window')}
+    if($completed['display_config'].Detail -ne 'windowed=1 800x600x32 ApplicationHWnd'){$errors.Add('Wrong display configuration')}
+    if($completed['display_size'].Detail -ne 'device=800x600 target=800x600 bits=32 windowed=1'){$errors.Add('Wrong display dimensions')}
+    if($completed['graphics_device'].Detail -notmatch '^driver=hardware feature=0x(.*)'){$errors.Add('Missing hardware device identity')}
+    if($completed['display_module_audit'].Detail -ne 'd3d8=0 d3dx8=0 d3d11=1 dxgi=1'){$errors.Add('D3D8/D3DX module audit failed or modern modules absent')}
+    if($completed['graphics_present'].Detail -notmatch '^HRESULT=0x00000000 visible=1 occluded=0 removed=0x00000000 frame=\d+$'){$errors.Add('No unoccluded visible S_OK first Present')}
+    if($completed['ui_residency_release'].Detail -ne 'live_residencies=0 before backend release'){$errors.Add('UI residency not released before backend')}
+    if($completed['ordinary_host_boundary'].Detail -ne 'execute/replay/simulation/GameLogic skipped'){$errors.Add('Wrong execution boundary')}
+    if($completed['menu_shell'].Detail -notmatch '^top=Menus/MainMenu\.wnd screens=1 winCursors=1 '){$errors.Add('Original MainMenu was not the only presented screen with Windows cursors')}
+    $summary=$completed['menu_summary'].Detail
+    if($summary -notmatch '^frames=(\d+) visible_frames=(\d+) occluded_frames=(\d+) elapsed_ms=(\d+) moves=(\d+) down=(\d+) up=(\d+) keys=(\d+) exit=(menu_exit|window_close|boundary|idle_bound|time_bound) driver=hardware$'){$errors.Add('Invalid menu summary')}
+    else{
+        $m=$Matches
+        $overflow=$false
+        foreach($i in 1..8){if($m[$i].Length -gt 9){$overflow=$true}}
+        if($overflow){$errors.Add('Summary numeric overflow')}
+        else{
+            if([int]$m[1] -lt 1 -or [int]$m[2] -lt 1 -or ([int]$m[2]+[int]$m[3]) -gt [int]$m[1]){$errors.Add('Frame coverage invalid')}
+            if([int]$m[5] -lt 1 -or [int]$m[6] -lt 1 -or [int]$m[7] -lt 1){$errors.Add('No proven mouse movement and click interaction')}
+            if([int]$m[4] -gt 700000){$errors.Add('Menu loop exceeded its bound')}
+        }
+    }
+    $armed=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq 'native_shutdown' -and $rows[$i].Status -eq 'armed' -and $rows[$i].Code -eq 0){$i}})
+    $mini=@(Completions 'minidumper_shutdown')
+    if($armed.Count -ne 1 -or $mini.Count -ne 1 -or $armed[0] -le $mini[0] -or $armed[0] -ge $rows.Count-1){$errors.Add('Missing/incorrect late observer boundary')}
+    if($rows.Count -eq 0 -or $rows[-1].Stage -ne 'WinMain' -or $rows[-1].Status -ne 'complete'){$errors.Add('Missing final WinMain completion')}
+    foreach($stage in 'init_only','display_attach','graphics_class','graphics_window','graphics_backend','graphics_boundary','ui_menu_load','ui_ordinary_content','keyboard'){
+        if(@($rows|Where-Object{$_.Stage -eq $stage}).Count){$errors.Add("Unexpected stage $stage")}
+    }
+    return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
+}

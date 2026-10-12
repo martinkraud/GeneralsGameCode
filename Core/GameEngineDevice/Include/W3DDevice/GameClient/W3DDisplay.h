@@ -63,6 +63,7 @@ public:
 #if defined(_WIN64)
     int runNativePresentationSmoke() override;
     int runOrdinaryHostGate() override;
+    int runOrdinaryMenuHost() override;
 #endif
 	virtual void init() override;  ///< initialize or re-initialize the system
  	virtual void reset() override;																///< Reset system
@@ -182,6 +183,7 @@ protected:
 	OrdinaryHostContent *m_hostContent = nullptr;
 	void initOrdinaryHostPresentation();
 	void drawOrdinaryHostFrame();
+	void drawOrdinaryMenuFrame();
 	void releaseOrdinaryHostPresentation();
 #endif
 	IRegion2D m_clipRegion;									///< the clipping region for images

@@ -127,7 +127,7 @@ class OrdinaryHostContract(unittest.TestCase):
         self.assertNotIn("ordinaryHost", zh)
         grammar = read("Core/GameEngine/Include/Common/StartupDiagnostics.h")
         self.assertIn("#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR", grammar)
-        for token in ('"-win", "-xres", "800", "-yres", "600"', '"-nologo", "-noshellmap", "-winCursors", "-nativeOrdinaryHost"',
+        for token in ('"-win", "-xres", "800", "-yres", "600"', '"-nologo", "-noshellmap", "-winCursors"', 'validOrdinaryArguments(argc, argv, "-nativeOrdinaryHost")',
                       "argc != 11"):
             self.assertIn(token, grammar)
 

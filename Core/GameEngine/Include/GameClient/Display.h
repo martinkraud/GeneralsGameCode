@@ -81,6 +81,8 @@ public:
     virtual int runNativePresentationSmoke() { throw std::runtime_error("Display has no native presentation diagnostic"); }
     // Ordinary-host profile gate: bounded UI-only frames through the ordinary draw.
     virtual int runOrdinaryHostGate() { throw std::runtime_error("Display has no ordinary host gate"); }
+    // Ordinary-menu profile: real window manager/Shell/input in a bounded menu-only loop.
+    virtual int runOrdinaryMenuHost() { throw std::runtime_error("Display has no ordinary menu host"); }
 #endif
 	Display();
 	virtual ~Display() override;

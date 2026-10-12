@@ -262,7 +262,7 @@ void GameClient::init()
 		TheDisplayStringManager->setName("TheDisplayStringManager");
 	}
 
-	if (!TheGlobalData->m_headless)
+	if (!TheGlobalData->m_headless || StartupDiagnostics::ordinaryMenu())
 	{
 		// create the keyboard
 		TheKeyboard = createKeyboard();
@@ -317,7 +317,7 @@ void GameClient::init()
 		{ StartupDiagnostics::Phase diagnosticPhase("TheFontLibrary.init"); TheFontLibrary->init(); }
 
 	// create the mouse
-	TheMouse = TheGlobalData->m_headless ? NEW MouseDummy : createMouse();
+	TheMouse = (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryMenu()) ? NEW MouseDummy : createMouse();
 	{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.parseIni"); TheMouse->parseIni(); }
 	{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.initCursorResources"); TheMouse->initCursorResources(); }
  	TheMouse->setName("TheMouse");
@@ -335,7 +335,7 @@ void GameClient::init()
 	}
 
 	// create the window manager
-	TheWindowManager = TheGlobalData->m_headless ? NEW GameWindowManagerDummy : createWindowManager();
+	TheWindowManager = (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryMenu()) ? NEW GameWindowManagerDummy : createWindowManager();
 	if( TheWindowManager )
 	{
 
@@ -731,6 +731,17 @@ void GameClient::draw()
 void GameClient::step()
 {
 	TheDisplay->step();
+}
+
+// Ordinary-menu profile: the exact intro-finished branch of update(), without
+// movies (unavailable on AMD64) and without save/replay loading. The shell map is
+// off by profile, so showShell() pushes MainMenu.wnd directly.
+void GameClient::startMenuOnlyShell()
+{
+	delete m_intro;
+	m_intro = nullptr;
+	TheShell->showShellMap(TRUE);
+	TheShell->showShell();
 }
 
 Bool GameClient::skipCurrentIntroStage()

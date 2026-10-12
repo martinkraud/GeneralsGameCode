@@ -73,6 +73,7 @@ void Shell::construct()
 		m_screenStack[ i ] = nullptr;
 
 	m_pendingPush = FALSE;
+	m_pushGuard = nullptr;
 	m_pendingPop = FALSE;
 	m_pendingPushName.set( "" );
 	m_isShellActive = TRUE;
@@ -341,6 +342,8 @@ void Shell::push( AsciiString filename, Bool shutdownImmediate )
 
 	// sanity
 	if( filename.isEmpty() )
+		return;
+	if( m_pushGuard && !m_pushGuard( filename ) )
 		return;
 	if(TheGameSpyInfo)
 			GameSpyCloseAllOverlays();

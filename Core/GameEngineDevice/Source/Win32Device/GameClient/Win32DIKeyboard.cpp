@@ -37,6 +37,19 @@
 #include "GameClient/Keyboard.h"
 #include "Win32Device/GameClient/Win32DIKeyboard.h"
 #include "WinMain.h"
+#include <stdexcept>
+#include "Common/StartupDiagnostics.h"
+
+// Ordinary-menu profile: a keyboard that cannot be opened is an explicit failure
+// instead of a silent "no keyboard". Legacy behavior is unchanged otherwise.
+static void keyboardOpenFailed( HRESULT hr )
+{
+	if( StartupDiagnostics::ordinaryMenu() )
+	{
+		StartupDiagnostics::checkpoint( "keyboard", "fail", "DirectInput keyboard open failed", static_cast<unsigned>(hr) );
+		throw std::runtime_error( "DirectInput keyboard open failed" );
+	}
+}
 
 // DEFINES ////////////////////////////////////////////////////////////////////////////////////////
 enum { KEYBOARD_BUFFER_SIZE = 256 };
@@ -128,6 +141,7 @@ void DirectInputKeyboard::openKeyboard()
 		DEBUG_LOG(( "ERROR - openKeyboard: DirectInputCreate failed" ));
 		assert( 0 );
 		closeKeyboard();
+		keyboardOpenFailed( hr );
 		return;
 
 	}
@@ -142,6 +156,7 @@ void DirectInputKeyboard::openKeyboard()
 		DEBUG_LOG(( "ERROR - openKeyboard: Unable to create keyboard device" ));
 		assert( 0 );
 		closeKeyboard();
+		keyboardOpenFailed( hr );
 		return;
 
 	}
@@ -154,6 +169,7 @@ void DirectInputKeyboard::openKeyboard()
 		DEBUG_LOG(( "ERROR - openKeyboard: Unable to set data format for keyboard" ));
 		assert( 0 );
 		closeKeyboard();
+		keyboardOpenFailed( hr );
 		return;
 
 	}
@@ -172,6 +188,7 @@ void DirectInputKeyboard::openKeyboard()
 		DEBUG_LOG(( "ERROR - openKeyboard: Unable to set cooperative level" ));
 		assert( 0 );
 		closeKeyboard();
+		keyboardOpenFailed( hr );
 		return;
 
 	}
@@ -190,6 +207,7 @@ void DirectInputKeyboard::openKeyboard()
 		DEBUG_LOG(( "ERROR - openKeyboard: Unable to set keyboard buffer size property" ));
 		assert( 0 );
 		closeKeyboard();
+		keyboardOpenFailed( hr );
 		return;
 
 	}

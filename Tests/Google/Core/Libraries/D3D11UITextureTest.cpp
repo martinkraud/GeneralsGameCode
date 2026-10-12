@@ -6,7 +6,10 @@
 #include "WW3D2/shader.h"
 #include "WWMath/vector2.h"
 #include "WWMath/vector3.h"
+#include <algorithm>
 #include <array>
+#include <memory>
+#include <stdexcept>
 #include <fstream>
 #include <iterator>
 #include <cstdlib>
@@ -340,4 +343,93 @@ TEST(UITextureTest, LiveResidencyCountTracksOwnershipAndSurvivesNoBackendLeak)
         EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline);
     }
     EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline);
+}
+
+// Interactive-menu Render2D states: additive, opaque, flat variants and the
+// disabled-button grayscale combiner. Exact, not approximate, product contracts.
+namespace {
+struct StateFixture {
+    std::unique_ptr<D3D11Backend> backend;
+    std::unique_ptr<Texture2DResidency> residency;
+    Quad quad{4, 4};
+    StateFixture() {
+        auto result = Decode(TGA());
+        D3D11Backend::Configuration c; c.software = true; c.width = c.height = 4;
+        backend = D3D11Backend::Create(c);
+        residency.reset(backend->Create_Content_Residency(*result.content));
+        quad.color.fill(0xffffffff);
+    }
+    std::vector<unsigned char> Textured(const ShaderClass &shader, bool gray = false) {
+        quad.shader = shader; quad.s.grayscale = gray;
+        backend->Clear(true, false, Vector3(0.2f, 0.4f, 0.6f)); backend->Begin_Scene();
+        backend->Submit_Render2D_Content(quad.s, residency.get(), UISampler());
+        backend->End_Scene(false);
+        return backend->Readback_RGBA8();
+    }
+    std::vector<unsigned char> Flat(const ShaderClass &shader, unsigned long color) {
+        quad.shader = shader; quad.s.grayscale = false; quad.color.fill(color);
+        backend->Clear(true, false, Vector3(0.2f, 0.4f, 0.6f)); backend->Begin_Scene();
+        backend->Submit_Render2D(quad.s);
+        backend->End_Scene(false);
+        return backend->Readback_RGBA8();
+    }
+};
+ShaderClass With(ShaderClass base, ShaderClass::SrcBlendFuncType src, ShaderClass::DstBlendFuncType dst) {
+    base.Set_Src_Blend_Func(src); base.Set_Dst_Blend_Func(dst); return base;
+}
+ShaderClass Flat(ShaderClass base) { base.Set_Texturing(ShaderClass::TEXTURING_DISABLE); return base; }
+}
+
+TEST(UIStateTest, TexturedOpaqueAndAdditiveMatchLegacyBlendEquations)
+{
+    StateFixture f;
+    const auto opaque = f.Textured(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ZERO));
+    const auto additive = f.Textured(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ONE));
+    for (unsigned i = 0; i < 16; ++i) {
+        // Opaque: source replaces destination irrespective of texture alpha.
+        EXPECT_NEAR(opaque[i * 4], i * 3, 1); EXPECT_NEAR(opaque[i * 4 + 1], i * 5, 1);
+        EXPECT_NEAR(opaque[i * 4 + 2], i * 9, 1);
+        // Additive: destination + texture*vertex colour, saturated.
+        EXPECT_NEAR(additive[i * 4], (std::min)(255u, 51u + i * 3), 1);
+        EXPECT_NEAR(additive[i * 4 + 1], (std::min)(255u, 102u + i * 5), 1);
+        EXPECT_NEAR(additive[i * 4 + 2], (std::min)(255u, 153u + i * 9), 1);
+    }
+}
+
+TEST(UIStateTest, GrayscaleIsLegacyLuminanceCombinerOpaqueIgnoringVertexRGB)
+{
+    StateFixture f;
+    f.quad.color.fill(0xff00ff00); // vertex RGB must not tint the legacy DOT3 result
+    const auto gray = f.Textured(Shader(), true);
+    for (unsigned i = 0; i < 16; ++i) {
+        const double g = i * 3 * 0.294118 + i * 5 * 0.584314 + i * 9 * 0.113725;
+        for (unsigned c = 0; c < 3; ++c) EXPECT_NEAR(gray[i * 4 + c], g, 1.0) << i;
+    }
+}
+
+TEST(UIStateTest, FlatAlphaAdditiveAndOpaqueVariants)
+{
+    StateFixture f;
+    const unsigned long color = 0x80102030; // A=0x80 R=0x10 G=0x20 B=0x30
+    const auto alpha = f.Flat(Flat(Shader()), color);
+    const auto additive = f.Flat(Flat(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ONE)), color);
+    const auto opaque = f.Flat(Flat(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ZERO)), color);
+    const double a = 0x80 / 255.0;
+    EXPECT_NEAR(alpha[0], 16 * a + 51 * (1 - a), 1.5);
+    EXPECT_NEAR(alpha[1], 32 * a + 102 * (1 - a), 1.5);
+    EXPECT_NEAR(alpha[2], 48 * a + 153 * (1 - a), 1.5);
+    EXPECT_NEAR(additive[0], 51 + 16, 1); EXPECT_NEAR(additive[1], 102 + 32, 1); EXPECT_NEAR(additive[2], 153 + 48, 1);
+    EXPECT_NEAR(opaque[0], 16, 1); EXPECT_NEAR(opaque[1], 32, 1); EXPECT_NEAR(opaque[2], 48, 1);
+}
+
+TEST(UIStateTest, UnrelatedStatesStillFailExplicitly)
+{
+    StateFixture f;
+    // Premultiplied-style and depth-tested states are not part of the UI set.
+    EXPECT_THROW(f.Textured(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA)),
+                 std::runtime_error);
+    ShaderClass depth = Shader(); depth.Set_Depth_Compare(ShaderClass::PASS_LEQUAL);
+    EXPECT_THROW(f.Textured(depth), std::runtime_error);
+    // Grayscale requires the normal textured Render2D shader.
+    EXPECT_THROW(f.Textured(With(Shader(), ShaderClass::SRCBLEND_ONE, ShaderClass::DSTBLEND_ONE), true), std::runtime_error);
 }
