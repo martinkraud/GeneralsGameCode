@@ -118,3 +118,35 @@ message `Ordinary-menu validation failed`. The run directory
 `build/dev-runtimes/native/Generals/x64-23-ordinary-menu/runs/<timestamp>` is
 preserved untouched and nothing reruns automatically. Report the path, console
 output and `startup.log`; the `fail` row names the exact phase.
+
+## Acceptance: X64.23 ordinary interactive MainMenu - FORMALLY ACCEPTED
+
+Reviewed run (never rerun, immutable):
+`build/dev-runtimes/native/Generals/x64-23-ordinary-menu/runs/20261012T2044447975464Z`.
+
+Independent machine review:
+
+- OS exit 0, no timeout/error, PID 20180 / thread 28496 on all 295 contiguous
+  checkpoints, zero `fail` rows, no `native_shutdown exception`,
+  `shutdown-exception.bin` empty, no dumps, isolated paths match.
+- Staged EXE/PDB re-hashed equal to the receipt (`B8C0F45A...112DF` /
+  `BC384C02...0604E`, age 67); strict argv `-win -xres 800 -yres 600 -nologo
+  -noshellmap -winCursors -nativeOrdinaryMenu`.
+- Real `TheKeyboard.init`, `TheWindowManager.init`, `TheShell.init`,
+  `TheMouse.init` completed under the native presentation; `menu_shell`:
+  `top=Menus/MainMenu.wnd screens=1 winCursors=1`.
+- 555 visible unoccluded S_OK frames in 8937 ms; 279 mouse moves, 2 left
+  clicks (down/up paired), first Present frame 1.
+- The developer's click on Skirmish was refused by the push guard as designed:
+  `menu_boundary reason=shell_push Menus/SkirmishGameOptionsMenu.wnd`,
+  `exit=boundary`; orderly teardown followed (`live_residencies=0` before the
+  backend, backend before engine cleanup, `DestroyWindow` after engine cleanup,
+  late observer, final `WinMain complete`).
+- Developer visual confirmation: original menu appeared after mouse movement,
+  correct button response/navigation, no corruption, normal exit.
+
+Proves: original MainMenu (real window manager, transitions, Shell callbacks,
+mouse, DirectInput keyboard init) interactively on the ordinary AMD64/D3D11
+lifetime with an explicit class-C boundary. Does NOT prove: keyboard events,
+hover-state pixel parity beyond visual confirmation, any other screen,
+Skirmish setup, map loading, world rendering, GameLogic.
