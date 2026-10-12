@@ -1,5 +1,48 @@
 # Incremental modernization roadmap
 
+## FORMALLY ACCEPTED: Generals X64.21-fix2 (2026-10-12)
+
+Exact reviewed run:
+`build/dev-runtimes/native/Generals/x64-21-fix2/runs/20261012T1852064397888Z`.
+Direct full launch/exit/startup/shutdown/dump review and independent strict
+UIMenu classification PASS, combined with developer visual confirmation.
+
+Actual OS exit0,no timeout/launcher error,all isolated paths match. There are346
+contiguous same-process records (PID24536/thread3980). Hardware Intel(R) Graphics
+8086:7D45,feature0xB000,800x600; original WND parsed63 windows, selected11,
+six buttons/five images/two atlases. Original logo/ruler/panels and six textured
+localized labels load/draw through actual producers. 235 visible,non-minimized,
+unoccluded S_OK hardware frames in5015ms. Complete UI-release/display-detach/backend/
+HWND/class/engine/MiniDumper cleanup,late observer armed,final WinMain completion.
+shutdown-exception.bin is empty with no trailer; CrashDumps contains no files.
+Ordinary execute/update,replay,simulation and GameLogic updates remain skipped.
+
+Actual staged EXE/PDB match receipts: GUID
+`c7323867-d82e-41f3-b190-20a5da4eae06`,age63;
+EXE SHA256 `C9C508406C0A4B032139E2D9E7778B4C976B76F3EFF4AE35BB4D07CAAFCA2B74`;
+PDB SHA256 `34843207311994D3865E5DCFABDC9C248299E2A29612D87D4FC2DDBBA3B0C3A6`.
+All60 recorded preserved evidence hashes and32 prior staged EXE/PDB hashes verify.
+Developer confirms full expected static composition,original logo/ruler/artwork,
+correct panel/layout,six visible textured buttons/readable labels,no obvious
+corruption,and normal completion without interaction. No title was executed by
+the coding agent during this acceptance/handoff task; no rebuild was needed.
+
+Acceptance is strictly the controlled headless-init/retained-display static
+original Generals menu composition. It does not establish ordinary startup,
+interactive menu/input/layout callbacks,all UI states/screens/transitions,
+world/shell-map,ordinary updates,gameplay,save/replay/multiplayer,performance,
+determinism or Zero Hour UI parity. Prior failure sections/candidate commands
+below are historical; do not rerun them or mutate their stages/evidence.
+
+Current objective: NORMAL GENERALS AMD64/D3D11 STARTUP -> ORIGINAL INTERACTIVE
+MAIN MENU. Exactly one next task is a source-backed ordinary-startup blocker
+audit,classified as required menu work,safely deferrable candidates,and gated
+world/gameplay/simulation work. Do not implement that next milestone in this
+handoff task. See the rewritten [current cross-agent handoff](AGENT_HANDOFF.md)
+for repository state,architecture invariants,source map,commands and stop rules.
+Only documentation changes in this round; git diff --check is required,with
+explicit staging and push only to origin/dev/modern-engine.
+
 ## X64.21 fix1 AV established; pointer-width UI message repair
 
 Reviewed Generals fix1 run `20261012T1838100556946Z` is a genuine startup
