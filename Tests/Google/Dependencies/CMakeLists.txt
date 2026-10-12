@@ -35,6 +35,11 @@ endif()
 
 # Fixed CPU diagnostics need neither a graphics SDK nor device implementation.
 if(MSVC)
+    add_executable(object_pool_test ../Core/Libraries/ObjectPoolTest.cpp)
+    target_compile_features(object_pool_test PRIVATE cxx_std_20)
+    target_link_libraries(object_pool_test PRIVATE corei_always corei_libraries_source_wwvegas GTest::gtest_main)
+    add_test(NAME object_pool_test COMMAND object_pool_test)
+    set_tests_properties(object_pool_test PROPERTIES TIMEOUT 30)
     add_executable(native_startup_fp_test Utility/NativeStartupFPTest.cpp)
     target_compile_features(native_startup_fp_test PRIVATE cxx_std_17)
     target_compile_options(native_startup_fp_test PRIVATE /fp:strict)
