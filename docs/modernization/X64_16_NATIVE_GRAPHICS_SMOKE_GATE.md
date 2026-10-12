@@ -1,5 +1,85 @@
 # X64.16: guarded native window/device/clear-present gate
 
+## Generals X64.16 reviewed visible-frame/process PASS (2026-10-12)
+
+Accepted confirmation run:
+`build/dev-runtimes/native/Generals/x64-16-final-2/runs/20261012T1105248762814Z`.
+Both original receipts were inspected directly. exit.json is complete: PID19592,
+Started=true, TimedOut=false, ExitCode=0, Error=null, Success=true, PathsMatch=true.
+Independent offline classification agrees with its286-record evidence verdict.
+No receipt was reconstructed or amended. This closes the missing OS-exit gate
+from the earlier run; that earlier evidence and its limitation remain historical.
+
+All286 startup.log records have sequential numbering, matching PID19592, zero
+codes and no failed stage/trailer. launch.json has exactly the reviewed headless/
+nativeGraphicsSmoke/run-root arguments; WinMain explicitly identifies graphics
+smoke. All required initialization phases finish. Window completion251 reports
+800x600/visible; hardware device254 reports Intel(R) Graphics, vendor8086,
+device7D45, feature0xB000 (D3D11 feature level11.0). Window association256,
+backbuffer/RTV258, setup260 and viewport262 complete; clear266 completes.
+First Present268 is HRESULT0x00000000, visible1, occluded0, removed0.
+The matching source computes visible from IsWindowVisible && !IsIconic;
+summary276 reports239 visible frames,0 occluded and5000ms, driverhardware.
+
+Backend release271 precedes HWND273 and class275 release. Host277 and boundary278
+complete with execute/replay/simulation skipped. Engine cleanup282, MiniDumper
+shutdown284, late observer armed285 and final WinMain286 all complete with code0.
+shutdown-exception.bin is0 bytes, CrashDumps exists and is empty, and there is no
+late exception trailer. Exact module/CWD/user-data/dump paths agree with launch,
+exit and log. Actual staged EXE/PDB hashes match launch/stage/current build;
+preflight independently verifies PE/PDB GUID c7323867-d82e-41f3-b190-20a5da4eae06,
+age47, and all asset/inventory/dependency checks. Hashes remain those listed below.
+
+Developer confirms the expected blue client area, normal visible rendering for
+the expected duration, automatic close and no flicker/error/unexpected behavior.
+**PASS: Generals native AMD64 hardware-D3D11 diagnostic visible presentation,
+bounded pump, cleanup and normal OS process exit.** This is the diagnostic route
+after headless init, not an integrated game renderer or ordinary graphical startup.
+It does not validate shell/menu/world rendering, game input, execute/replay/
+simulation, gameplay/save/load/multiplayer, performance or determinism.
+
+## Authorized offline continuation and Zero Hour readiness
+
+The existing ZeroHour/x64-16-final-2 stage requires no implementation/rebuild/
+restaging. Read-only graphics preflight PASS, including unchanged full inventory,
+EXE/PDB hashes and GUID7a285453-4110-4cad-a6c8-e5336ba19b1c/age48. Both title
+actual AMD64 imports remain30, no delay imports, no D3D8/D3DX; system D3D11/DXGI/
+compiler checks pass. Zero Hour has no runs directory and no graphical runtime
+claim. Shared gate and fixed launcher are already implemented/validated; no
+speculative integration work is required before its reviewed confirmation.
+
+Offline checks rerun: graphics workflow25, native workflow6/all10 scripts parsed,
+startup source contracts9/9, both stage preflights and git diff --check PASS.
+This task is documentation-only; no game execution, source change, rebuild or
+restaging. Earlier Win32/AMD64 build/reference/link results remain the unchanged
+validated baseline and are not claimed as newly rerun. All4 confirmation files,
+all3 earlier graphical-run files and all12 preserved X64.14 evidence/symbol files
+retain their original hashes. Generated preservation manifests remain ignored.
+
+Exactly one next task: **a single separately reviewed Zero Hour X64.16 graphical
+smoke confirmation**. Offline continuation stops at this mandatory execution/
+visual-review boundary; no renderer integration work begins before both title
+gates are accepted. The following commands are for the developer after review,
+not authorization for an agent to launch:
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeGraphicsSmoke.ps1 -Title ZeroHour -Name x64-16-final-2
+./scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1 -Title ZeroHour -Name x64-16-final-2 -RunReviewedGraphicsSmoke
+```
+
+Do not rebuild/restage between preflight and run. Expect the same800x600 blue
+window for about5 seconds then automatic cleanup/exit, with no menu/gameplay.
+No input is needed; keep it visible, do not minimize/resize/close. Record the
+visual result. Preserve the fresh printed
+`build/dev-runtimes/native/ZeroHour/x64-16-final-2/runs/<UTC>` directory, including
+launch.json, exit.json, startup.log, shutdown-exception.bin even empty, and
+userdata/CrashDumps. On any failure, missing receipt or visual anomaly, preserve
+all evidence and stop: no automatic rerun, next trial or Generals launch. Both
+visual and full machine evidence must be reviewed before the combined milestone.
+This recommendation supersedes the earlier next-step entries below.
+
+
 ## Reviewed Generals visible frame; launcher receipt fix (2026-10-12)
 
 Reviewed run: `build/dev-runtimes/native/Generals/x64-16-final-2/runs/20261012T1007219135054Z`.

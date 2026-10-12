@@ -1,5 +1,38 @@
 # Agent handoff
 
+## Generals X64.16 reviewed graphical/process PASS; Zero Hour ready (2026-10-12)
+
+Confirmation run `20261012T1105248762814Z` in Generals/x64-16-final-2 is verified:
+complete original exit.json records PID19592, actual OS exit0, no timeout/error,
+Success/PathsMatch true. Independent log classification validates286 sequential
+zero-code checkpoints. Hardware Intel Graphics8086:7D45/feature0xB000,800x600,
+clear and visible/non-minimized/unoccluded S_OK Present,239 visible frames,
+0 occluded/5000ms; backend-before-HWND/class release, execution skipped, engine/
+MiniDumper cleanup, late observer armed and final WinMain complete. Empty observer
+file, no trailer/dump and matching staged EXE/PDB GUID/age/hashes/paths. Developer
+confirms normal blue presentation/automatic close without flicker/error.
+**Generals native AMD64 hardware-D3D11 diagnostic visible-frame/process PASS.**
+The earlier missing OS-exit evidence is closed by this new preserved run, not by
+rewriting the old evidence. Original four confirmation files remain unchanged.
+
+Autonomous offline continuation completed: both unchanged graphics stages pass
+read-only inventory/EXE/PDB/assets/system-dependency preflight; Zero Hour GUID
+7a285453-4110-4cad-a6c8-e5336ba19b1c/age48 and no runs directory. Native imports30
+each, no delay/D3D8/D3DX. Graphics workflow25, native workflow6/all10 scripts
+parsed, startup contracts9 and diff check PASS. No source changes, rebuild,
+restage or game launch. Full prior build/reference/link baselines remain intact.
+See [X64.16 report](X64_16_NATIVE_GRAPHICS_SMOKE_GATE.md) for evidence/commands.
+
+Exactly one recommended next task: **separately reviewed Zero Hour X64.16
+hardware-D3D11 graphical smoke confirmation using x64-16-final-2**. Stop here:
+manual/native execution and visual review are mandatory boundaries. Do not
+launch automatically or begin integrated renderer implementation. Ordinary
+native DX8 startup remains blocked; shell/UI/world, game input, simulation,
+gameplay/save/replay/multiplayer, performance and determinism are unvalidated.
+Later intent is shared real D3D11 lifecycle integration, then original shell/UI/
+menu reference rendering, preserving Win32/DX8 before redesign or gameplay work.
+Earlier next-step entries below are historical and superseded.
+
 ## X64.16 Generals visible-frame evidence; OS exit receipt pending (2026-10-12)
 
 Reviewed Generals run `20261012T1007219135054Z` in the x64-16-final-2 stage is
