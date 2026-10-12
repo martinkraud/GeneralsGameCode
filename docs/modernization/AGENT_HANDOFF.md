@@ -157,6 +157,23 @@ real WindowManager -> Shell -> original MainMenu -> transitions -> cursor/input
 -> bounded menu-only event loop (see the X64.23 section there). Class C stays
 closed; do not expand synthetic `-nativeUIMenuSmoke`.
 
+**X64.23 (2026-10-12): ordinary interactive MainMenu batch IMPLEMENTED and
+offline-validated, awaiting the developer's first native run.** Commit
+`eacf37eae`, doc `X64_23_ORDINARY_MENU.md`. Profile `-nativeOrdinaryMenu` (Generals
+AMD64): real `W3DGameWindowManager`/transitions, `W3DMouse` (Windows cursors),
+DirectInput keyboard (explicit failure), original MainMenu through the ordinary
+Shell with a push guard (only `Menus/MainMenu.wnd`), input through
+`WindowTranslator` only, bounded menu-only loop with explicit boundary stops
+(new game / network / other screens / idle / time), no GameLogic/GameClient::update/
+execute. D3D11 Render2D now covers additive/opaque/flat variants and the legacy
+grayscale combiner. Texture census: all MainMenu-reachable images are supported
+raw TGA. Stage `x64-23-ordinary-menu` (EXE SHA256 `B8C0F45A...112DF`, PDB
+`BC384C02...0604E`, GUID `c7323867-...`, age 67) preflighted, never executed, not to
+be rebuilt. Commands, interaction script and PASS/FAIL are in the doc. Not accepted
+until the run is reviewed. Further screens (Options needs a modern
+resolution/capability adapter; Skirmish/Load need their own audits), shell map and
+gameplay remain closed.
+
 | Class | Known source facts and audit questions |
 | --- | --- |
 | A: required for interactive menu | Real ApplicationHWnd creation/ownership, checked creation/focus/message handling, truthful modern device/configuration/size lifecycle, real WindowManager/layout callbacks, menu event routing, cursor/keyboard/IME, resource ownership and graceful partial-init/exit. Determine exact minimum from reachable source; not every legacy feature is automatically required. |

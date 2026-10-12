@@ -16,4 +16,4 @@ $host_=[pscustomobject]@{
 }
 Write-ZHJson (Join-Path $manifest.StagePath 'ordinarymenu.json') $host_
 $null=Read-NativeOrdinaryMenuStage $Title $Name
-Write-Host "Ordinary-host stage/preflight PASS; no game launched: $($manifest.StagePath)"
+Write-Host "Ordinary-menu stage/preflight PASS; no game launched: $($manifest.StagePath)"
