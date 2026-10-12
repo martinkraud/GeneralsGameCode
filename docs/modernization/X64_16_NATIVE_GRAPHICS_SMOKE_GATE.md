@@ -1,5 +1,58 @@
 # X64.16: guarded native window/device/clear-present gate
 
+## Reviewed Generals visible frame; launcher receipt fix (2026-10-12)
+
+Reviewed run: `build/dev-runtimes/native/Generals/x64-16-final-2/runs/20261012T1007219135054Z`.
+Developer saw the expected blue diagnostic client area for about5 seconds and
+automatic close. Direct offline inspection verifies286 sequential PID25496
+records, no failure/nonzero checkpoint/trailer, explicit graphics-smoke mode,
+matching module/CWD/user-data/dump paths and reviewed EXE/PDB identity. Hardware
+Intel(R) Graphics (8086:7D45), feature0xB000; backbuffer/RTV/setup/viewport and
+clear complete, first visible/unoccluded S_OK Present,210 visible frames,
+0 occluded,5000ms. Backend/window/class release completed in that order,
+execute/replay/simulation skipped, engine cleanup/MiniDumper shutdown complete,
+late observer armed and final WinMain complete0. Observer evidence is empty and
+CrashDumps is empty. This supports the first visible native AMD64 D3D11 frame.
+
+**Full reviewed process PASS is NOT established:** exit.json is missing, not
+partial. The launcher lost its in-memory OS exit/timeout/error values before
+writing the receipt. Final WinMain0 is not proof of final OS exit0 after CRT
+teardown; no scoped Windows process-exit event was available to recover it.
+Do not infer exit0 from the Count error: synthetic reproduction shows the same
+error with exit0 or exit1. No original evidence is reconstructed/overwritten.
+
+Root cause in the accepted launcher: line57 assigns `$dumps=if(...){@(...)}else{@()}`.
+The conditional pipeline enumerates the inner empty array, emitting nothing;
+`$dumps` is therefore null for this exact empty CrashDumps directory. StrictMode
+rejects `.Count` at line59 (success expression), or line64 (receipt construction
+if a prior success condition was false). The retained error does not identify
+which dereference threw; both precede Write-ZHJson execution. Only launch.json,
+startup.log and the empty shutdown-exception.bin exist; no exit.json was written.
+A single emitted FileInfo also needs collection normalization.
+
+The smallest fix wraps the ENTIRE conditional in `@(...)`, retaining an array
+for zero/one/multiple files. No success conditions, engine code, D3D11 code,
+binary, PDB, stage or nativeInitOnly script changes. Regression executes the
+actual production post-processing block against six isolated synthetic fixtures
+(0/1/2 dumps x exit0/1), verifies receipt counts/exit/verdict, and reproduces the
+legacy null/Count failure before receipt writing for both exit outcomes. Fixed
+zero-dump exit0 succeeds; nonzero exit and any dump still fail.
+
+Offline validation: graphics workflow25 checks, native workflow6 checks/all10
+scripts parsed, startup source contracts9/9, Generals stage preflight PASS,
+git diff --check PASS. No rebuild/restage or game launch; native regression/link
+results above remain the unchanged binary baseline, not newly rerun claims.
+Original three run-file SHA256 hashes, directory inventory and matching staged
+EXE/PDB remain unchanged. Preservation/analysis files stay ignored outside the run.
+
+**Exactly one next task:** developer review/authorization of a Generals-only
+confirmation using the fixed launcher and the unchanged x64-16-final-2 stage,
+to retain actual OS exit0 and complete the process gate. Do not execute now,
+retry automatically or launch Zero Hour. The visible-frame subgate is verified;
+the complete runtime milestone waits for the missing exit evidence. This
+supersedes the earlier recommended-next-task entry below.
+
+
 Date: 2026-10-12. Implemented from accepted X64.15 baseline
 `e0cfdad2f46cf98fb4b0e73e223e0997303a65db` on dev/modern-engine.
 Neither Generals nor Zero Hour was launched during implementation/validation.

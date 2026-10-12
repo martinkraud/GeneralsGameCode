@@ -1,5 +1,33 @@
 # Renderer and display architecture
 
+## X64.16 Generals visible-frame evidence; OS exit receipt pending (2026-10-12)
+
+Reviewed Generals run `20261012T1007219135054Z` in the x64-16-final-2 stage is
+preserved unchanged. Developer observed the blue client area for about5 seconds.
+Direct inspection verifies286 PID25496 checkpoints: hardware Intel Graphics
+8086:7D45/feature0xB000, clear and visible unoccluded S_OK Present,210 visible
+frames/0 occluded/5000ms, ordered backend-before-HWND cleanup, execution skipped,
+normal engine/MiniDumper cleanup, armed late observer and WinMain complete0.
+Empty observer file, empty CrashDumps and matching reviewed EXE/PDB/path identity.
+The first visible native AMD64 D3D11 frame is supported by visual + machine evidence.
+
+Full process PASS remains UNVERIFIED: exit.json is missing because the launcher
+assigned zero conditional pipeline outputs to null then accessed dumps.Count.
+WinMain0 cannot prove final OS exit0 after CRT. No process-exit event was found;
+do not invent an exit receipt or infer exit0 from the error. Synthetic tests
+show the old code loses receipts for either exit0 or exit1 with an empty dump
+folder. The fix normalizes the whole conditional to an array. Six actual
+post-processing fixtures (0/1/2 dumps x exit0/1) now preserve receipts/verdicts;
+graphics workflow25, native workflow6, startup contracts9 and preflight PASS.
+No engine/renderer source, binary, stage or original run evidence changed;
+no rebuild, restage or game launch. See the updated
+[X64.16 report](X64_16_NATIVE_GRAPHICS_SMOKE_GATE.md) for exact evidence/limits.
+
+Exactly one recommended next task: **developer review/authorization of one
+Generals-only confirmation with the fixed launcher and unchanged final-2 stage**
+to capture actual exit0 and complete the process milestone. Do not perform now;
+Zero Hour stays held. Earlier next-task entries below are historical/superseded.
+
 ## X64.16 native graphical smoke gate implemented (2026-10-12)
 
 Shared AMD64-only `-headless -nativeGraphicsSmoke <isolated-root>` now enters a

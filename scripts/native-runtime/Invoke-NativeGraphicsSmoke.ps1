@@ -54,7 +54,8 @@ $shutdownBytes=if (Test-Path -LiteralPath $receipt.ShutdownEvidencePath -PathTyp
 } else { $null }
 try { $evidence=Test-NativeGraphicsEvidence -Log $log -ProcessId $pidValue -Receipt $receipt }
 catch { $evidence=[pscustomobject]@{Valid=$false;Errors=@($_.Exception.Message);Records=0;Summary='Classifier failed'} }
-$dumps=if(Test-Path -LiteralPath $receipt.DumpPath -PathType Container){@(Get-ChildItem -LiteralPath $receipt.DumpPath -Recurse -Force -File)}else{@()}
+# Collect outside the conditional pipeline: zero outputs must remain an empty array.
+$dumps=@(if(Test-Path -LiteralPath $receipt.DumpPath -PathType Container){Get-ChildItem -LiteralPath $receipt.DumpPath -Recurse -Force -File})
 $success=$started -and !$timeout -and !$errorText -and $exit -eq 0 -and
     $null -ne $shutdownBytes -and $shutdownBytes -eq 0 -and $pathsMatch -and $evidence.Valid -and $dumps.Count -eq 0
 Write-ZHJson (Join-Path $run 'exit.json') ([pscustomobject]@{

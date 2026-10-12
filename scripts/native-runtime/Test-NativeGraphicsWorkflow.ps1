@@ -45,6 +45,58 @@ Verify ($log+"`nnative_shutdown`texception") $false
 Verify ($log.Replace("`t123`t","`t999`t")) $false
 Verify ($log.Replace("`tgraphics_clear`tcomplete`t0`t","`tgraphics_clear`tfail`t1`t")) $false
 Verify ($log.Replace('graphics_boundary','init_only')) $false
+# Run the actual launcher post-processing block with synthetic process outcomes.
+# The original empty-directory expression emits zero pipeline objects, yielding
+# $null under StrictMode; a single FileInfo also must remain a collection.
+$launcher=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Invoke-NativeGraphicsSmoke.ps1') -Raw
+$start=$launcher.IndexOf('$dumps=')
+$end=$launcher.IndexOf('Write-Host "Receipts and flushed log:', $start)
+if($start -lt 0 -or $end -lt 0){throw 'Post-processing block not found'}
+$block=$launcher.Substring($start,$end-$start)
+$postprocess=[scriptblock]::Create($block)
+$legacyAssignment='$dumps=if(Test-Path -LiteralPath $receipt.DumpPath -PathType Container){@(Get-ChildItem -LiteralPath $receipt.DumpPath -Recurse -Force -File)}else{@()}'
+$legacyPostprocess=[scriptblock]::Create($legacyAssignment+$block.Substring($block.IndexOf("`n")))
+$fixture=Join-Path ([IO.Path]::GetTempPath()) ('native-graphics-receipt-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $fixture | Out-Null
+try {
+    foreach($count in 0,1,2){
+        foreach($processExit in 0,1){
+            $run=Join-Path $fixture "$count-$processExit"
+            $dumpPath=Join-Path $run 'CrashDumps'
+            New-Item -ItemType Directory -Path $dumpPath | Out-Null
+            for($i=0;$i -lt $count;$i++){[IO.File]::WriteAllText((Join-Path $dumpPath "$i.dmp"),'synthetic')}
+            if($count -eq 0){
+                $old=if(Test-Path -LiteralPath $dumpPath -PathType Container){@(Get-ChildItem -LiteralPath $dumpPath -Recurse -Force -File)}else{@()}
+                if($null -ne $old){throw 'Did not reproduce zero-output null shape'}
+                $threw=$false;try{$null=$old.Count}catch{$threw=$_.Exception.Message -like "*property 'Count'*"}
+                if(!$threw){throw 'Did not reproduce original strict Count failure'}
+            }
+            $receipt=[pscustomobject]@{DumpPath=$dumpPath;ShutdownEvidencePath=(Join-Path $run 'shutdown-exception.bin')}
+            $started=$true;$timeout=$false;$errorText=$null;$exit=$processExit;$pidValue=123
+            $shutdownBytes=0;$pathsMatch=$true;$pathReceipts=@{}
+            $evidence=[pscustomobject]@{Valid=$true};$log='synthetic completed checkpoints'
+            if($count -eq 0){
+                $threw=$false
+                try{& $legacyPostprocess}catch{$threw=$_.Exception.Message -like "*property 'Count'*"}
+                if(!$threw -or (Test-Path -LiteralPath (Join-Path $run 'exit.json'))){throw 'Legacy block did not fail before exit receipt'}
+            }
+            & $postprocess
+            $written=Get-Content -LiteralPath (Join-Path $run 'exit.json') -Raw | ConvertFrom-Json
+            if($written.CrashDumpCount -ne $count -or $written.ExitCode -ne $processExit -or
+                $written.Success -ne ($count -eq 0 -and $processExit -eq 0)){
+                throw "Wrong post-processing verdict for dumps=$count exit=$processExit"
+            }
+            $checks++
+        }
+    }
+} finally {
+    # Fresh test-owned absolute directory, never a runtime/run evidence directory.
+    $resolved=[IO.Path]::GetFullPath($fixture)
+    $tempRoot=[IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    if(!$resolved.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -or
+        [IO.Path]::GetFileName($resolved) -notmatch '^native-graphics-receipt-[a-f0-9]{32}$'){throw 'Unsafe fixture cleanup'}
+    Remove-Item -LiteralPath $resolved -Recurse -Force
+}
 $rejected=$false
 try{& (Join-Path $PSScriptRoot 'Invoke-NativeGraphicsSmoke.ps1') -Title Generals -Name unused | Out-Null}catch{$rejected=$_.Exception.Message -like '*requires explicit developer review*'}
 if(!$rejected){throw 'Missing review switch did not fail closed'};$checks++
