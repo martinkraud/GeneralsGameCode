@@ -98,6 +98,7 @@ class OrdinaryGameContract(unittest.TestCase):
                    "docs/modernization/X64_24_SKIRMISH_WORLD_AUDIT.md",
                    "docs/modernization/X64_25_TERRAIN_FRAME.md",
                    "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp",
+                   "scripts/native-runtime/test_ordinary_terrain_contract.py",
                    "scripts/native-runtime/test_ordinary_game_contract.py"}
         self.assertEqual(set(hits) - allowed, set())
         # The only runtime enabling site is the X64.25 terrain profile branch.
