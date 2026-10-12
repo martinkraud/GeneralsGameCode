@@ -1,6 +1,7 @@
 # GeneralsGameCode: current cross-agent handoff
 
-Updated 2026-10-12 after independent X64.21-fix2 evidence review. This file is the
+Updated 2026-10-12 after independent X64.21-fix2 evidence review and the X64.22
+ordinary-startup audit (documentation only). This file is the
 current project summary, not a chronological transcript. Historical reports may
 contain superseded candidate instructions; use their latest acceptance sections.
 Developer task direction overrides any inferred roadmap task.
@@ -129,10 +130,19 @@ Static composition is now demonstrated. Do not indefinitely expand synthetic
 -nativeUIMenuSmoke composition, immediately switch backend factories, rewrite UI,
 flip headless midway, or enable ordinary execute just to show more graphics.
 
-**Exactly one recommended next-agent first task:** audit the actual ordinary
-Generals startup path and classify the blockers to an original interactive menu.
-Produce a source-backed A/B/C inventory and propose the smallest safe first slice;
-do not implement before the developer has reviewed that audit direction.
+**Ordinary-startup audit COMPLETE (documentation only, developer review pending):**
+`X64_22_ORDINARY_STARTUP_AUDIT.md` holds the source-backed A/B/C inventory. Key
+current truths: with ShellMap on, MainMenu is pushed by GameLogic after the shell
+map loads (the world path); only `shellMapOn=FALSE` plus no intro pushes it from
+the client; `GameEngine::update` cannot be the menu loop because
+`GameLogic::update` is the door to `MSG_NEW_GAME`; `m_headless` is one flag for
+~30 behaviors, so a separate UI-without-world profile is the main architecture
+decision; ordinary `W3DDisplay::draw` throws on the presentation lifecycle (depth
+clear, world render) and D3D11 Render2D rejects grayscale/additive. Recommended
+first slice: an ordinary-lifetime presentation host (strict profile, checked
+ApplicationHWnd, profile-selected native-presentation `W3DDisplay::init`, bounded
+UI-only frames). **Do not implement it before the developer reviews the audit.**
+The class table below is the original question list; the audit answers it.
 
 | Class | Known source facts and audit questions |
 | --- | --- |
