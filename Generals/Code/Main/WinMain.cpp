@@ -34,6 +34,8 @@
 #include <windows.h>
 #include "Common/StartupDiagnostics.h"
 #include "Common/NativeShutdownDiagnostics.h"
+#include "Common/NativeOrdinaryHost.h"
+#include <stdexcept>
 #include <stdlib.h>
 #include <crtdbg.h>
 #include <eh.h>
@@ -768,6 +770,88 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 
 }
 
+#if defined(_WIN64)
+// initializeOrdinaryHostWindow =================================================
+/** Checked application window for the AMD64 ordinary-host profile. Same class,
+	* WndProc, style bits and ApplicationHWnd ownership as the legacy windowed path,
+	* but every API result is observed, the client must be exactly 800x600 and a
+	* failure unwinds through the normal WinMain failure path. Legacy Win32
+	* initializeAppWindows is untouched. */
+//=============================================================================
+static void hostFail( const char *operation )
+{
+	char detail[128];
+	sprintf_s( detail, "%s GetLastError=0x%08lX", operation, GetLastError() );
+	StartupDiagnostics::checkpoint( "app_window", "fail", detail, 1 );
+	throw std::runtime_error( detail );
+}
+
+static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
+{
+	StartupDiagnostics::checkpoint( "app_window", "begin", "ordinary WndProc; windowed 800x600 client" );
+	WNDCLASS wndClass = { CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, WndProc, 0, 0, hInstance,
+	                      LoadIcon( hInstance, MAKEINTRESOURCE(IDI_ApplicationIcon) ),
+	                      LoadCursor( nullptr, IDC_ARROW ),
+	                      (HBRUSH)GetStockObject( BLACK_BRUSH ), nullptr, TEXT("Game Window") };
+	if( wndClass.hCursor == nullptr )
+		hostFail( "LoadCursor" );
+	if( RegisterClass( &wndClass ) == 0 )
+		hostFail( "RegisterClass" );
+	StartupDiagnostics::checkpoint( "app_window_class", "complete", "Game Window" );
+
+	NativeOrdinaryHost::WindowGeometry geometry = {};
+	if( !NativeOrdinaryHost::computeWindowGeometry( GetSystemMetrics( SM_CXSCREEN ), GetSystemMetrics( SM_CYSCREEN ), geometry ) )
+		hostFail( "AdjustWindowRect" );
+
+	gInitializing = true;
+	HWND hWnd = CreateWindow( TEXT("Game Window"), TEXT("Command and Conquer Generals"), geometry.style,
+	                          geometry.x, geometry.y, geometry.width, geometry.height,
+	                          nullptr, nullptr, hInstance, nullptr );
+	if( hWnd == nullptr )
+		hostFail( "CreateWindow" );
+	ApplicationHWnd = hWnd;  // same global the legacy path owns
+	if( !NativeOrdinaryHost::clientIsExact( hWnd ) )
+		hostFail( "Client area is not 800x600" );
+
+	SetWindowPos( hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
+	SetFocus( hWnd );
+	SetForegroundWindow( hWnd );
+	ShowWindow( hWnd, nCmdShow );
+	UpdateWindow( hWnd );
+	if( !NativeOrdinaryHost::clientIsExact( hWnd ) )
+		hostFail( "Client area changed while showing" );
+	gInitializing = false;
+	// Presentation owns the surface from here: never repaint the loading bitmap.
+	gDoPaint = false;
+	StartupDiagnostics::checkpoint( "app_window", "complete", "client=800x600 windowed=1 class=Game Window" );
+}
+
+static void releaseOrdinaryHostWindow( HINSTANCE hInstance )
+{
+	StartupDiagnostics::checkpoint( "app_window_release", "begin", "backend and display already destroyed" );
+	bool ok = true;
+	if( ApplicationHWnd )
+	{
+		HWND window = ApplicationHWnd;
+		if( !DestroyWindow( window ) )
+		{
+			StartupDiagnostics::checkpoint( "app_window_release", "fail", "DestroyWindow", GetLastError() );
+			ok = false;
+		}
+		ApplicationHWnd = nullptr;
+	}
+	if( !UnregisterClass( TEXT("Game Window"), hInstance ) )
+	{
+		StartupDiagnostics::checkpoint( "app_window_release", "fail", "UnregisterClass", GetLastError() );
+		ok = false;
+	}
+	if( ok )
+		StartupDiagnostics::checkpoint( "app_window_release", "complete" );
+	else
+		StartupDiagnostics::markFailed();
+}
+#endif
+
 // Necessary to allow memory managers and such to have useful critical sections
 static CriticalSection critSec1, critSec2, critSec3, critSec4, critSec5;
 
@@ -798,7 +882,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
 	Int exitcode = 1;
 	if (!StartupDiagnostics::configure(__argc, __argv)) return 87;
-	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::uiMenuSmoke() ? "Generals AMD64 UI menu smoke" : StartupDiagnostics::uiPanelSmoke() ? "Generals AMD64 UI panel smoke" : StartupDiagnostics::uiSentenceSmoke() ? "Generals AMD64 UI sentence smoke" : StartupDiagnostics::uiImageSmoke() ? "Generals AMD64 UI image smoke" : StartupDiagnostics::displaySmoke() ? "Generals AMD64 display smoke" : StartupDiagnostics::graphicsSmoke() ? "Generals AMD64 graphics smoke" : "Generals AMD64 init-only");
+	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::ordinaryHost() ? "Generals AMD64 ordinary host" : StartupDiagnostics::uiMenuSmoke() ? "Generals AMD64 UI menu smoke" : StartupDiagnostics::uiPanelSmoke() ? "Generals AMD64 UI panel smoke" : StartupDiagnostics::uiSentenceSmoke() ? "Generals AMD64 UI sentence smoke" : StartupDiagnostics::uiImageSmoke() ? "Generals AMD64 UI image smoke" : StartupDiagnostics::displaySmoke() ? "Generals AMD64 display smoke" : StartupDiagnostics::graphicsSmoke() ? "Generals AMD64 graphics smoke" : "Generals AMD64 init-only");
 	if (StartupDiagnostics::enabled())
 	{
 		char diagnosticModule[MAX_PATH] = {};
@@ -864,6 +948,15 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		StartupDiagnostics::checkpoint("minidumper", TheMiniDumper && TheMiniDumper->IsInitialized() ? "complete" : "disabled");
 #endif
 		// register windows class and create application window
+#if defined(_WIN64)
+		if (StartupDiagnostics::ordinaryHost())
+		{
+			// Ordinary-host profile: checked real application window. World/audio
+			// selection remains headless (see StartupDiagnostics::ordinaryHost).
+			initializeOrdinaryHostWindow(hInstance, nCmdShow);
+		}
+		else
+#endif
 		if(!TheGlobalData->m_headless && initializeAppWindows(hInstance, nCmdShow, TheGlobalData->m_windowed) == false)
 		{
 			return exitcode;
@@ -913,6 +1006,12 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		// run the game main loop
 		StartupDiagnostics::checkpoint("instance", "complete");
 		exitcode = GameMain();
+
+#if defined(_WIN64)
+		// Engine (display, backend) is gone; only now may the HWND be destroyed.
+		if (StartupDiagnostics::ordinaryHost())
+			releaseOrdinaryHostWindow(hInstance);
+#endif
 
 		delete TheVersion;
 		TheVersion = nullptr;

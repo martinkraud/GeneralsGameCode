@@ -55,7 +55,15 @@ Int GameMain()
 	if (StartupDiagnostics::enabled())
 	{
 #if defined(_WIN64)
-        if (StartupDiagnostics::displaySmoke())
+        if (StartupDiagnostics::ordinaryHost())
+        {
+            // Ordinary application/display lifetime; world/GameLogic/execute stay closed.
+            if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy() || !TheDisplay) exitcode = 1;
+            else exitcode = TheDisplay->runOrdinaryHostGate();
+            StartupDiagnostics::checkpoint("ordinary_host_boundary", exitcode ? "fail" : "complete",
+                "execute/replay/simulation/GameLogic skipped", exitcode);
+        }
+        else if (StartupDiagnostics::displaySmoke())
         {
             if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy() || !TheDisplay) exitcode = 1;
             else exitcode = TheDisplay->runNativePresentationSmoke();

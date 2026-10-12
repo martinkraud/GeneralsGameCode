@@ -11,6 +11,9 @@ namespace StartupDiagnostics {
 struct State {
     bool configured, requested, valid, healthy;
     bool graphicsSmoke, displaySmoke, uiImageSmoke, uiSentenceSmoke, uiPanelSmoke, uiMenuSmoke;
+    // Ordinary application/display lifetime with the UI presentation host. World,
+    // audio and radar selection stays on the accepted headless variants.
+    bool ordinaryHost;
     HANDLE file;
     unsigned records;
     char root[MAX_PATH], userData[MAX_PATH];
@@ -23,7 +26,11 @@ inline bool uiImageSmoke() { return enabled() && state().uiImageSmoke; }
 inline bool uiSentenceSmoke() { return enabled() && state().uiSentenceSmoke; }
 inline bool uiMenuSmoke() { return enabled() && state().uiMenuSmoke; }
 inline bool uiPanelSmoke() { return enabled() && state().uiPanelSmoke; }
+inline bool ordinaryHost() { return enabled() && state().ordinaryHost; }
 inline bool healthy() { return !enabled() || state().healthy; }
+// A verified-contract violation is recorded by the caller first; this only
+// forces the process exit classification to failure.
+inline void markFailed() { if (enabled()) state().healthy = false; }
 inline const char *userData() { return enabled() ? state().userData : nullptr; }
 
 // Strict grammar prevents startup flags from accidentally starting a scenario.
@@ -54,6 +61,22 @@ inline bool validUIMenuArguments(int argc, char **argv) {
 inline bool validUIPanelArguments(int argc, char **argv) {
     return argc == 4 && !_stricmp(argv[1], "-headless") &&
         !_stricmp(argv[2], "-nativeUIPanelSmoke") && std::strlen(argv[3]) < 180;
+}
+// Strict ordinary-host grammar. Every token is mandatory and exact: the profile is
+// windowed 800x600, no intro/sizzle, no shell map, Windows cursors, isolated root.
+// Nothing is coerced; any extra, missing, reordered or different token is rejected.
+// Generals only: the Zero Hour title has not been audited for this profile.
+inline bool validOrdinaryHostArguments(int argc, char **argv) {
+#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR
+    (void)argc; (void)argv; return false;
+#else
+    static const char *const fixed[] = { "-win", "-xres", "800", "-yres", "600",
+        "-nologo", "-noshellmap", "-winCursors", "-nativeOrdinaryHost" };
+    if (argc != 11 || std::strlen(argv[10]) >= 180) return false;
+    for (int i = 0; i < 9; ++i)
+        if (_stricmp(argv[i + 1], fixed[i])) return false;
+    return true;
+#endif
 }
 inline void checkpoint(const char *stage, const char *status,
                        const char *detail = "", unsigned code = 0) {
@@ -86,12 +109,13 @@ inline bool configure(int argc, char **argv) {
         else if (!_stricmp(argv[i], "-nativeUISentenceSmoke")) { s.requested = true; s.displaySmoke = s.uiImageSmoke = s.uiSentenceSmoke = true; }
         else if (!_stricmp(argv[i], "-nativeUIMenuSmoke")) { s.requested = true; s.displaySmoke = s.uiMenuSmoke = true; }
         else if (!_stricmp(argv[i], "-nativeUIPanelSmoke")) { s.requested = true; s.displaySmoke = s.uiImageSmoke = s.uiSentenceSmoke = s.uiPanelSmoke = true; }
+        else if (!_stricmp(argv[i], "-nativeOrdinaryHost")) { s.requested = true; s.ordinaryHost = true; }
     if (!s.requested) return true;
 #if !defined(_WIN64)
     return false; // Native diagnostic option must never change the Win32 route.
 #else
-    if (!(s.uiMenuSmoke ? validUIMenuArguments(argc, argv) : s.uiPanelSmoke ? validUIPanelArguments(argc, argv) : s.uiSentenceSmoke ? validUISentenceArguments(argc, argv) : s.uiImageSmoke ? validUIImageArguments(argc, argv) : s.displaySmoke ? validDisplayArguments(argc, argv) : s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
-    const char *root = argv[3];
+    if (!(s.ordinaryHost ? validOrdinaryHostArguments(argc, argv) : s.uiMenuSmoke ? validUIMenuArguments(argc, argv) : s.uiPanelSmoke ? validUIPanelArguments(argc, argv) : s.uiSentenceSmoke ? validUISentenceArguments(argc, argv) : s.uiImageSmoke ? validUIImageArguments(argc, argv) : s.displaySmoke ? validDisplayArguments(argc, argv) : s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
+    const char *root = argv[s.ordinaryHost ? 10 : 3];
     if (!((root[0] >= 'A' && root[0] <= 'Z') || (root[0] >= 'a' && root[0] <= 'z')) ||
         root[1] != ':' || root[2] != '\\') return false;
     for (unsigned i = 3; root[i]; ++i)

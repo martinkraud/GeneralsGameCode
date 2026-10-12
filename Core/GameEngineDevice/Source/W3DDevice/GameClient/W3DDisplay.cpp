@@ -35,6 +35,9 @@ static void drawFramerateBar();
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include "Common/PerformanceProfile.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include <numeric>
 #include <stdlib.h>
 #include <windows.h>
@@ -471,6 +474,11 @@ W3DDisplay::~W3DDisplay()
 		W3DShaderManager::shutdown();
 	m_assetManager->Free_Assets();
 	delete m_assetManager;
+#if defined(_WIN64)
+	if (StartupDiagnostics::ordinaryHost())
+		releaseOrdinaryHostPresentation(); // residency verdict, then backend/device
+	else
+#endif
 	if (!TheGlobalData->m_headless)
 		WW3D::Shutdown();
 	WWMath::Shutdown();
@@ -932,6 +940,14 @@ void W3DDisplay::init()
 		if (TheGlobalData->m_displayGamma != 1.0f)
 			setGamma(TheGlobalData->m_displayGamma,0.0f,1.0f,FALSE);
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryHost())
+	{
+		// UI-without-world profile: ordinary display lifetime on the established
+		// native-presentation lifecycle. The legacy DX8 branch above is not entered.
+		initOrdinaryHostPresentation();
+	}
+#endif
 
 	initAssets();
 
@@ -1851,6 +1867,15 @@ void W3DDisplay::draw()
 		return;
 	}
 
+#if defined(_WIN64)
+	// Ordinary-host profile: UI-only presentation frame; no views, world or
+	// GameLogic state. Every other headless caller returns exactly as before.
+	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryHost() && m_2DRender)
+	{
+		drawOrdinaryHostFrame();
+		return;
+	}
+#endif
 	if (TheGlobalData->m_headless)
 		return;
 

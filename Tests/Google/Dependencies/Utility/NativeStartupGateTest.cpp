@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include "Common/StartupDiagnostics.h"
 #include "Common/NativeShutdownDiagnostics.h"
+#include "Common/NativeOrdinaryHost.h"
 #include <fstream>
 #include <string>
 
@@ -360,4 +361,144 @@ TEST(NativeUIMenuGate, FlushedIsolationWithDistinctMode) {
     EXPECT_FALSE(StartupDiagnostics::configure(4,args));
 #endif
     StartupDiagnostics::state()={};ASSERT_TRUE(RemoveDirectoryA(dump.c_str()));ASSERT_TRUE(RemoveDirectoryA(data.c_str()));ASSERT_TRUE(RemoveDirectoryA(root));
+}
+
+// ---------------------------------------------------------------------------
+// Ordinary-host profile (X64.22): strict grammar, window geometry, no-D3D8 audit.
+// ---------------------------------------------------------------------------
+namespace {
+struct HostArgs {
+    char root[MAX_PATH] = "C:\\probe";
+    const char *tokens[11] = { "probe", "-win", "-xres", "800", "-yres", "600", "-nologo",
+        "-noshellmap", "-winCursors", "-nativeOrdinaryHost", root };
+    bool valid(int count = 11) {
+        char *copy[12] = {};
+        for (int i = 0; i < count && i < 11; ++i) copy[i] = const_cast<char *>(tokens[i]);
+        return StartupDiagnostics::validOrdinaryHostArguments(count, copy);
+    }
+};
+}
+
+TEST(NativeOrdinaryHostGate, ExactGrammarAcceptedOnlyForGenerals) {
+    HostArgs args;
+#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR
+    EXPECT_FALSE(args.valid());
+#else
+    EXPECT_TRUE(args.valid());
+    // Case-insensitive option names, exact values.
+    args.tokens[1] = "-WIN"; EXPECT_TRUE(args.valid()); args.tokens[1] = "-win";
+#endif
+}
+
+TEST(NativeOrdinaryHostGate, RejectsEveryMissingChangedReorderedOrExtraToken) {
+    for (int position = 1; position <= 9; ++position) {
+        HostArgs args;
+        args.tokens[position] = "-other";
+        EXPECT_FALSE(args.valid()) << "changed token " << position;
+    }
+    { HostArgs a; a.tokens[3] = "1024"; EXPECT_FALSE(a.valid()); }
+    { HostArgs a; a.tokens[3] = "0800"; EXPECT_FALSE(a.valid()); }
+    { HostArgs a; a.tokens[5] = "768"; EXPECT_FALSE(a.valid()); }
+    { HostArgs a; EXPECT_FALSE(a.valid(10)); }              // missing root
+    { HostArgs a; std::swap(a.tokens[2], a.tokens[4]); EXPECT_FALSE(a.valid()); } // reordered
+    { // extra flag after the root (gameplay/replay/developer switches)
+        HostArgs a; char probe[] = "-simulateReplays";
+        char *copy[12] = {};
+        for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(a.tokens[i]);
+        copy[11] = probe;
+        EXPECT_FALSE(StartupDiagnostics::validOrdinaryHostArguments(12, copy));
+    }
+    { // fullscreen request is not coerced to windowed
+        HostArgs a; a.tokens[1] = "-fullscreen"; EXPECT_FALSE(a.valid());
+    }
+    { // existing diagnostic grammars are distinct and unchanged
+        char exe[] = "probe", head[] = "-headless", flag[] = "-nativeUIMenuSmoke", root[] = "C:\\probe";
+        char *menu[] = { exe, head, flag, root };
+        EXPECT_TRUE(StartupDiagnostics::validUIMenuArguments(4, menu));
+        EXPECT_FALSE(StartupDiagnostics::validOrdinaryHostArguments(4, menu));
+    }
+}
+
+#if defined(_WIN64) && !(defined(RTS_ZEROHOUR) && RTS_ZEROHOUR)
+TEST(NativeOrdinaryHostGate, ConfigureEnablesIsolatedProfileWithoutDiagnosticModes) {
+    char temp[MAX_PATH], unique[MAX_PATH];
+    ASSERT_NE(GetTempPathA(MAX_PATH, temp), 0u);
+    ASSERT_NE(GetTempFileNameA(temp, "x22", 0, unique), 0u);
+    ASSERT_TRUE(DeleteFileA(unique)); ASSERT_TRUE(CreateDirectoryA(unique, nullptr));
+    std::string root(unique), data = root + "\\userdata", dump = data + "\\CrashDumps", log = root + "\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(), nullptr)); ASSERT_TRUE(CreateDirectoryA(dump.c_str(), nullptr));
+    HostArgs args;
+    std::strcpy(args.root, unique);
+    char *copy[11];
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    StartupDiagnostics::state() = {};
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::enabled());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryHost());
+    EXPECT_FALSE(StartupDiagnostics::displaySmoke());
+    EXPECT_FALSE(StartupDiagnostics::graphicsSmoke());
+    EXPECT_FALSE(StartupDiagnostics::uiMenuSmoke());
+    EXPECT_EQ(std::string(StartupDiagnostics::userData()), data + "\\");
+    StartupDiagnostics::markFailed();
+    EXPECT_FALSE(StartupDiagnostics::healthy()); // residency/contract failures become exit 1
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    // A relative root is rejected and nothing is enabled.
+    std::strcpy(args.root, "relative"); copy[10] = args.root;
+    EXPECT_FALSE(StartupDiagnostics::configure(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::ordinaryHost());
+    StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
+}
+#endif
+
+#if !defined(_WIN64)
+TEST(NativeOrdinaryHostGate, Win32NeverEnablesTheProfile) {
+    HostArgs args;
+    char *copy[11];
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    StartupDiagnostics::state() = {};
+    EXPECT_FALSE(StartupDiagnostics::configure(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::ordinaryHost());
+    StartupDiagnostics::state() = {};
+}
+#endif
+
+TEST(NativeOrdinaryHostWindow, ClientAreaIsExactlyTheProfileSizeWithLegacyStyle) {
+    NativeOrdinaryHost::WindowGeometry geometry = {};
+    ASSERT_TRUE(NativeOrdinaryHost::computeWindowGeometry(1920, 1080, geometry));
+    EXPECT_EQ(geometry.style, static_cast<DWORD>(WS_POPUP | WS_VISIBLE | WS_MINIMIZEBOX | WS_SYSMENU | WS_DLGFRAME | WS_CAPTION));
+    EXPECT_EQ(geometry.x, 1920 / 2 - 400);
+    EXPECT_EQ(geometry.y, 1080 / 2 - 300);
+    EXPECT_GT(geometry.width, 800);
+    EXPECT_GT(geometry.height, 600);
+
+    WNDCLASSA wc = {};
+    wc.lpfnWndProc = DefWindowProcA; wc.hInstance = GetModuleHandleA(nullptr);
+    wc.lpszClassName = "NativeOrdinaryHostWindowTest";
+    ASSERT_NE(RegisterClassA(&wc), 0);
+    // Hidden: this verifies geometry only; the visible style bit is applied by WinMain.
+    HWND window = CreateWindowA(wc.lpszClassName, "t", geometry.style & ~static_cast<DWORD>(WS_VISIBLE),
+        geometry.x, geometry.y, geometry.width, geometry.height, nullptr, nullptr, wc.hInstance, nullptr);
+    ASSERT_NE(window, nullptr);
+    EXPECT_TRUE(NativeOrdinaryHost::clientIsExact(window));
+    EXPECT_TRUE(SetWindowPos(window, nullptr, 0, 0, geometry.width + 1, geometry.height, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE));
+    EXPECT_FALSE(NativeOrdinaryHost::clientIsExact(window)); // resize is detected, never coerced
+    EXPECT_FALSE(NativeOrdinaryHost::clientIsExact(nullptr));
+    DestroyWindow(window);
+    UnregisterClassA(wc.lpszClassName, wc.hInstance);
+}
+
+TEST(NativeOrdinaryHostAudit, LegacyModulesAreDetectedAndTestProcessHasNone) {
+    const NativeOrdinaryHost::ModuleAudit audit = NativeOrdinaryHost::auditLoadedModules();
+    EXPECT_FALSE(audit.d3d8);   // this process never touches the DX8 route
+    EXPECT_FALSE(audit.d3dx8);
+    EXPECT_TRUE(NativeOrdinaryHost::auditAcceptable(audit));
+    NativeOrdinaryHost::ModuleAudit bad = audit; bad.d3d8 = true;
+    EXPECT_FALSE(NativeOrdinaryHost::auditAcceptable(bad));
+    bad = audit; bad.d3dx8 = true;
+    EXPECT_FALSE(NativeOrdinaryHost::auditAcceptable(bad));
+    EXPECT_TRUE(NativeOrdinaryHost::residencyReleasedBeforeBackend(0));
+    EXPECT_FALSE(NativeOrdinaryHost::residencyReleasedBeforeBackend(1));
 }

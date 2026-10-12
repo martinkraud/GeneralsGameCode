@@ -79,6 +79,8 @@ public:
 #if defined(_WIN64)
     // Explicit presentation diagnostic; never ordinary display update/draw.
     virtual int runNativePresentationSmoke() { throw std::runtime_error("Display has no native presentation diagnostic"); }
+    // Ordinary-host profile gate: bounded UI-only frames through the ordinary draw.
+    virtual int runOrdinaryHostGate() { throw std::runtime_error("Display has no ordinary host gate"); }
 #endif
 	Display();
 	virtual ~Display() override;

@@ -50,6 +50,8 @@ public:
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;
+    // Process-wide count of live logical texture residencies (all backends).
+    static unsigned Live_Residencies();
     unsigned Feature_Level() const;
     Presentation Last_Presentation() const;
     void Set_UI_Filter_Policy(TextureFilterClass::TextureFilterMode, unsigned anisotropy);

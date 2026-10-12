@@ -316,3 +316,28 @@ TEST(UITextureTest, MenuRectangleAtlasCropBlendsOverDiagnosticClear)
     EXPECT_EQ(backend->Texture_Creations(),1u);
     r.reset(); // residency released while backend is alive
 }
+
+TEST(UITextureTest, LiveResidencyCountTracksOwnershipAndSurvivesNoBackendLeak)
+{
+    // The ordinary-host profile asserts this count is zero before the backend is
+    // destroyed; the counter itself must follow create/replace/destroy exactly.
+    const unsigned baseline = D3D11Backend::Live_Residencies();
+    D3D11Backend::Configuration c; c.software = true; c.width = c.height = 4;
+    {
+        auto backend = D3D11Backend::Create(c);
+        UITextureContent content(new Texture2DCPUContent(4, 4, WW3D_FORMAT_A8R8G8B8, 16));
+        std::unique_ptr<Texture2DResidency> first(backend->Create_Content_Residency(*content));
+        EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline + 1);
+        std::unique_ptr<Texture2DResidency> second(backend->Create_Content_Residency(*content));
+        EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline + 2);
+        first.reset();
+        EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline + 1);
+        Texture2DResidencyOwner owner;
+        owner.Get_Or_Create([&] { return backend->Create_Content_Residency(*content); });
+        EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline + 2);
+        owner.Reset();
+        second.reset();
+        EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline);
+    }
+    EXPECT_EQ(D3D11Backend::Live_Residencies(), baseline);
+}

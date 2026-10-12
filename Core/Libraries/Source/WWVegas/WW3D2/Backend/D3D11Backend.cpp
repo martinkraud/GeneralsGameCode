@@ -15,6 +15,7 @@
 #include <string>
 #include <map>
 #include <cstdio>
+#include <atomic>
 
 using Microsoft::WRL::ComPtr;
 namespace {
@@ -60,8 +61,11 @@ bool ValidateSampler(const Texture2DSampler &s)
         s.u == F::TEXTURE_ADDRESS_REPEAT && s.v == F::TEXTURE_ADDRESS_REPEAT) return true;
     Unsupported();
 }
+std::atomic<unsigned> liveResidencies{0};
 class Residency final : public Texture2DResidency {
 public:
+    Residency() { ++liveResidencies; }
+    ~Residency() override { --liveResidencies; }
     ComPtr<ID3D11Device> device;
     ComPtr<ID3D11Texture2D> texture;
     ComPtr<ID3D11ShaderResourceView> view;
@@ -444,6 +448,7 @@ std::vector<unsigned char> D3D11Backend::Readback_RGBA8()
 unsigned D3D11Backend::Texture_Creations() const { return impl->textures; }
 unsigned D3D11Backend::Buffer_Creations() const { return impl->buffers; }
 unsigned D3D11Backend::Draw_Count() const { return impl->draws; }
+unsigned D3D11Backend::Live_Residencies() { return liveResidencies.load(); }
 unsigned D3D11Backend::Feature_Level() const { return impl->level; }
 void D3D11Backend::Invalidate_Cached_Render_States() { impl->bound.Reset(); } // pipeline is explicitly bound each draw
 void D3D11Backend::Set_Gamma(float, float, float, bool, bool) { Unsupported(); }

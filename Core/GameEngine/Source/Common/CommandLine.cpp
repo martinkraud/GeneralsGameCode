@@ -1503,6 +1503,9 @@ void CommandLine::parseCommandLineForStartup()
 		TheWritableGlobalData->m_commandLineData.m_parsedArguments);
 
 	if(StartupDiagnostics::enabled()) { parseHeadless(nullptr, 0); TheWritableGlobalData->m_shellMapOn=FALSE; }
+	// Ordinary-host profile: Windows cursors are an explicit profile requirement,
+	// independent of whether this build's table exposes -winCursors.
+	if(StartupDiagnostics::ordinaryHost()) TheWritableGlobalData->m_winCursors = TRUE;
 	if(DeveloperTools::quickGameEnabled()){parseSkipIntro(nullptr,0);TheWritableGlobalData->m_shellMapOn=FALSE;}
 
 	if (!rts::WorkingDirectory::hasSetWorkingDirectory())
