@@ -202,6 +202,46 @@ try {
         [IO.Path]::GetFileName($resolved) -notmatch '^native-graphics-receipt-[a-f0-9]{32}$'){throw 'Unsafe fixture cleanup'}
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
+# Larger static menu composition: no earlier primitive-mode shortcut.
+$menuLines=[Collections.Generic.List[string]]::new()
+function MenuAdd([string]$Stage,[string]$Detail=''){
+    $menuLines.Add("$($menuLines.Count+1)`t2026-10-12`t0`t123`t456`t$Stage`tcomplete`t0`t$Detail")
+}
+foreach($line in $displayLines){
+    $f=$line -split "`t",9
+    if($f[5] -eq 'graphics_backend'){
+        MenuAdd ui_pixel_policy 'legacy UV bias enabled; D3D11 half-pixel correction'
+        foreach($name in 'MainMenuParent','MainMenuRuler','MapBorder2','EarthMap2','ButtonSinglePlayer','ButtonMultiplayer','ButtonLoadReplay','ButtonOptions','ButtonCredits','ButtonExit','Logo'){MenuAdd ui_menu_widget "name=$name rect=0,0,1,1"}
+        foreach($name in 'MainMenuRuler','Buttons-Left','Buttons-Middle','Buttons-Right','GeneralsLogo'){MenuAdd ui_menu_image "name=$name file=original.tga size=1x1 uv=0,0,1,1"}
+        MenuAdd ui_menu_atlas 'SCSmShellUserInterface512_001.tga'
+        MenuAdd ui_menu_atlas 'MainMenuRuleruserinterface.tga'
+        MenuAdd ui_menu_load 'parsed=63 visible=11 buttons=6 images=5 atlases=2 blocked_system=3 blocked_input=68; no layout callbacks/input/update'
+    }
+    # Draw completion must precede End/Present, after Begin/clear.
+    if($f[5] -eq 'display_frame_end'){
+        foreach($name in 'MainMenuParent','MainMenuRuler','MapBorder2','EarthMap2','ButtonSinglePlayer','ButtonMultiplayer','ButtonLoadReplay','ButtonOptions','ButtonCredits','ButtonExit','Logo'){MenuAdd ui_menu_widget_draw $name}
+        MenuAdd ui_menu_draw '11 original windows; 6 original labels; static main dropdown'
+    }
+    if($f[5] -eq 'display_detach'){MenuAdd ui_menu_release 'widgets/display strings/private images/atlases released; engine manager/transitions restored'}
+    $menuLines.Add("$($menuLines.Count+1)`t2026-10-12`t0`t123`t456`t$($f[5])`t$($f[6])`t0`t$($f[8].Replace('AMD64 display smoke','AMD64 UI menu smoke'))")
+}
+$menuLog=$menuLines -join "`n"
+function VerifyMenu([string]$Text,[bool]$Valid){
+    $r=Test-NativeGraphicsEvidence $Text 123 $receipt -UIMenu
+    if($r.Valid -ne $Valid){throw "Unexpected menu classifier: $($r.Errors -join '; ')"};$script:checks++
+}
+# Restore the full path receipt after the post-processing fixture above.
+$receipt=[pscustomobject]@{Executable='C:\stage\game\generals.exe';UserData='C:\run\userdata\';DumpPath='C:\run\userdata\CrashDumps';WorkingDirectory='C:\stage\game';BaseAssetsPath=$null}
+VerifyMenu $menuLog $true
+foreach($phase in 'ui_menu_load','ui_menu_draw','ui_menu_release','ui_menu_widget','ui_menu_widget_draw','ui_menu_image','ui_menu_atlas'){
+    VerifyMenu ($menuLog.Replace($phase,'missing_'+$phase)) $false
+}
+VerifyMenu ($menuLog.Replace('ButtonExit','ButtonOptions')) $false
+VerifyMenu ($menuLog.Replace('buttons=6','buttons=5')) $false
+VerifyMenu ($menuLog.Replace('AMD64 UI menu smoke','AMD64 display smoke')) $false
+VerifyMenu $displayLog $false
+VerifyDisplay $menuLog $false
+if((Get-NativeGraphicsMode -UIMenu) -eq (Get-NativeGraphicsMode -UIPanel)){throw 'Menu and primitive modes must differ'};$checks++
 $rejected=$false
 try{& (Join-Path $PSScriptRoot 'Invoke-NativeGraphicsSmoke.ps1') -Title Generals -Name unused | Out-Null}catch{$rejected=$_.Exception.Message -like '*requires explicit developer review*'}
 if(!$rejected){throw 'Missing review switch did not fail closed'};$checks++

@@ -107,3 +107,80 @@ TEST(UIProducerTest, ResetAndDisableTexturingRetainActualLogoTextureOwnership)
     q.Enable_Texturing(true);EXPECT_EQ(q.Peek_Texture(),texture);
     q.Set_Texture(static_cast<TextureClass *>(nullptr));EXPECT_EQ(texture->Num_Refs(),1);texture->Release_Ref();
 }
+
+TEST(UIProducerTest, OriginalGeneralsFontKeepsLegacyNarrowWidthPolicy)
+{
+    std::unique_ptr<FontCharsClass,Release> original(new FontCharsClass), arial(new FontCharsClass);
+    ASSERT_TRUE(original->Initialize_GDI_Font("Generals",15,false,nullptr));
+    ASSERT_TRUE(arial->Initialize_GDI_Font("Arial",15,false,nullptr));
+    // Same original GDI producer; the Generals alias also requests lfWidth=8.
+    EXPECT_TRUE(original->Is_Font("Generals",15,false));
+    EXPECT_GT(original->Get_Char_Width(L'W'),0);
+    EXPECT_LT(original->Get_Char_Width(L'W'),arial->Get_Char_Width(L'W'));
+}
+#if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeMenuComposition.h"
+namespace {
+unsigned unsafeCalls=0;
+WindowMsgHandledType UnsafeMenuCallback(GameWindow *,UnsignedInt,WindowMsgData,WindowMsgData) {
+    ++unsafeCalls;return MSG_HANDLED;
+}
+struct MenuRecorder : NativeStaticMenuManager {
+    struct Rect { int x,y,endX,endY;const Image *image; };
+    std::vector<Rect> draws;
+    GameFont *winFindFont(AsciiString,Int,Bool) override {return nullptr;}
+    void winDrawImage(const Image *image,Int x,Int y,Int ex,Int ey,Color) override {
+        draws.push_back({x,y,ex,ey,image});
+    }
+};
+}
+TEST(UIProducerTest, StaticMenuBlocksApplicationEventsAndRestoresSingletonOwnership)
+{
+    auto *old=TheWindowManager;auto *transitions=TheTransitionHandler;unsafeCalls=0;
+    {
+        NativeMenuComposition scope;
+        EXPECT_NE(TheWindowManager,old);EXPECT_EQ(TheTransitionHandler,nullptr);
+        auto *manager=static_cast<NativeStaticMenuManager*>(TheWindowManager);
+        auto *w=manager->allocateNewWindow();
+        w->winSetSystemFunc(UnsafeMenuCallback);w->winSetInputFunc(UnsafeMenuCallback);
+        EXPECT_EQ(manager->winSendSystemMsg(w,GWM_CREATE,0,0),MSG_IGNORED);
+        EXPECT_EQ(manager->winSendInputMsg(w,GWM_SCRIPT_CREATE,0,0),MSG_IGNORED);
+        EXPECT_EQ(unsafeCalls,0u);EXPECT_EQ(manager->blockedSystem,1u);EXPECT_EQ(manager->blockedInput,1u);
+        w->winSetSystemFunc(GadgetPushButtonSystem);
+        EXPECT_EQ(manager->winSendSystemMsg(w,GWM_CREATE,0,0),MSG_HANDLED);
+        EXPECT_THROW(manager->winSendSystemMsg(w,GWM_INPUT_FOCUS,0,0),std::runtime_error);
+        w->winSetSystemFunc(nullptr);deleteInstance(w);
+    }
+    EXPECT_EQ(TheWindowManager,old);EXPECT_EQ(TheTransitionHandler,transitions);
+}
+TEST(UIProducerTest, ActualThreePieceButtonDrawTilesOriginalGeometryAndManagerDestroysTree)
+{
+    auto *old=TheWindowManager;auto *transitions=TheTransitionHandler;
+    {
+        MenuRecorder manager;TheWindowManager=&manager;TheTransitionHandler=nullptr;
+        WinInstanceData data;data.m_style=GWS_USER_WINDOW;
+        auto *root=manager.winCreate(nullptr,WIN_STATUS_ENABLED,0,0,800,600,nullptr,&data);
+        ASSERT_NE(root,nullptr);
+        // Actual widget construction and image callback, no substitute tiler.
+        Image *left=newInstance(Image),*middle=newInstance(Image),*right=newInstance(Image);
+        ICoord2D size{8,36};left->setImageSize(&size);right->setImageSize(&size);
+        size.x=16;middle->setImageSize(&size);
+        data.m_style=GWS_PUSH_BUTTON;
+        auto *button=manager.gogoGadgetPushButton(root,WIN_STATUS_ENABLED|WIN_STATUS_IMAGE,540,116,208,36,&data,nullptr,FALSE);
+        ASSERT_NE(button,nullptr);
+        button->winSetEnabledImage(0,left);button->winSetEnabledImage(5,middle);button->winSetEnabledImage(6,right);
+        button->winGetDrawFunc()(button,button->winGetInstanceData());
+        ASSERT_FALSE(manager.draws.empty());
+        bool foundLeft=false,foundRight=false;
+        for(const auto &r:manager.draws){
+            EXPECT_GE(r.x,540);EXPECT_LE(r.endX,748);EXPECT_EQ(r.y,116);EXPECT_EQ(r.endY,152);
+            if(r.image==left){foundLeft=true;EXPECT_EQ(r.x,540);EXPECT_EQ(r.endX,548);}
+            if(r.image==right){foundRight=true;EXPECT_EQ(r.x,740);EXPECT_EQ(r.endX,748);}
+        }
+        EXPECT_TRUE(foundLeft);EXPECT_TRUE(foundRight);
+        manager.winDestroyAll();EXPECT_EQ(manager.winGetWindowList(),nullptr);
+        deleteInstance(left);deleteInstance(middle);deleteInstance(right);
+    }
+    TheWindowManager=old;TheTransitionHandler=transitions;
+}
+#endif

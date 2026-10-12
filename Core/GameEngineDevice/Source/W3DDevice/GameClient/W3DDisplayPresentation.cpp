@@ -14,6 +14,7 @@
 #include "WW3D2/texture.h"
 #include "WW3D2/Texture2DCPUContent.h"
 #include <stdexcept>
+#include "W3DDevice/GameClient/NativeMenuComposition.h"
 #endif
 #if defined(_WIN64)
 // The retained display borrows the checked platform host HWND. WW3D owns the
@@ -38,6 +39,8 @@ int W3DDisplay::runNativePresentationSmoke()
         Render2DSentenceClass *sentence = nullptr;
         bool firstSentence = true, firstPanel = true;
         const bool panelMode = StartupDiagnostics::uiPanelSmoke();
+        NativeMenuComposition *menu = nullptr;
+        const bool menuMode = StartupDiagnostics::uiMenuSmoke();
         TextureClass *texture = nullptr;
         Image *image = nullptr;
         RectClass previousScreen = Render2DClass::Get_Screen_Resolution();
@@ -62,7 +65,7 @@ int W3DDisplay::runNativePresentationSmoke()
                 throw std::runtime_error("Native display/target dimensions disagree");
             Log(nullptr,"display_size","complete","device=800x600 target=800x600 bits=32 windowed=1",0);
             Log(nullptr,"display_attach","complete","W3DDisplay -> WW3D active backend; presentation-only",0);
-            if(sentenceMode) {
+            if(sentenceMode || menuMode) {
                 // Match the original graphical UI producer's pixel-center policy.
                 WW3D::Set_Screen_UV_Bias(true);
                 Log(nullptr,"ui_pixel_policy","complete","legacy UV bias enabled; D3D11 half-pixel correction",0);
@@ -106,6 +109,13 @@ int W3DDisplay::runNativePresentationSmoke()
                     Log(nullptr,"ui_image_load","fail","engine ErrorCode",static_cast<unsigned>(error));
                     throw;
                 }
+            }
+            if(menuMode) {
+                display.m_2DRender = new Render2DClass;
+                Render2DClass::Set_Screen_Resolution(RectClass(0,0,800,600));
+                display.m_2DRender->Set_Coordinate_Range(RectClass(0,0,800,600));
+                menu = new NativeMenuComposition;
+                menu->Load();
             }
             if(sentenceMode) {
                 try { PrepareSentence(window); }
@@ -155,6 +165,7 @@ int W3DDisplay::runNativePresentationSmoke()
             if(firstBegin) { firstBegin=false; Log(nullptr,"display_frame_begin","complete","WW3D::Begin_Render color-only",0); }
         }
         void EndPresent() override {
+            if(menuMode) menu->Render();
             if(panelMode) {
                 if(firstPanel) Log(nullptr,"ui_panel_draw","begin","original MapBorder2 primitive route",0);
                 // Qualified base primitive delegation is real even on the
@@ -196,6 +207,12 @@ int W3DDisplay::runNativePresentationSmoke()
         }
         void Shutdown() noexcept override {
             Log(nullptr,"display_detach","begin","",0);
+            if(menuMode) {
+                delete menu; menu=nullptr;
+                delete display.m_2DRender;display.m_2DRender=nullptr;
+                Render2DClass::Set_Screen_Resolution(previousScreen);
+                WW3D::Set_Screen_UV_Bias(previousBias);
+            }
             if(sentenceMode) {
                 delete sentence; sentence=nullptr;
                 if(font) { font->Release_Ref(); font=nullptr; }

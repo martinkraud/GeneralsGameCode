@@ -13,24 +13,26 @@ function Assert-NativeGraphicsDependencies([string]$Executable,[string]$GamePath
     }
     return $dependencies
 }
-function Get-NativeGraphicsMode([switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence,[switch]$UIPanel) {
+function Get-NativeGraphicsMode([switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence,[switch]$UIMenu,[switch]$UIPanel) {
+    if($UIMenu){return 'nativeUIMenuSmoke; headless engine; hardware D3D11; W3DDisplay/WW3D; original static MainMenu tree'}
     if($UIPanel){return 'nativeUIPanelSmoke; headless engine; hardware D3D11; W3DDisplay/WW3D; original image sentence and panel'}
     if($UISentence){return 'nativeUISentenceSmoke; headless engine; hardware D3D11; W3DDisplay/WW3D; original menu image and sentence'}
     if($UIImage){return 'nativeUIImageSmoke; headless engine; hardware D3D11; W3DDisplay/WW3D; original menu image'}
     if($DisplayLifecycle){return 'nativeDisplaySmoke; headless engine; hardware D3D11; W3DDisplay/WW3D'}
     return 'nativeGraphicsSmoke; headless engine; hardware D3D11'
 }
-function Read-NativeGraphicsStage([string]$Title,[string]$Name,[switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence,[switch]$UIPanel) {
+function Read-NativeGraphicsStage([string]$Title,[string]$Name,[switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence,[switch]$UIMenu,[switch]$UIPanel) {
     $manifest=Read-NativeStage $Title $Name
     $graphics=Get-Content -LiteralPath (Join-Path $manifest.StagePath 'graphics.json') -Raw | ConvertFrom-Json
-    if($graphics.Mode -ne (Get-NativeGraphicsMode -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage -UISentence:$UISentence -UIPanel:$UIPanel) -or
+    if($graphics.Mode -ne (Get-NativeGraphicsMode -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage -UISentence:$UISentence -UIPanel:$UIPanel -UIMenu:$UIMenu) -or
         $graphics.StagePath -ne $manifest.StagePath -or
         $graphics.ManifestSHA256 -ne (Get-FileHash -LiteralPath (Join-Path $manifest.StagePath 'manifest.json')).Hash){throw 'Not an intact reviewed graphics-smoke stage'}
     $manifest.Dependencies=@(Assert-NativeGraphicsDependencies (Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))) $manifest.GamePath)
     return $manifest
 }
 # Pure evidence classifier. No process creation; shared by launcher and synthetic negative tests.
-function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence,[switch]$UIPanel) {
+function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence,[switch]$UIMenu,[switch]$UIPanel) {
+    if($UIMenu){$DisplayLifecycle=$true}
     if($UIPanel){$UISentence=$true}
     if($UISentence){$UIImage=$true}
     if($UIImage){$DisplayLifecycle=$true}
@@ -77,7 +79,7 @@ function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[swit
     if(@($rows|Where-Object{$_.Stage -eq 'init_only'}).Count){$errors.Add('Wrong diagnostic mode')}
     $displayRows=@($rows|Where-Object{$_.Stage -like 'display_*'})
     if($DisplayLifecycle){
-        $modePattern=if($UIPanel){'AMD64 UI panel smoke$'}elseif($UISentence){'AMD64 UI sentence smoke$'}elseif($UIImage){'AMD64 UI image smoke$'}else{'AMD64 display smoke$'}
+        $modePattern=if($UIMenu){'AMD64 UI menu smoke$'}elseif($UIPanel){'AMD64 UI panel smoke$'}elseif($UISentence){'AMD64 UI sentence smoke$'}elseif($UIImage){'AMD64 UI image smoke$'}else{'AMD64 display smoke$'}
         # Device setup occurs inside attach; frame and detach checkpoints are
         # interleaved with host clear/Present/release. Verify the actual route.
         $route=@('engine_init','graphics_window','graphics_device','graphics_viewport',
@@ -118,7 +120,7 @@ function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[swit
             if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Sentence route order/code $stage")};$previous=$at[0]
         }
         if(@($sentenceRows|Where-Object{$_.Stage -eq 'ui_sentence_load' -and $_.Status -eq 'complete' -and $_.Detail -match '^label=GUI:SelectDifficulty font=Arial size=14 bold=0 rect=540,116,756,152 extent=[0-9.]+,[0-9.]+ chars=[1-9][0-9]*$'}).Count -ne 1){$errors.Add('Missing original sentence identity')}
-    }elseif($sentenceRows.Count){$errors.Add('Unexpected UI sentence mode')}
+    }elseif(!$UIMenu -and $sentenceRows.Count){$errors.Add('Unexpected UI sentence mode')}
     $panelRows=@($rows|Where-Object{$_.Stage -eq 'ui_panel_draw'})
     if($UIPanel){
         $route=@('display_frame_begin','ui_panel_draw','ui_image_draw','ui_sentence_draw','display_frame_end','graphics_present')
@@ -130,5 +132,30 @@ function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[swit
         }
         if(@($panelRows|Where-Object{$_.Status -eq 'complete' -and $_.Detail -eq 'MapBorder2 rect=532,108,756,360 border=FFFFBB00 fill=7E000000; GameWindowManager -> W3DDisplay -> Render2D -> D3D11 diffuse-alpha'}).Count -ne 1){$errors.Add('Wrong original panel identity')}
     }elseif($panelRows.Count){$errors.Add('Unexpected UI panel mode')}
+    $menuRows=@($rows|Where-Object{$_.Stage -like 'ui_menu_*'})
+    if($UIMenu){
+        if(@($sentenceRows|Where-Object{$_.Stage -ne 'ui_pixel_policy'}).Count){$errors.Add('Unexpected primitive sentence mode in menu composition')}
+        $imageNames=@('MainMenuRuler','Buttons-Left','Buttons-Middle','Buttons-Right','GeneralsLogo')
+        foreach($name in $imageNames){
+            if(@($menuRows|Where-Object{$_.Stage -eq 'ui_menu_image' -and $_.Status -eq 'complete' -and $_.Detail -like "name=$name file=* size=* uv=*"}).Count -ne 1){$errors.Add("Missing/duplicate private menu image $name")}
+        }
+        if(@($menuRows|Where-Object{$_.Stage -eq 'ui_menu_atlas' -and $_.Status -eq 'complete'}).Count -ne 2){$errors.Add('Wrong menu atlas coverage')}
+        $previous=-1
+        foreach($stage in 'display_attach','ui_pixel_policy','ui_menu_load','display_frame_begin','ui_menu_draw','display_frame_end','graphics_present','ui_menu_release','display_detach'){
+            $at=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $stage -and $rows[$i].Status -eq 'complete'){$i}})
+            if($at.Count -ne 1){$errors.Add("Missing/duplicate menu completion $stage");continue}
+            if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Menu order/code $stage")};$previous=$at[0]
+        }
+        $widgets=@($menuRows|Where-Object{$_.Stage -eq 'ui_menu_widget' -and $_.Status -eq 'complete'})
+        if($widgets.Count -ne 11){$errors.Add('Wrong static menu window coverage')}
+        foreach($name in 'MainMenuParent','MainMenuRuler','MapBorder2','EarthMap2','ButtonSinglePlayer','ButtonMultiplayer','ButtonLoadReplay','ButtonOptions','ButtonCredits','ButtonExit','Logo'){
+            if(@($widgets|Where-Object{$_.Detail -like "name=$name rect=*"}).Count -ne 1){$errors.Add("Missing/duplicate original menu widget $name")}
+            $draw=@($menuRows|Where-Object{$_.Stage -eq 'ui_menu_widget_draw' -and $_.Status -eq 'complete' -and $_.Detail -eq $name})
+            if($draw.Count -ne 1){$errors.Add("Missing/duplicate widget draw $name")}
+
+        }
+        if(@($menuRows|Where-Object{$_.Stage -eq 'ui_menu_load' -and $_.Status -eq 'complete' -and $_.Detail -match '^parsed=63 visible=11 buttons=6 images=[1-9][0-9]* atlases=[1-9][0-9]* blocked_system=[0-9]+ blocked_input=[0-9]+; no layout callbacks/input/update$'}).Count -ne 1){$errors.Add('Missing menu isolation/coverage summary')}
+        if(@($menuRows|Where-Object{$_.Stage -eq 'ui_menu_draw' -and $_.Status -eq 'complete' -and $_.Detail -eq '11 original windows; 6 original labels; static main dropdown'}).Count -ne 1){$errors.Add('Missing static composition draw evidence')}
+    }elseif($menuRows.Count){$errors.Add('Unexpected static menu mode')}
     return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
 }

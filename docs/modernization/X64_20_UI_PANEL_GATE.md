@@ -278,3 +278,27 @@ Generated logs,repro helpers,analysis/inventory JSON,assets and stages remain
 ignored and excluded from the coherent backend/test/documentation commit.
 Push is authorized only to origin/dev/modern-engine; exact commit/push state is
 reported to the developer. Do not rebuild/restage the final candidate casually.
+
+## Generals X64.20 formally accepted (2026-10-12)
+
+Reviewed run `build/dev-runtimes/native/Generals/x64-20-fix1/runs/20261012T1743032823349Z`
+was independently reviewed from launch/exit receipts, all317 flushed checkpoints,
+shutdown evidence, dump directory and actual staged EXE/PDB identity. Actual exit0,
+no timeout/launcher error, matching isolated paths, hardware Intel8086:7D45/11.0,
+800x600 display/target,238 visible non-minimized unoccluded S_OK frames/5000ms.
+Original logo/atlas/UV/rectangle and yellow sentence remained unchanged. Original
+MapBorder2 primitive draw completed before image/text; UI release preceded display,
+backend and HWND release. Engine/MiniDumper cleanup,armed late observer and final
+WinMain completion passed. Shutdown-exception.bin is empty,no trailer/no dump.
+Execute/update/replay/simulation/GameLogic remained outside the diagnostic boundary.
+The developer visually confirmed original logo/readable yellow label,dark translucent
+panel/thin gold border,correct alpha and clean automatic completion without flicker.
+The combined machine/visual evidence formally ACCEPTS Generals X64.20.
+
+Actual PE/PDB GUID `c7323867-d82e-41f3-b190-20a5da4eae06`,age56; EXE SHA256
+`21A2A3DE7F9DE9BF3E7B222DC29902BF10C7EAE4CF5A5DDEB57BEAE139101522`;
+PDB SHA256 `5CAC5FE967670803741D98A96E19C32B730C9639EC4D4C0FCFDB96FBBEE568A3`.
+All47 inventoried reviewed evidence files and32 prior staged EXE/PDB files rehash
+unchanged,including the failed original X64.20 run. This accepts the bounded panel
+composition only,not full menu/input/world/gameplay or Zero Hour UI parity.
+The next offline batch is [X64.21 static original menu composition](X64_21_STATIC_MENU_COMPOSITION.md).

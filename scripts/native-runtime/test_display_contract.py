@@ -64,4 +64,23 @@ class DisplayContracts(unittest.TestCase):
   for p in ['Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp', 'Core/GameEngine/Source/GameClient/GUI/GameWindowGlobal.cpp', 'Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/W3DGameWindow.cpp']:
    old=subprocess.check_output(['git','show',f'34fdd323f68621fdfea3cc1cf0d27fd62a7a34a2:{p}'],cwd=ROOT)
    self.assertEqual((ROOT/p).read_bytes().replace(b'\r\n',b'\n'),old.replace(b'\r\n',b'\n'))
+ def test_static_menu_preserves_original_parser_widgets_fonts_and_owner_boundaries(self):
+  paths=['Core/GameEngine/Source/GameClient/GUI/GameWindowManagerScript.cpp',
+   'Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp',
+   'Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayString.cpp',
+   'Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/W3DGameFont.cpp',
+   'Core/Libraries/Source/WWVegas/WW3D2/FontChars.cpp']
+  for p in paths:
+   old=subprocess.check_output(['git','show',f'2caf429835dc28fda634f6f8d7d9dd4b1a530014:{p}'],cwd=ROOT)
+   self.assertEqual((ROOT/p).read_bytes().replace(b'\r\n',b'\n'),old.replace(b'\r\n',b'\n'))
+  s=read('Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeMenuComposition.h')
+  for term in ['->execute(', '->update(', 'showShell(', 'MainMenuInit(', 'new WindowLayout', 'Get_Texture(']:self.assertNotIn(term,s)
+  for term in ['winCreateFromScript("MainMenu.wnd")','drawWindow(root)','GadgetPushButtonSystem','GadgetStaticTextSystem',
+   'TheTransitionHandler=nullptr; TheWindowManager=manager;', 'TheWindowManager=previousManager;TheTransitionHandler=previousTransitions;',
+   'W3DGadgetPushButtonImageDraw','PrivateImage','MIP_LEVELS_1','parsed!=63']:
+   self.assertIn(term,s)
+  destructor=s.split('~NativeMenuComposition()',1)[1].split('void Load()',1)[0]
+  self.assertLess(destructor.index('winDestroyAll()'),destructor.index('images.clear();textures.clear();'))
+  presentation=read('Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp').split('void Shutdown()',1)[1]
+  self.assertLess(presentation.index('delete menu'),presentation.index('WW3D::Shutdown_Native_Presentation()'))
 if __name__=='__main__':unittest.main()
