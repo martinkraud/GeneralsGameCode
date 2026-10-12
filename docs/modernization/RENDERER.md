@@ -1,5 +1,40 @@
 # Renderer and display architecture
 
+## Both titles X64.16 hardware visible-presentation/process PASS (2026-10-12)
+
+Zero Hour confirmation `20261012T1149261127844Z` under
+`build/dev-runtimes/native/ZeroHour/x64-16-final-2/runs` is verified directly.
+Complete exit.json: PID29152, actual exit0, Started/Success/PathsMatch true,
+no timeout/error. Independent classifier verifies333 sequential zero-code
+records, explicit GeneralsMD AMD64 graphics-smoke mode, Intel Graphics8086:7D45,
+feature0xB000,800x600 backbuffer/RTV/setup/viewport and clear. First Present315
+is visible/non-minimized/unoccluded S_OK. Summary323:240 visible frames,
+0 occluded,5000ms, hardware. Backend release318 precedes HWND320/class322;
+boundary325 skips execute/replay/simulation; engine cleanup329, MiniDumper331,
+late observer332 and final WinMain333 complete. Observer file0 bytes, no trailer,
+CrashDumps empty. Launch/log/exit isolated paths match. Actual EXE/PDB/stage hashes
+and GUID7a285453-4110-4cad-a6c8-e5336ba19b1c/age48 match preflight/reviewed identity.
+Developer confirms normal blue presentation and automatic close without anomaly.
+
+Together with Generals confirmation20261012T1105248762814Z (PID19592, exit0,
+239 visible frames/5000ms), **both native AMD64 hardware-D3D11 diagnostic visible
+presentation, bounded cleanup and normal OS exit are PASS; X64.16 is closed.**
+This does not validate ordinary graphical startup, integrated renderer, original
+shell/menu/world, engine input, execute/simulation, gameplay/save/replay/network,
+performance or determinism. Original four files per confirmation, earlier three
+Generals run files and twelve X64.14 evidence/symbol files remain immutable.
+
+Offline evidence/source review and both existing stage preflights PASS; graphics
+workflow25, native workflow6/all10 scripts parsed, startup contracts9 and rendering
+reference28 PASS. No rebuild/restage/game launch. No production changes in this
+milestone commit; generated evidence and analysis are ignored/uncommitted.
+
+Autonomous continuation: developer selected **retain shared W3DDisplay/WW3D and
+add explicit renderer-neutral lifecycle adapters**, preserving DX8/Win32. Next
+slice is bounded display-owned presentation lifecycle integration without shell,
+world, engine update or simulation. Neither accepted title needs another X64.16
+confirmation. Earlier next-step entries are historical/superseded.
+
 ## Generals X64.16 reviewed graphical/process PASS; Zero Hour ready (2026-10-12)
 
 Confirmation run `20261012T1105248762814Z` in Generals/x64-16-final-2 is verified:
