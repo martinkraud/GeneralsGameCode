@@ -11,7 +11,7 @@
 
 ---
 
-## About This Fork
+# About This Fork
 
 This repository builds on the community-driven GeneralsGameCode project
 maintained by TheSuperHackers.
@@ -120,8 +120,9 @@ cleanup.
 **Visible terrain output is still under investigation.**
 
 The current real-map test produces a black world viewport even though the
-terrain pass is submitted and drawn by the backend. The original in-game UI,
-cursor and game simulation remain active.
+terrain pass is submitted and drawn by the backend.
+
+The original in-game UI, cursor and game simulation remain active.
 
 Camera transforms, clipping, culling, depth state and other world-render
 state are being investigated before additional scene systems are migrated.
@@ -308,6 +309,53 @@ Generals and Zero Hour.
 
 ---
 
+# AI-Assisted Development
+
+This modernization project makes extensive use of **AI coding agents** as part
+of the development workflow.
+
+AI agents are used for tasks including:
+
+- Source-code and engine analysis
+- C++ implementation
+- Refactoring
+- Renderer migration work
+- Automated testing
+- Build and runtime diagnostics
+- Regression investigation
+- Technical documentation
+
+The project is directed and reviewed by **Martin Raudstein**.
+
+Project goals, compatibility requirements and development priorities are
+human-directed.
+
+Architectural decisions and significant changes are reviewed before being
+accepted, while native game execution, visual verification and acceptance of
+major runtime milestones require human validation.
+
+AI-generated code is **not considered correct solely because an agent produced
+it**.
+
+Changes are validated through combinations of:
+
+- Automated tests
+- AMD64 and Win32 builds
+- Reference-behaviour comparisons
+- Runtime diagnostics and preserved evidence
+- Regression checks
+- Manual native-game testing
+- Human visual acceptance
+
+AI agents may autonomously investigate and implement bounded technical work
+within established project constraints, but significant architectural
+decisions and native acceptance gates remain under human control.
+
+The project therefore follows a **human-directed, AI-assisted development
+model**.
+
+---
+
 # Development Approach
 
 Modernization is performed incrementally.
@@ -319,6 +367,20 @@ Native runtime milestones use isolated test profiles and evidence-based
 acceptance gates so that platform, renderer and game-logic changes can be
 validated independently.
 
+A typical modernization milestone separates:
+
+1. Offline source analysis
+2. Implementation
+3. Automated regression testing
+4. AMD64 and Win32 build validation
+5. Isolated native runtime validation
+6. Preserved runtime evidence
+7. Human visual or behavioural acceptance where required
+
+A machine-successful rendering test is not automatically considered visually
+accepted. Machine validation and developer visual validation are treated as
+separate acceptance criteria where appropriate.
+
 Detailed engineering notes, audits, runtime evidence and modernization
 milestones are kept under:
 
@@ -329,6 +391,28 @@ serving as a detailed engineering log.
 
 ---
 
+# Branches
+
+## `main`
+
+The `main` branch currently serves as the stable/upstream-compatible baseline.
+
+Experimental Modern Engine features should not be assumed to exist there.
+
+## `dev/modern-engine`
+
+This branch contains the active AMD64/D3D11 modernization work documented by
+this README.
+
+Development takes place here while major engine systems are still being
+migrated and validated.
+
+The long-term intention is for completed and sufficiently validated
+modernization work to become the primary development line rather than remain
+permanently isolated on an experimental branch.
+
+---
+
 # Building
 
 The upstream project supports Windows and Linux builds.
@@ -336,7 +420,7 @@ The upstream project supports Windows and Linux builds.
 This modernization branch currently performs its primary native engine work
 and runtime validation on Windows.
 
-## Windows
+## Standard Win32 Build
 
 ```bash
 cmake --preset win32
@@ -346,10 +430,15 @@ cmake --build --preset win32
 The repository uses a vcpkg manifest (`vcpkg.json`) for dependency management.
 
 > **Important:** the experimental AMD64/D3D11 development runtime uses its own
-> staging and validation workflow. Do not assume the normal Win32 installation
-> process represents the current AMD64 development path.
+> staging and validation workflow.
+>
+> Do not assume the normal Win32 installation process represents the current
+> AMD64 development path.
 
-For detailed upstream build information, see the
+Detailed modernization build, staging and runtime information is maintained
+in the repository's development documentation and scripts.
+
+For upstream build information, see the
 [GeneralsGameCode build guides](https://github.com/TheSuperHackers/GeneralsGameCode/wiki/build_guides).
 
 ---
@@ -369,8 +458,12 @@ released builds, see:
 - [Upstream releases](https://github.com/TheSuperHackers/GeneralsGameCode/releases)
 - [Upstream Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki)
 
-The experimental AMD64/D3D11 branch documented here is not currently intended
-as an end-user release.
+The experimental AMD64/D3D11 branch documented here is **not currently
+intended as an end-user release**.
+
+Development runtime workflows are deliberately isolated so that modernization
+testing does not require replacing the user's installed original game
+executables.
 
 ---
 
@@ -387,29 +480,34 @@ The upstream project is a community-driven effort to fix and improve
 
 The complementary upstream game-data project is:
 
-**GeneralsGamePatch**
+**TheSuperHackers / GeneralsGamePatch**
 
 https://github.com/TheSuperHackers/GeneralsGamePatch
 
 It focuses on game data and assets including INI scripts, GUI, AI, maps,
 models, textures, audio and localization.
 
-This modernization fork should not be interpreted as the official development
-direction or release status of the upstream GeneralsGameCode project.
+This modernization fork should **not** be interpreted as the official
+development direction, status or release plan of the upstream
+GeneralsGameCode project.
 
 ---
 
 # Contributing
 
-The upstream project welcomes C++ contributions.
-
-Before contributing, see:
+For information about the upstream project, see:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [GeneralsGameCode Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki)
+- [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode)
 
-Modernization-specific engineering documentation is available under
-`docs/modernization/`.
+Modernization-specific engineering documentation is available under:
+
+`docs/modernization/`
+
+Because the Modern Engine branch is undergoing substantial architectural
+migration, contributors should review the current modernization documentation
+and existing implementation before making large renderer or platform changes.
 
 ---
 
@@ -421,8 +519,10 @@ All trademarks are the property of their respective owners.
 
 The source code is licensed under the
 [GPL-3.0 License](https://www.gnu.org/licenses/gpl-3.0.html).
+
 See [LICENSE.md](LICENSE.md) for details.
 
 The source-code license does not grant permission to redistribute proprietary
-Command & Conquer game assets. Original game data must be obtained from a
-legitimate copy of the game.
+*Command & Conquer* game assets.
+
+Original game data must be obtained from a legitimate copy of the game.
