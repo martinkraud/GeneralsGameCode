@@ -191,6 +191,8 @@ visual PASS). The first run's failure was an evidence-capacity defect (see doc).
 Proven: AMD64 GameLogic/AI/scripts/map load inside the real application. Not proven:
 world rendering, cross-arch determinism, performance.
 
+**X64.25 first native D3D11 terrain frame (2026-10-13): candidate staged, NOT executed.** Source `4f475a99d`; strict token `-nativeOrdinaryTerrain` (implies game stack). Terrain-only world pass (CPU atlas + CPU-backed legacy tiles + real W3DView camera + depth) under the original UI; depth/CPU-backed geometry are profile-only opt-ins, `ww3d.cpp`/lifecycle byte-identical to the accepted baseline. Stage `x64-25-ordinary-terrain` (EXE SHA256 `BA18DAAB...74D814`, PDB `52B62EE4...4230B5`, GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age 75) preflighted. Doc: `X64_25_TERRAIN_FRAME.md` (scope, deliberate differences, PASS/FAIL, commands). Later increments: cloud/noise pass, shoreline/extra-blend, R3 meshes, R4 water/shadows/particles, R5 scene integration.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a
