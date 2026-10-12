@@ -123,8 +123,17 @@ public:
 
 	IDirect3DIndexBuffer8* Get_DX8_Index_Buffer()	{ return index_buffer; }
 
+	// Native-presentation (D3D11) CPU-backed mode: see DX8VertexBufferClass.
+	bool Is_CPU_Backed() const { return CpuData != nullptr; }
+	unsigned short* Get_CPU_Data_For_Lock() { return CpuData; }
+	const unsigned short* Get_CPU_Data() const { return CpuData; }
+	unsigned Get_CPU_Version() const { return CpuVersion; }
+	void Touch_CPU() { ++CpuVersion; }
+
 private:
 	IDirect3DIndexBuffer8*	index_buffer;		// actual dx8 index buffer
+	unsigned short*			CpuData = nullptr;
+	unsigned				CpuVersion = 0;
 };
 
 

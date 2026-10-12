@@ -54,6 +54,10 @@ public:
     unsigned Draw_Count() const;
     // World (R1/R2): neutral geometry residency and purpose-built material draws.
     GeometryResidency *Create_Geometry_Residency(const GeometryCPUContent &);
+    // Immutable RGBA8 texture with a full caller-supplied mip chain (terrain atlas).
+    // mips[0] is width*height*4 bytes; each level halves down to 1x1.
+    Texture2DResidency *Create_Mipped_Rgba8_Residency(unsigned width, unsigned height,
+                                                      const std::vector<std::vector<unsigned char>> &mips);
     // Replace vertices [first, first+count) in place (dynamic terrain).
     void Update_Geometry_Vertices(GeometryResidency &, unsigned first, const WorldVertexXYZDUV2 *vertices, unsigned count);
     void Submit_World(const WorldSubmission &);

@@ -241,3 +241,49 @@ Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
 Interaction, expectations and PASS/FAIL are unchanged from the section above
 (substitute the stage name). Additional PASS evidence now present: an
 `FP_summary` row and `game_start` with `players >= 2`.
+
+## Renderer progress (independent of the X64.24 gate)
+
+Fidelity decision (developer): equivalent modern shaders, tolerance-based golden
+images against CPU references of the exact legacy stage math, developer visual
+review; purpose-built D3D11 subsystem paths, never a generic fixed-function/D3D8
+emulator. Nothing below changes a staged candidate (they are source-only and
+unused by the profiles until the terrain consumer lands).
+
+| Stage | State | Evidence |
+| --- | --- | --- |
+| R0 depth | Done: opt-in D24S8 target, depth/stencil clear, resize-safe | `WorldTest.*` on WARP |
+| R1a neutral geometry | Done: `GeometryCPUContent`/`GeometryResidency`, XYZDUV2, in-place vertex update, `Submit_World` with `TerrainBase`/`TerrainBlend`, explicit sampler/depth intent, legacy `D3DCULL_CCW` | depth order, depth-write off, uv1+alpha blend, culling, residency counting, explicit unsupported cases |
+| R1b legacy buffers | Done (AMD64 only, `_WIN64`): `DX8VertexBufferClass`/`DX8IndexBufferClass` become CPU-backed when the native D3D11 backend owns `WW3D`; locks/versions work through the unchanged lock classes; no COM buffer is created. Win32 and legacy-DX8 behavior untouched (`Is_CPU_Backed()` is false there). | `NativeBufferTest` on hardware (real classes -> backend geometry residency) |
+| R2a terrain atlas | Done as a pure function: `BuildTerrainAtlas` replicates `TerrainTextureClass::update` (inverted rows, A1R5G5B5 quantization, 4-texel class borders incl. corners) and the legacy box-filtered mip chain; `Create_Mipped_Rgba8_Residency` uploads the chain | `TerrainAtlasTest`, `WorldTest.MippedAtlas...` |
+
+### What the terrain pass actually has to do (from `HeightMapRenderObjClass::Render`)
+
+`ST_TERRAIN_BASE` is two fixed-function passes over every vertex-buffer tile:
+pass 0 `rgb = atlas(uv0).rgb * diffuse.rgb`, opaque, clamp; pass 1
+`rgb = atlas(uv1).rgb * diffuse.rgb`, `a = atlas.a * diffuse.a`, SRCALPHA/INVSRCALPHA.
+Lighting is baked into the vertex diffuse (prelit material). The cloud/noise
+pass (`D3DBLEND_DESTCOLOR, ZERO` with camera-space texture generation) and the
+shoreline/extra-blend/roads/bridges/props/scorch sub-passes are separate,
+later increments. `TerrainBase`/`TerrainBlend` are exactly passes 0/1.
+
+### Remaining R2 integration (each needs its own offline test; none is a decision)
+
+1. Un-gate terrain allocation under the profile: `BaseHeightMap` returns before
+   creating trees/props/bibs when headless and `HeightMapRenderObjClass::initHeightData`
+   only allocates when `m_treeBuffer != nullptr`; the native profile must allocate
+   the index/vertex tiles (now CPU-backed) without the DX8-only tree/prop/bib buffers.
+2. Replace `WorldHeightMap::getTerrainTexture`/`AlphaTerrainTexture` (D3D8 surfaces
+   + `LegacyD3DX::FilterTexture`) with the CPU atlas build + residency under the profile.
+3. Camera: `W3DView::get3DCamera()` view/projection/viewport into `WorldSubmission`
+   (D3D row-vector convention is already the contract).
+4. Frame: depth-capable `PresentationLifecycle::Begin` for world frames and a
+   terrain-only world pass ahead of the UI in `drawOrdinaryMenuFrame` (profile
+   `ordinaryGame`), with unsupported scene objects remaining explicit.
+5. Cloud/noise multiply pass, then shoreline/extra-blend tiles.
+6. R3 meshes (DX8MeshRenderer sort/batch -> bounded material set), R4 water/shadows/
+   particles, R5 full `RTS3DScene` camera/fog/shroud integration.
+
+Steps 1-4 produce the first D3D11 terrain frame; they require a
+developer-run candidate to be judged visually, and are sequenced after the X64.24
+fix1 result confirms that logic runs on AMD64.

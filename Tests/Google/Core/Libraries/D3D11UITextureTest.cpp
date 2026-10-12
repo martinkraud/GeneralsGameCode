@@ -572,3 +572,38 @@ TEST(WorldTest, ResidencyCountingAndExplicitUnsupportedCases)
     EXPECT_THROW(noDepth.backend->Submit_World(noDepth.Submission(g.get(), WorldMaterial::TerrainBase, true)), std::runtime_error);
     noDepth.backend->End_Scene(false);
 }
+
+TEST(WorldTest, MippedAtlasResidencySelectsLevelsAndRejectsBrokenChains)
+{
+    D3D11Backend::Configuration c; c.software = true; c.width = c.height = 8; c.depth_buffer = true;
+    auto backend = D3D11Backend::Create(c);
+    // 4x4 base all red; 2x2 all green; 1x1 blue.
+    std::vector<std::vector<unsigned char>> mips(3);
+    for (int i = 0; i < 16; ++i) { mips[0].insert(mips[0].end(), {255, 0, 0, 255}); }
+    for (int i = 0; i < 4; ++i) { mips[1].insert(mips[1].end(), {0, 255, 0, 255}); }
+    mips[2] = {0, 0, 255, 255};
+    std::unique_ptr<Texture2DResidency> atlas(backend->Create_Mipped_Rgba8_Residency(4, 4, mips));
+    Texture2DDescription d; ASSERT_TRUE(atlas->Describe(d));
+    EXPECT_EQ(d.mip_count, 3u);
+    auto bad = mips; bad.pop_back();                      // chain stops at 2x2
+    EXPECT_THROW(backend->Create_Mipped_Rgba8_Residency(4, 4, bad), std::runtime_error);
+    auto wrong = mips; wrong[1].resize(3);
+    EXPECT_THROW(backend->Create_Mipped_Rgba8_Residency(4, 4, wrong), std::runtime_error);
+    // Mip-linear sampling at full-screen scale-down: a 1x1 target draws the quad covering 4x4 texels
+    // minified -> the GPU picks a lower level; with point/mip-point the nearest level must be a
+    // non-base level (never the red base).
+    GeometryCPUContent g;
+    g.vertices = {{-1, 1, 0.5f, 0xffffffffu, 0, 0, 0, 0}, {1, 1, 0.5f, 0xffffffffu, 1, 0, 1, 0},
+                  {1, -1, 0.5f, 0xffffffffu, 1, 1, 1, 1}, {-1, -1, 0.5f, 0xffffffffu, 0, 1, 0, 1}};
+    g.indices = {0, 1, 2, 0, 2, 3};
+    std::unique_ptr<GeometryResidency> geo(backend->Create_Geometry_Residency(g));
+    WorldSubmission s{};
+    s.geometry = geo.get(); s.index_count = 6; s.texture = atlas.get();
+    World_Identity(s.world); World_Identity(s.view); World_Identity(s.projection);
+    s.linear = false; s.mip_linear = false; s.clamp = true; s.material = WorldMaterial::TerrainBase;
+    s.depth_write = true; s.viewport = {0, 0, 1, 1, 0, 1}; // 4x4 texels onto one pixel
+    backend->Clear(true, true, Vector3(0, 0, 0), 1.0f, 1.0f, 0); backend->Begin_Scene();
+    backend->Submit_World(s); backend->End_Scene(false);
+    const auto px = backend->Readback_RGBA8();
+    EXPECT_FALSE(px[0] == 255 && px[1] == 0 && px[2] == 0) << "minified draw sampled the base level";
+}

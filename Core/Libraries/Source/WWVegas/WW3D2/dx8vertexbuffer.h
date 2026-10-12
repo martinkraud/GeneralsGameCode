@@ -159,6 +159,15 @@ public:
 
 	IDirect3DVertexBuffer8* Get_DX8_Vertex_Buffer() { return VertexBuffer; }
 
+	// Native-presentation (D3D11) CPU-backed mode: no COM buffer exists; the content
+	// lives here and is uploaded by the active backend through its geometry
+	// residency. Version increments on every lock release.
+	bool Is_CPU_Backed() const { return CpuData != nullptr; }
+	unsigned char* Get_CPU_Data_For_Lock() { return CpuData; }
+	const unsigned char* Get_CPU_Data() const { return CpuData; }
+	unsigned Get_CPU_Version() const { return CpuVersion; }
+	void Touch_CPU() { ++CpuVersion; }
+
 	void Copy(const Vector3* loc, unsigned first_vertex, unsigned count);
 	void Copy(const Vector3* loc, const Vector2* uv, unsigned first_vertex, unsigned count);
 	void Copy(const Vector3* loc, const Vector3* norm, unsigned first_vertex, unsigned count);
@@ -168,6 +177,8 @@ public:
 
 protected:
 	IDirect3DVertexBuffer8*		VertexBuffer;
+	unsigned char*				CpuData = nullptr;
+	unsigned					CpuVersion = 0;
 
 	void Create_Vertex_Buffer(UsageType usage);
 };

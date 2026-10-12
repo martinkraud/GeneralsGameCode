@@ -64,6 +64,18 @@ static const FVFInfoClass _DynamicFVFInfo(dynamic_fvf_type);
 
 static int _DX8VertexBufferCount=0;
 
+#if defined(_WIN64)
+#include "Backend/D3D11Backend.h"
+// True while the native D3D11 presentation owns the render backend: geometry is
+// then CPU-backed content instead of IDirect3DVertexBuffer8 COM objects.
+static bool NativeCpuBackedBuffers()
+{
+	return dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend()) != nullptr;
+}
+#else
+static bool NativeCpuBackedBuffers() { return false; }
+#endif
+
 static int _VertexBufferCount;
 static int _VertexBufferTotalVertices;
 static int _VertexBufferTotalSize;
@@ -173,6 +185,10 @@ VertexBufferClass::WriteLockClass::WriteLockClass(VertexBufferClass* VertexBuffe
 			fvf_name));
 		}
 #endif
+		if (static_cast<DX8VertexBufferClass*>(VertexBuffer)->Is_CPU_Backed()) {
+			Vertices=static_cast<DX8VertexBufferClass*>(VertexBuffer)->Get_CPU_Data_For_Lock();
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8VertexBufferClass*>(VertexBuffer)->Get_DX8_Vertex_Buffer()->Lock(
 			0,
@@ -199,6 +215,10 @@ VertexBufferClass::WriteLockClass::~WriteLockClass()
 #ifdef VERTEX_BUFFER_LOG
 		WWDEBUG_SAY(("VertexBuffer->Unlock()"));
 #endif
+		if (static_cast<DX8VertexBufferClass*>(VertexBuffer)->Is_CPU_Backed()) {
+			static_cast<DX8VertexBufferClass*>(VertexBuffer)->Touch_CPU();
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8VertexBufferClass*>(VertexBuffer)->Get_DX8_Vertex_Buffer()->Unlock());
 		break;
@@ -239,6 +259,11 @@ VertexBufferClass::AppendLockClass::AppendLockClass(VertexBufferClass* VertexBuf
 			fvf_name));
 		}
 #endif
+		if (static_cast<DX8VertexBufferClass*>(VertexBuffer)->Is_CPU_Backed()) {
+			Vertices=static_cast<DX8VertexBufferClass*>(VertexBuffer)->Get_CPU_Data_For_Lock()+
+				start_index*VertexBuffer->FVF_Info().Get_FVF_Size();
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8VertexBufferClass*>(VertexBuffer)->Get_DX8_Vertex_Buffer()->Lock(
 			start_index*VertexBuffer->FVF_Info().Get_FVF_Size(),
@@ -262,6 +287,10 @@ VertexBufferClass::AppendLockClass::~AppendLockClass()
 	DX8_THREAD_ASSERT();
 	switch (VertexBuffer->Type()) {
 	case BUFFER_TYPE_DX8:
+		if (static_cast<DX8VertexBufferClass*>(VertexBuffer)->Is_CPU_Backed()) {
+			static_cast<DX8VertexBufferClass*>(VertexBuffer)->Touch_CPU();
+			break;
+		}
 		DX8_Assert();
 #ifdef VERTEX_BUFFER_LOG
 		WWDEBUG_SAY(("VertexBuffer->Unlock()"));
@@ -404,7 +433,9 @@ DX8VertexBufferClass::~DX8VertexBufferClass()
 	_DX8VertexBufferCount--;
 	WWDEBUG_SAY(("Current vertex buffer count: %d",_DX8VertexBufferCount));
 #endif
-	VertexBuffer->Release();
+	if (VertexBuffer) VertexBuffer->Release();
+	delete[] CpuData;
+	CpuData = nullptr;
 }
 
 // ----------------------------------------------------------------------------
@@ -417,6 +448,14 @@ void DX8VertexBufferClass::Create_Vertex_Buffer(UsageType usage)
 {
 	DX8_THREAD_ASSERT();
 	WWASSERT(!VertexBuffer);
+
+	if (NativeCpuBackedBuffers()) {
+		// Native D3D11 presentation: renderer-neutral CPU content, no D3D8 COM buffer.
+		const size_t bytes = static_cast<size_t>(FVF_Info().Get_FVF_Size()) * VertexCount;
+		CpuData = new unsigned char[bytes];
+		memset(CpuData, 0, bytes);
+		return;
+	}
 
 #ifdef VERTEX_BUFFER_LOG
 	StringClass fvf_name;

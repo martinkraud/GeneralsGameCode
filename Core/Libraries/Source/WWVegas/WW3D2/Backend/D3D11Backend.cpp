@@ -609,6 +609,33 @@ unsigned D3D11Backend::Buffer_Creations() const { return impl->buffers; }
 unsigned D3D11Backend::Draw_Count() const { return impl->draws; }
 unsigned D3D11Backend::Live_Residencies() { return liveResidencies.load(); }
 bool D3D11Backend::Has_Depth_Buffer() const { return impl->dsv != nullptr; }
+Texture2DResidency *D3D11Backend::Create_Mipped_Rgba8_Residency(unsigned width, unsigned height,
+                                                                const std::vector<std::vector<unsigned char>> &mips)
+{
+    if (!width || !height || width > 16384 || height > 16384 || mips.empty() || mips.size() > 15) Unsupported();
+    std::vector<D3D11_SUBRESOURCE_DATA> data(mips.size());
+    unsigned w = width, h = height, lastW = width, lastH = height;
+    for (size_t i = 0; i < mips.size(); ++i) {
+        if (mips[i].size() != static_cast<size_t>(w) * h * 4) Unsupported();
+        data[i] = {mips[i].data(), w * 4, 0};
+        lastW = w; lastH = h;
+        w = w > 1 ? w / 2 : 1; h = h > 1 ? h / 2 : 1;
+    }
+    if (mips.size() > 1 && (lastW != 1 || lastH != 1)) Unsupported(); // a chain must reach 1x1
+    auto result = std::make_unique<Residency>();
+    result->device = impl->device;
+    result->description = {};
+    result->description.width = width; result->description.height = height;
+    result->description.mip_count = static_cast<unsigned>(mips.size());
+    result->description.format = WW3D_FORMAT_A8R8G8B8;
+    D3D11_TEXTURE2D_DESC d{}; d.Width = width; d.Height = height;
+    d.MipLevels = static_cast<UINT>(mips.size()); d.ArraySize = 1; d.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    d.SampleDesc.Count = 1; d.Usage = D3D11_USAGE_IMMUTABLE; d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    Check(impl->device->CreateTexture2D(&d, data.data(), &result->texture), "Upload mipped texture");
+    Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create mipped SRV");
+    ++impl->textures;
+    return result.release();
+}
 GeometryResidency *D3D11Backend::Create_Geometry_Residency(const GeometryCPUContent &content)
 {
     if (!content.Valid()) Unsupported();

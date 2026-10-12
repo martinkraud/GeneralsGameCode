@@ -182,6 +182,16 @@ void IndexBufferClass::Copy(unsigned short* indices,unsigned first_index,unsigne
 // ----------------------------------------------------------------------------
 
 
+#if defined(_WIN64)
+#include "Backend/D3D11Backend.h"
+static bool NativeCpuBackedIndexBuffers()
+{
+	return dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend()) != nullptr;
+}
+#else
+static bool NativeCpuBackedIndexBuffers() { return false; }
+#endif
+
 IndexBufferClass::WriteLockClass::WriteLockClass(IndexBufferClass* index_buffer_, int flags) : index_buffer(index_buffer_)
 {
 	DX8_THREAD_ASSERT();
@@ -190,6 +200,10 @@ IndexBufferClass::WriteLockClass::WriteLockClass(IndexBufferClass* index_buffer_
 	index_buffer->Add_Ref();
 	switch (index_buffer->Type()) {
 	case BUFFER_TYPE_DX8:
+		if (static_cast<DX8IndexBufferClass*>(index_buffer)->Is_CPU_Backed()) {
+			indices=static_cast<DX8IndexBufferClass*>(index_buffer)->Get_CPU_Data_For_Lock();
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8IndexBufferClass*>(index_buffer)->Get_DX8_Index_Buffer()->Lock(
 			0,
@@ -216,6 +230,10 @@ IndexBufferClass::WriteLockClass::~WriteLockClass()
 	DX8_THREAD_ASSERT();
 	switch (index_buffer->Type()) {
 	case BUFFER_TYPE_DX8:
+		if (static_cast<DX8IndexBufferClass*>(index_buffer)->Is_CPU_Backed()) {
+			static_cast<DX8IndexBufferClass*>(index_buffer)->Touch_CPU();
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8IndexBufferClass*>(index_buffer)->index_buffer->Unlock());
 		break;
@@ -241,6 +259,10 @@ IndexBufferClass::AppendLockClass::AppendLockClass(IndexBufferClass* index_buffe
 	index_buffer->Add_Ref();
 	switch (index_buffer->Type()) {
 	case BUFFER_TYPE_DX8:
+		if (static_cast<DX8IndexBufferClass*>(index_buffer)->Is_CPU_Backed()) {
+			indices=static_cast<DX8IndexBufferClass*>(index_buffer)->Get_CPU_Data_For_Lock()+start_index;
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8IndexBufferClass*>(index_buffer)->index_buffer->Lock(
 			start_index*sizeof(unsigned short),
@@ -264,6 +286,10 @@ IndexBufferClass::AppendLockClass::~AppendLockClass()
 	DX8_THREAD_ASSERT();
 	switch (index_buffer->Type()) {
 	case BUFFER_TYPE_DX8:
+		if (static_cast<DX8IndexBufferClass*>(index_buffer)->Is_CPU_Backed()) {
+			static_cast<DX8IndexBufferClass*>(index_buffer)->Touch_CPU();
+			break;
+		}
 		DX8_Assert();
 		DX8_ErrorCode(static_cast<DX8IndexBufferClass*>(index_buffer)->index_buffer->Unlock());
 		break;
@@ -288,6 +314,13 @@ DX8IndexBufferClass::DX8IndexBufferClass(unsigned short index_count_,UsageType u
 {
 	DX8_THREAD_ASSERT();
 	WWASSERT(index_count);
+	index_buffer = nullptr;
+	if (NativeCpuBackedIndexBuffers()) {
+		// Native D3D11 presentation: renderer-neutral CPU content, no D3D8 COM buffer.
+		CpuData = new unsigned short[index_count];
+		memset(CpuData, 0, sizeof(unsigned short) * index_count);
+		return;
+	}
 	unsigned usage_flags=
 		D3DUSAGE_WRITEONLY|
 		((usage&USAGE_DYNAMIC) ? D3DUSAGE_DYNAMIC : 0)|
@@ -338,7 +371,9 @@ DX8IndexBufferClass::DX8IndexBufferClass(unsigned short index_count_,UsageType u
 
 DX8IndexBufferClass::~DX8IndexBufferClass()
 {
-	index_buffer->Release();
+	if (index_buffer) index_buffer->Release();
+	delete[] CpuData;
+	CpuData = nullptr;
 }
 
 // ----------------------------------------------------------------------------
