@@ -45,7 +45,8 @@ FreeListHead = (T*)((unsigned char *)BlockListHead + sizeof(uint32 *));
 
 Offline inspection of the final Generals AMD64 EXE/PDB (matching age45) confirms
 `add r9,8` at RVA0x492ADA, replacing the old `add r9,4`, with the same0x2808
-block allocation request for MultiListNodeClass,256. Neither EXE was executed.
+block allocation request for MultiListNodeClass,256. Neither EXE was executed
+during implementation; the separate reviewed Generals run is recorded below.
 
 The advance now matches the stored pointer:4 bytes on Win32,8 on AMD64. Existing
 allocation size, pointer fields, block capacity, ascending fresh-node order,
@@ -111,26 +112,91 @@ analysis helper, build/test log and generated corpus files remain ignored.
 
 Delivery is one X64.14 source/test/documentation commit on dev/modern-engine,
 with push restricted to origin/dev/modern-engine. The exact hash is available in
-git log and the developer report. No runtime success or determinism claim is
-inferred from these static/test gates.
+git log and the developer report. Runtime evidence is separate from these
+static/test gates; neither establishes simulation determinism.
+
+## Reviewed Generals native runtime confirmation (2026-10-12)
+
+Implementation baseline: `53f08fbdc0c12302e96839c186c8bf887391c829`, already
+pushed to origin/dev/modern-engine. The developer separately executed the single
+reviewed Generals run; this analysis launched neither title and made no source
+change. Evidence was read directly from:
+`build/dev-runtimes/native/Generals/x64-14-final/runs/20261012T0830000434440Z`.
+
+**Verified PASS:** exit.json records PID30248 started, actual process ExitCode0,
+TimedOut=false, Error=null. Receipt interval is08:30:00.0609571Z to
+08:30:01.8386252Z (includes launcher work, not an exact process duration).
+The complete startup.log contains255 ordinary nine-field checkpoint records,
+sequential1..255, all PID30248/TID17816, with zero status codes. All75 lifecycle
+begin records excluding the diagnostic opening have a later matching complete.
+
+| Checkpoint | Evidence |
+| --- | --- |
+| 10 | HWND_DX8_browser_input skipped: existing headless route |
+| 246 | engine_init complete after subsystem init, postProcessLoadAll, map_cache, initial_reset and HideControlBar |
+| 247 | init_only complete: execute/replay/simulation skipped |
+| 251 | engine_cleanup complete |
+| 253 | minidumper_shutdown complete |
+| 254 | native_shutdown armed: return/CRT/process teardown; first AV or in-page error |
+| 255 | WinMain complete / exit |
+
+The late-shutdown observer remained intact: shutdown-exception.bin exists and
+is exactly0 bytes. All log bytes parse as the255 normal checkpoints; there is
+no late exception trailer. userdata/CrashDumps exists and contains no files.
+Actual exit0 independently closes the prior distinction between WinMain's final
+checkpoint and the process result. No late fault was observed in this run;
+empty evidence does not itself test crash-dump generation or prove every possible
+exception type is covered by the observer.
+
+Identity was checked against launch.json, manifest.json and actual staged files:
+
+- AMD64 PE32+ EXE/PDB GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age45.
+- EXE SHA256 `6A51B5D5EACAB0561E08ED372AA546115FC1A30E744A36C0B452094D0EC7EDB8`.
+- PDB SHA256 `DACAD6B01218AAC46C51E3AC3163C678E9AD7CD87843C63EC0AAC156F45A9313`.
+- Actual module is x64-14-final/game/generalsv.exe; working directory is that
+  stage's game directory. The isolated userdata and CrashDumps paths resolve
+  beneath this exact run, consistently in launch/exit receipts and startup.log.
+- Arguments are exactly -headless -nativeInitOnly followed by this absolute run
+  directory. Read-only Test-NativeInitOnly for Generals/x64-14-final reran PASS,
+  validating GUID/age pairing, current-build and staged hashes, inventory/assets
+  and startup dependencies. It launches no game process.
+
+All run files and the staged EXE/PDB were hash-checked unchanged after this
+analysis/documentation update. They remain local, ignored and uncommitted.
+No rebuild or regression rerun was needed for this documentation-only review;
+the implementation validation above remains the previously executed suite.
+
+Supported milestone: Generals native AMD64 completed the controlled headless
+initialization, init-only boundary, engine cleanup and normal process exit.
+The captured X64.13 post-WinMain corruption fault did not recur after the bounded
+pool layout fix. One successful scenario does not prove universal allocator or
+shutdown correctness.
+
+Remaining limitations: Zero Hour has not yet executed this gate. No native game
+renderer, execute/replay/simulation, gameplay, save/load, multiplayer, performance
+or cross-architecture lockstep/determinism is validated here. The established
+native D3D8 renderer blocker and optional audio/video/browser limitations remain;
+D3D11 is not made the game backend. Default registry/Documents paths were not
+exercised because this gate isolates user data. Crash-dump generation remains
+untested. No additional blocker is observed in this Generals init-only route.
 
 ## Exactly one next task
 
-**Separately reviewed Generals-only native init-only runtime confirmation** using
-the fresh X64.14 stage. Do not run Zero Hour or launch automatically. Passing pool
-tests demonstrates the corrected layout and CRT destruction in the test process;
-it does not establish that the game has no subsequent startup/shutdown blocker.
+**Separately reviewed Zero Hour-only native init-only runtime confirmation**
+using the already prepared X64.14 stage. Do not rerun Generals or automatically
+launch any title during evidence review.
 
 After separate developer review, from the repository in PowerShell7:
 
 ```powershell
-& ./scripts/native-runtime/Test-NativeInitOnly.ps1 -Title Generals -Name x64-14-final
-& ./scripts/native-runtime/Invoke-NativeInitOnly.ps1 -Title Generals -Name x64-14-final -RunReviewedInitOnly
+& ./scripts/native-runtime/Test-NativeInitOnly.ps1 -Title ZeroHour -Name x64-14-final
+& ./scripts/native-runtime/Invoke-NativeInitOnly.ps1 -Title ZeroHour -Name x64-14-final -RunReviewedInitOnly
 ```
 
 Preserve the entire new run: launch.json, exit.json, startup.log,
 shutdown-exception.bin (even empty), and any userdata/CrashDumps files. Success
 still requires actual exit0, all completion/path checks, armed late-shutdown
 observer and no recorded exception. Stop after that single reviewed run regardless
-of outcome. No rebuild is needed unless the source/build changes; a rebuild then
-requires a fresh stage. No title was launched during X64.14 implementation.
+of outcome. No rebuild is needed unless source/build changes; a rebuild then
+requires a fresh stage. This task records the Generals milestone only; no game
+process was launched, no production code changed, and no commit or push was made.

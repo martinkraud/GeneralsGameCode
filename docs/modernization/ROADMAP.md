@@ -36,16 +36,34 @@ Delivery: one coherent X64.14 source/test/docs commit on dev/modern-engine;
 push only to origin/dev/modern-engine. All runtime/evidence/analysis/build outputs
 remain ignored and uncommitted. Obtain the exact commit hash from git log.
 
-No title launched in X64.14. Native shutdown observer and strict actual exit0
-launcher remain intact. Runtime confirmation is still pending; passing test
-process teardown does not establish absence of subsequent native game blockers.
-See [X64_14_OBJECT_POOL_LAYOUT.md](X64_14_OBJECT_POOL_LAYOUT.md) for reviewed
-fault details, invariants, validation and the exact guarded procedure.
+No title was launched during X64.14 implementation. The separately reviewed
+Generals runtime confirmation is now verified PASS (2026-10-12), from preserved
+run build/dev-runtimes/native/Generals/x64-14-final/runs/20261012T0830000434440Z.
+PID30248 actually exited0, without timeout/error. All255 sequential checkpoints
+are intact; all75 lifecycle begins (excluding diagnostic opening) completed.
+Engine init246, init-only247 (execute/replay/simulation skipped), cleanup251,
+MiniDumper shutdown253, late observer armed254 and WinMain complete255 passed.
+shutdown-exception.bin is0 bytes, no late exception trailer is present and
+userdata/CrashDumps is empty. Module/CWD/user-data/dump paths match the receipts.
+Actual staged EXE/PDB hashes match launch.json and manifest; GUID
+c7323867-d82e-41f3-b190-20a5da4eae06/age45 matches the reviewed X64.14 build.
+Read-only Generals stage preflight rerun PASS; run and symbols preserved unchanged.
+The original post-WinMain fault did not recur in this controlled run.
 
-Exactly one next task: **separately reviewed Generals-only native init-only
-runtime confirmation** with x64-14-final. Preserve the full new run and stop
-after one run regardless of outcome. Zero Hour remains held. No automatic launch
-or rerun is authorized by implementation/preflight validation.
+This establishes Generals AMD64 headless initialization, cleanup and normal
+process exit for this stage. It does not validate rendering, execute/replay,
+simulation, gameplay, save/load, multiplayer or cross-architecture determinism.
+Zero Hour remains unexecuted; native game-renderer and optional subsystem limits
+remain. See [X64_14_OBJECT_POOL_LAYOUT.md](X64_14_OBJECT_POOL_LAYOUT.md) for exact
+evidence, identity, limitations and the next guarded procedure.
+
+Git baseline: 53f08fbdc0c12302e96839c186c8bf887391c829, already pushed to
+origin/dev/modern-engine. This follow-up changes documentation only; it does not
+rebuild, launch, commit or push. Generated evidence remains ignored/uncommitted.
+Exactly one next task: **separately reviewed Zero Hour-only native init-only
+runtime confirmation** using the already prepared x64-14-final stage. Preserve
+the full new run and stop after one run regardless of outcome. Do not rerun
+Generals. This documentation update does not authorize an automatic game launch.
 
 
 ## X64.13 late native shutdown diagnostic boundary (2026-10-12)
