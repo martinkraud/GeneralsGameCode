@@ -10,6 +10,20 @@ def read(path):
     return (ROOT / path).read_bytes().decode("latin1").replace("\r\n", "\n")
 
 class StartupContract(unittest.TestCase):
+    def test_late_observer_is_armed_at_return_and_launcher_requires_real_success(self):
+        for title in ("Generals", "GeneralsMD"):
+            s = read(f"{title}/Code/Main/WinMain.cpp")
+            shutdown = s.rindex('checkpoint("minidumper_shutdown", "complete")')
+            arm = s.index("NativeShutdownDiagnostics::arm()", shutdown)
+            complete = s.index('checkpoint("WinMain", exitcode', arm)
+            self.assertLess(shutdown, arm)
+            self.assertLess(arm, complete)
+            self.assertIn("if (!NativeShutdownDiagnostics::armed()) StartupDiagnostics::close();", s[complete:])
+        launch = read("scripts/native-runtime/Invoke-NativeInitOnly.ps1")
+        self.assertIn("$exit -eq 0", launch)
+        self.assertIn("$shutdownBytes -eq 0", launch)
+        self.assertIn('!$log.Contains("native_shutdown`texception")', launch)
+
     def test_both_init_boundaries_precede_execute_and_replay(self):
         for title in ("Generals", "GeneralsMD"):
             s = read(f"{title}/Code/GameEngine/Source/Common/GameMain.cpp")

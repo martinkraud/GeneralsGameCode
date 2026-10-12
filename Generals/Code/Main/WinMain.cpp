@@ -33,6 +33,7 @@
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <windows.h>
 #include "Common/StartupDiagnostics.h"
+#include "Common/NativeShutdownDiagnostics.h"
 #include <stdlib.h>
 #include <crtdbg.h>
 #include <eh.h>
@@ -944,9 +945,10 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	TheDmaCriticalSection = nullptr;
 	TheMemoryPoolCriticalSection = nullptr;
 
+	if (!NativeShutdownDiagnostics::arm()) exitcode = 1;
 	StartupDiagnostics::checkpoint("WinMain", exitcode == 0 ? "complete" : "fail", "exit", exitcode);
 	if (!StartupDiagnostics::healthy()) exitcode = 1;
-	StartupDiagnostics::close();
+	if (!NativeShutdownDiagnostics::armed()) StartupDiagnostics::close();
 	return exitcode;
 
 }

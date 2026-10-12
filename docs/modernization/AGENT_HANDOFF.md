@@ -1,5 +1,39 @@
 # Agent handoff
 
+## X64.13 late native shutdown diagnostic boundary (2026-10-12)
+
+The developer-reviewed Generals X64.12 run
+`20261011T2250330638442Z` reached all254 checkpoints, including init-only,
+engine cleanup, MiniDumper shutdown and WinMain complete, but actually exited
+0xC0000005. No timeout; paths matched; no dump/fault address/stack was captured.
+The exact fault/root cause is UNRESOLVED. Earlier entries saying neither title
+was launched describe the prior implementation stage, not current runtime state.
+Zero Hour has still not been run. The original run and matching EXE/PDB are preserved.
+
+X64.13 adds only an opt-in AMD64 end-of-WinMain one-shot VEH evidence boundary:
+preopened shutdown-exception.bin, original exception/context flushed before
+best-effort module/16KiB raw stack capture, and a startup-log trailer. It retains
+OS diagnostic handles until process exit, returns CONTINUE_SEARCH and leaves
+existing ownership/shutdown/SEH/MiniDumper behavior unchanged. Win32/default route,
+FP, resource compatibility and gameplay are preserved. This is additional
+localization, NOT a proven fix. Launcher still requires actual exit0 and all
+completion/path checks, plus an armed checkpoint and no recorded late exception.
+
+Final Win32 Release/CTest23, direct149/title, focused75/title, producer5/render2D15,
+native links/independent CTest13, FP4/architecture, gate5 AMD64/gate4 Win32, source8,
+PS6/parse5, Python28/16 and prior corpus/evidence preservation checks pass.
+Both fresh `build/dev-runtimes/native/{Generals,ZeroHour}/x64-13-final` stages
+preflight; D3DX0/title,28 static imports/title. No title launched in X64.13.
+All evidence/runtime/build/analysis outputs remain ignored and uncommitted.
+See [X64_13_NATIVE_SHUTDOWN_DIAGNOSTICS.md](X64_13_NATIVE_SHUTDOWN_DIAGNOSTICS.md)
+for the audit, limitations, validation and exact separately reviewed procedure.
+
+Exactly one next task: **developer-reviewed Generals-only init-only diagnostic
+validation and original late-shutdown context analysis**. Preserve the entire
+new run and matched symbols; stop after one run regardless of outcome. Keep
+Zero Hour held. Do not infer an allocator/destructor fix before the fault context.
+
+
 ## X64.12 native init-only gate implemented (2026-10-12)
 
 Accepted baseline: `4a36a0cd2c2e3b2bc7fa6e579dd206aeaa7619d3`.
