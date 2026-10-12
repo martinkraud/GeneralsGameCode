@@ -1,5 +1,35 @@
 # Renderer and display architecture
 
+## X64.16 native graphical smoke gate implemented (2026-10-12)
+
+Shared AMD64-only `-headless -nativeGraphicsSmoke <isolated-root>` now enters a
+bounded diagnostic HWND/pump and the existing D3D11Backend directly after engine
+init, before execute/replay/simulation. Hardware only, fixed800x600, blue clear,
+viewport/Begin/End/Present, explicit HRESULT/visibility/occlusion evidence and
+backend-before-HWND teardown. Existing nativeInitOnly, Win32/DX8 factory, normal
+cleanup/MiniDumper/late observer and actual-exit0 requirements remain intact.
+No shell/world/game updates or game launch occurred in this stage.
+
+Win32 Release/full CTest25/25, direct title tests149 each/focused75 each;
+independent AMD64 CTest15/15 and both native title links PASS. Rendering source
+contracts28, performance16, startup9, graphics workflow19 checks PASS. Native
+imports30 each include D3D11/compiler, no D3D8/D3DX; Win32 has no new graphics
+imports. Both fresh **x64-16-final-2** stages/preflights PASS, matching EXE/PDB
+identities and system graphics dependencies. All12 reviewed X64.14 evidence/
+symbol hashes remain intact. Generated stages/logs remain ignored/uncommitted.
+
+See [X64_16_NATIVE_GRAPHICS_SMOKE_GATE.md](X64_16_NATIVE_GRAPHICS_SMOKE_GATE.md)
+for implementation, checkpoints, exact binary identities, validation and guarded
+commands. The initial incomplete x64-16-final staging attempts are not candidates.
+Hardware/visible title presentation is still UNVALIDATED; ordinary graphical
+startup, shell/menu/world integration and simulation remain blocked/later work.
+Earlier next-step entries below are historical and superseded by this state.
+
+Exactly one recommended next task: **separately reviewed Generals-only native
+graphical smoke confirmation using x64-16-final-2**, preserving receipts and
+confirming the blue client area visually. Do not launch automatically; Zero Hour
+remains held for review. Do not begin the next renderer implementation here.
+
 ## X64.15 graphical renderer-route audit complete (2026-10-12)
 
 The combined Generals/Zero Hour X64.14 headless init-only milestone was finalized

@@ -11,10 +11,15 @@ class Texture2DCPUContent;
 class D3D11Backend final : public IRenderBackend
 {
 public:
+    using DiagnosticSink = void (*)(void *, const char *, const char *, const char *, unsigned);
+    struct Presentation { unsigned result = 0, removed_reason = 0; bool occluded = false; };
     struct Configuration {
         void *window = nullptr; // null selects a bounded offscreen target
         unsigned width = 128, height = 96;
         bool software = false; // explicit WARP selection for automated validation
+        bool diagnostic_windowed = false; // opt-in: suppress DXGI Alt-Enter
+        DiagnosticSink diagnostic = nullptr;
+        void *diagnostic_context = nullptr;
         TextureFilterClass::TextureFilterMode ui_filter = TextureFilterClass::TEXTURE_FILTER_BILINEAR;
         unsigned ui_anisotropy = 2;
     };
@@ -45,6 +50,7 @@ public:
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;
     unsigned Feature_Level() const;
+    Presentation Last_Presentation() const;
     void Set_UI_Filter_Policy(TextureFilterClass::TextureFilterMode, unsigned anisotropy);
 
     void Set_Gamma(float, float, float, bool, bool) override;

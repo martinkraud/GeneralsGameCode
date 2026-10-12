@@ -28,6 +28,9 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/StartupDiagnostics.h"
+#if defined(_WIN64)
+#include "WW3D2/Backend/NativeGraphicsSmoke.h"
+#endif
 
 #include "Common/FramePacer.h"
 #include "Common/GameEngine.h"
@@ -50,8 +53,26 @@ Int GameMain()
 
 	if (StartupDiagnostics::enabled())
 	{
+#if defined(_WIN64)
+        if (StartupDiagnostics::graphicsSmoke())
+        {
+            if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy()) exitcode = 1;
+            else {
+                NativeGraphicsSmoke::Configuration config; // hardware, visible, bounded defaults
+                config.sink = [](void *, const char *stage, const char *status, const char *detail, unsigned code) {
+                    StartupDiagnostics::checkpoint(stage, status, detail, code);
+                };
+                exitcode = NativeGraphicsSmoke::Run(config);
+            }
+            StartupDiagnostics::checkpoint("graphics_boundary", exitcode ? "fail" : "complete",
+                "execute/replay/simulation skipped", exitcode);
+        }
+        else
+#endif
+        {
 		if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy()) exitcode = 1;
 		StartupDiagnostics::checkpoint("init_only", "complete", "execute/replay/simulation skipped");
+        }
 	}
 	else if (!TheGlobalData->m_simulateReplays.empty())
 	{

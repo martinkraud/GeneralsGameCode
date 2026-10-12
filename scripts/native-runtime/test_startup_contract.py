@@ -38,6 +38,29 @@ class StartupContract(unittest.TestCase):
             self.assertNotIn("return ", s[gate:replay])
             self.assertGreater(cleanup, execute)
 
+    def test_graphics_gate_is_native_separate_and_bounded(self):
+        for title in ("Generals", "GeneralsMD"):
+            s = read(f"{title}/Code/GameEngine/Source/Common/GameMain.cpp")
+            start = s.index("if (StartupDiagnostics::enabled())", s.index("TheGameEngine->init();"))
+            end = s.index("else if (!TheGlobalData->m_simulateReplays.empty())", start)
+            gate = s[start:end]
+            self.assertIn("#if defined(_WIN64)", s[:start])
+            self.assertIn("NativeGraphicsSmoke::Run", gate)
+            self.assertIn('checkpoint("init_only",', gate)
+            self.assertNotIn("update(", gate)
+        s = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/NativeGraphicsSmoke.cpp")
+        self.assertNotIn("TheGameEngine", s)
+        self.assertNotIn("ApplicationHWnd", s)
+        self.assertIn("D3D11Backend::Create(settings)", s)
+        self.assertLess(s.index("backend.reset()"), s.index("DestroyWindow(window)"))
+        h = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/NativeGraphicsSmoke.h")
+        self.assertIn("software = false", h)
+        self.assertIn("hold_ms = 5000", h)
+        self.assertIn("max_frames = 300", h)
+        launch = read("scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1")
+        for term in ("$exit -eq 0", "$evidence.Valid", "$shutdownBytes -eq 0", "$dumps.Count -eq 0"):
+            self.assertIn(term, launch)
+
     def test_win32_fp_sequence_is_preserved(self):
         for title in ("Generals", "GeneralsMD"):
             path = f"{title}/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp"

@@ -143,3 +143,47 @@ TEST(NativeStartupGate, FlushedIsolatedLogAndFailClosedCapacity) {
     ASSERT_TRUE(RemoveDirectoryA(dump.c_str()));
     ASSERT_TRUE(RemoveDirectoryA(data.c_str())); ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
 }
+
+TEST(NativeGraphicsGate, StrictSeparateGrammarAndArchitecture) {
+    char exe[]="probe",head[]="-headless",flag[]="-nativeGraphicsSmoke",old[]="-nativeInitOnly",root[]="C:\\probe";
+    char *args[]={exe,head,flag,root};
+    EXPECT_TRUE(StartupDiagnostics::validGraphicsArguments(4,args));
+    EXPECT_FALSE(StartupDiagnostics::validArguments(4,args));
+    char *oldArgs[]={exe,head,old,root};
+    EXPECT_TRUE(StartupDiagnostics::validArguments(4,oldArgs));
+    EXPECT_FALSE(StartupDiagnostics::validGraphicsArguments(4,oldArgs));
+    char *mixed[]={exe,head,flag,root,old};
+    EXPECT_FALSE(StartupDiagnostics::validGraphicsArguments(5,mixed));
+    EXPECT_FALSE(StartupDiagnostics::validGraphicsArguments(3,args));
+    StartupDiagnostics::state()={};
+    EXPECT_FALSE(StartupDiagnostics::configure(5,mixed));
+    EXPECT_FALSE(StartupDiagnostics::enabled());
+    StartupDiagnostics::state()={};
+#if !defined(_WIN64)
+    EXPECT_FALSE(StartupDiagnostics::configure(4,args));
+    EXPECT_FALSE(StartupDiagnostics::graphicsSmoke());
+#endif
+    StartupDiagnostics::state()={};
+}
+TEST(NativeGraphicsGate, FlushedModeUsesSameIsolatedPathsWithoutInitOnlySuccess) {
+    char temp[MAX_PATH],root[MAX_PATH]; ASSERT_NE(GetTempPathA(MAX_PATH,temp),0u);
+    ASSERT_NE(GetTempFileNameA(temp,"x16",0,root),0u); ASSERT_TRUE(DeleteFileA(root));
+    ASSERT_TRUE(CreateDirectoryA(root,nullptr));
+    std::string data=std::string(root)+"\\userdata",dump=data+"\\CrashDumps",log=std::string(root)+"\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(),nullptr)); ASSERT_TRUE(CreateDirectoryA(dump.c_str(),nullptr));
+    char exe[]="probe",head[]="-headless",flag[]="-nativeGraphicsSmoke"; char *args[]={exe,head,flag,root};
+    StartupDiagnostics::state()={};
+#if defined(_WIN64)
+    ASSERT_TRUE(StartupDiagnostics::configure(4,args)); EXPECT_TRUE(StartupDiagnostics::graphicsSmoke());
+    EXPECT_EQ(std::string(StartupDiagnostics::userData()),data+"\\");
+    StartupDiagnostics::checkpoint("graphics_boundary","complete","execute/replay/simulation skipped");
+    std::ifstream in(log); std::string text((std::istreambuf_iterator<char>(in)),{});in.close();
+    EXPECT_NE(text.find("graphics_boundary\tcomplete"),std::string::npos);
+    EXPECT_EQ(text.find("init_only\tcomplete"),std::string::npos);
+    StartupDiagnostics::close(); ASSERT_TRUE(DeleteFileA(log.c_str()));
+#else
+    EXPECT_FALSE(StartupDiagnostics::configure(4,args));
+#endif
+    StartupDiagnostics::state()={};
+    ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str())); ASSERT_TRUE(RemoveDirectoryA(root));
+}

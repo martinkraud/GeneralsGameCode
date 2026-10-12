@@ -243,3 +243,17 @@ TEST(D3D11SentenceTest, HiddenWindowDXGIPresentResizeAndCleanup)
     EXPECT_THROW(backend->Resize(0, 0), std::runtime_error);
     backend.reset(); // destroy swap chain/device before HWND.
 }
+
+TEST(D3D11SentenceTest, DiagnosticBackendReportsDeviceTargetAndSetup) {
+    struct Receipt {
+        std::vector<std::string> stages;
+        static void Log(void *p,const char *stage,const char *status,const char *,unsigned code) {
+            EXPECT_EQ(code,0u);
+            if(std::string(status)=="complete") static_cast<Receipt *>(p)->stages.emplace_back(stage);
+        }
+    } receipt;
+    D3D11Backend::Configuration c; c.software=true;
+    c.diagnostic=Receipt::Log;c.diagnostic_context=&receipt;
+    auto backend=D3D11Backend::Create(c);
+    EXPECT_EQ(receipt.stages,(std::vector<std::string>{"graphics_device","graphics_target","graphics_setup","graphics_viewport"}));
+}

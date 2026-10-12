@@ -14,12 +14,16 @@
 #include <stdexcept>
 #include <string>
 #include <map>
+#include <cstdio>
 
 using Microsoft::WRL::ComPtr;
 namespace {
 void Check(HRESULT result, const char *operation)
 {
-    if (FAILED(result)) throw std::runtime_error(std::string(operation) + " HRESULT=" + std::to_string(static_cast<unsigned>(result)));
+    if (FAILED(result)) {
+        char hex[16]; std::snprintf(hex, sizeof(hex), "0x%08X", static_cast<unsigned>(result));
+        throw std::runtime_error(std::string(operation) + " HRESULT=" + hex);
+    }
 }
 [[noreturn]] void Unsupported() { throw std::runtime_error("Unsupported D3D11.1 renderer state/operation"); }
 Texture2DSampler SentenceSampler()
@@ -108,6 +112,7 @@ struct D3D11Backend::Impl {
     unsigned textures = 0, buffers = 0, draws = 0;
     D3D_FEATURE_LEVEL level = D3D_FEATURE_LEVEL_10_0;
     bool scene = false;
+    Presentation lastPresent;
     ~Impl() { if (context) { context->ClearState(); context->Flush(); } }
     void Target()
     {
@@ -141,6 +146,12 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
     if (!config.width || !config.height || config.width > 16384 || config.height > 16384) Unsupported();
     impl->config = config; impl->bridge = bridge;
     Set_UI_Filter_Policy(config.ui_filter, config.ui_anisotropy);
+    const char *phase = "graphics_device";
+    auto report = [&](const char *status, const char *detail = "", unsigned code = 0) {
+        if (config.diagnostic) config.diagnostic(config.diagnostic_context, phase, status, detail, code);
+    };
+    try {
+    report("begin", config.software ? "driver=WARP" : "driver=hardware");
     const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0};
     const auto driver = config.software ? D3D_DRIVER_TYPE_WARP : D3D_DRIVER_TYPE_HARDWARE;
     DXGI_SWAP_CHAIN_DESC swap{};
@@ -152,7 +163,31 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
     Check(D3D11CreateDeviceAndSwapChain(nullptr, driver, nullptr, 0, levels, 3, D3D11_SDK_VERSION,
         config.window ? &swap : nullptr, config.window ? impl->swapchain.GetAddressOf() : nullptr,
         &impl->device, &impl->level, &impl->context), "D3D11CreateDeviceAndSwapChain");
-    impl->Target();
+    if (config.diagnostic || config.diagnostic_windowed) {
+        ComPtr<IDXGIDevice> dxgiDevice; ComPtr<IDXGIAdapter> adapter;
+        Check(impl->device.As(&dxgiDevice), "Query DXGI device");
+        Check(dxgiDevice->GetAdapter(&adapter), "Get adapter");
+        DXGI_ADAPTER_DESC desc{}; Check(adapter->GetDesc(&desc), "Get adapter description");
+        char name[256]{};
+        if (!WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name, sizeof(name), nullptr, nullptr))
+            throw std::runtime_error("Adapter name conversion failed");
+        char detail[512]; std::snprintf(detail, sizeof(detail),
+            "driver=%s feature=0x%X vendor=0x%X device=0x%X adapter=%s size=%ux%u",
+            config.software ? "WARP" : "hardware", static_cast<unsigned>(impl->level),
+            desc.VendorId, desc.DeviceId, name, config.width, config.height);
+        report("complete", detail);
+        if (config.diagnostic_windowed) {
+            phase = "graphics_window_association"; report("begin");
+            ComPtr<IDXGIFactory> factory;
+            Check(adapter->GetParent(IID_PPV_ARGS(&factory)), "Get DXGI factory");
+            Check(factory->MakeWindowAssociation(static_cast<HWND>(config.window),
+                DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_WINDOW_CHANGES), "MakeWindowAssociation");
+            report("complete");
+        }
+    } else report("complete");
+    phase = "graphics_target"; report("begin");
+    impl->Target(); report("complete", "RGBA8 single-sample backbuffer/RTV");
+    phase = "graphics_setup"; report("begin");
     auto vs = Compile("VS", "vs_4_0"), ps = Compile("PS", "ps_4_0");
     Check(impl->device->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), nullptr, &impl->vs), "Create VS");
     Check(impl->device->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), nullptr, &impl->ps), "Create PS");
@@ -185,7 +220,10 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
     ComPtr<ID3D11Texture2D> texture;
     Check(impl->device->CreateTexture2D(&white, &data, &texture), "Create null diffuse texture");
     Check(impl->device->CreateShaderResourceView(texture.Get(), nullptr, &impl->white), "Create null SRV");
-    Set_Viewport({0, 0, config.width, config.height, 0, 1});
+    report("complete", "VS/PS/layout/states/resources");
+    phase = "graphics_viewport"; report("begin");
+    Set_Viewport({0, 0, config.width, config.height, 0, 1}); report("complete");
+    } catch (const std::exception &error) { report("fail", error.what(), 1); throw; }
 }
 D3D11Backend::~D3D11Backend() = default;
 
@@ -333,7 +371,15 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
 }
 void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene = true; }
 void D3D11Backend::End_Scene(bool flip) { if (!impl->scene) Unsupported(); impl->scene = false; if (flip) Flip_To_Primary(); }
-void D3D11Backend::Flip_To_Primary() { if (!impl->swapchain) Unsupported(); Check(impl->swapchain->Present(0, 0), "Present"); }
+void D3D11Backend::Flip_To_Primary() {
+    if (!impl->swapchain) Unsupported();
+    const HRESULT result = impl->swapchain->Present(0, 0);
+    impl->lastPresent = {static_cast<unsigned>(result),
+        FAILED(result) ? static_cast<unsigned>(impl->device->GetDeviceRemovedReason()) : 0u,
+        result == DXGI_STATUS_OCCLUDED};
+    Check(result, "Present");
+}
+D3D11Backend::Presentation D3D11Backend::Last_Presentation() const { return impl->lastPresent; }
 void D3D11Backend::Clear(bool color, bool depth, const Vector3 &rgb, float alpha, float, unsigned)
 {
     if (depth) Unsupported();

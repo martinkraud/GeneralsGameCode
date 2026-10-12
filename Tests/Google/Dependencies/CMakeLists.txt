@@ -227,3 +227,14 @@ target_compile_definitions(d3d11_ui_test PRIVATE DISABLE_GAMEMEMORY
     D3D11_UI_ASSET="${PROJECT_SOURCE_DIR}/Core/Tools/W3DView/Res/grab.tga")
 target_link_libraries(d3d11_ui_test PRIVATE w3d_d3d11 GTest::gtest_main)
 add_test(NAME d3d11_ui_test COMMAND d3d11_ui_test)
+
+add_executable(native_graphics_smoke_test
+    ../Core/Libraries/NativeGraphicsSmokeTest.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.cpp
+    ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp
+)
+target_include_directories(native_graphics_smoke_test PRIVATE ${PROJECT_SOURCE_DIR}/GeneralsMD/Code/Libraries/Source/WWVegas)
+target_compile_definitions(native_graphics_smoke_test PRIVATE DISABLE_GAMEMEMORY)
+target_link_libraries(native_graphics_smoke_test PRIVATE w3d_d3d11 GTest::gtest_main user32)
+add_test(NAME native_graphics_smoke_test COMMAND native_graphics_smoke_test)
+set_tests_properties(native_graphics_smoke_test PROPERTIES TIMEOUT 30)

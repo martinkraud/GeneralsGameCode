@@ -800,7 +800,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
 	Int exitcode = 1;
 	if (!StartupDiagnostics::configure(__argc, __argv)) return 87;
-	StartupDiagnostics::checkpoint("WinMain", "begin", "GeneralsMD AMD64 init-only");
+	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::graphicsSmoke() ? "GeneralsMD AMD64 graphics smoke" : "GeneralsMD AMD64 init-only");
 	if (StartupDiagnostics::enabled())
 	{
 		char diagnosticModule[MAX_PATH] = {};

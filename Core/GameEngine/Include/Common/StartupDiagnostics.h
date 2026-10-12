@@ -10,12 +10,14 @@
 namespace StartupDiagnostics {
 struct State {
     bool configured, requested, valid, healthy;
+    bool graphicsSmoke;
     HANDLE file;
     unsigned records;
     char root[MAX_PATH], userData[MAX_PATH];
 };
 inline State &state() { static State value = {}; return value; }
 inline bool enabled() { return state().requested && state().valid; }
+inline bool graphicsSmoke() { return enabled() && state().graphicsSmoke; }
 inline bool healthy() { return !enabled() || state().healthy; }
 inline const char *userData() { return enabled() ? state().userData : nullptr; }
 
@@ -23,6 +25,10 @@ inline const char *userData() { return enabled() ? state().userData : nullptr; }
 inline bool validArguments(int argc, char **argv) {
     return argc == 4 && !_stricmp(argv[1], "-headless") &&
         !_stricmp(argv[2], "-nativeInitOnly") && std::strlen(argv[3]) < 180;
+}
+inline bool validGraphicsArguments(int argc, char **argv) {
+    return argc == 4 && !_stricmp(argv[1], "-headless") &&
+        !_stricmp(argv[2], "-nativeGraphicsSmoke") && std::strlen(argv[3]) < 180;
 }
 inline void checkpoint(const char *stage, const char *status,
                        const char *detail = "", unsigned code = 0) {
@@ -49,11 +55,12 @@ inline bool configure(int argc, char **argv) {
     s.configured = true;
     for (int i = 1; i < argc; ++i)
         if (!_stricmp(argv[i], "-nativeInitOnly")) s.requested = true;
+        else if (!_stricmp(argv[i], "-nativeGraphicsSmoke")) { s.requested = true; s.graphicsSmoke = true; }
     if (!s.requested) return true;
 #if !defined(_WIN64)
     return false; // Native diagnostic option must never change the Win32 route.
 #else
-    if (!validArguments(argc, argv)) return false;
+    if (!(s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
     const char *root = argv[3];
     if (!((root[0] >= 'A' && root[0] <= 'Z') || (root[0] >= 'a' && root[0] <= 'z')) ||
         root[1] != ':' || root[2] != '\\') return false;

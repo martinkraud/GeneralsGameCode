@@ -15,7 +15,7 @@ Reject { & (Join-Path $PSScriptRoot 'Invoke-NativeInitOnly.ps1') -Title Generals
 foreach ($title in @('Generals','ZeroHour')) {
     $build=Get-NativeBuild $title
     $pe=Get-NativePE $build.Executable
-    if ($pe.Imports.Count -ne 28 -or $pe.HasDelayImports -or @($pe.Imports | Where-Object { $_ -like '*d3dx*' }).Count) {
+    if ($pe.Imports.Count -ne 30 -or $pe.HasDelayImports -or @($pe.Imports | Where-Object { $_ -like '*d3dx*' }).Count) {
         throw "Unexpected dependency baseline: $title"
     }
     $null=Assert-NativeDependencies $build.Executable (Split-Path $build.Executable -Parent)
