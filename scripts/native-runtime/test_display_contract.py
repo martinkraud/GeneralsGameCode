@@ -75,7 +75,7 @@ class DisplayContracts(unittest.TestCase):
    self.assertEqual((ROOT/p).read_bytes().replace(b'\r\n',b'\n'),old.replace(b'\r\n',b'\n'))
   s=read('Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeMenuComposition.h')
   for term in ['->execute(', '->update(', 'showShell(', 'MainMenuInit(', 'new WindowLayout', 'Get_Texture(']:self.assertNotIn(term,s)
-  for term in ['winCreateFromScript("MainMenu.wnd")','drawWindow(root)','GadgetPushButtonSystem','GadgetStaticTextSystem',
+  for term in [r'winCreateFromScript("Window\\Menus\\MainMenu.wnd")','drawWindow(root)','GadgetPushButtonSystem','GadgetStaticTextSystem',
    'TheTransitionHandler=nullptr; TheWindowManager=manager;', 'TheWindowManager=previousManager;TheTransitionHandler=previousTransitions;',
    'W3DGadgetPushButtonImageDraw','PrivateImage','MIP_LEVELS_1','parsed!=63']:
    self.assertIn(term,s)

@@ -1,5 +1,75 @@
 # X64.21: static original Generals main-menu composition
 
+## X64.21 failure localized; fix1 awaits reviewed runtime confirmation
+
+Reviewed Generals `x64-21-final/runs/20261012T1822476915817Z` exited1
+without timeout or launcher error. All288 contiguous checkpoints belong to PID31736.
+Hardware Intel8086:7D45/feature11.0 device and retained display attachment completed;
+`ui_menu_load` began, then `Original MainMenu.wnd parse failed` rejected setup.
+No frame was drawn/presented. UI/display/backend/HWND/engine/MiniDumper cleanup,
+late observer and final WinMain fail/exit completed; shutdown evidence is empty
+and no dump exists. This is an orderly failure, not a crash or demonstrated
+D3D11 rendering regression. X64.21 remains UNACCEPTED.
+
+Concrete cause: bare `MainMenu.wnd` becomes `Window\MainMenu.wnd` in the
+unchanged parser. Direct inspection of every BIG index in the reviewed stage
+finds the original208336-byte file only at `Window\Menus\MainMenu.wnd`, in
+Window.big. Original Shell requests `Menus/MainMenu.wnd`; the separate widget-ID
+prefix remains `MainMenu.wnd:`. The diagnostic now passes the full archive key
+and logs it. No parser/filesystem/renderer/widget/font/Win32 behavior changed.
+
+New AMD64 regression exercises the actual inherited parser and actual diagnostic
+Load entry point through a local-file spy, reproducing the old wrong request and
+verifying the corrected key. The spy deliberately returns null: this isolates
+path resolution, not full parsing/drawing. Both titles pass. No acceptance test
+is weakened; original assets and legacy preservation contracts remain intact.
+
+Offline validation PASS: full Win32 Release/CTest25, direct155/focused81 per title
+(six pre-existing disabled tests), sentence5/render2d15; both AMD64 title links,
+independent CTest15, texture/UI16 per title; Python rendering30/native17/performance16;
+PowerShell graphics81/native6 guards/all10 script parses. Both AMD64 executables
+retain30 imports,no delay or D3D8/D3DX imports;31 graphics dependencies pass each.
+All51 recorded evidence hashes and32 prior staged EXE/PDB hashes remain unchanged.
+The failed stage's actual EXE/PDB hashes and GUID/age61 independently match receipts.
+No title was executed. Generated evidence/stages/analysis remain ignored.
+
+Fresh Generals `x64-21-fix1` is prepared after validation. Exactly one next task:
+separately reviewed Generals-only fix1 static original-main-dropdown confirmation.
+Full63-window parsing, composition, presentation and lifetime acceptance remain
+unverified until then. No interactive shell,world,input/update/execute/replay/
+simulation/GameLogic or Zero Hour UI acceptance is implied. See the
+[X64.21 report](X64_21_STATIC_MENU_COMPOSITION.md) for identity/commands/stop rules.
+
+### Replacement candidate and developer boundary
+
+Fresh-stage and separate full preflight PASS; no runs directory or app-local DLL.
+Matching AMD64 Generals stage identity (no rebuild/restage after this copy):
+
+- GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age62.
+- EXE SHA256 `CA683A77F208FF528131DFE0CBCD57249206AB074DB056CFAA8F461790B15739`.
+- PDB SHA256 `F1BEC3018A4A2323C98EDCC0E97C228729B05B965130B5B15DB654F9C545C0D9`.
+
+Do not reuse the failed `x64-21-final` stage/run. After separate developer review:
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-21-fix1 -UIMenu
+./scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-21-fix1 -UIMenu -RunReviewedGraphicsSmoke
+```
+
+Run the second command only if preflight passes. Expect about five seconds of
+fixed800x600 blue diagnostic background with the original ruler/logo and main
+panel, six textured buttons and readable original localized labels (Single Player,
+Multiplayer,Replay,Options,Credits,Exit). Do not click/press anything. Automatic
+exit0 and the full machine/visual contract remain mandatory. No world or
+interactive shell is expected; no next run starts automatically.
+Evidence: `build/dev-runtimes/native/Generals/x64-21-fix1/runs/<timestamp>`.
+If preflight/runtime fails, the window closes early, any element is absent/corrupt,
+text is unreadable or cleanup/visibility fails, stop and preserve the exact run.
+Return run path, console result and visual observations. Do not retry, rebuild,
+restage or launch Zero Hour. The original commands/preparation below are historical
+and superseded by fix1; the acceptance contract is unchanged.
+
 ## Accepted baseline and scope
 
 Generals X64.20-fix1 is formally accepted; see the final acceptance section of

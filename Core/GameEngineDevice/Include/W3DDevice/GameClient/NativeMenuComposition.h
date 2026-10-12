@@ -181,9 +181,11 @@ public:
             "widgets/display strings/private images/atlases released; engine manager/transitions restored");
     }
     void Load() {
-        StartupDiagnostics::checkpoint("ui_menu_load","begin","original Window/MainMenu.wnd; static callbacks isolated");
+        StartupDiagnostics::checkpoint("ui_menu_load","begin","original Window/Menus/MainMenu.wnd; static callbacks isolated");
         // Do not wrap in WindowLayout: load/init/shutdown callbacks must not run.
-        root=manager->winCreateFromScript("MainMenu.wnd");
+        // A bare name is prefixed only with Window\ by the legacy parser.
+        // Use the original archive path, including its Menus subdirectory.
+        root=manager->winCreateFromScript("Window\\Menus\\MainMenu.wnd");
         if(!root) throw std::runtime_error("Original MainMenu.wnd parse failed");
         HideTree(root);
         if(parsed!=63) throw std::runtime_error("Original Generals MainMenu window count mismatch");

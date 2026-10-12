@@ -1,5 +1,45 @@
 # Agent handoff
 
+## X64.21 failure localized; fix1 awaits reviewed runtime confirmation
+
+Reviewed Generals `x64-21-final/runs/20261012T1822476915817Z` exited1
+without timeout or launcher error. All288 contiguous checkpoints belong to PID31736.
+Hardware Intel8086:7D45/feature11.0 device and retained display attachment completed;
+`ui_menu_load` began, then `Original MainMenu.wnd parse failed` rejected setup.
+No frame was drawn/presented. UI/display/backend/HWND/engine/MiniDumper cleanup,
+late observer and final WinMain fail/exit completed; shutdown evidence is empty
+and no dump exists. This is an orderly failure, not a crash or demonstrated
+D3D11 rendering regression. X64.21 remains UNACCEPTED.
+
+Concrete cause: bare `MainMenu.wnd` becomes `Window\MainMenu.wnd` in the
+unchanged parser. Direct inspection of every BIG index in the reviewed stage
+finds the original208336-byte file only at `Window\Menus\MainMenu.wnd`, in
+Window.big. Original Shell requests `Menus/MainMenu.wnd`; the separate widget-ID
+prefix remains `MainMenu.wnd:`. The diagnostic now passes the full archive key
+and logs it. No parser/filesystem/renderer/widget/font/Win32 behavior changed.
+
+New AMD64 regression exercises the actual inherited parser and actual diagnostic
+Load entry point through a local-file spy, reproducing the old wrong request and
+verifying the corrected key. The spy deliberately returns null: this isolates
+path resolution, not full parsing/drawing. Both titles pass. No acceptance test
+is weakened; original assets and legacy preservation contracts remain intact.
+
+Offline validation PASS: full Win32 Release/CTest25, direct155/focused81 per title
+(six pre-existing disabled tests), sentence5/render2d15; both AMD64 title links,
+independent CTest15, texture/UI16 per title; Python rendering30/native17/performance16;
+PowerShell graphics81/native6 guards/all10 script parses. Both AMD64 executables
+retain30 imports,no delay or D3D8/D3DX imports;31 graphics dependencies pass each.
+All51 recorded evidence hashes and32 prior staged EXE/PDB hashes remain unchanged.
+The failed stage's actual EXE/PDB hashes and GUID/age61 independently match receipts.
+No title was executed. Generated evidence/stages/analysis remain ignored.
+
+Fresh Generals `x64-21-fix1` is prepared after validation. Exactly one next task:
+separately reviewed Generals-only fix1 static original-main-dropdown confirmation.
+Full63-window parsing, composition, presentation and lifetime acceptance remain
+unverified until then. No interactive shell,world,input/update/execute/replay/
+simulation/GameLogic or Zero Hour UI acceptance is implied. See the
+[X64.21 report](X64_21_STATIC_MENU_COMPOSITION.md) for identity/commands/stop rules.
+
 ## Generals X64.20 accepted; X64.21 substantial static menu gate
 
 Generals x64-20-fix1 run20261012T1743032823349Z is formally ACCEPTED from

@@ -134,6 +134,45 @@ struct MenuRecorder : NativeStaticMenuManager {
     }
 };
 }
+// Exercise the actual legacy filename resolver and the actual diagnostic Load
+// entry point. The local-file spy returns null deliberately: no assets, renderer,
+// layout callbacks or native title execution are needed to reproduce this gate.
+#include "Common/FileSystem.h"
+#include "Common/LocalFileSystem.h"
+#include "Common/ArchiveFileSystem.h"
+namespace {
+struct MenuFileSpy : LocalFileSystem {
+    void init() override {}
+    void reset() override {}
+    void update() override {}
+    AsciiString requested;
+    File *openFile(const Char *name,Int,size_t) override {requested=name;return nullptr;}
+    Bool doesFileExist(const Char *) const override {return FALSE;}
+    void getFileListInDirectory(const AsciiString&,const AsciiString&,const AsciiString&,FilenameList&,Bool) const override {}
+    Bool getFileInfo(const AsciiString&,FileInfo*) const override {return FALSE;}
+    Bool createDirectory(AsciiString) override {return FALSE;}
+    AsciiString normalizePath(const AsciiString& p) const override {return p;}
+};
+struct MenuFileScope {
+    FileSystem *file=TheFileSystem;
+    LocalFileSystem *local=TheLocalFileSystem;
+    ArchiveFileSystem *archive=TheArchiveFileSystem;
+    FileSystem system;MenuFileSpy spy;
+    MenuFileScope(){TheFileSystem=&system;TheLocalFileSystem=&spy;TheArchiveFileSystem=nullptr;}
+    ~MenuFileScope(){TheFileSystem=file;TheLocalFileSystem=local;TheArchiveFileSystem=archive;}
+};
+}
+TEST(UIProducerTest, StaticMenuUsesOriginalMenusArchivePathThroughActualLegacyResolver)
+{
+    MenuFileScope files;
+    NativeMenuComposition menu;
+    EXPECT_EQ(TheWindowManager->winCreateFromScript("MainMenu.wnd"),nullptr);
+    EXPECT_EQ(files.spy.requested,AsciiString("Window\\MainMenu.wnd"));
+    // The corrected production entry point must request the actual BIG key,
+    // not the widget-name prefix MainMenu.wnd: used inside the layout.
+    EXPECT_THROW(menu.Load(),std::runtime_error);
+    EXPECT_EQ(files.spy.requested,AsciiString("Window\\Menus\\MainMenu.wnd"));
+}
 TEST(UIProducerTest, StaticMenuBlocksApplicationEventsAndRestoresSingletonOwnership)
 {
     auto *old=TheWindowManager;auto *transitions=TheTransitionHandler;unsafeCalls=0;
