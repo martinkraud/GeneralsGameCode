@@ -210,3 +210,104 @@ resize/device loss, and everything in class C.
 `ControlBar::init` asset set; `MilesAudioManager` init/update neutrality when
 audio is off; ShellMenuScheme draw-op set; Zero Hour WinMain/GameMain/
 GameEngine differences; behavior of saved `Options.ini` on the target machine.
+
+## Implementation: ordinary-lifetime presentation host (first slice)
+
+The audit direction was approved (A9: a narrowly scoped UI-without-world profile,
+not a global `m_headless=false`). This slice integrates A0/A1/A4/A5/A7/A8/A9.
+Implementation commit `66d23d7d1`; no title was executed by the implementer.
+
+### What changed (all `_WIN64`-guarded, Generals only)
+
+| Area | Change |
+| --- | --- |
+| Profile (A0) | `-win -xres 800 -yres 600 -nologo -noshellmap -winCursors -nativeOrdinaryHost <root>`, exactly 11 argv tokens, exact values, case-insensitive names, Generals only (`RTS_ZEROHOUR` rejects), Win32 never enables it. Any missing/extra/reordered/different token (including `-fullscreen`, other resolutions, replay/developer switches) fails `configure` and exits 87 instead of being coerced. `StartupDiagnostics::ordinaryHost()` is orthogonal to `m_headless`. |
+| World selection (A9) | `m_headless` stays TRUE (forced by the existing diagnostic parse path), so audio/radar/particles/terrain/view/ghost/asset-recolor/GameClient keyboard-mouse-window-manager keep the accepted headless variants unchanged. Only the application window and `W3DDisplay` lifetime become real. `m_winCursors` is set by the profile. |
+| Window (A1) | `initializeOrdinaryHostWindow` (WinMain.cpp): same class name, **existing WndProc**, legacy windowed style bits, window-class arrow cursor; every API result checked with `GetLastError` receipts, client must be exactly 800x600 before and after show, `ApplicationHWnd` is the same global. Legacy `initializeAppWindows` and `WndProc` are identical to the X64.21 baseline (contract-tested). `gDoPaint=false` so the loading bitmap never repaints over the swap chain. |
+| Display init (A4/A8) | `W3DDisplay::init` gets one `#if _WIN64 else if (ordinaryHost())` branch that calls `initOrdinaryHostPresentation()` instead of the legacy non-headless block: verifies windowed 800x600 and exact client, receipts six bypassed DX8-only initializers, calls `WW3D::Init_Native_Presentation(ApplicationHWnd)`, creates the ordinary `m_2DRender`, sets 800x600x32 windowed and the legacy UV bias, verifies device/target dimensions and audits loaded modules (`d3d8`/`d3dx8` loaded = failure). `WW3D::Init`, `Create_Render_Backend`, `DX8Wrapper`, `Set_Render_Device` are not entered; `DX8Backend.cpp` and `ww3d.cpp` are unmodified. |
+| UI-only draw (A5) | In `W3DDisplay::draw`, a profile branch placed before the unchanged `if (m_headless) return;` runs `drawOrdinaryHostFrame()`: color-only `Begin_Render`, ordinary `drawFillRect/drawOpenRect/drawImage/DisplayString::draw`, `End_Render(true)`. No views, water, particles, depth or `WW3D::Render`. |
+| Gate | `W3DDisplay::runOrdinaryHostGate` (called from `GameMain` after init, before replay/execute): `TheGameEngine->serviceWindowsOS()` (ordinary WndProc), `TheDisplay->DRAW()`, bounded by the existing `NativeGraphicsSmoke::Evaluate` (5000 ms hold, 300 frames, visible unoccluded S_OK Present required, resize/close/iconic handling). No `update`, `execute`, GameLogic, Shell or message propagation. |
+| Teardown (A7) | Display strings freed by the gate; `~W3DDisplay`: `m_2DRender` -> `Free_Assets` (global texture cache) -> `D3D11Backend::Live_Residencies()` must be 0 (else `ui_residency_release fail` and `markFailed` -> exit 1) -> `Shutdown_Native_Presentation` (backend/device) -> normal engine/MiniDumper teardown -> only then `DestroyWindow` + `UnregisterClass` in WinMain. |
+
+The ordinary-host display code lives in its own file
+(`W3DDisplayOrdinaryHost.cpp`), separate from the attached diagnostic in
+`W3DDisplayPresentation.cpp`, so the accepted diagnostic source is unchanged.
+
+### Deliberately not done
+
+Real window manager, Shell, MainMenuInit, mouse/keyboard (still `MouseDummy`, no
+DirectInput), transitions, hover/pressed/disabled states, intro movies, audio
+(MilesAudioManagerDummy), fullscreen/resize/device loss, Zero Hour, anything in
+class C. `GameClient::update`, `GameEngine::update` and `execute` are never called.
+
+### Offline validation
+
+- AMD64 build of `g_generals z_generals g_googletest z_googletest` and all
+  native test targets: 0 errors. Win32 reference full build: 0 errors.
+- AMD64 CTest 15/15; `g_googletest`/`z_googletest` 157 each (6 pre-existing
+  disabled); Win32 CTest 23/23 and `g/z_googletest` 156 each.
+- New: `native_startup_gate_test` 22 (ordinary-host strict grammar incl. every
+  mutation, configure/isolation/`markFailed`, window geometry/exact client and
+  resize detection, no-D3D8 module audit helper, residency verdict);
+  `d3d11_ui_test` residency counter on WARP; Python contract tests (26 total,
+  9 new: no global headless flip, display branch ordering and absence of DX8 calls,
+  UI-only draw has no world/depth, gate has no update/execute, teardown order,
+  legacy WinMain/WndProc/factory/ww3d unchanged, launcher requirements);
+  `Test-NativeOrdinaryHostWorkflow.ps1` 31 synthetic evidence/guard checks;
+  existing graphics 81 / native 6 workflow suites unchanged and passing;
+  all PowerShell scripts parse.
+
+### Known unverified (the first run exercises them)
+
+1. Engine init after the presentation backend is active: any eager
+   `TextureClass::Init()` of an unsupported/absent texture in the remaining
+   headless init path would throw (the bridge rejects explicitly). None was found
+   by source reading (world resource creators are headless-guarded) but it is not
+   proven.
+2. WM_IME_* messages now reach `TheIMEManager` with a dummy window manager.
+3. Zero live residencies at teardown through the ordinary global cache and
+   font/DisplayString paths (the private-clone diagnostic could not prove this).
+4. First native-hardware frame through ordinary `W3DDisplay::draw`.
+
+## First reviewed native run (Generals only)
+
+Stage `x64-22-ordinary-host` was staged fresh and preflighted without execution.
+Do not rebuild or restage it; a changed build gets a new name.
+
+- Debug GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age 65.
+- EXE SHA256 `A0BDFA5CE1E008284D6903670E99BAE4A49BD94C257548CACFA0FEC400133E66`.
+- PDB SHA256 `718C6A95BC7D430A8D00709854B8A966FFB27A81E3EDE8AA2E8BFA4DC2AF96CA`.
+- PE32+ AMD64, 30 direct imports (includes `d3d11.dll`, `D3DCOMPILER_47.dll`), no
+  delay imports, no D3D8/D3DX imports, no app-local DLLs, no `runs` directory.
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeOrdinaryHost.ps1 -Title Generals -Name x64-22-ordinary-host
+./scripts/native-runtime/Invoke-NativeOrdinaryHost.ps1 -Title Generals -Name x64-22-ordinary-host -RunReviewedOrdinaryHost
+```
+
+Run the second line only after the first prints PASS.
+
+**Visual expectation (about five seconds, no interaction):** a normal framed,
+centered 800x600 window titled "Command and Conquer Generals" with a solid blue
+background; the original Generals logo at the top right (x 504..791, y 16..110);
+a dark translucent panel with a thin gold border at the right (x 532..756,
+y 108..360) containing the localized yellow "Select Difficulty" label at its
+top-left; a white caption "AMD64 ordinary host - presentation gate (no gameplay)"
+at the top-left of the window. The cursor is the Windows arrow. Do not click,
+close or key the window: Escape intentionally does nothing and closing it is a
+FAIL (abort). The window then disappears by itself and the console prints PASS.
+
+**PASS requires all of:** exit code 0; the launcher prints PASS (it independently
+requires an unoccluded visible S_OK first Present, 1..300 frames covering
+5000..6000 ms, `d3d8=0 d3dx8=0` module audit, `live_residencies=0` before backend
+release, window released only after engine cleanup, empty
+`shutdown-exception.bin`, no dumps, matching paths, final `WinMain complete`);
+and you confirm the visual above with no corruption.
+
+**FAIL:** any non-zero exit, timeout, crash/dialog, missing/black/white window,
+missing logo/panel/label/caption, garbled text, a window that stays open, or the
+launcher message `Ordinary-host validation failed`. The run directory
+`build/dev-runtimes/native/Generals/x64-22-ordinary-host/runs/<timestamp>` is
+preserved untouched and nothing reruns automatically. Report that path, the
+console output and `startup.log`; do not delete or edit the run.
