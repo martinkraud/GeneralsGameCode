@@ -82,3 +82,19 @@ with a valid map, flicker, or a hang/crash.
 `terrain_summary` with >= 30 frames, no residency leak (`live_residencies=0`), zero
 dumps/shutdown bytes/timeouts. FAIL = any missing/duplicate row or failed phase; the
 run is preserved and not re-run automatically.
+
+## First run: FAIL (20261012T2230013281405Z) and fix1
+
+Machine evidence: exit 1, 217 records, game started (players=5, alpine assault),
+then `game_loop fail: Unsupported D3D11.1 renderer state/operation` before any terrain
+frame (`terrain_summary frames=0`), no dumps, clean teardown rows absent.
+
+Root cause (source-reviewed): the CPU atlas is deliberately truncated to the legacy
+`MIP_LEVELS_3` (3 levels of 2048-wide), but `D3D11Backend::Create_Mipped_Rgba8_Residency`
+required every chain to reach 1x1 and threw the generic unsupported error on the first
+terrain frame. D3D11 immutable textures accept partial chains. Fix: the backend accepts a
+validated partial chain (each level exactly halves), `WorldTest` now asserts a partial
+chain is accepted and a wrong-size level is still rejected. `renderNative` additionally
+reports invalid viewport / non-finite transforms with descriptive messages instead of the
+generic backend error. The failed run is preserved under the original stage; a fresh
+stage `x64-25-ordinary-terrain-fix1` replaces it.

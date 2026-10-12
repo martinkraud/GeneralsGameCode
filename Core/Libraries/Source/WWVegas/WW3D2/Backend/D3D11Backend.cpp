@@ -627,7 +627,7 @@ Texture2DResidency *D3D11Backend::Create_Mipped_Rgba8_Residency(unsigned width, 
         lastW = w; lastH = h;
         w = w > 1 ? w / 2 : 1; h = h > 1 ? h / 2 : 1;
     }
-    if (mips.size() > 1 && (lastW != 1 || lastH != 1)) Unsupported(); // a chain must reach 1x1
+    (void)lastW; (void)lastH; // a partial chain is valid (legacy terrain atlas has 3 levels)
     auto result = std::make_unique<Residency>();
     result->device = impl->device;
     result->description = {};

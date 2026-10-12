@@ -585,8 +585,10 @@ TEST(WorldTest, MippedAtlasResidencySelectsLevelsAndRejectsBrokenChains)
     std::unique_ptr<Texture2DResidency> atlas(backend->Create_Mipped_Rgba8_Residency(4, 4, mips));
     Texture2DDescription d; ASSERT_TRUE(atlas->Describe(d));
     EXPECT_EQ(d.mip_count, 3u);
-    auto bad = mips; bad.pop_back();                      // chain stops at 2x2
-    EXPECT_THROW(backend->Create_Mipped_Rgba8_Residency(4, 4, bad), std::runtime_error);
+    auto partial = mips; partial.pop_back();              // chain stops at 2x2: valid partial chain
+    std::unique_ptr<Texture2DResidency> partialAtlas(backend->Create_Mipped_Rgba8_Residency(4, 4, partial));
+    Texture2DDescription pd; ASSERT_TRUE(partialAtlas->Describe(pd));
+    EXPECT_EQ(pd.mip_count, 2u);
     auto wrong = mips; wrong[1].resize(3);
     EXPECT_THROW(backend->Create_Mipped_Rgba8_Residency(4, 4, wrong), std::runtime_error);
     // Mip-linear sampling at full-screen scale-down: a 1x1 target draws the quad covering 4x4 texels

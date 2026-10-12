@@ -2009,6 +2009,24 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 	submission.viewport.height = static_cast<unsigned>((viewport.Max.Y - viewport.Min.Y) * static_cast<float>(height));
 	submission.viewport.min_z = zMin;
 	submission.viewport.max_z = zMax;
+	{
+		// Descriptive failures instead of the backend's generic unsupported-state error.
+		char detail[200];
+		const unsigned long rw = static_cast<unsigned long>(width), rh = static_cast<unsigned long>(height);
+		if (!submission.viewport.width || !submission.viewport.height ||
+			submission.viewport.x + submission.viewport.width > rw ||
+			submission.viewport.y + submission.viewport.height > rh) {
+			sprintf(detail, "Native terrain viewport invalid: %u,%u %ux%u in %lux%lu (camera %.3f,%.3f-%.3f,%.3f)",
+				submission.viewport.x, submission.viewport.y, submission.viewport.width, submission.viewport.height,
+				rw, rh, viewport.Min.X, viewport.Min.Y, viewport.Max.X, viewport.Max.Y);
+			throw std::runtime_error(detail);
+		}
+		for (int i = 0; i < 16; ++i) {
+			const float v = submission.world[i], w2 = submission.view[i], p = submission.projection[i];
+			if (!(v - v == 0.0f) || !(w2 - w2 == 0.0f) || !(p - p == 0.0f))
+				throw std::runtime_error("Native terrain transform contains a non-finite value");
+		}
+	}
 	submission.texture = n.atlas.get();
 	// The legacy terrain stages set clamp addressing and the global terrain filter flags.
 	submission.clamp = true;
