@@ -1,5 +1,42 @@
 # Renderer and display architecture
 
+## X64.15 graphical renderer-route audit complete (2026-10-12)
+
+The combined Generals/Zero Hour X64.14 headless init-only milestone was finalized
+and pushed in documentation commit1c82677fbbf8a6b55c13ad1e550d6d148b1728cd before
+this audit. Both reviewed runs/symbols remain unchanged. No game was launched.
+Actual source/factory and current AMD64 imports still select DX8: missing system
+AMD64 D3D8 blocks ordinary graphical startup. Modern libraries occur in both
+link inputs, but their imports are absent from the actual titles; no active
+D3D11 backend is inferred from successful linkage.
+
+D3D11 already owns device/context, windowed swap chain/backbuffer/RTV, viewport,
+color-clear/begin/end/present, resize and bounded sentence/normal-alpha file-UI
+rendering. Existing isolated tests pass4/4 per architecture; rendering Python28
+passes. Hidden WARP presentation is not visible hardware or game-backend proof.
+Factory switching alone leaves DX8 device/caps/resolution, depth clear, texture/
+sorting/shader manager/cursor and teardown assumptions. Shell/menu is a separate
+integration gate; do not enter execute/update to obtain a message loop.
+
+See [X64_15_GRAPHICAL_ROUTE_FEASIBILITY.md](X64_15_GRAPHICAL_ROUTE_FEASIBILITY.md)
+for exact call paths, blocker inventory, reusable/missing capabilities and gate
+acceptance. This is documentation-only: no renderer/source changes, rebuild or
+native link rerun. Existing Win32/resource/FP contracts and strict init-only
+success remain binding. Rendering/gameplay/simulation/save/replay/multiplayer,
+performance and determinism are not validated by the headless milestones.
+
+Exactly one recommended next task: **X64.16 shared opt-in native window/device/
+clear-present diagnostic gate** inside both title processes after verified
+headless init, before execute/replay/simulation. Reuse D3D11Backend directly in
+a shared bounded diagnostic host, without selecting it as the W3DDisplay game
+backend. Add flushed phases, truthful Present/occlusion/error receipts, checked
+window/pump and teardown, modern dependency preflight and strict separate mode.
+Validate without launching either title and prepare fresh stages for separate
+developer-reviewed execution. No shell/menu, world rendering or generic D3D8
+emulation in this slice. This recommendation has not been implemented; no game
+launch is authorized by the audit. Earlier next-step entries are historical.
+
+
 ## X64.12 headless diagnostic preparation (2026-10-12)
 
 The DX8 factory/device route remains unchanged. The new strict native init-only
