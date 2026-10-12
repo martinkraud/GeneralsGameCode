@@ -27,6 +27,9 @@
 #include "GameClient/WindowXlat.h"
 #include "GameClient/GameClient.h"
 #include "Common/GameDefines.h"
+#include "GameLogic/GameLogic.h"
+#include "Common/PlayerList.h"
+#include "Common/FramePacer.h"
 #include <memory>
 #include <stdexcept>
 
@@ -343,6 +346,10 @@ void W3DDisplay::drawOrdinaryMenuFrame()
     }
     if (WW3D::End_Render(true) != WW3D_ERROR_OK)
         throw std::runtime_error("Ordinary menu End_Render failed");
+    const PresentationStatus present = WW3D::Native_Presentation_Status();
+    ++m_hostPresents;
+    m_hostPresentResult = present.result;
+    m_hostPresentOccluded = present.occluded;
 }
 
 int W3DDisplay::runOrdinaryMenuHost()
@@ -462,6 +469,133 @@ int W3DDisplay::runOrdinaryMenuHost()
     sprintf_s(summary, "frames=%u visible_frames=%u occluded_frames=%u elapsed_ms=%u moves=%u down=%u up=%u keys=%u exit=%s driver=hardware",
         c.frames, c.visibleFrames, c.occludedFrames, elapsed, c.mouseMoves, c.leftDown, c.leftUp, c.keyDown, exitReason);
     StartupDiagnostics::checkpoint("menu_summary", result ? "fail" : "complete", summary, result);
+    if (result) StartupDiagnostics::markFailed();
+    return result;
+#endif
+}
+// ---------------------------------------------------------------------------
+// Ordinary-game profile (StartupDiagnostics::ordinaryGame): the ordinary engine
+// loop (Win32GameEngine::update + FramePacer, exactly what GameEngine::execute
+// iterates) on the headless world/audio/radar selection with the real UI
+// lifetime. The original MainMenu -> Skirmish setup -> Start path runs through
+// the legacy Shell and GameLogic::startNewGame. Nothing is rendered for the
+// world (the draw is the UI-only frame); this proves game logic, map loading and
+// the in-game UI on AMD64 inside the real application. Boundaries: the Shell push
+// allow-list below, a logic-frame bound and a wall-clock bound.
+// ---------------------------------------------------------------------------
+#if RTS_GENERALS
+namespace {
+Bool GamePushGuard(const AsciiString &filename) {
+    if (filename.compareNoCase("Menus/MainMenu.wnd") == 0 ||
+        filename.compareNoCase("Menus/SkirmishGameOptionsMenu.wnd") == 0)
+        return TRUE;
+    RecordBoundary("shell_push", filename.str());
+    return FALSE;
+}
+} // namespace
+#endif
+
+int W3DDisplay::runOrdinaryGameHost()
+{
+#if !RTS_GENERALS
+    StartupDiagnostics::checkpoint("game_host", "fail", "Generals only", 1);
+    return 1;
+#else
+    if (!StartupDiagnostics::ordinaryGame() || !m_initialized || !m_2DRender || !TheGameEngine ||
+        !TheShell || !TheWindowManager || !TheGameLogic || !TheFramePacer || !ApplicationHWnd) {
+        StartupDiagnostics::checkpoint("game_host", "fail", "preconditions", 1);
+        return 1;
+    }
+    const unsigned kTotalMs = 900000;        // 15 minutes wall clock
+    const unsigned kLogicFrameBound = 1800;  // 60 s of logic at 30 fps after the game starts
+    const unsigned kMilestones[] = { 1, 30, 150, 300, 900, 1800 };
+    unsigned nextMilestone = 0, updates = 0, elapsed = 0, startFrame = 0, lastFrame = 0;
+    int result = 1;
+    const char *exitReason = "failure";
+    const char *phase = "game_loop";
+    bool inGame = false, exiting = false;
+    unsigned exitingUpdates = 0;
+    char detail[256];
+    try {
+        TheShell->setPushGuard(GamePushGuard);
+        StartupDiagnostics::checkpoint(phase, "begin",
+            "Win32GameEngine::update + FramePacer (ordinary loop); shell map off; push allow-list MainMenu/SkirmishGameOptionsMenu");
+        const ULONGLONG start = GetTickCount64();
+        for (;;) {
+            TheGameEngine->update();          // GameClient (+draw), message stream, GameLogic, OS pump
+            TheFramePacer->update();
+            ++updates;
+            if (!IsWindow(ApplicationHWnd)) throw std::runtime_error("Application window destroyed");
+            if (!IsIconic(ApplicationHWnd) && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
+                throw std::runtime_error("Unsupported resize: client is not 800x600");
+            if (m_hostPresentResult != 0) {
+                sprintf_s(detail, "Present HRESULT=0x%08X frame=%u", m_hostPresentResult, m_hostPresents);
+                throw std::runtime_error(detail);
+            }
+            if (m_hostPresents == 1 && !m_hostFirstLogged) {
+                m_hostFirstLogged = true;
+                sprintf_s(detail, "HRESULT=0x%08X visible=1 occluded=%u removed=0x00000000 frame=1",
+                    m_hostPresentResult, m_hostPresentOccluded ? 1u : 0u);
+                StartupDiagnostics::checkpoint("graphics_present", m_hostPresentOccluded ? "observed" : "complete", detail);
+            }
+            elapsed = static_cast<unsigned>(GetTickCount64() - start);
+
+            const bool nowInGame = TheGameLogic->isInGame() && !TheGameLogic->isInShellGame();
+            if (nowInGame && !inGame) {
+                inGame = true;
+                startFrame = TheGameLogic->getFrame();
+                sprintf_s(detail, "mode=%d map=%s players=%d frame=%u", static_cast<int>(TheGameLogic->getGameMode()),
+                    TheGlobalData->m_mapName.str(), ThePlayerList ? ThePlayerList->getPlayerCount() : -1, startFrame);
+                StartupDiagnostics::checkpoint("game_start", "complete", detail);
+            }
+            if (inGame && !exiting) {
+                const unsigned frame = TheGameLogic->getFrame();
+                lastFrame = frame;
+                while (nextMilestone < sizeof(kMilestones) / sizeof(kMilestones[0]) &&
+                       frame - startFrame >= kMilestones[nextMilestone]) {
+                    sprintf_s(detail, "logic_frame=%u crc=%08X presents=%u", frame, TheGameLogic->getCRC(),
+                        m_hostPresents);
+                    StartupDiagnostics::checkpoint("game_progress", "observed", detail);
+                    ++nextMilestone;
+                }
+                if (frame - startFrame >= kLogicFrameBound) {
+                    // Ordinary exit message; processed on the next updates.
+                    TheGameLogic->exitGame();
+                    exiting = true;
+                    exitReason = "frame_bound";
+                }
+            }
+            if (exiting && ++exitingUpdates > 600)
+                throw std::runtime_error("Game did not exit after exitGame()");
+            if (exiting && !TheGameLogic->isInGame()) {
+                StartupDiagnostics::checkpoint("game_exit", "complete", "MSG_CLEAR_GAME_DATA processed; logic not in game");
+                break;
+            }
+            if (g_menuBoundary.hit) { exitReason = "boundary"; break; }
+            if (TheGameEngine->getQuitting()) { if (!exiting) exitReason = inGame ? "game_quit" : "menu_exit"; break; }
+            if (elapsed >= kTotalMs) { exitReason = "time_bound"; break; }
+        }
+        result = m_hostPresents ? 0 : 1;
+    } catch (const std::exception &error) {
+        StartupDiagnostics::checkpoint(phase, "fail", error.what(), 1);
+        result = 1;
+    } catch (const ErrorCode error) {
+        StartupDiagnostics::checkpoint(phase, "fail", "engine ErrorCode", static_cast<unsigned>(error));
+        result = 1;
+    } catch (...) {
+        StartupDiagnostics::checkpoint(phase, "fail", "unknown exception", 1);
+        result = 1;
+    }
+    TheShell->setPushGuard(nullptr);
+    ClipCursor(nullptr);
+    if (g_menuBoundary.hit) {
+        sprintf_s(detail, "reason=%s %s", g_menuBoundary.reason, g_menuBoundary.detail);
+        StartupDiagnostics::checkpoint("menu_boundary", "observed", detail);
+    }
+    sprintf_s(detail, "presents=%u updates=%u elapsed_ms=%u game=%u logic_frames=%u exit=%s driver=hardware",
+        m_hostPresents, updates, elapsed, inGame ? 1u : 0u,
+        inGame ? lastFrame - startFrame : 0u, exitReason);
+    StartupDiagnostics::checkpoint("game_summary", result ? "fail" : "complete", detail, result);
     if (result) StartupDiagnostics::markFailed();
     return result;
 #endif

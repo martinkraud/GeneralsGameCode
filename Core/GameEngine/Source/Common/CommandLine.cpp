@@ -1527,6 +1527,10 @@ void CommandLine::parseCommandLineForEngineInit()
     // GlobalData INI loading follows startup parsing; honor the opt-in request
     // after that load without changing defaults or persistent configuration.
     if(StartupDiagnostics::enabled()) { parseHeadless(nullptr, 0); TheWritableGlobalData->m_shellMapOn=FALSE; }
+    // Ordinary-game profile: audio is unavailable on AMD64 (Miles loader is Win32 only).
+    // Re-asserted after the GameData INI load so the live engine loop never queues
+    // playback requests; same reason the headless request is honored here.
+    if(StartupDiagnostics::ordinaryGame()) TheWritableGlobalData->m_audioOn = FALSE;
     if(skipStartupIntro)parseSkipIntro(nullptr,0);
     if(DeveloperTools::quickGameEnabled())TheWritableGlobalData->m_shellMapOn=FALSE;
 }

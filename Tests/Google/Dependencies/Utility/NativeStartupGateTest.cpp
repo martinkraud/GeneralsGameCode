@@ -565,3 +565,54 @@ TEST(NativeOrdinaryMenuGate, ConfigureEnablesMenuImpliesHostAndNoDiagnosticModes
     ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
 }
 #endif
+
+// ---------------------------------------------------------------------------
+// Ordinary-game profile (X64.24): same strict profile, third distinct token.
+// ---------------------------------------------------------------------------
+TEST(NativeOrdinaryGameGate, DistinctStrictTokenAndImplications) {
+    HostArgs args;
+    char *copy[12] = {};
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    char game[] = "-nativeOrdinaryGame";
+    copy[9] = game;
+#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryGameArguments(11, copy));
+#else
+    EXPECT_TRUE(StartupDiagnostics::validOrdinaryGameArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryHostArguments(11, copy));
+    char extra[] = "-file"; copy[11] = extra;
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryGameArguments(12, copy)); // no map/scenario switch
+#endif
+}
+
+#if defined(_WIN64) && !(defined(RTS_ZEROHOUR) && RTS_ZEROHOUR)
+TEST(NativeOrdinaryGameGate, ConfigureImpliesMenuAndHostButNeverTheReverse) {
+    char temp[MAX_PATH], unique[MAX_PATH];
+    ASSERT_NE(GetTempPathA(MAX_PATH, temp), 0u);
+    ASSERT_NE(GetTempFileNameA(temp, "x24", 0, unique), 0u);
+    ASSERT_TRUE(DeleteFileA(unique)); ASSERT_TRUE(CreateDirectoryA(unique, nullptr));
+    std::string root(unique), data = root + "\\userdata", dump = data + "\\CrashDumps", log = root + "\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(), nullptr)); ASSERT_TRUE(CreateDirectoryA(dump.c_str(), nullptr));
+    HostArgs args;
+    std::strcpy(args.root, unique);
+    char *copy[11];
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    copy[9] = const_cast<char *>("-nativeOrdinaryGame");
+    StartupDiagnostics::state() = {};
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryGame());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryMenu());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryHost());
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    copy[9] = const_cast<char *>("-nativeOrdinaryMenu");
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryMenu());
+    EXPECT_FALSE(StartupDiagnostics::ordinaryGame()); // menu never opens GameLogic
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
+}
+#endif

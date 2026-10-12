@@ -83,6 +83,8 @@ public:
     virtual int runOrdinaryHostGate() { throw std::runtime_error("Display has no ordinary host gate"); }
     // Ordinary-menu profile: real window manager/Shell/input in a bounded menu-only loop.
     virtual int runOrdinaryMenuHost() { throw std::runtime_error("Display has no ordinary menu host"); }
+    // Ordinary-game profile: menu -> Skirmish -> game on the ordinary engine loop.
+    virtual int runOrdinaryGameHost() { throw std::runtime_error("Display has no ordinary game host"); }
 #endif
 	Display();
 	virtual ~Display() override;

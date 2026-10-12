@@ -59,10 +59,12 @@ Int GameMain()
         {
             // Ordinary application/display lifetime; world/GameLogic/execute stay closed.
             if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy() || !TheDisplay) exitcode = 1;
+            else if (StartupDiagnostics::ordinaryGame()) exitcode = TheDisplay->runOrdinaryGameHost();
             else if (StartupDiagnostics::ordinaryMenu()) exitcode = TheDisplay->runOrdinaryMenuHost();
             else exitcode = TheDisplay->runOrdinaryHostGate();
             StartupDiagnostics::checkpoint("ordinary_host_boundary", exitcode ? "fail" : "complete",
-                "execute/replay/simulation/GameLogic skipped", exitcode);
+                StartupDiagnostics::ordinaryGame() ? "ordinary game loop; GameLogic live; no world rendering; execute/replay not entered"
+                                                   : "execute/replay/simulation/GameLogic skipped", exitcode);
         }
         else if (StartupDiagnostics::displaySmoke())
         {

@@ -64,6 +64,7 @@ public:
     int runNativePresentationSmoke() override;
     int runOrdinaryHostGate() override;
     int runOrdinaryMenuHost() override;
+    int runOrdinaryGameHost() override;
 #endif
 	virtual void init() override;  ///< initialize or re-initialize the system
  	virtual void reset() override;																///< Reset system
@@ -181,6 +182,10 @@ protected:
 	// attached through the ordinary init/draw/destructor, UI-only, no world.
 	struct OrdinaryHostContent;
 	OrdinaryHostContent *m_hostContent = nullptr;
+	unsigned m_hostPresents = 0;            ///< ordinary-menu/game frames presented
+	unsigned m_hostPresentResult = 0;       ///< last Present HRESULT
+	bool m_hostPresentOccluded = false;
+	bool m_hostFirstLogged = false;
 	void initOrdinaryHostPresentation();
 	void drawOrdinaryHostFrame();
 	void drawOrdinaryMenuFrame();
