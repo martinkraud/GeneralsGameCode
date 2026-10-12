@@ -182,11 +182,14 @@ load, capacity named in the classifier). Fresh candidate
 `x64-24-ordinary-game-fix1` (EXE SHA256 `2C62BD2A...D0A9`, PDB `EA421748...656F`,
 age 70) preflighted, never executed. Doc: `X64_24_SKIRMISH_WORLD_AUDIT.md`.
 
-**Current X64.24 candidate: `x64-24-ordinary-game-fix2`** (clean HEAD `00fb1ce2c`, EXE
-SHA256 `40A35EEF...D5199`, PDB `1D075821...B2BF9`, age 72), preflighted, never
-executed. fix1 is superseded (stage/build mismatch after renderer work). The
-renderer opt-ins (CPU-backed geometry, depth buffer) are off in this profile so the
-run validates GameLogic only. Commands in `X64_24_SKIRMISH_WORLD_AUDIT.md`.
+**X64.24 FORMALLY ACCEPTED (2026-10-13)** from fix2 run
+`build/dev-runtimes/native/Generals/x64-24-ordinary-game-fix2/runs/20261012T2200386937314Z`
+(exit 0, 233 records, zero fail rows, original menu -> Skirmish -> map load ->
+1800 live AMD64 logic frames with CRC milestones, `FP_summary calls=14500`, ordinary
+`exitGame`, `live_residencies=0`, no dumps; EXE `40A35EEF...D5199`, age 72; developer
+visual PASS). The first run's failure was an evidence-capacity defect (see doc).
+Proven: AMD64 GameLogic/AI/scripts/map load inside the real application. Not proven:
+world rendering, cross-arch determinism, performance.
 
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer

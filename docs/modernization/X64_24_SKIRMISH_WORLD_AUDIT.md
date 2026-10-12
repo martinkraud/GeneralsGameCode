@@ -313,3 +313,39 @@ Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
 
 Interaction, expectations and PASS/FAIL are those of the original X64.24 section.
 `fix1` must not be used (its stage no longer matches the build).
+
+## Acceptance: X64.24 Skirmish -> map load -> live AMD64 GameLogic - FORMALLY ACCEPTED
+
+Reviewed run (never rerun, immutable):
+`build/dev-runtimes/native/Generals/x64-24-ordinary-game-fix2/runs/20261012T2200386937314Z`.
+(The developer's cancelled second Invoke attempt created no run directory:
+`runs/` contains exactly this one directory.)
+
+Independent machine review:
+
+- OS exit 0, no timeout/error, PID 3444 / thread 32608 on all 233 contiguous
+  records (far below the 2048 capacity), zero `fail` rows, no
+  `native_shutdown exception`, `shutdown-exception.bin` empty, no dumps, isolated
+  paths match. Staged EXE/PDB re-hashed equal to the receipt (`40A35EEF...D5199` /
+  `1D075821...B2BF9`, age 72); strict argv `-nativeOrdinaryGame`.
+- Original menu and Skirmish setup ran (no `menu_boundary`, no `shell_push`).
+- `game_start mode=2 map=maps\alpine assault\alpine assault.map players=5 frame=1`
+  (after load, as fixed).
+- `game_progress` at logic frames 2/31/151/301/901/1801 with cached CRCs
+  `DF77AB89, DF77AB89, 7B3962C4, A23F32E6, 299FA3CE, CEFCD66F`; 4193 presents,
+  4114 engine updates, 69.7 s, 1800 logic frames, `exit=frame_bound`.
+- `FP_summary calls=14500`: every call verified, receipts bounded (32 + changes).
+- Ordinary `exitGame` processed (`game_exit`), then `ui_residency_release
+  live_residencies=0` before backend release, backend before engine cleanup,
+  window released after engine cleanup, MiniDumper shutdown, final `WinMain complete`.
+- Developer visual: original menu/setup, match started, black world (expected).
+
+Proves: AMD64 GameLogic, AI, scripts, map/terrain-logic loading, object creation
+and a 1800-frame skirmish run inside the real application with the original UI on
+the D3D11 presentation, with orderly game exit and teardown. No crash, no hang,
+no FP-state change observed over 14,500 verified calls.
+
+Does NOT prove: any world rendering, cross-architecture determinism (the CRCs
+are recorded but not compared with Win32; two early milestones are equal by the
+cached-CRC cadence), performance, save/load, replay, multiplayer, interactive
+in-game play.
