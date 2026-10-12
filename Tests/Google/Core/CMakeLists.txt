@@ -18,6 +18,7 @@ set(COREI_GOOGLETEST_SRC
     Libraries/Compression/CompressionManagerTest.cpp
     Libraries/Render2DSubmissionTest.cpp
     Libraries/Texture2DTest.cpp
+    Libraries/UIProducerTest.cpp
 )
 
 add_library(corei_googletest INTERFACE)

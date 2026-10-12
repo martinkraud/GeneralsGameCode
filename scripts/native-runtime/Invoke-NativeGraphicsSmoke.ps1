@@ -3,13 +3,14 @@
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
       [switch]$RunReviewedGraphicsSmoke,
-      [switch]$UIImage,[switch]$DisplayLifecycle,
+      [switch]$UISentence,[switch]$UIImage,[switch]$DisplayLifecycle,
       [ValidateRange(10,180)][int]$TimeoutSeconds=120)
 . (Join-Path $PSScriptRoot 'GraphicsCommon.ps1')
+if($UISentence){$UIImage=$true}
 if($UIImage){$DisplayLifecycle=$true}
 if (!$RunReviewedGraphicsSmoke) { throw 'Game launch requires explicit developer review and -RunReviewedGraphicsSmoke' }
 if (@(Get-Process -Name generals,generalsv,generalszh -ErrorAction SilentlyContinue).Count) { throw 'Exit all existing games first' }
-$manifest=Read-NativeGraphicsStage $Title $Name -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage
+$manifest=Read-NativeGraphicsStage $Title $Name -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage -UISentence:$UISentence
 $run=Join-Path $manifest.StagePath ('runs/'+[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ'))
 Assert-ZHNoLinks $run
 if ($run -notmatch '^[A-Za-z]:\\[\x20-\x7e]+$' -or $run.Length -ge 180) { throw 'Diagnostic directory must be ASCII, absolute and shorter than 180 characters' }
@@ -17,6 +18,7 @@ New-Item -ItemType Directory -Path (Join-Path $run 'userdata/CrashDumps') | Out-
 $exe=Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))
 $flag=if($DisplayLifecycle){'-nativeDisplaySmoke'}else{'-nativeGraphicsSmoke'}
 if($UIImage){$flag='-nativeUIImageSmoke'}
+if($UISentence){$flag='-nativeUISentenceSmoke'}
 $arguments=@('-headless',$flag,$run)
 $receipt=[ordered]@{Title=$Title;Executable=$exe;Build=$manifest.Build;WorkingDirectory=$manifest.GamePath
     Arguments=$arguments;UserData=([IO.Path]::GetFullPath((Join-Path $run 'userdata'))+'\')
@@ -56,7 +58,7 @@ if ($Title -eq 'ZeroHour') { $pathsMatch=$pathsMatch -and $pathReceipts['base_as
 $shutdownBytes=if (Test-Path -LiteralPath $receipt.ShutdownEvidencePath -PathType Leaf) {
     (Get-Item -LiteralPath $receipt.ShutdownEvidencePath).Length
 } else { $null }
-try { $evidence=Test-NativeGraphicsEvidence -Log $log -ProcessId $pidValue -Receipt $receipt -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage }
+try { $evidence=Test-NativeGraphicsEvidence -Log $log -ProcessId $pidValue -Receipt $receipt -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage -UISentence:$UISentence }
 catch { $evidence=[pscustomobject]@{Valid=$false;Errors=@($_.Exception.Message);Records=0;Summary='Classifier failed'} }
 # Collect outside the conditional pipeline: zero outputs must remain an empty array.
 $dumps=@(if(Test-Path -LiteralPath $receipt.DumpPath -PathType Container){Get-ChildItem -LiteralPath $receipt.DumpPath -Recurse -Force -File})
@@ -71,4 +73,4 @@ Write-ZHJson (Join-Path $run 'exit.json') ([pscustomobject]@{
 })
 Write-Host "Receipts and flushed log: $run"
 if (!$success) { throw 'Native graphical smoke validation failed; preserve evidence, do not rerun automatically' }
-Write-Host 'PASS: hardware graphics API gate and cleanup; execute/replay/simulation skipped. Confirm the expected blue window and original logo (UIImage mode) visually. No next trial is launched.'
+Write-Host 'PASS: hardware graphics API gate and cleanup; execute/replay/simulation skipped. Confirm the expected blue window and original logo (UIImage mode) visually. In UISentence mode also confirm the original yellow difficulty label. No next trial is launched.'

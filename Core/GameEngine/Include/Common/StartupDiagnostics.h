@@ -10,7 +10,7 @@
 namespace StartupDiagnostics {
 struct State {
     bool configured, requested, valid, healthy;
-    bool graphicsSmoke, displaySmoke, uiImageSmoke;
+    bool graphicsSmoke, displaySmoke, uiImageSmoke, uiSentenceSmoke;
     HANDLE file;
     unsigned records;
     char root[MAX_PATH], userData[MAX_PATH];
@@ -20,6 +20,7 @@ inline bool enabled() { return state().requested && state().valid; }
 inline bool graphicsSmoke() { return enabled() && state().graphicsSmoke; }
 inline bool displaySmoke() { return enabled() && state().displaySmoke; }
 inline bool uiImageSmoke() { return enabled() && state().uiImageSmoke; }
+inline bool uiSentenceSmoke() { return enabled() && state().uiSentenceSmoke; }
 inline bool healthy() { return !enabled() || state().healthy; }
 inline const char *userData() { return enabled() ? state().userData : nullptr; }
 
@@ -39,6 +40,10 @@ inline bool validDisplayArguments(int argc, char **argv) {
 inline bool validUIImageArguments(int argc, char **argv) {
     return argc == 4 && !_stricmp(argv[1], "-headless") &&
         !_stricmp(argv[2], "-nativeUIImageSmoke") && std::strlen(argv[3]) < 180;
+}
+inline bool validUISentenceArguments(int argc, char **argv) {
+    return argc == 4 && !_stricmp(argv[1], "-headless") &&
+        !_stricmp(argv[2], "-nativeUISentenceSmoke") && std::strlen(argv[3]) < 180;
 }
 inline void checkpoint(const char *stage, const char *status,
                        const char *detail = "", unsigned code = 0) {
@@ -68,11 +73,12 @@ inline bool configure(int argc, char **argv) {
         else if (!_stricmp(argv[i], "-nativeGraphicsSmoke")) { s.requested = true; s.graphicsSmoke = true; }
         else if (!_stricmp(argv[i], "-nativeDisplaySmoke")) { s.requested = true; s.displaySmoke = true; }
         else if (!_stricmp(argv[i], "-nativeUIImageSmoke")) { s.requested = true; s.displaySmoke = s.uiImageSmoke = true; }
+        else if (!_stricmp(argv[i], "-nativeUISentenceSmoke")) { s.requested = true; s.displaySmoke = s.uiImageSmoke = s.uiSentenceSmoke = true; }
     if (!s.requested) return true;
 #if !defined(_WIN64)
     return false; // Native diagnostic option must never change the Win32 route.
 #else
-    if (!(s.uiImageSmoke ? validUIImageArguments(argc, argv) : s.displaySmoke ? validDisplayArguments(argc, argv) : s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
+    if (!(s.uiSentenceSmoke ? validUISentenceArguments(argc, argv) : s.uiImageSmoke ? validUIImageArguments(argc, argv) : s.displaySmoke ? validDisplayArguments(argc, argv) : s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
     const char *root = argv[3];
     if (!((root[0] >= 'A' && root[0] <= 'Z') || (root[0] >= 'a' && root[0] <= 'z')) ||
         root[1] != ':' || root[2] != '\\') return false;

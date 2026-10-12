@@ -13,22 +13,24 @@ function Assert-NativeGraphicsDependencies([string]$Executable,[string]$GamePath
     }
     return $dependencies
 }
-function Get-NativeGraphicsMode([switch]$DisplayLifecycle,[switch]$UIImage) {
+function Get-NativeGraphicsMode([switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence) {
+    if($UISentence){return 'nativeUISentenceSmoke; headless engine; hardware D3D11; W3DDisplay/WW3D; original menu image and sentence'}
     if($UIImage){return 'nativeUIImageSmoke; headless engine; hardware D3D11; W3DDisplay/WW3D; original menu image'}
     if($DisplayLifecycle){return 'nativeDisplaySmoke; headless engine; hardware D3D11; W3DDisplay/WW3D'}
     return 'nativeGraphicsSmoke; headless engine; hardware D3D11'
 }
-function Read-NativeGraphicsStage([string]$Title,[string]$Name,[switch]$DisplayLifecycle,[switch]$UIImage) {
+function Read-NativeGraphicsStage([string]$Title,[string]$Name,[switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence) {
     $manifest=Read-NativeStage $Title $Name
     $graphics=Get-Content -LiteralPath (Join-Path $manifest.StagePath 'graphics.json') -Raw | ConvertFrom-Json
-    if($graphics.Mode -ne (Get-NativeGraphicsMode -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage) -or
+    if($graphics.Mode -ne (Get-NativeGraphicsMode -DisplayLifecycle:$DisplayLifecycle -UIImage:$UIImage -UISentence:$UISentence) -or
         $graphics.StagePath -ne $manifest.StagePath -or
         $graphics.ManifestSHA256 -ne (Get-FileHash -LiteralPath (Join-Path $manifest.StagePath 'manifest.json')).Hash){throw 'Not an intact reviewed graphics-smoke stage'}
     $manifest.Dependencies=@(Assert-NativeGraphicsDependencies (Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))) $manifest.GamePath)
     return $manifest
 }
 # Pure evidence classifier. No process creation; shared by launcher and synthetic negative tests.
-function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[switch]$DisplayLifecycle,[switch]$UIImage) {
+function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[switch]$DisplayLifecycle,[switch]$UIImage,[switch]$UISentence) {
+    if($UISentence){$UIImage=$true}
     if($UIImage){$DisplayLifecycle=$true}
     $rows=@();$errors=[Collections.Generic.List[string]]::new()
     foreach($line in ($Log -split "`n")) {
@@ -73,7 +75,7 @@ function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[swit
     if(@($rows|Where-Object{$_.Stage -eq 'init_only'}).Count){$errors.Add('Wrong diagnostic mode')}
     $displayRows=@($rows|Where-Object{$_.Stage -like 'display_*'})
     if($DisplayLifecycle){
-        $modePattern=if($UIImage){'AMD64 UI image smoke$'}else{'AMD64 display smoke$'}
+        $modePattern=if($UISentence){'AMD64 UI sentence smoke$'}elseif($UIImage){'AMD64 UI image smoke$'}else{'AMD64 display smoke$'}
         # Device setup occurs inside attach; frame and detach checkpoints are
         # interleaved with host clear/Present/release. Verify the actual route.
         $route=@('engine_init','graphics_window','graphics_device','graphics_viewport',
@@ -103,5 +105,17 @@ function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[swit
         }
         if(@($imageRows|Where-Object{$_.Stage -eq 'ui_image_load' -and $_.Status -eq 'complete' -and $_.Detail -match '^name=GeneralsLogo file=.+ atlas=\d+x\d+ uv=.+ rect=504,16,791,110$'}).Count -ne 1){$errors.Add('Missing original menu image identity')}
     } elseif($imageRows.Count){$errors.Add('Unexpected UI image mode')}
+    $sentenceRows=@($rows|Where-Object{$_.Stage -like 'ui_sentence_*' -or $_.Stage -eq 'ui_font_create' -or $_.Stage -eq 'ui_pixel_policy'})
+    if($UISentence){
+        # Pixel policy is configured before image load.
+        $route=@('display_attach','ui_pixel_policy','ui_image_load','ui_font_create','ui_sentence_build','ui_sentence_load','display_frame_begin','ui_image_draw','ui_sentence_draw','display_frame_end','graphics_present','ui_sentence_release','ui_image_release','display_detach')
+        $previous=-1
+        foreach($stage in $route){
+            $at=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $stage -and $rows[$i].Status -eq 'complete'){$i}})
+            if($at.Count -ne 1){$errors.Add("Missing/duplicate sentence completion $stage");continue}
+            if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Sentence route order/code $stage")};$previous=$at[0]
+        }
+        if(@($sentenceRows|Where-Object{$_.Stage -eq 'ui_sentence_load' -and $_.Status -eq 'complete' -and $_.Detail -match '^label=GUI:SelectDifficulty font=Arial size=14 bold=0 rect=540,116,756,152 extent=[0-9.]+,[0-9.]+ chars=[1-9][0-9]*$'}).Count -ne 1){$errors.Add('Missing original sentence identity')}
+    }elseif($sentenceRows.Count){$errors.Add('Unexpected UI sentence mode')}
     return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
 }

@@ -798,7 +798,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
 	Int exitcode = 1;
 	if (!StartupDiagnostics::configure(__argc, __argv)) return 87;
-	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::uiImageSmoke() ? "Generals AMD64 UI image smoke" : StartupDiagnostics::displaySmoke() ? "Generals AMD64 display smoke" : StartupDiagnostics::graphicsSmoke() ? "Generals AMD64 graphics smoke" : "Generals AMD64 init-only");
+	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::uiSentenceSmoke() ? "Generals AMD64 UI sentence smoke" : StartupDiagnostics::uiImageSmoke() ? "Generals AMD64 UI image smoke" : StartupDiagnostics::displaySmoke() ? "Generals AMD64 display smoke" : StartupDiagnostics::graphicsSmoke() ? "Generals AMD64 graphics smoke" : "Generals AMD64 init-only");
 	if (StartupDiagnostics::enabled())
 	{
 		char diagnosticModule[MAX_PATH] = {};

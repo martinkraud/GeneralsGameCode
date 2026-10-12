@@ -101,6 +101,35 @@ foreach($phase in 'ui_image_load','ui_image_draw','ui_image_release'){
 VerifyUI ($uiLog.Replace('GeneralsLogo','invented')) $false
 VerifyUI ($uiLog.Replace('504,16,791,110','0,0,800,600')) $false
 if((Get-NativeGraphicsMode -UIImage) -eq (Get-NativeGraphicsMode -DisplayLifecycle)){throw 'UI mode must be distinct'};$checks++
+# Sentence mode uses the same preserved image/display contract plus real font,
+# producer build/draw/release and pixel policy checkpoints. No title execution.
+$sentenceLines=[Collections.Generic.List[string]]::new()
+foreach($line in ($uiLog -split "`n")){
+    $f=$line -split "`t",9
+    if($f[5] -eq 'ui_image_load'){$sentenceLines.Add("0`t0`t0`t123`t456`tui_pixel_policy`tcomplete`t0`tlegacy UV bias enabled; D3D11 half-pixel correction")}
+    if($f[5] -eq 'display_frame_begin'){
+        $sentenceLines.Add("0`t0`t0`t123`t456`tui_font_create`tcomplete`t0`tArial size=14 bold=0")
+        foreach($phase in 'ui_sentence_build','ui_sentence_load'){$sentenceLines.Add("0`t0`t0`t123`t456`t$phase`tcomplete`t0`tlabel=GUI:SelectDifficulty font=Arial size=14 bold=0 rect=540,116,756,152 extent=110,19 chars=17")}
+    }
+    if($f[5] -eq 'display_frame_end'){$sentenceLines.Add("0`t0`t0`t123`t456`tui_sentence_draw`tcomplete`t0`tactual producer")}
+    if($f[5] -eq 'ui_image_release'){$sentenceLines.Add("0`t0`t0`t123`t456`tui_sentence_release`tcomplete`t0`treleased")}
+    $sentenceLines.Add($line)
+}
+$sentenceLog=(@(for($i=0;$i -lt $sentenceLines.Count;$i++){($i+1).ToString()+$sentenceLines[$i].Substring($sentenceLines[$i].IndexOf("`t"))}) -join "`n").Replace('AMD64 UI image smoke','AMD64 UI sentence smoke')
+function VerifySentence([string]$Text,[bool]$Valid){
+    $r=Test-NativeGraphicsEvidence $Text 123 $receipt -UISentence
+    if($r.Valid -ne $Valid){throw "Unexpected sentence classifier: $($r.Errors -join '; ')"};$script:checks++
+}
+VerifySentence $sentenceLog $true
+VerifySentence $uiLog $false
+VerifyUI $sentenceLog $false
+foreach($phase in 'ui_pixel_policy','ui_font_create','ui_sentence_build','ui_sentence_load','ui_sentence_draw','ui_sentence_release'){
+    VerifySentence ($sentenceLog.Replace($phase,'missing_'+$phase)) $false
+}
+VerifySentence ($sentenceLog.Replace('GUI:SelectDifficulty','invented')) $false
+VerifySentence ($sentenceLog.Replace('font=Arial','font=invented')) $false
+VerifySentence ($sentenceLog.Replace('ui_sentence_release','ui_sentence_draw')) $false
+if((Get-NativeGraphicsMode -UISentence) -eq (Get-NativeGraphicsMode -UIImage)){throw 'Sentence mode must be distinct'};$checks++
 # Run the actual launcher post-processing block with synthetic process outcomes.
 # The original empty-directory expression emits zero pipeline objects, yielding
 # $null under StrictMode; a single FileInfo also must remain a collection.

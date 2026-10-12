@@ -8,6 +8,8 @@
 #include "WW3D2/Backend/NativeGraphicsSmoke.h"
 #include "GameClient/Image.h"
 #include "WW3D2/render2d.h"
+#include "WW3D2/render2dsentence.h"
+#include "GameClient/GameText.h"
 #include "WW3D2/texture.h"
 #include "WW3D2/Texture2DCPUContent.h"
 #include <stdexcept>
@@ -29,6 +31,11 @@ int W3DDisplay::runNativePresentationSmoke()
         Bool windowed;
         bool attached = false, firstBegin = true, firstEnd = true, firstImage = true;
         const bool imageMode = StartupDiagnostics::uiImageSmoke();
+        const bool sentenceMode = StartupDiagnostics::uiSentenceSmoke();
+        const bool previousBias = WW3D::Is_Screen_UV_Biased();
+        FontCharsClass *font = nullptr;
+        Render2DSentenceClass *sentence = nullptr;
+        bool firstSentence = true;
         TextureClass *texture = nullptr;
         Image *image = nullptr;
         RectClass previousScreen = Render2DClass::Get_Screen_Resolution();
@@ -53,6 +60,11 @@ int W3DDisplay::runNativePresentationSmoke()
                 throw std::runtime_error("Native display/target dimensions disagree");
             Log(nullptr,"display_size","complete","device=800x600 target=800x600 bits=32 windowed=1",0);
             Log(nullptr,"display_attach","complete","W3DDisplay -> WW3D active backend; presentation-only",0);
+            if(sentenceMode) {
+                // Match the original graphical UI producer's pixel-center policy.
+                WW3D::Set_Screen_UV_Bias(true);
+                Log(nullptr,"ui_pixel_policy","complete","legacy UV bias enabled; D3D11 half-pixel correction",0);
+            }
             if(imageMode) {
                 Log(nullptr,"ui_image_load","begin","GeneralsLogo",0);
                 try {
@@ -93,6 +105,47 @@ int W3DDisplay::runNativePresentationSmoke()
                     throw;
                 }
             }
+            if(sentenceMode) {
+                try { PrepareSentence(window); }
+                catch(ErrorCode error) {
+                    Log(nullptr,"ui_sentence_load","fail","engine ErrorCode",static_cast<unsigned>(error));
+                    throw;
+                }
+            }
+        }
+        void PrepareSentence(void *window) {
+            Log(nullptr,"ui_sentence_load","begin","GUI:SelectDifficulty",0);
+            if(!TheGameText) throw std::runtime_error("Original game text unavailable");
+            Bool exists = FALSE;
+            const UnicodeString text = TheGameText->fetch("GUI:SelectDifficulty", &exists);
+            if(!exists || text.isEmpty()) throw std::runtime_error("Original menu label unavailable");
+            // Original MainMenu.wnd StaticTextSelectDifficulty: Arial14, not a
+            // replacement font or synthetic caption. Private producer ownership.
+            Log(nullptr,"ui_font_create","begin","Arial size=14 bold=0",0);
+            font = new FontCharsClass;
+            if(!font->Initialize_GDI_Font("Arial",14,false,window))
+                throw std::runtime_error("Original menu font GDI initialization failed");
+            Log(nullptr,"ui_font_create","complete","Arial size=14 bold=0",0);
+            sentence = new Render2DSentenceClass;
+            sentence->Set_Font(font);
+            sentence->Set_Clipping_Rect(RectClass(540,116,756,152));
+            Log(nullptr,"ui_sentence_build","begin","Render2DSentenceClass::Build_Sentence",0);
+            sentence->Build_Sentence(text.str(),nullptr,nullptr);
+            const Vector2 extent = sentence->Get_Text_Extents(text.str());
+            if(extent.X<=0 || extent.Y<=0 || extent.X>216 || extent.Y>36)
+                throw std::runtime_error("Original label does not fit diagnostic menu rectangle");
+            // Probe the sentence producer inside its original rectangle. This
+            // does not construct the hidden widget or claim its layout state.
+            sentence->Set_Location(Vector2(540,116));
+            sentence->Draw_Sentence(0xffffbe01);
+            const RectClass drawn = sentence->Get_Draw_Extents();
+            if(drawn.Width()<=0 || drawn.Height()<=0)
+                throw std::runtime_error("Original sentence generated no geometry");
+            char detail[256];
+            sprintf_s(detail,"label=GUI:SelectDifficulty font=Arial size=14 bold=0 rect=540,116,756,152 extent=%.9g,%.9g chars=%u",
+                extent.X,extent.Y,static_cast<unsigned>(text.getLength()));
+            Log(nullptr,"ui_sentence_build","complete",detail,0);
+            Log(nullptr,"ui_sentence_load","complete",detail,0);
         }
         void BeginClear() override {
             if(WW3D::Begin_Render(true,false,Vector3(0.08f,0.32f,0.55f),1)!=WW3D_ERROR_OK)
@@ -109,6 +162,14 @@ int W3DDisplay::runNativePresentationSmoke()
                         "W3DDisplay::drawImage -> Render2D -> D3D11; original GeneralsLogo; alpha",0);
                 }
             }
+            if(sentenceMode) {
+                if(firstSentence) Log(nullptr,"ui_sentence_draw","begin","actual sentence -> TextureClass -> Render2D -> D3D11",0);
+                sentence->Render(); // snapshots pending glyph atlases, uploads and submits actual producer
+                if(firstSentence) {
+                    firstSentence=false;
+                    Log(nullptr,"ui_sentence_draw","complete","CPU glyph atlas / TextureClass / GPU residency / Render2D submitted",0);
+                }
+            }
             if(WW3D::End_Render(true)!=WW3D_ERROR_OK)
                 throw std::runtime_error("Native display End_Render failed");
             if(firstEnd) { firstEnd=false; Log(nullptr,"display_frame_end","complete","WW3D::End_Render Present",0); }
@@ -118,6 +179,12 @@ int W3DDisplay::runNativePresentationSmoke()
         }
         void Shutdown() noexcept override {
             Log(nullptr,"display_detach","begin","",0);
+            if(sentenceMode) {
+                delete sentence; sentence=nullptr;
+                if(font) { font->Release_Ref(); font=nullptr; }
+                WW3D::Set_Screen_UV_Bias(previousBias);
+                Log(nullptr,"ui_sentence_release","complete","sentence/font/CPU/GPU released before image/device detach; UV bias restored",0);
+            }
             if(imageMode) {
                 // Render2D retains its texture reference. Drop it before our owner,
                 // then detach the device; no resource survives this attachment.

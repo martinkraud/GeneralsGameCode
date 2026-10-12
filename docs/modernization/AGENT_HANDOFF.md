@@ -1,5 +1,41 @@
 # Agent handoff
 
+
+## X64.18 Generals accepted; X64.19 original sentence producer gate
+
+Generals x64-18-fix1 reviewed run20261012T1421514563884Z is formally accepted:
+actual exit0,no timeout/error,305 coherent checkpoints,matching stage symbols,
+hardware Intel8086:7D45/11.0,239 visible frames/5000ms,original logo atlas/UVs,
+ordered UI/device/HWND/engine/MiniDumper/late cleanup,empty observer/no dump.
+All35 inventoried reviewed evidence files are immutable. The original logo is
+287x94 in800x600 (35.875% width); actual producer tests show no scaling defect.
+Headless false UV bias causes only a known half-pixel translation in X64.18;
+this is not full pixel-identical menu acceptance. See the X64.18 report.
+
+The next bounded diagnostic retains W3DDisplay/WW3D and adds AMD64-only
+-nativeUISentenceSmoke: accepted original logo plus actual Render2DSentenceClass
+using original GUI:SelectDifficulty,Arial14 and its216x36 menu rectangle.
+This hidden item is isolated as a producer probe,not an enabled menu widget.
+Private font/sentence resources release before image/device/HWND; graphical
+UV bias is scoped/restored. Old modes and Win32/reference behavior remain.
+No shell/window-manager callbacks,application input,ordinary execute/update,
+replay/simulation/GameLogic/world. No generic rendering fallback or redesign.
+See [X64.19 report](X64_19_UI_SENTENCE_GATE.md) for validation,stages and commands.
+
+Final validation: Win32 CTest25/152 direct/78 focused per title; AMD64
+CTest15/both links/10 texture-UI tests per title; startup13 native/12 Win32;
+renderer30/native15/performance16 references; graphics59/native6 guards and
+all10 script parses PASS. Both fresh x64-19-final stages preflight matching
+symbols/assets/system graphics,30 imports/no delay/D3D8/D3DX,wrong mode rejects,
+no runs. All35 evidence files and16 old stage EXE/PDB copies hash unchanged.
+No title launch. Generated output is ignored. Implementation/test/docs are
+coherent and intended for commit/push only to origin/dev/modern-engine.
+
+Exactly one next task: separately reviewed Generals-only X64.19 original
+sentence/image confirmation and evidence/visual review. Do not automatically
+run either title or begin the next integration slice across that boundary.
+Earlier next-task sections below are historical and superseded.
+
 ## X64.18 first runtime failure repaired; replacement manual gate
 
 Generals reviewed run20261012T1357003637599Z in x64-18-final failed with OS exit1,

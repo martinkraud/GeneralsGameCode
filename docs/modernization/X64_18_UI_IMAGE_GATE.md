@@ -212,3 +212,71 @@ Generated assets/stages/evidence/reproduction helpers/logs are ignored and
 excluded from the repair commit. Runtime repair acceptance remains pending the
 separately reviewed Generals-only x64-18-fix1 run; use the procedure above.
 No source change beyond the two new pool entries and diagnostic load boundaries.
+
+
+## Generals fix1 reviewed runtime acceptance (2026-10-12)
+
+Formally ACCEPT Generals X64.18 from the preserved x64-18-fix1 run
+20261012T1421514563884Z plus developer visual confirmation. launch.json and
+complete exit.json identify PID26456, actual OS exit0, no timeout/launcher error,
+Success/PathsMatch true. Independent reclassification of the entire startup.log
+passes all305 sequential records with no errors. Before any new build, the
+reviewed stage passed full EXE/PDB GUID-age/hash/assets/dependency preflight;
+launch identity matches the fix1 Generals hashes and GUID/age51 above. Original
+run files remain unchanged; shutdown-exception.bin is0 bytes, no late exception
+trailer and no file in CrashDumps. The four new evidence files join the35-file
+preservation inventory (including X64.14/16/17 and the failed X64.18 run).
+
+Ordered evidence: engine_init246; window251 client800x600; hardware device255
+Intel(R) Graphics8086:7D45, feature0xB000 (11.0); target259/setup261/viewport263;
+display_size264/attachment265; image_load begin266,metadata267,TextureClass
+creation268-269,ordinary single-mip decode/content dimensions270-271,actual
+Render2D construction272-273,image_load complete274. Metadata resolves the
+original SCSmShellUserInterface512_001.tga,512x512,UVs
+0.001953125,0.001953125,0.724609375,0.236328125 and rect504,16,791,110.
+GPU residency is created on first use, not at CPU preparation: actual
+W3DDisplay::drawImage -> Render2D -> D3D11 completes281-282, between Begin278
+and End283. First Present284 is S_OK,visible1,occluded0,device-removed0.
+Summary295 records239 frames,239 visible,0 occluded,5000ms,hardware.
+
+Resource release288 precedes display detach289/backend290/HWND292/class294.
+Host296/boundary297 explicitly skip execute/replay/simulation; the source route
+also skips ordinary engine update and GameLogic updates. Engine cleanup301,
+MiniDumper303,late observer304 armed and WinMain305 complete/exit are followed
+by actual normal process exit. This validates private original-atlas loading,
+CPU content ownership,GPU residency,normal-alpha image submission and bounded
+visible presentation through the retained owners, plus teardown.
+
+### Logo-size and pixel-placement audit
+
+Original staged MainMenu.wnd has creation resolution800x600 and logo rectangle
+(504,16)-(791,110):287x94 pixels,35.875% of client width,15.667% of height,
+5.6204% of client area. Atlas crop(1,1)-(371,121) is370x120 pixels; its UVs
+select that crop and do not determine quad screen size. It is deliberately
+scaled down to the menu rectangle, approximately0.776 horizontally/0.783
+vertically. The visual description of a prominent logo is consistent with
+this layout; it is not evidence of an enlarged or full-window quad.
+
+Actual Render2D Set_Coordinate_Range maps800x600 pixels to clip coordinates;
+Add_Quad preserves all four supplied corners and UVs. D3D11 VS passes clip
+positions through with translation only, no additional scale. New dual-title,
+dual-architecture engine-linked UIProducerTest checks actual producer vertices
+and UVs, including the287x94 extent under both legacy bias settings. No scaling
+error is established. The developer observation is qualitative: no screenshot
+or measured visual bounding box exists, so do not claim pixel-diff agreement.
+
+One precise reference limitation remains: headless init leaves WW3D UV bias
+false, unlike ordinary graphical W3DDisplay::init (true). The existing D3D11
+half-pixel correction therefore translates this diagnostic logo by(+0.5,+0.5)
+pixels; it never changes size. X64.18 is accepted as the bounded original-image
+gate, not full pixel-identical menu layout. The next sentence gate explicitly
+scopes/restores the original graphical bias before creating UI producers so
+its half-pixel correction cancels correctly. Win32 and the accepted UIImage
+mode are unchanged. No size accommodation,asset substitution or weakened
+acceptance is introduced.
+
+Zero Hour X64.18 remains unexecuted. Neither title's original menu, input,
+ordinary graphical startup, world, execute/replay/simulation,gameplay,save/load,
+multiplayer,performance or determinism is validated by this milestone.
+Continue with the bounded actual sentence producer gate described in
+[X64.19](X64_19_UI_SENTENCE_GATE.md); no automatic title execution.

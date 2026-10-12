@@ -47,4 +47,11 @@ class DisplayContracts(unittest.TestCase):
   self.assertLess(cleanup.index('texture->Release_Ref()'),cleanup.index('WW3D::Shutdown_Native_Presentation()'))
   for term in ['Get_Texture(', 'showShell(', '->update(', '->execute(', 'm_headless =']:
    self.assertNotIn(term,s)
+ def test_sentence_real_producer_private_lifetime_and_bias_restore(self):
+  s=read('Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp')
+  for term in ['TheGameText->fetch("GUI:SelectDifficulty", &exists)','Initialize_GDI_Font("Arial",14,false,window)','sentence->Build_Sentence(text.str(),nullptr,nullptr)','sentence->Render()','WW3D::Set_Screen_UV_Bias(previousBias)']:
+   self.assertIn(term,s)
+  cleanup=s.split('void Shutdown() noexcept override',1)[1]
+  self.assertLess(cleanup.index('delete sentence'),cleanup.index('font->Release_Ref()'))
+  self.assertLess(cleanup.index('font->Release_Ref()'),cleanup.index('WW3D::Shutdown_Native_Presentation()'))
 if __name__=='__main__':unittest.main()
