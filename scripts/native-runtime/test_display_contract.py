@@ -54,4 +54,14 @@ class DisplayContracts(unittest.TestCase):
   cleanup=s.split('void Shutdown() noexcept override',1)[1]
   self.assertLess(cleanup.index('delete sentence'),cleanup.index('font->Release_Ref()'))
   self.assertLess(cleanup.index('font->Release_Ref()'),cleanup.index('WW3D::Shutdown_Native_Presentation()'))
+ def test_panel_uses_real_inherited_primitives_without_second_manager_ownership(self):
+  s=read('Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp')
+  for term in ['TheWindowManager->GameWindowManager::winOpenRect(0xffffbb00,1,532,108,756,360)', 'TheWindowManager->GameWindowManager::winFillRect(0x7e000000,1,533,109,755,359)']:self.assertIn(term,s)
+  self.assertLess(s.index('winOpenRect('),s.index('winFillRect('))
+  self.assertLess(s.index('winFillRect('),s.index('display.drawImage('))
+  for term in ['W3DGameWindowManager panel','winCreateFromScript(', 'winSetDrawFunc(', 'new WindowLayout', 'MainMenuInit(']:self.assertNotIn(term,s)
+  # Preserve the manager, original default USER draw, and primitive forwarding.
+  for p in ['Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp', 'Core/GameEngine/Source/GameClient/GUI/GameWindowGlobal.cpp', 'Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/W3DGameWindow.cpp']:
+   old=subprocess.check_output(['git','show',f'34fdd323f68621fdfea3cc1cf0d27fd62a7a34a2:{p}'],cwd=ROOT)
+   self.assertEqual((ROOT/p).read_bytes().replace(b'\r\n',b'\n'),old.replace(b'\r\n',b'\n'))
 if __name__=='__main__':unittest.main()

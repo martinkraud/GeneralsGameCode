@@ -172,3 +172,48 @@ PE and PDB GUID/age were also parsed independently and match launch.json exactly
 Generated stages/assets/evidence/helpers/build logs remain ignored and excluded
 from commits. This coherent source/test/docs change follows ac38a1c5b on
 dev/modern-engine; only origin/dev/modern-engine is authorized for push.
+
+## Reviewed Generals UISentence acceptance (2026-10-12)
+
+Formally ACCEPT Generals X64.19 from the preserved run:
+`build/dev-runtimes/native/Generals/x64-19-final/runs/20261012T1653491849657Z`.
+This supersedes the pre-execution state above; Zero Hour X64.19 was not run.
+
+launch.json identifies strict -headless -nativeUISentenceSmoke and the reviewed
+x64-19-final EXE/PDB. Actual OS exit0,Started/Success/PathsMatch true,no timeout
+or launcher error. Independent current shared evidence classification is valid:
+315 ordered records,239 frames/239 visible/0 occluded,5000ms,hardware.
+The staged PE CodeView and PDB identity were parsed independently against the
+receipt: GUID c7323867-d82e-41f3-b190-20a5da4eae06,age53 and both SHA256 values
+listed above match exactly. Complete stage preflight passed before rebuilding.
+
+Checkpoints establish hardware Intel(R) Graphics8086:7D45,feature0xB000(11.0),
+800x600 device/target and W3DDisplay -> WW3D attachment; graphical UV bias;
+original GeneralsLogo atlas SCSmShellUserInterface512_001.tga(512x512),UVs
+(1/512,1/512)-(371/512,121/512),rect504,16,791,110; TextureClass and CPU decode;
+actual Render2D construction; original GUI:SelectDifficulty,Arial14/bold0;
+actual sentence build,positive extent193x22,17 characters,rect540,116,756,152;
+actual glyph/TextureClass/GPU-residency submission and completed image/sentence
+draw between Begin/End; first Present HRESULT0,visible1,occluded0,removed0.
+The 193x22 text fits the216x36 probe rectangle. Developer confirms the original
+logo and readable yellow difficulty label without visible corruption.
+
+Sentence/font/CPU/GPU release and bias restore precede image/helper release,
+display detach/backend destruction,HWND/class cleanup. Summary and skip boundary
+complete before normal engine cleanup,MiniDumper shutdown,armed late observer,
+and final WinMain complete/exit. shutdown-exception.bin exists with length0;
+no exception trailer or CrashDumps file exists. The source boundary remains
+before execute; no ordinary update/replay/simulation/GameLogic is entered.
+
+All39 inventoried accepted/failed evidence files (including this run) and20
+prior staged EXE/PDB copies across both titles and X64.16 through X64.19 rehash
+unchanged. The failed X64.18 evidence remains preserved as failure.
+No title was executed during this review. Generated evidence is not committed.
+
+Supported claim: original image plus actual sentence/font/glyph/GPU producer,
+hardware visible presentation and complete normal process cleanup in the bounded
+Generals AMD64 diagnostic route. This does not accept full widget layout,
+custom/alternate fonts,Unicode/wrapping/hotkeys,menu interaction/application input,
+ordinary shell/world rendering,gameplay,save/load,replay,multiplayer,performance
+or determinism. X64.20 addresses the next measured missing UI primitive state;
+see X64_20_UI_PANEL_GATE.md for the new manual boundary.

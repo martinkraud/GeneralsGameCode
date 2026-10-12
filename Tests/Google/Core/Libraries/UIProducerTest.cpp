@@ -74,3 +74,19 @@ TEST(UIProducerTest, ActualSentenceBuildDrawClipResetAndProductionPools)
     // The sentence retains/releases the font; our owner is still usable.
     EXPECT_GT(font->Get_Char_Width(L'W'),0);
 }
+TEST(UIProducerTest, ActualPanelProducerUsesExactDiffuseAlphaShaderAndGeometry)
+{
+    UIState state;WW3D::Set_Screen_UV_Bias(true);QuadProbe q;
+    q.Set_Coordinate_Range(RectClass(0,0,800,600));
+    q.Enable_Texturing(false);q.Enable_Additive(false);q.Enable_Alpha(true);
+    ShaderClass expected=Render2DClass::Get_Default_Shader();
+    expected.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+    EXPECT_EQ(q.Get_Shader()->Get_Bits(),expected.Get_Bits());
+    EXPECT_EQ(q.Get_Shader()->Get_Src_Blend_Func(),ShaderClass::SRCBLEND_SRC_ALPHA);
+    EXPECT_EQ(q.Get_Shader()->Get_Dst_Blend_Func(),ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA);
+    q.Add_Quad(RectClass(533,109,755,359),0x7e000000);
+    EXPECT_NEAR((q.Position(0).X+1)*400+0.5f,533,0.0001f);
+    EXPECT_NEAR((1-q.Position(0).Y)*300+0.5f,109,0.0001f);
+    EXPECT_NEAR((q.Position(2).X-q.Position(0).X)*400,222,0.0001f);
+    EXPECT_NEAR((q.Position(0).Y-q.Position(1).Y)*300,250,0.0001f);
+}

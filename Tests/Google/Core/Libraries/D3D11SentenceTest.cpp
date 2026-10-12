@@ -257,3 +257,47 @@ TEST(D3D11SentenceTest, DiagnosticBackendReportsDeviceTargetAndSetup) {
     auto backend=D3D11Backend::Create(c);
     EXPECT_EQ(receipt.stages,(std::vector<std::string>{"graphics_device","graphics_target","graphics_setup","graphics_viewport"}));
 }
+
+TEST(D3D11SentenceTest, DiffuseAlphaPanelBlendsAndSwitchesBackToTexturedState)
+{
+    auto backend = Device(); Quad q;
+    q.shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+    q.colors.fill(0x7e000000); // original MapBorder2 fill over diagnostic blue
+    backend->Clear(true, false, Vector3(0.1f, 0.25f, 0.8f), 1);
+    backend->Begin_Scene(); backend->Submit_Render2D(q.s); backend->End_Scene(false);
+    auto image = backend->Readback_RGBA8(); const auto pos=(20*128+30)*4;
+    const double remaining=1-126/255.0;
+    EXPECT_NEAR(image[pos],26*remaining,1);
+    EXPECT_NEAR(image[pos+1],64*remaining,1);
+    EXPECT_NEAR(image[pos+2],204*remaining,1);
+    EXPECT_NEAR(image[pos+3],126*126/255.0+255*remaining,1);
+    EXPECT_NEAR(image[2],204,1); // outside is untouched
+    q.colors.fill(0xffffbb00); // original opaque enabled border color
+    backend->Begin_Scene(); backend->Submit_Render2D(q.s); backend->End_Scene(false);
+    image=backend->Readback_RGBA8();
+    EXPECT_EQ(image[pos],255); EXPECT_EQ(image[pos+1],187); EXPECT_EQ(image[pos+2],0);
+    // Explicit texture shader must be restored after a diffuse draw.
+    auto content=Glyph(); std::unique_ptr<Texture2DResidency> r(backend->Create_Content_Residency(*content));
+    q.shader=Shader();q.colors.fill(0xffffffff);
+    backend->Clear(true,false,Vector3(0,0,0));backend->Begin_Scene();
+    backend->Submit_Render2D_Content(q.s,r.get(),Sampler());backend->End_Scene(false);
+    image=backend->Readback_RGBA8();
+    EXPECT_EQ(image[pos],0); // this texel is outside the glyph, not white diffuse
+    q.shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+    backend->Begin_Scene(); // regular submission must clear the old texture binding
+    backend->Submit_Render2D(q.s);backend->End_Scene(false);
+    image=backend->Readback_RGBA8();EXPECT_EQ(image[pos],255);
+}
+TEST(D3D11SentenceTest, DiffuseAlphaRejectsTextureResidencyAdditiveAndAlphaTest)
+{
+    auto backend=Device();Quad q;q.shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+    auto content=Glyph();std::unique_ptr<Texture2DResidency> r(backend->Create_Content_Residency(*content));
+    backend->Begin_Scene();
+    EXPECT_THROW(backend->Submit_Render2D_Content(q.s,r.get(),Sampler()),std::runtime_error);
+    q.shader.Set_Dst_Blend_Func(ShaderClass::DSTBLEND_ONE);
+    EXPECT_THROW(backend->Submit_Render2D(q.s),std::runtime_error);
+    q.shader=Shader();q.shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+    q.shader.Set_Alpha_Test(ShaderClass::ALPHATEST_ENABLE);
+    EXPECT_THROW(backend->Submit_Render2D(q.s),std::runtime_error);
+    backend->End_Scene(false);EXPECT_EQ(backend->Draw_Count(),0u);
+}

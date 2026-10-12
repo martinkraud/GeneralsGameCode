@@ -130,6 +130,26 @@ VerifySentence ($sentenceLog.Replace('GUI:SelectDifficulty','invented')) $false
 VerifySentence ($sentenceLog.Replace('font=Arial','font=invented')) $false
 VerifySentence ($sentenceLog.Replace('ui_sentence_release','ui_sentence_draw')) $false
 if((Get-NativeGraphicsMode -UISentence) -eq (Get-NativeGraphicsMode -UIImage)){throw 'Sentence mode must be distinct'};$checks++
+# Original panel mode adds exact border/fill identity and composition ordering.
+$panelLines=[Collections.Generic.List[string]]::new()
+foreach($line in ($sentenceLog -split "`n")){
+    $f=$line -split "`t",9
+    if($f[5] -eq 'ui_image_draw'){$panelLines.Add("0`t0`t0`t123`t456`tui_panel_draw`tcomplete`t0`tMapBorder2 rect=532,108,756,360 border=FFFFBB00 fill=7E000000; GameWindowManager -> W3DDisplay -> Render2D -> D3D11 diffuse-alpha")}
+    $panelLines.Add($line)
+}
+$panelLog=(@(for($i=0;$i -lt $panelLines.Count;$i++){($i+1).ToString()+$panelLines[$i].Substring($panelLines[$i].IndexOf("`t"))}) -join "`n").Replace('AMD64 UI sentence smoke','AMD64 UI panel smoke')
+function VerifyPanel([string]$Text,[bool]$Valid){
+    $r=Test-NativeGraphicsEvidence $Text 123 $receipt -UIPanel
+    if($r.Valid -ne $Valid){throw "Unexpected panel classifier: $($r.Errors -join '; ')"};$script:checks++
+}
+VerifyPanel $panelLog $true
+VerifyPanel $sentenceLog $false
+VerifySentence $panelLog $false
+VerifyPanel ($panelLog.Replace('ui_panel_draw','missing_panel_draw')) $false
+VerifyPanel ($panelLog.Replace('fill=7E000000','fill=FF000000')) $false
+VerifyPanel ($panelLog.Replace('532,108,756,360','0,0,800,600')) $false
+VerifyPanel ($panelLog.Replace('ui_panel_draw','temporary').Replace('ui_image_draw','ui_panel_draw').Replace('temporary','ui_image_draw')) $false
+if((Get-NativeGraphicsMode -UIPanel) -eq (Get-NativeGraphicsMode -UISentence)){throw 'Panel mode must be distinct'};$checks++
 # Run the actual launcher post-processing block with synthetic process outcomes.
 # The original empty-directory expression emits zero pipeline objects, yielding
 # $null under StrictMode; a single FileInfo also must remain a collection.

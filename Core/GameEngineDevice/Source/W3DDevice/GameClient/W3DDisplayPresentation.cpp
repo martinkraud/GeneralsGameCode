@@ -10,6 +10,7 @@
 #include "WW3D2/render2d.h"
 #include "WW3D2/render2dsentence.h"
 #include "GameClient/GameText.h"
+#include "GameClient/GameWindowManager.h"
 #include "WW3D2/texture.h"
 #include "WW3D2/Texture2DCPUContent.h"
 #include <stdexcept>
@@ -35,7 +36,8 @@ int W3DDisplay::runNativePresentationSmoke()
         const bool previousBias = WW3D::Is_Screen_UV_Biased();
         FontCharsClass *font = nullptr;
         Render2DSentenceClass *sentence = nullptr;
-        bool firstSentence = true;
+        bool firstSentence = true, firstPanel = true;
+        const bool panelMode = StartupDiagnostics::uiPanelSmoke();
         TextureClass *texture = nullptr;
         Image *image = nullptr;
         RectClass previousScreen = Render2DClass::Get_Screen_Resolution();
@@ -153,6 +155,21 @@ int W3DDisplay::runNativePresentationSmoke()
             if(firstBegin) { firstBegin=false; Log(nullptr,"display_frame_begin","complete","WW3D::Begin_Render color-only",0); }
         }
         void EndPresent() override {
+            if(panelMode) {
+                if(firstPanel) Log(nullptr,"ui_panel_draw","begin","original MapBorder2 primitive route",0);
+                // Qualified base primitive delegation is real even on the
+                // headless manager. Do not create a second manager: its destructor
+                // owns global transition/static-string cleanup. No widget/parser
+                // or layout callback is invoked here.
+                if(!TheWindowManager) throw std::runtime_error("Missing UI primitive manager");
+                TheWindowManager->GameWindowManager::winOpenRect(0xffffbb00,1,532,108,756,360);
+                TheWindowManager->GameWindowManager::winFillRect(0x7e000000,1,533,109,755,359);
+                if(firstPanel) {
+                    firstPanel=false;
+                    Log(nullptr,"ui_panel_draw","complete",
+                        "MapBorder2 rect=532,108,756,360 border=FFFFBB00 fill=7E000000; GameWindowManager -> W3DDisplay -> Render2D -> D3D11 diffuse-alpha",0);
+                }
+            }
             if(imageMode) {
                 if(firstImage) Log(nullptr,"ui_image_draw","begin","W3DDisplay::drawImage",0);
                 display.drawImage(image,504,16,791,110,0xffffffff,Display::DRAW_IMAGE_ALPHA);

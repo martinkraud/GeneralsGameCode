@@ -44,6 +44,12 @@ ShaderClass SentenceShader()
     shader.Set_Texturing(ShaderClass::TEXTURING_ENABLE);
     return shader;
 }
+ShaderClass DiffuseAlphaShader()
+{
+    ShaderClass shader = SentenceShader();
+    shader.Set_Texturing(ShaderClass::TEXTURING_DISABLE);
+    return shader;
+}
 bool ValidateSampler(const Texture2DSampler &s)
 {
     const auto expected = SentenceSampler();
@@ -76,6 +82,7 @@ P VS(V v) {
 }
 Texture2D image : register(t0); SamplerState imageSampler : register(s0);
 float4 PS(P p) : SV_TARGET { return image.Sample(imageSampler, p.uv) * p.color; }
+float4 PSColor(P p) : SV_TARGET { return p.color; }
 )";
 ComPtr<ID3DBlob> Compile(const char *entry, const char *profile)
 {
@@ -98,7 +105,7 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11Texture2D> target;
     ComPtr<ID3D11RenderTargetView> rtv;
     ComPtr<ID3D11VertexShader> vs;
-    ComPtr<ID3D11PixelShader> ps;
+    ComPtr<ID3D11PixelShader> ps, colorPS;
     ComPtr<ID3D11InputLayout> layout;
     ComPtr<ID3D11BlendState> blend;
     ComPtr<ID3D11DepthStencilState> depth;
@@ -191,6 +198,8 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
     auto vs = Compile("VS", "vs_4_0"), ps = Compile("PS", "ps_4_0");
     Check(impl->device->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), nullptr, &impl->vs), "Create VS");
     Check(impl->device->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), nullptr, &impl->ps), "Create PS");
+    auto colorPS = Compile("PSColor", "ps_4_0");
+    Check(impl->device->CreatePixelShader(colorPS->GetBufferPointer(), colorPS->GetBufferSize(), nullptr, &impl->colorPS), "Create diffuse UI PS");
     const D3D11_INPUT_ELEMENT_DESC elements[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
         {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -324,6 +333,7 @@ void D3D11Backend::Submit_Render2D_Content(const Render2DSubmission &s, Texture2
 void D3D11Backend::Submit_Render2D(const Render2DSubmission &s)
 {
     if (!s.index_count) return;
+    if (s.shader && s.shader->Get_Bits() == DiffuseAlphaShader().Get_Bits() && s.texture) Unsupported();
     if (s.texture) Apply_Render2D_Texture(*s.texture, 0);
     else Bind_Content(nullptr, SentenceSampler());
     Draw(s);
@@ -331,7 +341,10 @@ void D3D11Backend::Submit_Render2D(const Render2DSubmission &s)
 void D3D11Backend::Draw(const Render2DSubmission &s)
 {
     if (!s.index_count) return;
-    if (!impl->scene || !s.shader || s.grayscale || s.shader->Get_Bits() != SentenceShader().Get_Bits() ||
+    const bool diffuse = s.shader && s.shader->Get_Bits() == DiffuseAlphaShader().Get_Bits();
+    if (!impl->scene || !s.shader || s.grayscale ||
+        (!diffuse && s.shader->Get_Bits() != SentenceShader().Get_Bits()) ||
+        (diffuse && (s.texture || impl->bound)) ||
         s.vertex_count <= 0 || s.vertex_count > 65535 || s.index_count < 0 || s.index_count > 65535 ||
         s.index_count % 3 || !s.positions || !s.uvs || !s.colors || !s.indices ||
         !std::isfinite(s.z) || s.z < 0 || s.z > 1) Unsupported();
@@ -364,7 +377,7 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     impl->context->VSSetShader(impl->vs.Get(), nullptr, 0);
     impl->context->VSSetConstantBuffers(0, 1, &cb);
     impl->context->GSSetShader(nullptr, nullptr, 0);
-    impl->context->PSSetShader(impl->ps.Get(), nullptr, 0);
+    impl->context->PSSetShader(diffuse ? impl->colorPS.Get() : impl->ps.Get(), nullptr, 0);
     impl->context->PSSetShaderResources(0, 1, &srv);
     impl->context->PSSetSamplers(0, 1, &sampler);
     impl->context->DrawIndexed(s.index_count, 0, 0); ++impl->draws;

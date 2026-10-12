@@ -1,5 +1,42 @@
 # Agent handoff
 
+## Generals X64.19 accepted; X64.20 original panel composition gate
+
+Reviewed Generals x64-19-final run20261012T1653491849657Z is formally accepted:
+exit0,no timeout/error,315 checkpoints,239 visible S_OK frames/5000ms,Intel
+8086:7D45/11.0,original logo and actual Arial14/localized difficulty sentence,
+193x22 extent within216x36,ordered UI/device/HWND/engine/MiniDumper/late cleanup,
+empty observer/no dump,matching staged PE/PDB GUID-age/hashes and developer
+visual confirmation. See [X64.19 acceptance](X64_19_UI_SENTENCE_GATE.md).
+All39 inventoried reviewed files and20 prior staged EXE/PDB hashes are unchanged.
+
+X64.20 adds only exact untextured normal-alpha Render2D support to D3D11 and a
+strict opt-in AMD64 -nativeUIPanelSmoke / PowerShell -UIPanel composition probe.
+Original MainMenu.wnd MapBorder2 border/fill use existing manager primitive
+forwarding -> W3DDisplay -> actual Render2D -> D3D11,behind accepted logo/text.
+No second manager (its destructor owns global transitions/static strings),dummy
+widget callback,layout parser/init,Shell::showShell,ordinary execute/update,
+replay/simulation/GameLogic/world or application input. Unsupported states still
+reject. W3DDisplay/WW3D ownership and DX8 Win32/reference remain preserved.
+This is a primitive gate,not complete menu/layout acceptance. Full original
+fonts/widgets/assets/cache lifetimes/layout isolation/input remain blockers.
+See [X64.20 report](X64_20_UI_PANEL_GATE.md) for final validation,stage identity,
+commands and failure rules. No title is executed in this offline work.
+
+
+Final offline X64.20 results: Win32 Release/CTest25,153 direct/79 focused per
+title PASS; AMD64 independent CTest15/both links/11 texture-UI per title PASS;
+startup15 AMD64/14 Win32; renderer30/native16/performance16 references;
+graphics67/native6 guards/all10 script parses PASS. Fresh per-title x64-20-final-2
+panel stages preflight matching symbols/assets/system graphics,30 imports/no
+delay/D3D8/D3DX; old mode rejects; no runs. No title launch. Generated outputs
+are ignored/excluded. Source/test/docs are coherent for commit and push only to
+origin/dev/modern-engine. Do not rebuild/restage the reviewed candidate casually.
+
+Exactly one next task: separately reviewed Generals-only X64.20 original panel
+composition confirmation,then machine/visual evidence review. Do not launch
+Zero Hour or automatically rerun. Earlier next-task sections are historical.
+
 
 ## X64.18 Generals accepted; X64.19 original sentence producer gate
 
