@@ -173,3 +173,71 @@ console output and `startup.log` (the `fail` row names the phase).
    through the ordinary global texture cache.
 5. Game end with the real Shell: nothing pushes the menu again (headless
    selection), so the run ends by the bounds above.
+
+## X64.24 first run: FAILED (validator-rejected), root cause found
+
+Preserved run (immutable, never rerun):
+`build/dev-runtimes/native/Generals/x64-24-ordinary-game/runs/20261012T2112467768379Z`.
+X64.24 is **not accepted**.
+
+### Evidence (independent review)
+
+- Exit code 1, no timeout, no dumps, `shutdown-exception.bin` empty, paths match,
+  PID 32948 / thread 25868 on every record.
+- `startup.log` contains **exactly 2048 records** (the in-process capacity).
+  Records 1..479 are the normal init, engine_init complete, `game_loop begin`,
+  first Present `S_OK` visible, and `game_start complete
+  mode=2 map=maps\alpine assault\alpine assault.map players=1 frame=0` at record
+  479. Records 480..2048 are **1569 consecutive `FP complete` rows** and nothing else:
+  no `game_progress`, `game_summary`, boundary, residency, detach, cleanup or
+  `WinMain` rows.
+- The launcher errors are all consequences: missing `game_summary`/teardown rows,
+  "Fewer than three logic progress observations", "Game did not start with at
+  least two players" (`players=1`), wrong boundary label.
+
+### Root causes (two, both bounded evidence defects)
+
+1. **Log capacity exhaustion.** `setFPMode()` (GameLogic.cpp) emitted one `FP`
+   receipt per call and it is called every logic step and every load step. After
+   the game started the 2048-record fail-closed log filled in about 1.5k calls;
+   `StartupDiagnostics::checkpoint` then sets `healthy=false`, silently dropping
+   all later receipts, and WinMain forces `exitcode=1` for an unhealthy log. The
+   engine and the 60-second bounded game almost certainly ran to
+   `frame_bound` (developer observed ~60 s then normal termination), but this
+   run cannot prove it: the tail evidence was not recorded. No GameLogic
+   correctness conclusion is drawn from this run.
+2. **`game_start` fired one update early.** `MSG_NEW_GAME` sets the game mode in
+   `processCommandList` and `GameLogic::update` runs `startNewGame` at the top of the
+   *next* update (`m_startNewGame`). My check saw `isInGame()` with the neutral
+   player only (`players=1`, `frame=0`). The classifier's "at least two players"
+   rule correctly rejected it. Not an AMD64 logic fault.
+
+### Fixes (commit `18f0be5ab`)
+
+- `StartupDiagnostics::RepeatGate`; `setFPMode` still resets and verifies the FP
+  state on **every** call (and still `RELEASE_CRASH`es on failure) but writes only
+  the first 32 receipts plus any state change; the total is reported once
+  (`FP_summary calls=N`).
+- `game_start` now requires `!isLoadingMap()` and `PlayerList >= 2`.
+- Launcher classifier names capacity exhaustion (`Records >= 2000`).
+- Regression: gate test (1,000,000 calls admit exactly 32), Python contract
+  (throttle precedes nothing that skips verification, start waits for load),
+  PowerShell flood test (2100 repeated receipts -> named error) and pre-start
+  player-list test.
+
+### Fresh candidate (preflight only, never executed)
+
+`x64-24-ordinary-game-fix1`: GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age 70,
+EXE SHA256 `2C62BD2A8795EBF783DCCA03543D013FA3FC17433CAC873611BCD4F083E7D0A9`,
+PDB SHA256 `EA4217480A49B5B4425E37CE358854A97FB65504449F5005AD4469BDEBDF656F`,
+30 imports, no app-local DLLs, no `runs` directory.
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeOrdinaryGame.ps1 -Title Generals -Name x64-24-ordinary-game-fix1
+./scripts/native-runtime/Invoke-NativeOrdinaryGame.ps1 -Title Generals -Name x64-24-ordinary-game-fix1 -RunReviewedOrdinaryGame
+```
+
+Interaction, expectations and PASS/FAIL are unchanged from the section above
+(substitute the stage name). Additional PASS evidence now present: an
+`FP_summary` row and `game_start` with `players >= 2`.
