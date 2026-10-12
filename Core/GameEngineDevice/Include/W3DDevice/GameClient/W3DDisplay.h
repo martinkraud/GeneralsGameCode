@@ -60,6 +60,9 @@ public:
 	W3DDisplay();
 	virtual ~W3DDisplay() override;
 
+#if defined(_WIN64)
+    int runNativePresentationSmoke() override;
+#endif
 	virtual void init() override;  ///< initialize or re-initialize the system
  	virtual void reset() override;																///< Reset system
 

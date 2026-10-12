@@ -1,0 +1,41 @@
+from pathlib import Path
+import subprocess,unittest,re
+ROOT=Path(__file__).resolve().parents[2]
+BASE='c8aaccbee77e32f7ad21dbaa54682b7ea6537d3e'
+def read(p):return (ROOT/p).read_bytes().decode('latin1').replace('\r\n','\n')
+def without_native(s):
+ lines=s.splitlines(keepends=True);out=[];depth=0
+ for line in lines:
+  if not depth and line.strip()=='#if defined(_WIN64)':depth=1
+  elif depth:
+   if re.match(r'\s*#if',line):depth+=1
+   elif re.match(r'\s*#endif',line):depth-=1
+   elif re.match(r'\s*#else',line) and depth==1:raise AssertionError('Unexpected else in native-only addition')
+  else:out.append(line)
+ assert depth==0
+ return ''.join(out)
+class DisplayContracts(unittest.TestCase):
+ def test_legacy_ww3d_and_display_tokens_unchanged(self):
+  for p in ['Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp','Core/Libraries/Source/WWVegas/WW3D2/ww3d.h','Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp','Core/GameEngineDevice/Include/W3DDevice/GameClient/W3DDisplay.h','Core/GameEngine/Include/GameClient/Display.h']:
+   old=subprocess.check_output(['git','show',f'{BASE}:{p}'],cwd=ROOT).decode('latin1').replace('\r\n','\n')
+   self.assertEqual('\n'.join(x for x in without_native(read(p)).splitlines() if x.strip()),'\n'.join(x for x in without_native(old).splitlines() if x.strip()),p)
+ def test_real_owner_and_frame_route_without_ordinary_draw(self):
+  s=read('Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp').split('int W3DDisplay::runNativePresentationSmoke()',1)[1]
+  for term in ['WW3D::Init_Native_Presentation','WW3D::Begin_Render','WW3D::End_Render','WW3D::Shutdown_Native_Presentation','display.Display::setWidth','display.Display::setHeight']:self.assertIn(term,s)
+  for term in ['->execute(', '->update(', '->draw(', 'm_headless =', 'showShell(']:self.assertNotIn(term,s)
+  for title in ['Generals','GeneralsMD']:
+   s=read(f'{title}/Code/GameEngine/Source/Common/GameMain.cpp')
+   self.assertLess(s.index('TheGameEngine->init();'),s.index('runNativePresentationSmoke()'))
+   self.assertLess(s.index('runNativePresentationSmoke()'),s.index('TheGameEngine->execute();'))
+ def test_unsupported_world_calls_fail_before_legacy_noop(self):
+  s=read('Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp')
+  self.assertEqual(s.count('World rendering unsupported by native presentation lifecycle'),4)
+  self.assertIn('Cannot mix native presentation and legacy WW3D lifecycles',s)
+  self.assertIn('config.software=false;',s)
+  self.assertLess(s.index('RenderBackend=nullptr;',s.index('void WW3D::Shutdown_Native_Presentation')),s.index('NativePresentation.reset();'))
+ def test_old_graphics_and_init_flags_preserved_new_explicit_selector(self):
+  s=read('scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1')
+  self.assertIn("if($DisplayLifecycle){'-nativeDisplaySmoke'}else{'-nativeGraphicsSmoke'}",s)
+  self.assertIn('-DisplayLifecycle:$DisplayLifecycle',s)
+  for term in ['$exit -eq 0','$shutdownBytes -eq 0','$dumps.Count -eq 0','$evidence.Valid']:self.assertIn(term,s)
+if __name__=='__main__':unittest.main()

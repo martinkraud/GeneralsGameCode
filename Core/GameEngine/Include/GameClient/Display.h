@@ -28,6 +28,9 @@
 
 #pragma once
 
+#if defined(_WIN64)
+#include <stdexcept>
+#endif
 #include "Common/SubsystemInterface.h"
 #include "GameClient/Color.h"
 #include "GameClient/GameFont.h"
@@ -73,6 +76,10 @@ public:
 
 	typedef void (DebugDisplayCallback)( DebugDisplayInterface *debugDisplay, void *userData, FILE *fp );
 
+#if defined(_WIN64)
+    // Explicit presentation diagnostic; never ordinary display update/draw.
+    virtual int runNativePresentationSmoke() { throw std::runtime_error("Display has no native presentation diagnostic"); }
+#endif
 	Display();
 	virtual ~Display() override;
 

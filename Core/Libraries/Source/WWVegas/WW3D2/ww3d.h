@@ -47,6 +47,10 @@ class		CameraClass;
 class		ShaderClass;
 class		DX8Wrapper;
 class		IRenderBackend;
+#if defined(_WIN64)
+struct PresentationConfiguration;
+struct PresentationStatus;
+#endif
 
 struct	RenderStatistics;
 class		FrameGrabClass;
@@ -112,6 +116,13 @@ public:
 
 	static WW3DErrorType		Init(void * hwnd, char *defaultpal = nullptr, bool lite = false);
 	static WW3DErrorType		Shutdown();
+#if defined(_WIN64)
+    // Explicit presentation-only lifecycle; does not initialize world rendering.
+    static void Init_Native_Presentation(const PresentationConfiguration &);
+    static void Shutdown_Native_Presentation();
+    static PresentationStatus Native_Presentation_Status();
+#endif
+
 	static bool					Is_Initted()								{ return IsInitted; }
 
 	// The active rendering backend.

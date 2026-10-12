@@ -45,6 +45,38 @@ Verify ($log+"`nnative_shutdown`texception") $false
 Verify ($log.Replace("`t123`t","`t999`t")) $false
 Verify ($log.Replace("`tgraphics_clear`tcomplete`t0`t","`tgraphics_clear`tfail`t1`t")) $false
 Verify ($log.Replace('graphics_boundary','init_only')) $false
+# Distinct integrated-display evidence, using the actual shared classifier.
+$displayLines=[Collections.Generic.List[string]]::new()
+function DisplayAdd([string]$Stage,[string]$Status='complete',[string]$Detail=''){
+    $displayLines.Add("$($displayLines.Count+1)`t2026-10-12`t0`t123`t456`t$Stage`t$Status`t0`t$Detail")
+}
+DisplayAdd WinMain begin 'Generals AMD64 display smoke'
+foreach($line in $lines){
+    $f=$line -split "`t",9
+    if($f[5] -eq 'graphics_backend'){
+        DisplayAdd display_size complete 'device=800x600 target=800x600 bits=32 windowed=1'
+        DisplayAdd display_attach complete 'W3DDisplay -> WW3D active backend; presentation-only'
+    }
+    if($f[5] -eq 'graphics_clear'){DisplayAdd display_frame_begin complete 'WW3D::Begin_Render color-only'}
+    if($f[5] -eq 'graphics_present'){DisplayAdd display_frame_end complete 'WW3D::End_Render Present'}
+    if($f[5] -eq 'graphics_backend_release'){DisplayAdd display_detach complete 'device released; display dimensions restored'}
+    DisplayAdd $f[5] $f[6] $f[8]
+}
+$displayLog=$displayLines -join "`n"
+function VerifyDisplay([string]$Text,[bool]$Valid){
+    $r=Test-NativeGraphicsEvidence $Text 123 $receipt -DisplayLifecycle
+    if($r.Valid -ne $Valid){throw "Unexpected display classifier result: $($r.Errors -join '; ')"};$script:checks++
+}
+VerifyDisplay $displayLog $true
+VerifyDisplay $log $false
+Verify $displayLog $false
+foreach($phase in 'display_attach','display_size','display_frame_begin','display_frame_end','display_detach'){
+    VerifyDisplay ($displayLog.Replace($phase,'missing_'+$phase)) $false
+}
+VerifyDisplay ($displayLog.Replace('device=800x600','device=1024x768')) $false
+VerifyDisplay ($displayLog.Replace('AMD64 display smoke','AMD64 graphics smoke')) $false
+VerifyDisplay ($displayLog.Replace('display_frame_begin','temporary').Replace('display_frame_end','display_frame_begin').Replace('temporary','display_frame_end')) $false
+if((Get-NativeGraphicsMode) -eq (Get-NativeGraphicsMode -DisplayLifecycle)){throw 'Modes must be distinct'};$checks++
 # Run the actual launcher post-processing block with synthetic process outcomes.
 # The original empty-directory expression emits zero pipeline objects, yielding
 # $null under StrictMode; a single FileInfo also must remain a collection.

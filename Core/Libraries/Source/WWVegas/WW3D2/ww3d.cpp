@@ -106,6 +106,13 @@
 #include "dx8renderer.h"
 #include "Backend/RenderBackend.h"
 #include "IRenderBackend.h"
+#if defined(_WIN64)
+#include "PresentationLifecycle.h"
+#include "Backend/D3D11Backend.h"
+#include <memory>
+#include <stdexcept>
+namespace { std::unique_ptr<PresentationLifecycle> NativePresentation; }
+#endif
 #include "render2d.h"
 #include "WWLib/bound.h"
 #include "rddesc.h"
@@ -266,8 +273,40 @@ void WW3D::Set_NPatches_Level(unsigned level)
  * HISTORY:                                                                                    *
  *   3/24/98    GTH : Created.                                                                 *
  *=============================================================================================*/
+#if defined(_WIN64)
+void WW3D::Init_Native_Presentation(const PresentationConfiguration &configuration) {
+    if(NativePresentation || RenderBackend || IsInitted || IsRendering)
+        throw std::runtime_error("Cannot mix native presentation and legacy WW3D lifecycles");
+    if(!configuration.window || configuration.width!=800 || configuration.height!=600)
+        throw std::runtime_error("Native presentation requires the fixed diagnostic window");
+    D3D11Backend::Configuration config;
+    config.window=configuration.window;config.width=configuration.width;config.height=configuration.height;
+    config.software=false;config.diagnostic_windowed=true;
+    config.diagnostic=configuration.diagnostic;config.diagnostic_context=configuration.context;
+    auto backend=D3D11Backend::Create_For_W3D(config);
+    auto lifecycle=std::make_unique<PresentationLifecycle>(std::move(backend),
+        PresentationSize{configuration.width,configuration.height},[](IRenderBackend &value) {
+            return static_cast<D3D11Backend &>(value).Last_Presentation();
+        });
+    NativePresentation=std::move(lifecycle);
+    RenderBackend=NativePresentation->Backend(); // WW3D owns the lifecycle; borrowed active alias
+}
+void WW3D::Shutdown_Native_Presentation() {
+    if(!NativePresentation) return; // idempotent partial-init cleanup only
+    RenderBackend=nullptr;
+    IsRendering=false;
+    NativePresentation.reset(); // device/resources released before host HWND
+}
+PresentationStatus WW3D::Native_Presentation_Status() {
+    return NativePresentation ? NativePresentation->Status() : PresentationStatus{};
+}
+#endif
+
 WW3DErrorType WW3D::Init(void *hwnd, char *defaultpal, bool lite)
 {
+#if defined(_WIN64)
+    if(NativePresentation) throw std::runtime_error("Legacy Init during native presentation");
+#endif
 	assert(IsInitted == false);
 	WWDEBUG_SAY(("WW3D::Init hwnd = %p",hwnd));
 	_Hwnd = (HWND)hwnd;
@@ -337,6 +376,9 @@ WW3DErrorType WW3D::Init(void *hwnd, char *defaultpal, bool lite)
  *=============================================================================================*/
 WW3DErrorType WW3D::Shutdown()
 {
+#if defined(_WIN64)
+    if(NativePresentation) { Shutdown_Native_Presentation(); return WW3D_ERROR_OK; }
+#endif
 	assert(Lite || IsInitted == true);
 //	WWDEBUG_SAY(("WW3D::Shutdown"));
 
@@ -657,6 +699,12 @@ WW3DErrorType WW3D::Set_Device_Resolution(int width,int height,int bits,int wind
  *=============================================================================================*/
 void WW3D::Get_Render_Target_Resolution(int & set_w,int & set_h,int & set_bits,bool & set_windowed)
 {
+#if defined(_WIN64)
+    if(NativePresentation) {
+        const auto size=NativePresentation->Size();
+        set_w=size.width;set_h=size.height;set_bits=32;set_windowed=true;return;
+    }
+#endif
 	DX8Wrapper::Get_Render_Target_Resolution(set_w,set_h,set_bits,set_windowed);
 }
 
@@ -676,6 +724,12 @@ void WW3D::Get_Render_Target_Resolution(int & set_w,int & set_h,int & set_bits,b
  *=============================================================================================*/
 void WW3D::Get_Device_Resolution(int & set_w,int & set_h,int & set_bits,bool & set_windowed)
 {
+#if defined(_WIN64)
+    if(NativePresentation) {
+        const auto size=NativePresentation->Size();
+        set_w=size.width;set_h=size.height;set_bits=32;set_windowed=true;return;
+    }
+#endif
 	DX8Wrapper::Get_Device_Resolution(set_w,set_h,set_bits,set_windowed);
 }
 
@@ -806,6 +860,12 @@ void WW3D::Set_Anisotropy_Level(int level)
  *=============================================================================================*/
 WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, float dest_alpha, void(*network_callback)())
 {
+#if defined(_WIN64)
+    if(NativePresentation) {
+        if(network_callback) throw std::runtime_error("Network callback unsupported in presentation-only frames");
+        NativePresentation->Begin(clear,clearz,color,dest_alpha);IsRendering=true;return WW3D_ERROR_OK;
+    }
+#endif
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}
@@ -890,6 +950,9 @@ WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, f
  *=============================================================================================*/
 WW3DErrorType WW3D::Render(const LayerListClass &LayerList)
 {
+#if defined(_WIN64)
+    if(NativePresentation) throw std::runtime_error("World rendering unsupported by native presentation lifecycle");
+#endif
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}
@@ -925,6 +988,9 @@ WW3DErrorType WW3D::Render(const LayerListClass &LayerList)
  *=============================================================================================*/
 WW3DErrorType WW3D::Render(const LayerClass &Layer)
 {
+#if defined(_WIN64)
+    if(NativePresentation) throw std::runtime_error("World rendering unsupported by native presentation lifecycle");
+#endif
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}
@@ -949,6 +1015,9 @@ WW3DErrorType WW3D::Render(const LayerClass &Layer)
  *=============================================================================================*/
 WW3DErrorType WW3D::Render(SceneClass * scene,CameraClass * cam,bool clear,bool clearz,const Vector3 & color)
 {
+#if defined(_WIN64)
+    if(NativePresentation) throw std::runtime_error("World rendering unsupported by native presentation lifecycle");
+#endif
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}
@@ -1017,6 +1086,9 @@ WW3DErrorType WW3D::Render(
 	RenderInfoClass & rinfo
 )
 {
+#if defined(_WIN64)
+    if(NativePresentation) throw std::runtime_error("World rendering unsupported by native presentation lifecycle");
+#endif
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}
@@ -1096,6 +1168,9 @@ void WW3D::Flush(RenderInfoClass & rinfo)
  *=============================================================================================*/
 WW3DErrorType WW3D::End_Render(bool flip_frame)
 {
+#if defined(_WIN64)
+    if(NativePresentation) { IsRendering=false; NativePresentation->End(flip_frame); return WW3D_ERROR_OK; }
+#endif
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}

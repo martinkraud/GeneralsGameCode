@@ -1,5 +1,44 @@
 # Agent handoff
 
+## X64.17 retained display ownership selected; offline integration gate
+
+Developer explicitly selected retaining W3DDisplay/WW3D and neutral lifecycle
+adapters. The new AMD64-only -headless/-nativeDisplaySmoke mode attaches a
+D3D11 hardware device to the initialized headless display through WW3D, uses
+WW3D Begin_Render/End_Render and truthful target sizes, detaches before HWND
+release, then follows normal engine/MiniDumper/late-observer cleanup. Existing
+nativeInitOnly and direct nativeGraphicsSmoke remain separate and preserved.
+See [X64.17 report](X64_17_DISPLAY_PRESENTATION_LIFECYCLE.md).
+
+This is presentation-only integration. The checked platform host still owns the
+diagnostic HWND/pump; ApplicationHWnd/input, ordinary W3DDisplay::draw, shell,
+world, execute/replay/simulation are not migrated or entered. Original
+W3DDisplay.cpp rendering and DX8 factory are unchanged. Native world Render,
+depth clear and network callbacks reject. Do not flip m_headless, fake DX8, or
+claim the existing D3D11 slices form a complete game renderer.
+
+Final Win32 Release build/CTest25, direct149 and focused75 per title, AMD64
+independent CTest15/both native title links, lifecycle11 per architecture/startup8 Win32+9 AMD64,
+rendering28/startup-display13/performance16 source references, graphics37/native6
+workflow checks/all10 script parses PASS. Both native import sets remain30 with
+no delay/D3D8/D3DX; matching EXE/PDB GUID/age and system graphics preflight PASS.
+Fresh Generals and ZeroHour x64-17-final stages are ready with -DisplayLifecycle;
+no runs exist. Old-mode stage mismatch rejects. Exact first Generals-only guarded
+commands and identities are in the X64.17 report. This coherent implementation
+follows closure commit c8aaccbee77e32f7ad21dbaa54682b7ea6537d3e on dev/modern-engine;
+only origin/dev/modern-engine is an authorized push destination.
+Both X64.16 confirmations and the X64.14 evidence remain immutable; rebuilding
+current native output does not retroactively change those reviewed identities.
+Generated stages/logs/evidence remain ignored. No game launch in this work.
+
+Exactly one recommended next task: separately reviewed Generals-only X64.17
+retained-display hardware presentation confirmation, then stop for evidence and
+visual review. Do not automatically launch Zero Hour. Original-menu integration
+still requires application-window/input lifecycle, UI helpers/asset/state coverage
+and resource cleanup; Shell::showShell is not a safe menu-only route because it
+queues a shell map and mutates RNG state. No UI redesign or gameplay validation.
+Earlier next-step entries are historical/superseded.
+
 ## Both titles X64.16 hardware visible-presentation/process PASS (2026-10-12)
 
 Zero Hour confirmation `20261012T1149261127844Z` under

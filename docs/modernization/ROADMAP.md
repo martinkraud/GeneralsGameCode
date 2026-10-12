@@ -1,5 +1,20 @@
 # Incremental modernization roadmap
 
+## Current native integration gate: X64.17 retained display presentation
+
+X64.16 is closed for both titles with verified hardware visible frames and
+normal OS exit. Developer chose shared W3DDisplay/WW3D ownership with neutral
+lifecycle adapters. The bounded X64.17 implementation routes device ownership,
+fixed target sizes and Begin/End presentation through those owners while
+retaining headless init/cleanup and the checked diagnostic HWND host.
+See [scope, validation and guarded procedure](X64_17_DISPLAY_PRESENTATION_LIFECYCLE.md).
+
+Next task is exactly one separately reviewed Generals-only X64.17 hardware
+presentation confirmation. Do not enter ordinary draw, execute/simulation or
+shell-map loading. After evidence acceptance, application window/input lifecycle
+and original shell/UI compatibility remain before an original main-menu gate;
+modern UI redesign is deferred. Native world rendering is not implemented.
+
 ## Both titles X64.16 hardware visible-presentation/process PASS (2026-10-12)
 
 Zero Hour confirmation `20261012T1149261127844Z` under

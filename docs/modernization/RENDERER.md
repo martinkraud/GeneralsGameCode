@@ -1,5 +1,22 @@
 # Renderer and display architecture
 
+## Retained-owner lifecycle integration (X64.17)
+
+Developer selected W3DDisplay/WW3D as the shared frontend/backend owner, rather
+than a parallel ModernDisplay. The explicit nativeDisplaySmoke attachment owns
+D3D11 through a neutral PresentationLifecycle, exposes the existing WW3D active
+backend alias, supplies fixed target sizes, and routes Begin_Render/End_Render
+through viewport/color clear/scene pairing/Present. It bypasses only legacy DX8
+frame work in this mode and rejects world/depth/network use.
+
+The checked platform host continues to own the diagnostic HWND; the display
+borrows it and detaches its device before HWND destruction. Headless subsystem
+selection and normal cleanup remain paired. This does not enable ordinary
+W3DDisplay::draw or replace the DX8 factory. ApplicationHWnd/input, shell/menu
+assets/states, live UI texture lifetimes and ordinary window/device-loss policy
+are later reachable contracts, not silently implemented stubs. See
+[X64.17 report](X64_17_DISPLAY_PRESENTATION_LIFECYCLE.md).
+
 ## Both titles X64.16 hardware visible-presentation/process PASS (2026-10-12)
 
 Zero Hour confirmation `20261012T1149261127844Z` under

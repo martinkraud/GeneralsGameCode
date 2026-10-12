@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
+#include "WW3D2/PresentationLifecycle.h"
 #include "WW3D2/IRenderBackend.h"
 #include "WW3D2/Texture2D.h"
 #include <memory>
@@ -12,7 +13,7 @@ class D3D11Backend final : public IRenderBackend
 {
 public:
     using DiagnosticSink = void (*)(void *, const char *, const char *, const char *, unsigned);
-    struct Presentation { unsigned result = 0, removed_reason = 0; bool occluded = false; };
+    using Presentation = PresentationStatus;
     struct Configuration {
         void *window = nullptr; // null selects a bounded offscreen target
         unsigned width = 128, height = 96;

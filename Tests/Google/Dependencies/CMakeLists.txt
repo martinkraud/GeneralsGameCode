@@ -230,6 +230,7 @@ add_test(NAME d3d11_ui_test COMMAND d3d11_ui_test)
 
 add_executable(native_graphics_smoke_test
     ../Core/Libraries/NativeGraphicsSmokeTest.cpp
+    ../Core/Libraries/PresentationLifecycleTest.cpp
     ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.cpp
     ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp
 )

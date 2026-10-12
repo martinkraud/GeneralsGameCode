@@ -13,17 +13,21 @@ function Assert-NativeGraphicsDependencies([string]$Executable,[string]$GamePath
     }
     return $dependencies
 }
-function Read-NativeGraphicsStage([string]$Title,[string]$Name) {
+function Get-NativeGraphicsMode([switch]$DisplayLifecycle) {
+    if($DisplayLifecycle){return 'nativeDisplaySmoke; headless engine; hardware D3D11; W3DDisplay/WW3D'}
+    return 'nativeGraphicsSmoke; headless engine; hardware D3D11'
+}
+function Read-NativeGraphicsStage([string]$Title,[string]$Name,[switch]$DisplayLifecycle) {
     $manifest=Read-NativeStage $Title $Name
     $graphics=Get-Content -LiteralPath (Join-Path $manifest.StagePath 'graphics.json') -Raw | ConvertFrom-Json
-    if($graphics.Mode -ne 'nativeGraphicsSmoke; headless engine; hardware D3D11' -or
+    if($graphics.Mode -ne (Get-NativeGraphicsMode -DisplayLifecycle:$DisplayLifecycle) -or
         $graphics.StagePath -ne $manifest.StagePath -or
         $graphics.ManifestSHA256 -ne (Get-FileHash -LiteralPath (Join-Path $manifest.StagePath 'manifest.json')).Hash){throw 'Not an intact reviewed graphics-smoke stage'}
     $manifest.Dependencies=@(Assert-NativeGraphicsDependencies (Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))) $manifest.GamePath)
     return $manifest
 }
 # Pure evidence classifier. No process creation; shared by launcher and synthetic negative tests.
-function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt) {
+function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt,[switch]$DisplayLifecycle) {
     $rows=@();$errors=[Collections.Generic.List[string]]::new()
     foreach($line in ($Log -split "`n")) {
         if(!$line){continue}; $f=$line.TrimEnd("`r") -split "`t",9
@@ -65,5 +69,24 @@ function Test-NativeGraphicsEvidence([string]$Log,[int]$ProcessId,$Receipt) {
     if($armed.Count -ne 1 -or $mini.Count -ne 1 -or $armed[0] -le $mini[0] -or $armed[0] -ge $rows.Count-1){$errors.Add('Missing/incorrect late observer boundary')}
     if($rows.Count -eq 0 -or $rows[-1].Stage -ne 'WinMain' -or $rows[-1].Status -ne 'complete'){$errors.Add('Missing final WinMain completion')}
     if(@($rows|Where-Object{$_.Stage -eq 'init_only'}).Count){$errors.Add('Wrong diagnostic mode')}
+    $displayRows=@($rows|Where-Object{$_.Stage -like 'display_*'})
+    if($DisplayLifecycle){
+        # Device setup occurs inside attach; frame and detach checkpoints are
+        # interleaved with host clear/Present/release. Verify the actual route.
+        $route=@('engine_init','graphics_window','graphics_device','graphics_viewport',
+            'display_size','display_attach','display_frame_begin','graphics_clear',
+            'display_frame_end','graphics_present','display_detach','graphics_backend_release',
+            'graphics_window_release','graphics_boundary','engine_cleanup')
+        $previous=-1
+        foreach($stage in $route){
+            $at=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $stage -and $rows[$i].Status -eq 'complete'){$i}})
+            if($at.Count -ne 1){$errors.Add("Missing/duplicate display completion $stage");continue}
+            if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Display route order/code $stage")};$previous=$at[0]
+        }
+        $mode=@($rows|Where-Object{$_.Stage -eq 'WinMain' -and $_.Status -eq 'begin' -and $_.Detail -match 'AMD64 display smoke$'})
+        if($mode.Count -ne 1){$errors.Add('Wrong display mode')}
+        $size=@($rows|Where-Object{$_.Stage -eq 'display_size' -and $_.Detail -eq 'device=800x600 target=800x600 bits=32 windowed=1'})
+        if($size.Count -ne 1){$errors.Add('Wrong display dimensions')}
+    } elseif($displayRows.Count){$errors.Add('Unexpected display lifecycle in direct-backend mode')}
     return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
 }

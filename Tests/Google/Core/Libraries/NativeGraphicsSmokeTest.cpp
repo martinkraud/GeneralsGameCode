@@ -65,3 +65,48 @@ TEST(NativeGraphicsSmoke, InvalidLimitsDoNotCreateWindowOrDevice) {
     Probe probe;Configuration c;c.hold_ms=5001;c.sink=Probe::Log;c.context=&probe;
     EXPECT_EQ(NativeGraphicsSmoke::Run(c),1); EXPECT_EQ(probe.events.size(),1u);
 }
+#include "WW3D2/Backend/D3D11Backend.h"
+#include "WWMath/vector3.h"
+#include <stdexcept>
+namespace {
+struct TestDisplay final : DisplayDriver {
+    HWND window=nullptr;
+    std::unique_ptr<PresentationLifecycle> lifecycle;
+    int fail=0; bool releasedWithWindow=false; unsigned frames=0;
+    void Initialize(void *hwnd) override {
+        window=static_cast<HWND>(hwnd);
+        if(fail==1)throw std::runtime_error("test attach failure");
+        D3D11Backend::Configuration config;config.window=hwnd;config.width=800;config.height=600;
+        config.software=true;config.diagnostic_windowed=true;
+        lifecycle=std::make_unique<PresentationLifecycle>(D3D11Backend::Create(config),PresentationSize{800,600},
+            [](IRenderBackend&b){return static_cast<D3D11Backend&>(b).Last_Presentation();});
+    }
+    void BeginClear() override {
+        lifecycle->Begin(true,false,Vector3(0.08f,0.32f,0.55f),1);
+        if(fail==2)throw std::runtime_error("test clear failure");
+    }
+    void EndPresent() override {
+        if(fail==3)throw std::runtime_error("test present failure");
+        lifecycle->End(true);++frames;
+    }
+    PresentationStatus Status() const noexcept override {return lifecycle?lifecycle->Status():PresentationStatus{};}
+    void Shutdown() noexcept override {releasedWithWindow=IsWindow(window)!=FALSE;lifecycle.reset();}
+};
+}
+TEST(NativeGraphicsSmoke, BorrowedDisplayRealWARPFramesAndCleanup) {
+    TestDisplay display;Probe probe;Configuration c;c.display=&display;c.visible=false;c.software=true;
+    c.hold_ms=200;c.max_frames=3;c.sink=Probe::Log;c.context=&probe;
+    EXPECT_EQ(NativeGraphicsSmoke::Run(c),1); // Hidden window is never a visible milestone PASS.
+    EXPECT_EQ(display.frames,3u); EXPECT_TRUE(display.releasedWithWindow);EXPECT_FALSE(IsWindow(display.window));
+    EXPECT_FALSE(display.lifecycle);
+    EXPECT_LT(probe.Find("graphics_backend_release:complete"),probe.Find("graphics_window_release:complete"));
+}
+TEST(NativeGraphicsSmoke, BorrowedDisplayPartialInitClearPresentFailuresReleaseBeforeHWND) {
+    for(int fail=1;fail<=3;++fail){
+        TestDisplay display;display.fail=fail;Probe probe;Configuration c;c.display=&display;c.visible=false;
+        c.software=true;c.hold_ms=100;c.sink=Probe::Log;c.context=&probe;
+        EXPECT_EQ(NativeGraphicsSmoke::Run(c),1);EXPECT_TRUE(display.releasedWithWindow);EXPECT_FALSE(display.lifecycle);EXPECT_FALSE(IsWindow(display.window));
+        EXPECT_LT(probe.Find(fail==1?"graphics_backend:fail":fail==2?"graphics_clear:fail":"graphics_present:fail"),probe.events.size());
+        EXPECT_LT(probe.Find("graphics_backend_release:complete"),probe.Find("graphics_window_release:complete"));
+    }
+}

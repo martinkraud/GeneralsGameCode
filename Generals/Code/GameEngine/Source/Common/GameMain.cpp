@@ -30,6 +30,7 @@
 #include "Common/StartupDiagnostics.h"
 #if defined(_WIN64)
 #include "WW3D2/Backend/NativeGraphicsSmoke.h"
+#include "GameClient/Display.h"
 #endif
 
 #include "Common/FramePacer.h"
@@ -54,7 +55,14 @@ Int GameMain()
 	if (StartupDiagnostics::enabled())
 	{
 #if defined(_WIN64)
-        if (StartupDiagnostics::graphicsSmoke())
+        if (StartupDiagnostics::displaySmoke())
+        {
+            if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy() || !TheDisplay) exitcode = 1;
+            else exitcode = TheDisplay->runNativePresentationSmoke();
+            StartupDiagnostics::checkpoint("graphics_boundary", exitcode ? "fail" : "complete",
+                "execute/replay/simulation skipped", exitcode);
+        }
+        else if (StartupDiagnostics::graphicsSmoke())
         {
             if (!TheGlobalData->m_headless || !StartupDiagnostics::healthy()) exitcode = 1;
             else {

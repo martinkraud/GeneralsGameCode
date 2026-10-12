@@ -280,7 +280,7 @@ target_link_libraries(corei_ww3d2 INTERFACE
 )
 
 # Independent modern-SDK backend. No title PCH or legacy DX8 SDK dependency.
-add_library(w3d_d3d11 STATIC Backend/D3D11Backend.cpp Backend/NativeGraphicsSmoke.cpp)
+add_library(w3d_d3d11 STATIC Backend/D3D11Backend.cpp Backend/NativeGraphicsSmoke.cpp PresentationLifecycle.cpp)
 target_include_directories(w3d_d3d11 PUBLIC
     ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas
     ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas/WWLib

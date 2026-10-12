@@ -79,7 +79,8 @@ int Run(const Configuration &config) {
         settings.window = window; settings.width = 800; settings.height = 600;
         settings.software = config.software; settings.diagnostic_windowed = true;
         settings.diagnostic = config.sink; settings.diagnostic_context = config.context;
-        backend = D3D11Backend::Create(settings);
+        if(config.display) config.display->Initialize(window);
+        else backend = D3D11Backend::Create(settings);
         report(phase, "complete");
         const ULONGLONG start = GetTickCount64();
         bool lastVisible = false;
@@ -106,15 +107,16 @@ int Run(const Configuration &config) {
                 break;
             }
             phase = "graphics_viewport";
-            backend->Set_Viewport({0, 0, 800, 600, 0, 1});
+            if(!config.display) backend->Set_Viewport({0, 0, 800, 600, 0, 1});
             phase = "graphics_clear";
             if (!frames) report(phase, "begin", "RGBA=(0.08,0.32,0.55,1)");
-            backend->Begin_Scene(); backend->Clear(true, false, Vector3(0.08f, 0.32f, 0.55f), 1);
+            if(config.display) config.display->BeginClear();
+            else { backend->Begin_Scene(); backend->Clear(true, false, Vector3(0.08f, 0.32f, 0.55f), 1); }
             if (!frames) report(phase, "complete");
             phase = "graphics_present";
             if (!frames) report(phase, "begin");
-            backend->End_Scene(true);
-            const auto present = backend->Last_Presentation();
+            if(config.display) config.display->EndPresent(); else backend->End_Scene(true);
+            const auto present = config.display ? config.display->Status() : backend->Last_Presentation();
             ++frames; if (present.occluded) ++occludedFrames;
             lastVisible = visible && !present.occluded && present.result == 0;
             if (lastVisible) ++visibleFrames;
@@ -128,12 +130,16 @@ int Run(const Configuration &config) {
         }
         report("graphics_messages", "complete");
     } catch (const std::exception &error) {
-        char detail[768]; const auto present = backend ? backend->Last_Presentation() : D3D11Backend::Presentation{};
+        char detail[768]; const auto present = config.display ? config.display->Status() : (backend ? backend->Last_Presentation() : D3D11Backend::Presentation{});
         std::snprintf(detail, sizeof(detail), "%s Present=0x%08X removed=0x%08X", error.what(), present.result, present.removed_reason);
         report(phase, "fail", detail, 1); result = 1;
     } catch (...) { report(phase, "fail", "unknown exception", 1); result = 1; }
     // Explicit checked cleanup on every path; backend/context/resources precede HWND.
-    report("graphics_backend_release", "begin"); backend.reset(); report("graphics_backend_release", "complete");
+    report("graphics_backend_release", "begin");
+    try {
+        if(config.display) config.display->Shutdown();
+        backend.reset(); report("graphics_backend_release", "complete");
+    } catch(const std::exception &error) { report("graphics_backend_release","fail",error.what(),1); result=1; }
     phase = "graphics_window_release"; report(phase, "begin");
     state.finishing = true;
     if (window && !DestroyWindow(window)) { report(phase, "fail", "DestroyWindow", GetLastError()); result = 1; }

@@ -187,3 +187,36 @@ TEST(NativeGraphicsGate, FlushedModeUsesSameIsolatedPathsWithoutInitOnlySuccess)
     StartupDiagnostics::state()={};
     ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str())); ASSERT_TRUE(RemoveDirectoryA(root));
 }
+TEST(NativeDisplayGate, SeparateStrictGrammarAndArchitecture) {
+    char exe[]="probe",head[]="-headless",flag[]="-nativeDisplaySmoke",old[]="-nativeGraphicsSmoke",root[]="C:\\probe";
+    char *args[]={exe,head,flag,root};
+    EXPECT_TRUE(StartupDiagnostics::validDisplayArguments(4,args));
+    EXPECT_FALSE(StartupDiagnostics::validGraphicsArguments(4,args));EXPECT_FALSE(StartupDiagnostics::validArguments(4,args));
+    char *oldArgs[]={exe,head,old,root};EXPECT_FALSE(StartupDiagnostics::validDisplayArguments(4,oldArgs));
+    char *mixed[]={exe,head,flag,root,old};
+    StartupDiagnostics::state()={};EXPECT_FALSE(StartupDiagnostics::configure(5,mixed));EXPECT_FALSE(StartupDiagnostics::enabled());
+    EXPECT_FALSE(StartupDiagnostics::validDisplayArguments(3,args));
+    StartupDiagnostics::state()={};
+#if !defined(_WIN64)
+    EXPECT_FALSE(StartupDiagnostics::configure(4,args));EXPECT_FALSE(StartupDiagnostics::displaySmoke());
+#endif
+    StartupDiagnostics::state()={};
+}
+TEST(NativeDisplayGate, SameFlushedIsolationWithDistinctMode) {
+    char temp[MAX_PATH],root[MAX_PATH];ASSERT_NE(GetTempPathA(MAX_PATH,temp),0u);
+    ASSERT_NE(GetTempFileNameA(temp,"x17",0,root),0u);ASSERT_TRUE(DeleteFileA(root));ASSERT_TRUE(CreateDirectoryA(root,nullptr));
+    std::string data=std::string(root)+"\\userdata",dump=data+"\\CrashDumps",log=std::string(root)+"\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(),nullptr));ASSERT_TRUE(CreateDirectoryA(dump.c_str(),nullptr));
+    char exe[]="probe",head[]="-headless",flag[]="-nativeDisplaySmoke";char *args[]={exe,head,flag,root};
+    StartupDiagnostics::state()={};
+#if defined(_WIN64)
+    ASSERT_TRUE(StartupDiagnostics::configure(4,args));EXPECT_TRUE(StartupDiagnostics::displaySmoke());EXPECT_FALSE(StartupDiagnostics::graphicsSmoke());
+    EXPECT_EQ(std::string(StartupDiagnostics::userData()),data+"\\");
+    StartupDiagnostics::checkpoint("display_attach","complete");StartupDiagnostics::close();
+    std::ifstream in(log);std::string text((std::istreambuf_iterator<char>(in)),{});in.close();
+    EXPECT_NE(text.find("display_attach\tcomplete"),std::string::npos);ASSERT_TRUE(DeleteFileA(log.c_str()));
+#else
+    EXPECT_FALSE(StartupDiagnostics::configure(4,args));
+#endif
+    StartupDiagnostics::state()={};ASSERT_TRUE(RemoveDirectoryA(dump.c_str()));ASSERT_TRUE(RemoveDirectoryA(data.c_str()));ASSERT_TRUE(RemoveDirectoryA(root));
+}
