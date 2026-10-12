@@ -220,3 +220,30 @@ Blue visual evidence alone is insufficient.
 Autonomous work stops at this new native/visual gate. The accepted ownership fork
 is resolved and does not need another choice. No original-menu, world or
 simulation gate is implied by successful diagnostic presentation.
+
+## Reviewed Generals runtime acceptance (2026-10-12)
+
+Run `build/dev-runtimes/native/Generals/x64-17-final/runs/20261012T1243165104474Z`
+is accepted from original launch/exit/log/observer evidence and developer visual
+confirmation. PID24900 returned actual OS exit0, no timeout/error; paths match.
+Independent classifier validates293 sequential checkpoints. Exact strict arguments
+are -headless -nativeDisplaySmoke and the isolated run root. Matching EXE/PDB
+hashes and GUID/age are the candidate identities above; read-only preflight passes.
+
+Hardware Intel Graphics8086:7D45, feature0xB000, fixed800x600; W3DDisplay attaches
+through WW3D, checks device/target32-bit windowed dimensions, and begins/ends frames
+through PresentationLifecycle. First Present is visible/non-minimized/unoccluded
+S_OK; summary239 visible frames,0 occluded,5000ms. Display detach276/277 precedes
+backend-release278, HWND280/class282. Boundary285 skips execute/replay/simulation;
+source inspection also confirms no engine update/GameLogic entry. Cleanup289,
+MiniDumper291, late observer292 and final WinMain293 complete normally. Observer
+file is0 bytes, no trailer/dump. Developer confirms correct blue window and normal
+automatic completion without intervention.
+
+Original run files remain untouched. All23 previously inventoried X64.14/X64.16
+evidence files were rehashed unchanged. Generals X64.17 retained-display visible
+presentation/cleanup is PASS. Zero Hour X64.17 remains preflight-only. This does
+not validate ordinary display draw/input, shell/menu/world, simulation/gameplay,
+replay/save/network, performance or determinism. Next integration is audited
+against original menu assets and scoped UI ownership, without enabling shell-map
+callbacks or engine updates.
