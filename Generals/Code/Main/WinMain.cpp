@@ -882,7 +882,7 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
 	Int exitcode = 1;
 	if (!StartupDiagnostics::configure(__argc, __argv)) return 87;
-	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::ordinaryGame() ? "Generals AMD64 ordinary game" : StartupDiagnostics::ordinaryMenu() ? "Generals AMD64 ordinary menu" : StartupDiagnostics::ordinaryHost() ? "Generals AMD64 ordinary host" : StartupDiagnostics::uiMenuSmoke() ? "Generals AMD64 UI menu smoke" : StartupDiagnostics::uiPanelSmoke() ? "Generals AMD64 UI panel smoke" : StartupDiagnostics::uiSentenceSmoke() ? "Generals AMD64 UI sentence smoke" : StartupDiagnostics::uiImageSmoke() ? "Generals AMD64 UI image smoke" : StartupDiagnostics::displaySmoke() ? "Generals AMD64 display smoke" : StartupDiagnostics::graphicsSmoke() ? "Generals AMD64 graphics smoke" : "Generals AMD64 init-only");
+	StartupDiagnostics::checkpoint("WinMain", "begin", StartupDiagnostics::ordinaryTerrain() ? "Generals AMD64 ordinary terrain" : StartupDiagnostics::ordinaryGame() ? "Generals AMD64 ordinary game" : StartupDiagnostics::ordinaryMenu() ? "Generals AMD64 ordinary menu" : StartupDiagnostics::ordinaryHost() ? "Generals AMD64 ordinary host" : StartupDiagnostics::uiMenuSmoke() ? "Generals AMD64 UI menu smoke" : StartupDiagnostics::uiPanelSmoke() ? "Generals AMD64 UI panel smoke" : StartupDiagnostics::uiSentenceSmoke() ? "Generals AMD64 UI sentence smoke" : StartupDiagnostics::uiImageSmoke() ? "Generals AMD64 UI image smoke" : StartupDiagnostics::displaySmoke() ? "Generals AMD64 display smoke" : StartupDiagnostics::graphicsSmoke() ? "Generals AMD64 graphics smoke" : "Generals AMD64 init-only");
 	if (StartupDiagnostics::enabled())
 	{
 		char diagnosticModule[MAX_PATH] = {};

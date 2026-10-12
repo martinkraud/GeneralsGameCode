@@ -1807,6 +1807,17 @@ void W3DDisplay::update()
 	PERFORMANCE_PROFILE_SCOPE(DisplayUpdate);
 	Display::update();
 
+#if defined(_WIN64)
+	// Native terrain profile: advance the real camera state (scripted movement, terrain draw
+	// window) so the terrain pass has a valid view. No scene, drawables or tracks.
+	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryTerrain() && TheGameLogic &&
+		TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap() &&
+		TheTerrainRenderObject)
+	{
+		updateViews();
+		return;
+	}
+#endif
 	if (TheGlobalData->m_headless)
 		return;
 

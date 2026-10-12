@@ -629,3 +629,56 @@ TEST(NativeOrdinaryGameGate, ConfigureImpliesMenuAndHostButNeverTheReverse) {
     ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
 }
 #endif
+
+// ---------------------------------------------------------------------------
+// Ordinary-terrain profile (X64.25): fourth distinct token; implies game/menu/host.
+// ---------------------------------------------------------------------------
+TEST(NativeOrdinaryTerrainGate, DistinctStrictToken) {
+    HostArgs args;
+    char *copy[12] = {};
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    char terrain[] = "-nativeOrdinaryTerrain";
+    copy[9] = terrain;
+#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryTerrainArguments(11, copy));
+#else
+    EXPECT_TRUE(StartupDiagnostics::validOrdinaryTerrainArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryGameArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryHostArguments(11, copy));
+    char extra[] = "-file"; copy[11] = extra;
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryTerrainArguments(12, copy));
+#endif
+}
+
+#if defined(_WIN64) && !(defined(RTS_ZEROHOUR) && RTS_ZEROHOUR)
+TEST(NativeOrdinaryTerrainGate, ConfigureImpliesGameStackAndGameNeverImpliesTerrain) {
+    char temp[MAX_PATH], unique[MAX_PATH];
+    ASSERT_NE(GetTempPathA(MAX_PATH, temp), 0u);
+    ASSERT_NE(GetTempFileNameA(temp, "x25", 0, unique), 0u);
+    ASSERT_TRUE(DeleteFileA(unique)); ASSERT_TRUE(CreateDirectoryA(unique, nullptr));
+    std::string root(unique), data = root + "\\userdata", dump = data + "\\CrashDumps", log = root + "\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(), nullptr)); ASSERT_TRUE(CreateDirectoryA(dump.c_str(), nullptr));
+    HostArgs args;
+    std::strcpy(args.root, unique);
+    char *copy[11];
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    copy[9] = const_cast<char *>("-nativeOrdinaryTerrain");
+    StartupDiagnostics::state() = {};
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryTerrain());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryGame());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryMenu());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryHost());
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    copy[9] = const_cast<char *>("-nativeOrdinaryGame");
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryGame());
+    EXPECT_FALSE(StartupDiagnostics::ordinaryTerrain()); // X64.24 profile never renders the world
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
+}
+#endif

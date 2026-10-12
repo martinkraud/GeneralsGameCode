@@ -61,6 +61,15 @@
 #include <d3dx8core.h>
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#include <WW3D2/ww3d.h>
+#include <WW3D2/Backend/D3D11Backend.h>
+#include <WW3D2/WorldSubmission.h>
+#include <memory>
+#include <stdexcept>
+#include <vector>
+#endif
 
 #include "GameClient/TerrainVisual.h"
 #include "GameClient/View.h"
@@ -124,6 +133,9 @@ inline Int IABS(Int x) {	if (x>=0) return x; return -x;};
 //=============================================================================
 void HeightMapRenderObjClass::freeIndexVertexBuffers()
 {
+#if defined(_WIN64)
+	releaseNativeResources();
+#endif
 	REF_PTR_RELEASE(m_indexBuffer);
 
 	if (m_vertexBufferTiles) {
@@ -979,6 +991,13 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 	DEBUG_ASSERTCRASH(y0<=y1, ("HeightMapRenderObjClass::UpdateBlock parameters have inside-out rectangle (on Y)."));
 #endif
 	Invalidate_Cached_Bounding_Volumes();
+#if defined(_WIN64)
+	if (pMap && m_treeBuffer == nullptr && StartupDiagnostics::ordinaryTerrain()) {
+		// Builds the CPU atlas and the UV layout state (m_terrainTexHeight, flip table) that
+		// updateVB reads; there is no D3D8 texture to bind in this profile.
+		pMap->getTerrainTexture();
+	}
+#endif
 	if (pMap && m_treeBuffer != nullptr) {
 		REF_PTR_SET(m_stageZeroTexture, pMap->getTerrainTexture());
 		REF_PTR_SET(m_stageOneTexture, pMap->getAlphaTerrainTexture());
@@ -1279,7 +1298,18 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 	if (m_stageOneTexture == nullptr) {
 		needToAllocate = true;
 	}
-	if (data && needToAllocate && m_treeBuffer != nullptr)
+#if defined(_WIN64)
+	// Native terrain profile: the tree/prop/bib buffers (DX8-only, never created under the
+	// headless world selection) are not required; CPU-backed tiles are. Allocation happens
+	// once per map size instead of every call because no D3D8 stage-one texture ever exists.
+	const Bool nativeTerrain = StartupDiagnostics::ordinaryTerrain();
+	if (nativeTerrain) {
+		needToAllocate = (x != m_x || y != m_y || m_vertexBufferTiles == nullptr);
+	}
+#else
+	const Bool nativeTerrain = FALSE;
+#endif
+	if (data && needToAllocate && (m_treeBuffer != nullptr || nativeTerrain))
 	{
 		//requested heightmap different from old one.
 		freeIndexVertexBuffers();
@@ -1868,6 +1898,140 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 	}
 	m_updating = false;
 }
+
+#if defined(_WIN64)
+//=============================================================================
+// Native terrain world pass (X64.25 profile). Purpose-built replacement for the two
+// ST_TERRAIN_BASE fixed-function passes of Render(): pass 0 opaque base atlas sample
+// modulated by the prelit vertex diffuse, pass 1 the alpha-blended second atlas sample
+// (uv set 1). The vertex content is the legacy updateVB output (CPU-backed buffers);
+// nothing is re-derived. Cloud/noise multiply, shoreline, extra-blend, roads, props,
+// scorches and bridges are later increments and are explicitly absent from this pass.
+//=============================================================================
+static_assert(sizeof(VERTEX_FORMAT) == sizeof(WorldVertexXYZDUV2), "terrain vertex layout");
+static_assert(offsetof(VERTEX_FORMAT, u2) == offsetof(WorldVertexXYZDUV2, u1), "terrain uv1 offset");
+
+struct HeightMapRenderObjClass::NativeTerrain {
+	D3D11Backend *backend = nullptr;
+	std::unique_ptr<Texture2DResidency> atlas;
+	unsigned atlasVersion = 0;
+	struct Tile {
+		std::unique_ptr<GeometryResidency> geometry;
+		const void *source = nullptr;
+		unsigned version = 0;
+	};
+	std::vector<Tile> tiles;
+	NativeTerrainStats stats = {};
+};
+
+void HeightMapRenderObjClass::releaseNativeResources()
+{
+	if (!m_native) return;
+	// Residencies are released while their backend is still alive (ordering is the caller's
+	// contract; the display teardown verifies zero live residencies before backend release).
+	delete m_native;
+	m_native = nullptr;
+}
+
+HeightMapRenderObjClass::NativeTerrainStats HeightMapRenderObjClass::nativeStats() const
+{
+	return m_native ? m_native->stats : NativeTerrainStats{};
+}
+
+Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
+{
+	if (Is_Hidden() || !m_map || !m_vertexBufferTiles || !m_indexBuffer || m_numVertexBufferTiles <= 0)
+		return 0;
+	auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend());
+	if (!backend || !backend->Has_Depth_Buffer())
+		throw std::runtime_error("Native terrain pass requires the D3D11 backend with a depth buffer");
+	if (!m_indexBuffer->Is_CPU_Backed())
+		throw std::runtime_error("Native terrain pass requires CPU-backed legacy buffers");
+	unsigned atlasVersion = 0;
+	const TerrainAtlasContent *atlas = m_map->getNativeTerrainAtlas(&atlasVersion);
+	if (!atlas || atlas->mips.empty())
+		throw std::runtime_error("Native terrain atlas unavailable");
+
+	if (m_native && m_native->backend != backend) releaseNativeResources();
+	if (!m_native) {
+		m_native = new NativeTerrain;
+		m_native->backend = backend;
+	}
+	NativeTerrain &n = *m_native;
+	if (!n.atlas || n.atlasVersion != atlasVersion) {
+		n.atlas.reset(backend->Create_Mipped_Rgba8_Residency(atlas->width, atlas->height, atlas->mips));
+		n.atlasVersion = atlasVersion;
+		++n.stats.atlasUploads;
+	}
+	if (n.tiles.size() != static_cast<size_t>(m_numVertexBufferTiles)) {
+		n.tiles.clear();
+		n.tiles.resize(m_numVertexBufferTiles);
+	}
+	constexpr unsigned indexCount = HEIGHTMAP_POLYGON_NUM * 3;
+	const unsigned short *indices = m_indexBuffer->Get_CPU_Data();
+	for (Int i = 0; i < m_numVertexBufferTiles; ++i) {
+		DX8VertexBufferClass *vb = m_vertexBufferTiles[i];
+		if (!vb || !vb->Is_CPU_Backed())
+			throw std::runtime_error("Native terrain tile is not CPU-backed");
+		NativeTerrain::Tile &tile = n.tiles[i];
+		const auto *source = reinterpret_cast<const WorldVertexXYZDUV2 *>(vb->Get_CPU_Data());
+		if (!tile.geometry || tile.source != vb) {
+			GeometryCPUContent content;
+			content.vertices.assign(source, source + HEIGHTMAP_VERTEX_NUM);
+			content.indices.assign(indices, indices + indexCount);
+			if (!content.Valid()) throw std::runtime_error("Native terrain tile content invalid");
+			tile.geometry.reset(backend->Create_Geometry_Residency(content));
+			tile.source = vb;
+			tile.version = vb->Get_CPU_Version();
+			++n.stats.tileUploads;
+		} else if (tile.version != vb->Get_CPU_Version()) {
+			backend->Update_Geometry_Vertices(*tile.geometry, 0, source, HEIGHTMAP_VERTEX_NUM);
+			tile.version = vb->Get_CPU_Version();
+			++n.stats.tileUpdates;
+		}
+	}
+
+	WorldSubmission submission = {};
+	World_From_Matrix3D(&Transform[0][0], submission.world);
+	World_From_Matrix3D(&camera.Get_View_Matrix()[0][0], submission.view);
+	Matrix4x4 projection;
+	camera.Get_D3D_Projection_Matrix(&projection);
+	World_From_Matrix4x4(&projection[0][0], submission.projection);
+	int width = 0, height = 0, bits = 0;
+	bool windowed = false;
+	WW3D::Get_Render_Target_Resolution(width, height, bits, windowed);
+	const ViewportClass &viewport = camera.Get_Viewport();
+	float zMin = 0.0f, zMax = 1.0f;
+	camera.Get_Zbuffer_Range(zMin, zMax);
+	submission.viewport.x = static_cast<unsigned>(viewport.Min.X * static_cast<float>(width));
+	submission.viewport.y = static_cast<unsigned>(viewport.Min.Y * static_cast<float>(height));
+	submission.viewport.width = static_cast<unsigned>((viewport.Max.X - viewport.Min.X) * static_cast<float>(width));
+	submission.viewport.height = static_cast<unsigned>((viewport.Max.Y - viewport.Min.Y) * static_cast<float>(height));
+	submission.viewport.min_z = zMin;
+	submission.viewport.max_z = zMax;
+	submission.texture = n.atlas.get();
+	// The legacy terrain stages set clamp addressing and the global terrain filter flags.
+	submission.clamp = true;
+	submission.linear = TheGlobalData->m_bilinearTerrainTex || TheGlobalData->m_trilinearTerrainTex;
+	submission.mip_linear = TheGlobalData->m_trilinearTerrainTex;
+	submission.first_index = 0;
+	submission.index_count = indexCount;
+
+	Int draws = 0;
+	for (int pass = 0; pass < 2; ++pass) {
+		submission.material = pass == 0 ? WorldMaterial::TerrainBase : WorldMaterial::TerrainBlend;
+		submission.depth_write = (pass == 0);
+		for (Int i = 0; i < m_numVertexBufferTiles; ++i) {
+			submission.geometry = n.tiles[i].geometry.get();
+			backend->Submit_World(submission);
+			++draws;
+		}
+	}
+	++n.stats.frames;
+	n.stats.draws += draws;
+	return draws;
+}
+#endif
 
 //=============================================================================
 // HeightMapRenderObjClass::Render

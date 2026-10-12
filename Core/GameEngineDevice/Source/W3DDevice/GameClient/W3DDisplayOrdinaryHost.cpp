@@ -30,6 +30,11 @@
 #include "GameLogic/GameLogic.h"
 #include "Common/PlayerList.h"
 #include "Common/FramePacer.h"
+#include "GameClient/View.h"
+#include "W3DDevice/GameClient/W3DView.h"
+#include "W3DDevice/GameClient/HeightMap.h"
+#include "W3DDevice/GameClient/BaseHeightMap.h"
+#include "WW3D2/camera.h"
 #include <memory>
 #include <stdexcept>
 
@@ -76,6 +81,15 @@ void W3DDisplay::initOrdinaryHostPresentation()
     };
     for (const char *line : bypass) StartupDiagnostics::checkpoint("display_bypass", "complete", line);
 
+    if (StartupDiagnostics::ordinaryTerrain()) {
+        // Terrain world profile: CPU-backed legacy buffers and the depth buffer are explicit,
+        // process-wide opt-ins set before the backend and any terrain buffer exist. X64.22-24
+        // profiles never reach this branch and keep the exact accepted behavior.
+        D3D11Backend::Enable_CPU_Backed_Geometry(true);
+        D3D11Backend::Enable_Depth_Buffer_For_W3D(true);
+        StartupDiagnostics::checkpoint("terrain_optin", "complete",
+            "cpu_backed_geometry=1 depth_buffer=1 (terrain-only world pass; meshes/water/shadows/particles absent)");
+    }
     PresentationConfiguration configuration;
     configuration.window = ApplicationHWnd;
     configuration.diagnostic = HostLog;
@@ -158,6 +172,14 @@ void W3DDisplay::releaseOrdinaryHostPresentation()
 {
     // Called after the asset manager released the global UI textures.
     StartupDiagnostics::checkpoint("display_detach", "begin", "ordinary destructor");
+    if (StartupDiagnostics::ordinaryTerrain()) {
+        if (TheTerrainRenderObject) {
+            if (auto *terrain = dynamic_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject))
+                terrain->releaseNativeResources();
+        }
+        D3D11Backend::Enable_CPU_Backed_Geometry(false);
+        D3D11Backend::Enable_Depth_Buffer_For_W3D(false);
+    }
     const unsigned live = D3D11Backend::Live_Residencies();
     char detail[96]; sprintf_s(detail, "live_residencies=%u before backend release", live);
     if (!NativeOrdinaryHost::residencyReleasedBeforeBackend(live)) {
@@ -332,12 +354,51 @@ void DrainMenuStream(WindowTranslator &translator, MenuCounters &c, bool route) 
 } // namespace
 #endif
 
+namespace {
+unsigned g_terrainFrames = 0, g_terrainDraws = 0;
+HeightMapRenderObjClass::NativeTerrainStats g_terrainStats = {};
+}
+
+// Terrain-only native world pass (profile ordinaryTerrain, in game, map loaded). Returns the
+// number of draws; zero when there is nothing to draw yet (shell, loading, no camera).
+static int drawNativeTerrainPass()
+{
+    if (!StartupDiagnostics::ordinaryTerrain() || !TheGameLogic || !TheGameLogic->isInGame() ||
+        TheGameLogic->isInShellGame() || TheGameLogic->isLoadingMap() || !TheTerrainRenderObject ||
+        !TheTacticalView)
+        return 0;
+    auto *terrain = dynamic_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject);
+    auto *view = dynamic_cast<W3DView *>(TheTacticalView);
+    if (!terrain || !view || !terrain->getMap()) return 0;
+    CameraClass *camera = view->get3DCamera();
+    if (!camera) return 0;
+    auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend());
+    if (!backend) throw std::runtime_error("Terrain pass requires the D3D11 backend");
+    backend->Clear(false, true, Vector3(0.0f, 0.0f, 0.0f), 1.0f, 1.0f, 0); // depth only
+    const int draws = terrain->renderNative(*camera);
+    return draws;
+}
+
 void W3DDisplay::drawOrdinaryMenuFrame()
 {
     // Black clear like the legacy no-shell-map menu; windows then the cursor layer.
     if (WW3D::Begin_Render(true, false, Vector3(0.0f, 0.0f, 0.0f), 1.0f) != WW3D_ERROR_OK)
         throw std::runtime_error("Ordinary menu Begin_Render failed");
     try {
+        const int terrainDraws = drawNativeTerrainPass();
+        if (terrainDraws) {
+            if (g_terrainFrames == 0) {
+                char detail[200];
+                const HeightMapRenderObjClass::NativeTerrainStats stats =
+                    static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
+                sprintf_s(detail, "draws=%d atlas_uploads=%u tile_uploads=%u (terrain base+blend; UI follows)",
+                    terrainDraws, stats.atlasUploads, stats.tileUploads);
+                StartupDiagnostics::checkpoint("terrain_first_frame", "complete", detail);
+            }
+            ++g_terrainFrames;
+            g_terrainDraws += static_cast<unsigned>(terrainDraws);
+            g_terrainStats = static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
+        }
         if (TheWindowManager) TheWindowManager->winRepaint();
         if (TheMouse) TheMouse->DRAW();
     } catch (...) {
@@ -599,6 +660,13 @@ int W3DDisplay::runOrdinaryGameHost()
     }
     sprintf_s(detail, "calls=%u (first receipts bounded; verified every call)", nativeFloatingPointModeCalls());
     StartupDiagnostics::checkpoint("FP_summary", "observed", detail);
+    if (StartupDiagnostics::ordinaryTerrain()) {
+        sprintf_s(detail, "frames=%u draws=%u atlas_uploads=%u tile_uploads=%u tile_updates=%u",
+            g_terrainFrames, g_terrainDraws, g_terrainStats.atlasUploads, g_terrainStats.tileUploads,
+            g_terrainStats.tileUpdates);
+        StartupDiagnostics::checkpoint("terrain_summary", g_terrainFrames ? "complete" : "fail", detail, g_terrainFrames ? 0 : 1);
+        if (!g_terrainFrames) result = 1;
+    }
     sprintf_s(detail, "presents=%u updates=%u elapsed_ms=%u game=%u logic_frames=%u exit=%s driver=hardware",
         m_hostPresents, updates, elapsed, inGame ? 1u : 0u,
         inGame ? lastFrame - startFrame : 0u, exitReason);

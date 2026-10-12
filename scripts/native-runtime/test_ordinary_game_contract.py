@@ -95,8 +95,17 @@ class OrdinaryGameContract(unittest.TestCase):
         allowed = {"Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
                    "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp",
                    "Tests/Google/Core/Libraries/NativeTerrainTest.cpp",
+                   "docs/modernization/X64_24_SKIRMISH_WORLD_AUDIT.md",
+                   "docs/modernization/X64_25_TERRAIN_FRAME.md",
+                   "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp",
                    "scripts/native-runtime/test_ordinary_game_contract.py"}
         self.assertEqual(set(hits) - allowed, set())
+        # The only runtime enabling site is the X64.25 terrain profile branch.
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        enable = host.index("D3D11Backend::Enable_CPU_Backed_Geometry(true)")
+        self.assertIn("StartupDiagnostics::ordinaryTerrain()", host[max(0, enable - 400):enable])
+        self.assertEqual(host.count("Enable_CPU_Backed_Geometry(true)"), 1)
+        self.assertEqual(host.count("Enable_Depth_Buffer_For_W3D(true)"), 1)
         backend = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp")
         self.assertIn("cpuBackedGeometry{false}", backend)
         for path in ("Core/Libraries/Source/WWVegas/WW3D2/dx8vertexbuffer.cpp",

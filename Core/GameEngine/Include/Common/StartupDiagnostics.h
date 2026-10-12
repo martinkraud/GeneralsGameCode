@@ -20,6 +20,9 @@ struct State {
     // Ordinary menu plus the ordinary engine loop and a live GameLogic (headless
     // world selection, UI-only draw). Implies ordinaryMenu and ordinaryHost.
     bool ordinaryGame;
+    // Ordinary game plus the first native terrain world frame (R2): terrain-only
+    // D3D11 pass under the original UI. Implies ordinaryGame/Menu/Host.
+    bool ordinaryTerrain;
     HANDLE file;
     unsigned records;
     char root[MAX_PATH], userData[MAX_PATH];
@@ -35,6 +38,7 @@ inline bool uiPanelSmoke() { return enabled() && state().uiPanelSmoke; }
 inline bool ordinaryHost() { return enabled() && state().ordinaryHost; }
 inline bool ordinaryMenu() { return enabled() && state().ordinaryMenu; }
 inline bool ordinaryGame() { return enabled() && state().ordinaryGame; }
+inline bool ordinaryTerrain() { return enabled() && state().ordinaryTerrain; }
 inline bool healthy() { return !enabled() || state().healthy; }
 // A verified-contract violation is recorded by the caller first; this only
 // forces the process exit classification to failure.
@@ -96,6 +100,9 @@ inline bool validOrdinaryMenuArguments(int argc, char **argv) {
 inline bool validOrdinaryGameArguments(int argc, char **argv) {
     return validOrdinaryArguments(argc, argv, "-nativeOrdinaryGame");
 }
+inline bool validOrdinaryTerrainArguments(int argc, char **argv) {
+    return validOrdinaryArguments(argc, argv, "-nativeOrdinaryTerrain");
+}
 inline void checkpoint(const char *stage, const char *status,
                        const char *detail = "", unsigned code = 0) {
     State &s = state();
@@ -129,12 +136,13 @@ inline bool configure(int argc, char **argv) {
         else if (!_stricmp(argv[i], "-nativeUIPanelSmoke")) { s.requested = true; s.displaySmoke = s.uiImageSmoke = s.uiSentenceSmoke = s.uiPanelSmoke = true; }
         else if (!_stricmp(argv[i], "-nativeOrdinaryHost")) { s.requested = true; s.ordinaryHost = true; }
         else if (!_stricmp(argv[i], "-nativeOrdinaryMenu")) { s.requested = true; s.ordinaryHost = s.ordinaryMenu = true; }
+        else if (!_stricmp(argv[i], "-nativeOrdinaryTerrain")) { s.requested = true; s.ordinaryHost = s.ordinaryMenu = s.ordinaryGame = s.ordinaryTerrain = true; }
         else if (!_stricmp(argv[i], "-nativeOrdinaryGame")) { s.requested = true; s.ordinaryHost = s.ordinaryMenu = s.ordinaryGame = true; }
     if (!s.requested) return true;
 #if !defined(_WIN64)
     return false; // Native diagnostic option must never change the Win32 route.
 #else
-    if (!(s.ordinaryGame ? validOrdinaryGameArguments(argc, argv) : s.ordinaryMenu ? validOrdinaryMenuArguments(argc, argv) : s.ordinaryHost ? validOrdinaryHostArguments(argc, argv) : s.uiMenuSmoke ? validUIMenuArguments(argc, argv) : s.uiPanelSmoke ? validUIPanelArguments(argc, argv) : s.uiSentenceSmoke ? validUISentenceArguments(argc, argv) : s.uiImageSmoke ? validUIImageArguments(argc, argv) : s.displaySmoke ? validDisplayArguments(argc, argv) : s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
+    if (!(s.ordinaryTerrain ? validOrdinaryTerrainArguments(argc, argv) : s.ordinaryGame ? validOrdinaryGameArguments(argc, argv) : s.ordinaryMenu ? validOrdinaryMenuArguments(argc, argv) : s.ordinaryHost ? validOrdinaryHostArguments(argc, argv) : s.uiMenuSmoke ? validUIMenuArguments(argc, argv) : s.uiPanelSmoke ? validUIPanelArguments(argc, argv) : s.uiSentenceSmoke ? validUISentenceArguments(argc, argv) : s.uiImageSmoke ? validUIImageArguments(argc, argv) : s.displaySmoke ? validDisplayArguments(argc, argv) : s.graphicsSmoke ? validGraphicsArguments(argc, argv) : validArguments(argc, argv))) return false;
     const char *root = argv[s.ordinaryHost ? 10 : 3];
     if (!((root[0] >= 'A' && root[0] <= 'Z') || (root[0] >= 'a' && root[0] <= 'z')) ||
         root[1] != ':' || root[2] != '\\') return false;

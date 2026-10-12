@@ -60,6 +60,9 @@
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/Image.h"
 #include "GameClient/InGameUI.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include "GameClient/Line2D.h"
 #include "GameClient/SelectionInfo.h"
 #include "GameClient/Shell.h"
@@ -727,8 +730,13 @@ Real W3DView::getMaxZoom(Real x, Real y) const
 //-------------------------------------------------------------------------------------------------
 void W3DView::updateCameraTransform()
 {
+#if defined(_WIN64)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryTerrain())
+		return;
+#else
 	if (TheGlobalData->m_headless)
 		return;
+#endif
 
 	Vector3 sourcePos;
 	Vector3 targetPos;
@@ -1687,6 +1695,10 @@ void W3DView::update()
 	TheTerrainVisual->updateSeismicSimulations();
 #endif
 
+	// The headless world selection (native terrain profile) has no drawable rendering.
+	if (TheGlobalData->m_headless)
+		return;
+
 	Region3D axisAlignedRegion;
 	getAxisAlignedViewRegion(axisAlignedRegion);
 
@@ -2482,6 +2494,11 @@ Drawable *W3DView::pickDrawable( const ICoord2D *screen, Bool forceAttack, PickT
 
 	// sanity
 	if( screen == nullptr )
+		return nullptr;
+
+	// The headless world selection (native terrain profile) has no legacy scene to ray cast
+	// into; like the dummy view it picks nothing.
+	if( W3DDisplay::m_3DScene == nullptr )
 		return nullptr;
 
 	// don't pick a drawable if there is a window under the cursor
@@ -3749,7 +3766,8 @@ void W3DView::updateTerrain()
 		TheTerrainRenderObject->setTerrainDrawSize(drawSize.x, drawSize.y);
 	}
 
-	RefRenderObjListIterator *it = W3DDisplay::m_3DScene->createLightsIterator();
+	// The native terrain profile runs the headless world selection: no legacy scene exists.
+	RefRenderObjListIterator *it = W3DDisplay::m_3DScene ? W3DDisplay::m_3DScene->createLightsIterator() : nullptr;
 
 	const Vector3 cameraPivot(m_pos.x, m_pos.y, m_pos.z);
 	TheTerrainRenderObject->updateCenter(m_3DCamera, &cameraPivot, it);

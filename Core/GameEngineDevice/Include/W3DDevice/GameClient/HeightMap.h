@@ -85,6 +85,17 @@ public:
 
 	virtual int updateBlock(Int x0, Int y0, Int x1, Int y1, WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIterator) override;
 
+#if defined(_WIN64)
+	/// Native terrain profile (StartupDiagnostics::ordinaryTerrain) only: the terrain-only D3D11
+	/// world pass (ST_TERRAIN_BASE passes 0/1). Returns the number of draws submitted.
+	/// Never called by the Win32/DX8 route; throws on an unsupported backend state.
+	Int renderNative(CameraClass &camera);
+	/// Releases native residencies (must precede backend release). Idempotent.
+	void releaseNativeResources();
+	struct NativeTerrainStats { unsigned frames, draws, tileUploads, tileUpdates, atlasUploads; };
+	NativeTerrainStats nativeStats() const;
+#endif
+
 protected:
 	Int *m_extraBlendTilePositions;	///<array holding x,y tile positions of all extra blend tiles. (used for 3 textures per tile).
 	Int m_numExtraBlendTiles;		///<number of blend tiles in m_extraBlendTilePositions.
@@ -121,4 +132,8 @@ protected:
 	virtual Int	getNumExtraBlendTiles(Bool visible) override { return visible?m_numVisibleExtraBlendTiles:m_numExtraBlendTiles;}
 	void freeIndexVertexBuffers();
 	void renderExtraBlendTiles();	///< render 3-way blend tiles that have blend of 3 textures.
+#if defined(_WIN64)
+	struct NativeTerrain;
+	NativeTerrain *m_native = nullptr;
+#endif
 };

@@ -261,3 +261,106 @@ function Test-NativeOrdinaryGameEvidence([string]$Log,[int]$ProcessId,$Receipt) 
     if(@($rows|Where-Object{$_.Stage -eq 'menu_boundary'}).Count){$errors.Add('Shell push boundary reached')}
     return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
 }
+
+# ---------------------------------------------------------------------------
+# Ordinary-terrain profile (X64.25): the X64.24 game path plus the first native
+# D3D11 terrain world frame (terrain only, under the original UI).
+# ---------------------------------------------------------------------------
+function Get-NativeOrdinaryTerrainMode {
+    return 'nativeOrdinaryTerrain; ordinary WinMain/ApplicationHWnd/W3DDisplay + real WindowManager/Shell; ordinary engine loop with live GameLogic; headless world selection; hardware D3D11 native presentation; UI-only draw (no world rendering)'
+}
+function Get-NativeOrdinaryTerrainArguments([string]$Root) {
+    return @('-win','-xres','800','-yres','600','-nologo','-noshellmap','-winCursors','-nativeOrdinaryTerrain',$Root)
+}
+function Read-NativeOrdinaryTerrainStage([string]$Title,[string]$Name) {
+    if($Title -ne 'Generals'){throw 'The ordinary terrain profile validates Generals only'}
+    $manifest=Read-NativeStage $Title $Name
+    $path=Join-Path $manifest.StagePath 'ordinaryterrain.json'
+    if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw 'Not an ordinary-terrain stage'}
+    $terrain=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if($terrain.Mode -ne (Get-NativeOrdinaryTerrainMode) -or $terrain.StagePath -ne $manifest.StagePath -or
+        $terrain.ManifestSHA256 -ne (Get-FileHash -LiteralPath (Join-Path $manifest.StagePath 'manifest.json')).Hash){
+        throw 'Not an intact reviewed ordinary-terrain stage'
+    }
+    $manifest.Dependencies=@(Assert-NativeGraphicsDependencies (Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))) $manifest.GamePath)
+    return $manifest
+}
+
+function Test-NativeOrdinaryTerrainEvidence([string]$Log,[int]$ProcessId,$Receipt) {
+    $rows=@();$errors=[Collections.Generic.List[string]]::new()
+    foreach($line in ($Log -split "`n")) {
+        if(!$line){continue}; $f=$line.TrimEnd("`r") -split "`t",9
+        if($f.Count -ne 9 -or $f[0] -notmatch '^\d+$' -or $f[3] -notmatch '^\d+$' -or $f[7] -notmatch '^\d+$'){$errors.Add('Malformed checkpoint/trailer');continue}
+        $sequence=0;$rowPid=0;$code=[uint32]0
+        if(![int]::TryParse($f[0],[ref]$sequence) -or ![int]::TryParse($f[3],[ref]$rowPid) -or ![uint32]::TryParse($f[7],[ref]$code)){$errors.Add('Numeric checkpoint overflow');continue}
+        if($sequence -ne $rows.Count+1 -or $rowPid -ne $ProcessId){$errors.Add('Sequence/PID mismatch')}
+        if($f[6] -eq 'fail'){$errors.Add("Failed phase $($f[5])")}
+        $rows+=,[pscustomobject]@{Stage=$f[5];Status=$f[6];Code=$code;Detail=$f[8]}
+    }
+    function Completions([string]$Stage){@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $Stage -and $rows[$i].Status -eq 'complete'){$i}})}
+    # The in-process log is capped at 2048 records and fails closed; a run that fills it
+    # lost its tail evidence (X64.25 run 20261012T2112467768379Z: unthrottled FP receipts).
+    if($rows.Count -ge 2000){$errors.Add('Startup log capacity exhausted; tail evidence lost')}
+    $route=@('app_window_class','app_window','TheKeyboard.init','display_config','terrain_optin','graphics_device','display_module_audit',
+        'display_size','display_ordinary_init','TheWindowManager.init','TheShell.init','TheMouse.init','engine_init',
+        'graphics_present','game_start','terrain_first_frame','terrain_summary','game_summary','ordinary_host_boundary','ui_residency_release',
+        'display_detach','engine_cleanup','app_window_release','minidumper_shutdown','WinMain')
+    $completed=@{};$previous=-1
+    foreach($stage in $route){
+        $at=@(Completions $stage)
+        if($at.Count -ne 1){$errors.Add("Missing/duplicate completion $stage");$completed[$stage]=[pscustomobject]@{Detail='';Code=1};continue}
+        $completed[$stage]=$rows[$at[0]]
+        if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Order/code mismatch $stage")};$previous=$at[0]
+    }
+    foreach($key in 'module','userdata','dump_path','startup_parse'){
+        $want=switch($key){module{$Receipt.Executable};userdata{$Receipt.UserData};dump_path{$Receipt.DumpPath+'\'};startup_parse{$Receipt.WorkingDirectory}}
+        $found=@($rows|Where-Object{$_.Stage -eq $key -and $_.Status -ne 'begin'})
+        if($found.Count -ne 1 -or $found[0].Detail -ne $want){$errors.Add("Path mismatch $key")}
+    }
+    if(@($rows|Where-Object{$_.Stage -eq 'WinMain' -and $_.Status -eq 'begin' -and $_.Detail -match 'Generals AMD64 ordinary terrain$'}).Count -ne 1){$errors.Add('Wrong mode identity')}
+    if($completed['app_window'].Detail -ne 'client=800x600 windowed=1 class=Game Window'){$errors.Add('Wrong application window')}
+    if($completed['display_size'].Detail -ne 'device=800x600 target=800x600 bits=32 windowed=1'){$errors.Add('Wrong display dimensions')}
+    if($completed['graphics_device'].Detail -notmatch '^driver=hardware feature=0x(.*)'){$errors.Add('Missing hardware device identity')}
+    if($completed['display_module_audit'].Detail -ne 'd3d8=0 d3dx8=0 d3d11=1 dxgi=1'){$errors.Add('D3D8/D3DX module audit failed or modern modules absent')}
+    if($completed['ui_residency_release'].Detail -ne 'live_residencies=0 before backend release'){$errors.Add('UI residency not released before backend')}
+    if($completed['ordinary_host_boundary'].Detail -ne 'ordinary game loop; GameLogic live; terrain-only D3D11 world pass; execute/replay not entered'){$errors.Add('Wrong execution boundary label')}
+    if($completed['game_start'].Detail -notmatch '^mode=\d+ map=\S.* players=([2-9]|\d\d) frame=\d+$'){$errors.Add('Game did not start with at least two players')}
+    $progress=@($rows|Where-Object{$_.Stage -eq 'game_progress' -and $_.Status -eq 'observed' -and $_.Detail -match '^logic_frame=\d+ crc=[0-9A-F]{8} presents=\d+$'})
+    if($progress.Count -lt 3){$errors.Add('Fewer than three logic progress observations')}
+    $summary=$completed['game_summary'].Detail
+    if($summary -notmatch '^presents=(\d+) updates=(\d+) elapsed_ms=(\d+) game=(\d) logic_frames=(\d+) exit=(frame_bound|game_quit) driver=hardware$'){$errors.Add('Invalid game summary or exit reason')}
+    else{
+        $m=$Matches
+        $overflow=$false
+        foreach($i in 1..5){if($m[$i].Length -gt 9){$overflow=$true}}
+        if($overflow){$errors.Add('Summary numeric overflow')}
+        else{
+            if([int]$m[1] -lt 1 -or [int]$m[2] -lt 1){$errors.Add('No presented frames')}
+            if([int]$m[4] -ne 1 -or [int]$m[5] -lt 150){$errors.Add('Fewer than 150 logic frames in game')}
+            if([int]$m[3] -gt 960000){$errors.Add('Game loop exceeded its bound')}
+        }
+    }
+    if($completed['terrain_optin'].Detail -notmatch '^cpu_backed_geometry=1 depth_buffer=1 '){$errors.Add('Terrain opt-ins not recorded')}
+    if($completed['terrain_first_frame'].Detail -notmatch '^draws=(\d+) atlas_uploads=1 tile_uploads=(\d+) \(terrain base\+blend; UI follows\)$'){$errors.Add('Missing first terrain frame with one atlas upload')}
+    else{
+        $m=$Matches
+        if($m[1].Length -gt 6 -or $m[2].Length -gt 6){$errors.Add('Terrain numeric overflow')}
+        elseif([int]$m[2] -lt 1 -or [int]$m[1] -ne 2*[int]$m[2]){$errors.Add('Terrain draws are not exactly base+blend per uploaded tile')}
+    }
+    if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+)$'){$errors.Add('Invalid terrain summary')}
+    else{
+        $m=$Matches
+        $over=$false;foreach($i in 1..5){if($m[$i].Length -gt 9){$over=$true}}
+        if($over){$errors.Add('Terrain summary numeric overflow')}
+        elseif([int]$m[1] -lt 30 -or [int]$m[2] -lt 2*[int]$m[1] -or [int]$m[3] -lt 1 -or [int]$m[4] -lt 1){$errors.Add('Too few terrain frames/draws or no residency uploads')}
+    }
+    $armed=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq 'native_shutdown' -and $rows[$i].Status -eq 'armed' -and $rows[$i].Code -eq 0){$i}})
+    $mini=@(Completions 'minidumper_shutdown')
+    if($armed.Count -ne 1 -or $mini.Count -ne 1 -or $armed[0] -le $mini[0] -or $armed[0] -ge $rows.Count-1){$errors.Add('Missing/incorrect late observer boundary')}
+    if($rows.Count -eq 0 -or $rows[-1].Stage -ne 'WinMain' -or $rows[-1].Status -ne 'complete'){$errors.Add('Missing final WinMain completion')}
+    foreach($stage in 'init_only','display_attach','graphics_class','graphics_window','graphics_backend','graphics_boundary','ui_menu_load','ui_ordinary_content','keyboard','menu_summary'){
+        if(@($rows|Where-Object{$_.Stage -eq $stage}).Count){$errors.Add("Unexpected stage $stage")}
+    }
+    if(@($rows|Where-Object{$_.Stage -eq 'menu_boundary'}).Count){$errors.Add('Shell push boundary reached')}
+    return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
+}

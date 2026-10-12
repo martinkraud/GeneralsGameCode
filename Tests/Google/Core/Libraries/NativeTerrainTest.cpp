@@ -63,6 +63,45 @@ TEST(TerrainAtlasTest, BoxFilterMipChainAveragesAndRejectsOutOfRangePlacement)
     EXPECT_FALSE(BuildTerrainAtlas(4, 4, 2, 0, {{3, 3, tile.data()}}, {}, atlas)); // exceeds the atlas
 }
 
+// The terrain pass converts the legacy column-vector camera/world matrices to the
+// D3D row-vector world contract; verify against the legacy product order.
+TEST(WorldTransformTest, LegacyColumnVectorChainEqualsRowVectorChain)
+{
+    // Matrix3D rows 0..2 (rotation about z by 30 degrees + translation), arbitrary view
+    // and a perspective Matrix4x4 like CameraClass::Get_D3D_Projection_Matrix produces.
+    const float c = 0.8660254f, s = 0.5f;
+    const float world3[12] = {c, -s, 0, 10, s, c, 0, -4, 0, 0, 1, 2};
+    const float view3[12] = {1, 0, 0, -3, 0, 0.7071f, -0.7071f, 5, 0, 0.7071f, 0.7071f, -20};
+    const float proj4[16] = {1.5f, 0, 0, 0, 0, 2.0f, 0, 0, 0, 0, -1.05f, -1.05f * 0.5f, 0, 0, -1, 0};
+    float w[16], v[16], p[16];
+    World_From_Matrix3D(world3, w);
+    World_From_Matrix3D(view3, v);
+    World_From_Matrix4x4(proj4, p);
+    const float point[4] = {7, 3, 1.5f, 1};
+    // Legacy: clip = P * (V * (W * point)).
+    auto mul3 = [](const float *m, const float *in, float *out) {
+        for (int r = 0; r < 3; ++r) out[r] = m[r * 4] * in[0] + m[r * 4 + 1] * in[1] + m[r * 4 + 2] * in[2] + m[r * 4 + 3] * in[3];
+        out[3] = in[3];
+    };
+    float a[4], b[4], legacy[4];
+    mul3(world3, point, a);
+    mul3(view3, a, b);
+    for (int r = 0; r < 4; ++r)
+        legacy[r] = proj4[r * 4] * b[0] + proj4[r * 4 + 1] * b[1] + proj4[r * 4 + 2] * b[2] + proj4[r * 4 + 3] * b[3];
+    // D3D: clip = point * W * V * P.
+    auto row = [](const float *in, const float *m, float *out) {
+        for (int c2 = 0; c2 < 4; ++c2)
+            out[c2] = in[0] * m[c2] + in[1] * m[4 + c2] + in[2] * m[8 + c2] + in[3] * m[12 + c2];
+    };
+    float d1[4], d2[4], d3[4];
+    row(point, w, d1);
+    row(d1, v, d2);
+    row(d2, p, d3);
+    for (int i = 0; i < 4; ++i) EXPECT_NEAR(d3[i], legacy[i], 1e-4f) << i;
+    // The last column of a transformed Matrix3D is exactly (0,0,0,1) in D3D layout.
+    EXPECT_EQ(w[3], 0.0f); EXPECT_EQ(w[7], 0.0f); EXPECT_EQ(w[11], 0.0f); EXPECT_EQ(w[15], 1.0f);
+}
+
 namespace {
 // Native presentation needs a real window and a hardware device; skipped otherwise.
 struct NativeScope {

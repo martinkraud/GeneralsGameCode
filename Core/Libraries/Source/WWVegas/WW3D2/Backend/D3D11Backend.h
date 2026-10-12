@@ -57,6 +57,11 @@ public:
     // (X64.22-24) keep the exact previous runtime behavior.
     static void Enable_CPU_Backed_Geometry(bool enable);
     static bool CPU_Backed_Geometry_Enabled();
+    // Opt-in (default off): the WW3D-owned backend is created with the D24S8 depth
+    // buffer (the lifecycle Begin stays color-only; world frames clear depth through
+    // the backend after Begin). Must be set before WW3D::Init_Native_Presentation.
+    static void Enable_Depth_Buffer_For_W3D(bool enable);
+    static bool Depth_Buffer_For_W3D_Enabled();
     // World (R1/R2): neutral geometry residency and purpose-built material draws.
     GeometryResidency *Create_Geometry_Residency(const GeometryCPUContent &);
     // Immutable RGBA8 texture with a full caller-supplied mip chain (terrain atlas).

@@ -74,3 +74,20 @@ inline void World_Identity(float (&m)[16])
 {
     for (int i = 0; i < 16; ++i) m[i] = (i % 5 == 0) ? 1.0f : 0.0f;
 }
+
+// Legacy Westwood matrices are row-major with column-vector semantics (v' = M * v).
+// The world contract is Direct3D row-vector (v' = v * M). These are the exact
+// transposes legacy To_D3DMATRIX produces, kept SDK-free so they are unit-testable.
+// Matrix3D: 3 rows x 4 columns (rotation + translation column), implicit last row 0,0,0,1.
+inline void World_From_Matrix3D(const float *rows3x4, float (&out)[16])
+{
+    for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 4; ++c) out[c * 4 + r] = rows3x4[r * 4 + c];
+    out[3] = out[7] = out[11] = 0.0f; out[15] = 1.0f;
+}
+// Matrix4x4: 4 rows x 4 columns.
+inline void World_From_Matrix4x4(const float *rows4x4, float (&out)[16])
+{
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 4; ++c) out[c * 4 + r] = rows4x4[r * 4 + c];
+}

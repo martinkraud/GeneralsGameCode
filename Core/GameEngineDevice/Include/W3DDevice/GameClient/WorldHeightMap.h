@@ -36,6 +36,9 @@
 #include "Common/MapObject.h"
 
 #include "Common/STLTypedefs.h"
+#if defined(_WIN64)
+#include "WW3D2/TerrainAtlas.h"
+#endif
 typedef std::vector<ICoord2D> VecICoord2D;
 
 
@@ -180,6 +183,12 @@ protected:
 	 texture. */
 	TerrainTextureClass *m_terrainTex;
 	Int	m_terrainTexHeight; /// Height of m_terrainTex allocated.
+#if defined(_WIN64)
+	TerrainAtlasContent m_nativeAtlas;	///< native profile replacement for m_terrainTex
+	bool m_nativeAtlasBuilt = false;
+	unsigned m_nativeAtlasVersion = 0;
+	void buildNativeTerrainAtlas();
+#endif
 	/** The texture that contains the alpha edge tiles that get blended on
 			top of the base texture. getAlphaUVData does the mapping. */
 	AlphaTerrainTextureClass *m_alphaTerrainTex;
@@ -285,6 +294,11 @@ public:  // tile and texture info.
 	TextureClass *getTerrainTexture();  //< generates if needed and returns the terrain texture
 	TextureClass *getAlphaTerrainTexture(); //< generates if needed and returns alpha terrain texture
 	TextureClass *getEdgeTerrainTexture(); //< generates if needed and returns blend edge texture
+#if defined(_WIN64)
+	/// Native terrain profile only: the CPU atlas (same content/UV layout as the legacy
+	/// TerrainTextureClass) or nullptr outside the profile. `version` increments on rebuild.
+	const TerrainAtlasContent *getNativeTerrainAtlas(unsigned *version = nullptr);
+#endif
 	/// UV mapping data for a cell to map into the terrain texture.  Returns true if the textures had to be stretched for cliffs.
 	Bool getUVData(Int xIndex, Int yIndex, float U[4], float V[4]);
 	Bool getFlipState(Int xIndex, Int yIndex) const;

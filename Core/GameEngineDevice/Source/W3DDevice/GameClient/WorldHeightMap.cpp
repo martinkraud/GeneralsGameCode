@@ -41,6 +41,10 @@
 #include "Common/ThingFactory.h"
 #include "Common/ThingTemplate.h"
 #include "Common/WellKnownKeys.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#include "Common/Errors.h"
+#endif
 
 #include "GameLogic/PolygonTrigger.h"
 #include "GameLogic/SidesList.h"
@@ -2115,8 +2119,73 @@ void WorldHeightMap::setTextureLOD(Int lod)
 		m_terrainTex->setLOD(lod);
 }
 
+#if defined(_WIN64)
+//-------------------------------------------------------------------------------------------------
+// Native terrain profile: CPU build of exactly what TerrainTextureClass::update produced (inverted
+// rows, A1R5G5B5 quantization, 4 texel class borders, 3 box-filtered mips like MIP_LEVELS_3), no
+// D3D8 surface. UV mapping state (m_terrainTexHeight, flip states) is identical to the legacy path.
+//-------------------------------------------------------------------------------------------------
+void WorldHeightMap::buildNativeTerrainAtlas()
+{
+	Int edgeHeight = 0;
+	Int height = updateTileTexturePositions(&edgeHeight);
+	Int pow2Height = 1;
+	while (pow2Height < height) pow2Height *= 2;
+
+	std::vector<TerrainAtlasTile> tiles;
+	for (Int ndx = 0; ndx < m_numBitmapTiles; ndx++) {
+		TileData *tile = getSourceTile(ndx);
+		if (!tile) continue;
+		const ICoord2D position = tile->m_tileLocationInTexture;
+		if (position.x <= 0) continue;
+		tiles.push_back(TerrainAtlasTile{ position.x, position.y, tile->getRGBDataForWidth(TILE_PIXEL_EXTENT) });
+	}
+	std::vector<TerrainAtlasClass> classes;
+	for (Int texClass = 0; texClass < m_numTextureClasses; texClass++) {
+		const ICoord2D origin = m_textureClasses[texClass].positionInTexture;
+		classes.push_back(TerrainAtlasClass{ origin.x, origin.y, m_textureClasses[texClass].width });
+	}
+	TerrainAtlasContent atlas;
+	if (!BuildTerrainAtlas(TEXTURE_WIDTH, pow2Height, TILE_PIXEL_EXTENT, 4, tiles, classes, atlas))
+		throw ERROR_BAD_ARG;
+	if (atlas.mips.size() > 3) atlas.mips.resize(3);	// legacy TerrainTextureClass: MIP_LEVELS_3
+	m_nativeAtlas = std::move(atlas);
+	m_terrainTexHeight = pow2Height;
+	Int pow2Edge = 1;
+	while (pow2Edge < edgeHeight) pow2Edge *= 2;
+	m_alphaEdgeHeight = pow2Edge;
+	m_nativeAtlasBuilt = true;
+	++m_nativeAtlasVersion;
+
+	// Same triangle-order table the legacy path derives right after the atlas exists.
+	for (Int y=0; y<(m_height-1); y++)
+		for (Int x=0; x<(m_width-1); x++)
+		{
+			UnsignedByte alpha[4];
+			float UA[4], VA[4];
+			Bool flipForBlend;
+			getAlphaUVData(x, y, UA, VA, alpha, &flipForBlend);
+			m_cellFlipState[y*m_flipStateWidth+(x>>3)] |= flipForBlend << (x & 0x7);
+		}
+}
+
+const TerrainAtlasContent *WorldHeightMap::getNativeTerrainAtlas(unsigned *version)
+{
+	if (!StartupDiagnostics::ordinaryTerrain()) return nullptr;
+	if (!m_nativeAtlasBuilt) buildNativeTerrainAtlas();
+	if (version) *version = m_nativeAtlasVersion;
+	return &m_nativeAtlas;
+}
+#endif
+
 TextureClass *WorldHeightMap::getTerrainTexture()
 {
+#if defined(_WIN64)
+	if (StartupDiagnostics::ordinaryTerrain()) {
+		if (!m_nativeAtlasBuilt) buildNativeTerrainAtlas();
+		return nullptr;	// no D3D8 texture exists in this profile
+	}
+#endif
 	if (m_terrainTex == nullptr) {
 		Int edgeHeight;
 		Int height = updateTileTexturePositions(&edgeHeight);

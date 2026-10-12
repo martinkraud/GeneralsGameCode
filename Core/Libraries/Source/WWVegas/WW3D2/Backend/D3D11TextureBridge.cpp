@@ -61,5 +61,7 @@ std::unique_ptr<D3D11Backend> D3D11Backend::Create_For_W3D(const Configuration &
         backend.Bind_Content(&texture.Get_Render2D_Residency(),
                              Describe_Texture2D_Sampler(texture.Get_Filter()));
     };
-    return Create(config, bridge);
+    Configuration effective = config;
+    effective.depth_buffer = config.depth_buffer || Depth_Buffer_For_W3D_Enabled();
+    return Create(effective, bridge);
 }
