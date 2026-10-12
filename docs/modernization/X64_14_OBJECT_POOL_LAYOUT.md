@@ -172,7 +172,7 @@ The captured X64.13 post-WinMain corruption fault did not recur after the bounde
 pool layout fix. One successful scenario does not prove universal allocator or
 shutdown correctness.
 
-Remaining limitations: Zero Hour has not yet executed this gate. No native game
+At the Generals-only review, Zero Hour had not yet executed this gate. No native game
 renderer, execute/replay/simulation, gameplay, save/load, multiplayer, performance
 or cross-architecture lockstep/determinism is validated here. The established
 native D3D8 renderer blocker and optional audio/video/browser limitations remain;
@@ -180,23 +180,74 @@ D3D11 is not made the game backend. Default registry/Documents paths were not
 exercised because this gate isolates user data. Crash-dump generation remains
 untested. No additional blocker is observed in this Generals init-only route.
 
+## Reviewed Zero Hour confirmation and combined milestone (2026-10-12)
+
+The separately reviewed Zero Hour run was analyzed directly at
+`build/dev-runtimes/native/ZeroHour/x64-14-final/runs/20261012T0837057620774Z`.
+exit.json records PID35832 started, actual ExitCode0, TimedOut=false and Error=null.
+The launch/exit receipt interval is08:37:05.7758773Z to08:37:08.0373802Z, including
+launcher work. All302 normal nine-field log records are sequential, PID35832 /
+TID27084, with zero status codes and increasing QPC values. All77 lifecycle begins
+excluding diagnostic opening have a later corresponding completion. No late
+exception trailer exists. shutdown-exception.bin exists and is exactly0 bytes;
+userdata/CrashDumps exists and is empty.
+
+| Boundary | Generals checkpoint | Zero Hour checkpoint |
+| --- | --- | --- |
+| engine_init complete | 246 | 293 |
+| init_only complete: execute/replay/simulation skipped | 247 | 294 |
+| engine_cleanup complete | 251 | 298 |
+| minidumper_shutdown complete | 253 | 300 |
+| native_shutdown armed | 254 | 301 |
+| WinMain complete / exit | 255 | 302 |
+| Actual process exit code | 0 | 0 |
+
+Zero Hour additionally resolves its staged ZH_Generals base-assets path at
+checkpoint20. Its title-specific ChallengeGenerals and SnowManager initialization
+checkpoints complete. Different checkpoint counts reflect distinct title startup
+paths; they are not a performance comparison. Both runs explicitly skip the
+HWND/DX8/browser/input route at checkpoint10 and stop before execute/replay/simulation.
+
+Actual staged Zero Hour identity matches launch.json and manifest.json:
+
+- AMD64 PE32+ EXE/PDB GUID `7a285453-4110-4cad-a6c8-e5336ba19b1c`, age46.
+- EXE SHA256 `B99114E99981A465277AFAE6B3D22D03A2BA9B1982CECC32F7A4D2416DF43467`.
+- PDB SHA256 `312BF41FB8D160CAEA70BDC7758844124E6B38645BD58A44542F9AAF1C6AC4E4`.
+- Module is ZeroHour/x64-14-final/game/generalszh.exe and CWD is its game directory.
+  Isolated userdata/CrashDumps and diagnostic paths match this exact run. Base
+  assets resolve to the stage's game/ZH_Generals directory. Launch/exit receipts
+  and log agree independently; arguments are exactly -headless -nativeInitOnly
+  followed by this absolute run directory.
+- Read-only Test-NativeInitOnly for ZeroHour/x64-14-final reran PASS: actual
+  EXE/PDB GUID/age pairing, build/stage hashes, inventory/assets and startup DLLs.
+  No game process is launched by that preflight. Both reviewed runs and their
+  staged EXE/PDB files were hash-checked unchanged after documentation edits.
+
+**Combined milestone: BOTH Generals and Zero Hour have completed controlled
+native AMD64 headless initialization, cleanup and normal process exit.** The
+Generals post-WinMain fault did not recur, and the equivalent Zero Hour lifecycle
+also exited normally with its late observer armed and empty evidence. There is
+no observed startup/shutdown blocker within either reviewed init-only route.
+
+Claims remain bounded to these two runs, their staged assets and isolated paths.
+Native graphical startup/renderer, execute/replay/simulation, gameplay, save/load,
+multiplayer, performance and determinism remain unvalidated. The missing native
+D3D8 route, incomplete/nonselectable D3D11 game backend, and optional native
+media/browser limitations remain. Default registry/Documents routes and actual
+crash-dump generation were not tested. One clean run per title does not prove
+all allocator/shutdown paths correct.
+
+This review is documentation-only, on top of the accepted Generals milestone
+commit (25b314c4e). No source changes, rebuild, regression-suite rerun, game launch,
+staging, commit or push were performed. git diff --check passed. Generated
+runtime evidence and the ignored preservation manifest remain uncommitted.
+
 ## Exactly one next task
 
-**Separately reviewed Zero Hour-only native init-only runtime confirmation**
-using the already prepared X64.14 stage. Do not rerun Generals or automatically
-launch any title during evidence review.
-
-After separate developer review, from the repository in PowerShell7:
-
-```powershell
-& ./scripts/native-runtime/Test-NativeInitOnly.ps1 -Title ZeroHour -Name x64-14-final
-& ./scripts/native-runtime/Invoke-NativeInitOnly.ps1 -Title ZeroHour -Name x64-14-final -RunReviewedInitOnly
-```
-
-Preserve the entire new run: launch.json, exit.json, startup.log,
-shutdown-exception.bin (even empty), and any userdata/CrashDumps files. Success
-still requires actual exit0, all completion/path checks, armed late-shutdown
-observer and no recorded exception. Stop after that single reviewed run regardless
-of outcome. No rebuild is needed unless source/build changes; a rebuild then
-requires a fresh stage. This task records the Generals milestone only; no game
-process was launched, no production code changed, and no commit or push was made.
+**Native graphical renderer-route feasibility audit**, for developer review:
+define the smallest testable route past the AMD64 D3D8 blocker using accepted
+renderer boundaries and existing D3D11 slices. Identify missing startup, device
+and presentation capabilities and compatibility risks before proposing bounded
+implementation. Do not assume the existing D3D11 slice can run the game, replace
+an installed DLL speculatively, or launch either title during that audit.
+This next task has not begun.

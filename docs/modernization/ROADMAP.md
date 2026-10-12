@@ -1,5 +1,42 @@
 # Incremental modernization roadmap
 
+## Both titles: reviewed native AMD64 headless init-only PASS (2026-10-12)
+
+The separately reviewed Zero Hour run is now verified directly:
+`build/dev-runtimes/native/ZeroHour/x64-14-final/runs/20261012T0837057620774Z`.
+PID35832 actually exited0; no timeout or launcher error. All302 sequential
+checkpoints are intact; all77 lifecycle begins excluding diagnostic opening
+completed. Engine init293, init-only294 (execute/replay/simulation skipped),
+cleanup298, MiniDumper shutdown300, late observer armed301 and WinMain302 passed.
+shutdown-exception.bin is0 bytes; no late exception trailer or crash dump exists.
+Module/CWD/isolated user-data/dump/base-assets paths match launch.json, exit.json
+and startup.log. Staged EXE/PDB hashes match launch and stage manifests; GUID
+7a285453-4110-4cad-a6c8-e5336ba19b1c/age46 matches the reviewed build. Read-only
+Zero Hour stage preflight rerun PASS; both reviewed runs/symbols remain unchanged.
+
+Together with Generals run `20261012T0830000434440Z` (PID30248,255 checkpoints,
+actual exit0), BOTH titles have completed controlled native AMD64 headless
+initialization, cleanup and normal process exit. This supersedes older pending
+runtime entries below. It does NOT validate graphical startup, renderer,
+execute/replay/simulation, gameplay, save/load, multiplayer, performance or
+cross-architecture determinism. The native D3D8 dependency remains a graphical
+blocker; the existing D3D11 slice is not a complete/selectable game backend.
+Optional native audio/video/browser functionality, default user-data paths and
+crash-dump generation remain unvalidated. No blocker was observed in either
+reviewed init-only route; one pass per title is not universal shutdown proof.
+
+This review changes documentation only. No rebuild, game launch, source change,
+commit or push; generated evidence stays ignored/uncommitted. See
+[X64_14_OBJECT_POOL_LAYOUT.md](X64_14_OBJECT_POOL_LAYOUT.md) for exact identities
+and per-title evidence. Earlier validation counts describe prior executed tests.
+
+Exactly one recommended next task: **native graphical renderer-route feasibility
+audit**. Define a bounded, testable route past the AMD64 D3D8 blocker using the
+accepted renderer boundaries and existing D3D11 slices; identify the missing
+startup/device/presentation capabilities and compatibility risks before proposing
+implementation. Do not launch either title or treat D3D11 as ready by default.
+That audit has not begun and requires developer review.
+
 ## X64.14 ObjectPoolClass layout fix (2026-10-12)
 
 Baseline: `31731578679faa80d5be07d7a93fb56466e12192`.
@@ -53,17 +90,16 @@ The original post-WinMain fault did not recur in this controlled run.
 This establishes Generals AMD64 headless initialization, cleanup and normal
 process exit for this stage. It does not validate rendering, execute/replay,
 simulation, gameplay, save/load, multiplayer or cross-architecture determinism.
-Zero Hour remains unexecuted; native game-renderer and optional subsystem limits
+At that Generals review, Zero Hour remained unexecuted; native game-renderer limits
 remain. See [X64_14_OBJECT_POOL_LAYOUT.md](X64_14_OBJECT_POOL_LAYOUT.md) for exact
 evidence, identity, limitations and the next guarded procedure.
 
 Git baseline: 53f08fbdc0c12302e96839c186c8bf887391c829, already pushed to
 origin/dev/modern-engine. This follow-up changes documentation only; it does not
 rebuild, launch, commit or push. Generated evidence remains ignored/uncommitted.
-Exactly one next task: **separately reviewed Zero Hour-only native init-only
-runtime confirmation** using the already prepared x64-14-final stage. Preserve
-the full new run and stop after one run regardless of outcome. Do not rerun
-Generals. This documentation update does not authorize an automatic game launch.
+The previously recommended Zero Hour-only reviewed init-only confirmation is
+now complete and verified PASS; the current next task is specified above.
+Neither title may be launched automatically during evidence review.
 
 
 ## X64.13 late native shutdown diagnostic boundary (2026-10-12)
