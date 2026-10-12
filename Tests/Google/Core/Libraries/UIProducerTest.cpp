@@ -223,3 +223,40 @@ TEST(UIProducerTest, ActualThreePieceButtonDrawTilesOriginalGeometryAndManagerDe
     TheWindowManager=old;TheTransitionHandler=transitions;
 }
 #endif
+
+// Both architectures exercise the actual producer, virtual manager forwarding,
+// callback ABI and UnicodeString copy that failed in the native menu parser.
+#include "GameClient/GameWindowManager.h"
+#include "W3DDevice/GameClient/W3DGameWindowManager.h"
+#include "GameClient/GadgetPushButton.h"
+#include <type_traits>
+namespace {
+UnicodeString receivedButtonLabel;
+uintptr_t receivedLabelAddress=0;
+WindowMsgHandledType ReceiveButtonLabel(GameWindow *,UnsignedInt msg,WindowMsgData a,WindowMsgData b) {
+    if(msg!=GGM_SET_LABEL)return MSG_IGNORED;
+    receivedLabelAddress=static_cast<uintptr_t>(a);
+    receivedButtonLabel=*reinterpret_cast<const UnicodeString*>(a);
+    EXPECT_EQ(b,0u);return MSG_HANDLED;
+}
+}
+TEST(UIProducerTest, ButtonLabelMessagePreservesPointerAcrossActualCallbackABI)
+{
+#if defined(_WIN64)
+    static_assert(sizeof(WindowMsgData)==sizeof(void*),"AMD64 UI pointer payload");
+#else
+    static_assert(std::is_same<WindowMsgData,UnsignedInt>::value,"Exact Win32 legacy payload");
+#endif
+    auto *old=TheWindowManager;
+    W3DGameWindowManager manager;TheWindowManager=&manager;
+    auto *window=manager.allocateNewWindow();window->winSetSystemFunc(ReceiveButtonLabel);
+    UnicodeString expected;expected.set(L"Original menu label");
+    GadgetButtonSetText(window,expected);
+    EXPECT_EQ(receivedButtonLabel,expected);
+#if defined(_WIN64)
+    EXPECT_GT(receivedLabelAddress,static_cast<uintptr_t>(UINT32_MAX));
+    EXPECT_NE(receivedLabelAddress,static_cast<uintptr_t>(static_cast<UnsignedInt>(receivedLabelAddress)));
+#endif
+    receivedButtonLabel.clear();receivedLabelAddress=0;
+    window->winSetSystemFunc(nullptr);deleteInstance(window);TheWindowManager=old;
+}

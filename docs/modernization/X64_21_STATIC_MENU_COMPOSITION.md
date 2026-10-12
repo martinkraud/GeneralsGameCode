@@ -1,5 +1,99 @@
 # X64.21: static original Generals main-menu composition
 
+## X64.21 fix1 AV established; pointer-width UI message repair
+
+Reviewed Generals fix1 run `20261012T1838100556946Z` is a genuine startup
+access violation: OS exit `0xC0000005` (-1073741819), no timeout/launcher error,
+paths match. There are267 contiguous checkpoints for PID11520/thread35212.
+Engine init, hardware Intel8086:7D45/feature11.0,800x600 target and W3DDisplay
+attachment completed. Last checkpoint is `ui_menu_load begin`, with corrected
+`Window/Menus/MainMenu.wnd`. No frames, UI load completion or cleanup followed.
+MiniDumper produced both mini/full dumps. The late observer was never reached:
+shutdown-exception.bin is absent (not empty), and no final WinMain exists.
+X64.21 remains UNACCEPTED; this supersedes the earlier fix1-ready boundary below.
+
+Both dumps record the same read AV at `0x7ff74dc4884a`, executable base
+`0x7ff74db90000`, RVA `0xb884a`, accessing `0x2879d758`. Actual staged EXE/PDB
+SHA256 and both dump CodeView records match GUID
+`c7323867-d82e-41f3-b190-20a5da4eae06`,age62. Matching PDB resolves the fault to
+`UnicodeString::UnicodeString(const UnicodeString&)+0xa`, UnicodeString.cpp:67.
+Captured RDX is `0x2879d758`; the full original string object at stack address
+`0x842879d758` is present/readable and contains m_data `0x1931ba7a8d0`.
+The fault instruction `48 8b 02` reads the source object through RDX.
+
+PE .pdata/.xdata plus captured stack memory validate the caller route:
+UnicodeString copy -> GadgetPushButtonSystem:452 -> GadgetButtonSetText:590 ->
+GameWindowManager::gogoGadgetPushButton:1841 -> createGadget -> createWindow ->
+parseWindow/parseChildWindows. This is not a speculative raw stack scan. Initial
+DbgHelp StackWalk output contained spurious frames and was rejected; caller
+claims use the matching PE unwind codes instead (handler metadata is not executed).
+
+Concrete root cause: `WindowMsgData` was `UnsignedInt` on AMD64. The actual label
+producer casts `&text` to this32-bit payload; the gadget receiver dereferences it
+as UnicodeString*. It truncates `0x842879d758` to exactly the fault address.
+The smallest repair defines WindowMsgData as uintptr_t under _WIN64 and preserves
+the exact original UnsignedInt typedef on Win32. Message IDs, packed numeric
+values, routing, label/widget semantics and original parser/assets remain intact.
+This repairs an in-process UI callback ABI; it does not alter save/replay/network
+formats or permit ordinary update/execute/simulation/GameLogic. No callback
+suppression, fake DX8, fallback asset or renderer change is introduced.
+
+New dual-architecture regression exercises actual GadgetButtonSetText, virtual
+manager dispatch, callback ABI and UnicodeString copy. AMD64 checks that the
+received valid pointer exceeds32 bits and would differ after the former cast;
+Win32 statically verifies the exact original payload type. The regression does
+not claim full native menu acceptance. Prior path-resolution/isolation/rendering
+contracts remain required. Failed stage/run/dumps remain immutable.
+
+Final offline validation PASS: full Win32 Release build/CTest25, direct156 and
+focused82 per title (six pre-existing disabled tests), sentence5/render2d15;
+both AMD64 native links, independent CTest15 and texture/UI17 per title including
+the high-address regression. Python rendering30/native17/performance16 and
+PowerShell graphics81/native6 guards/all10 script parses PASS. Both native PEs
+retain30 imports,no delay/D3D8/D3DX imports;31 dependencies pass per title.
+All56 preserved evidence hashes and32 prior staged EXE/PDB hashes remain unchanged;
+actual failed fix1 EXE/PDB identity is independently verified. Generated dumps,
+evidence,logs/analysis and runtime copies are ignored and excluded from commits.
+
+Fresh Generals `x64-21-fix2` is prepared after final validation and fully
+preflighted without execution. Exactly one next task: separately reviewed
+Generals-only fix2 UIMenu runtime/visual confirmation; do not launch Zero Hour.
+Commit/push is limited to the payload fix,regression and four modernization docs,
+only origin/dev/modern-engine. Exact final git state is reported to the developer.
+The failed fix1 and earlier evidence are immutable; X64.21 remains UNACCEPTED.
+
+### Fix2 runtime boundary
+
+Fresh Generals fix2 stage and separate full preflight PASS. No runs directory or
+app-local DLL exists; do not rebuild/restage this immutable candidate.
+
+- GUID `c7323867-d82e-41f3-b190-20a5da4eae06`, age63.
+- EXE SHA256 `C9C508406C0A4B032139E2D9E7778B4C976B76F3EFF4AE35BB4D07CAAFCA2B74`.
+- PDB SHA256 `34843207311994D3865E5DCFABDC9C248299E2A29612D87D4FC2DDBBA3B0C3A6`.
+
+The original x64-21-final and x64-21-fix1 stages/runs remain immutable. Exactly
+one next task is separately reviewed Generals-only `x64-21-fix2` UIMenu runtime
+and visual confirmation. No native title was executed during this repair.
+The full static-menu contract remains mandatory; fixing the pointer truncation
+alone does not establish a PASS or acceptance of interactive UI.
+
+```powershell
+Set-Location 'C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode'
+./scripts/native-runtime/Test-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-21-fix2 -UIMenu
+./scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1 -Title Generals -Name x64-21-fix2 -UIMenu -RunReviewedGraphicsSmoke
+```
+
+Run the second command only after preflight PASS and separate developer review.
+Expect about five seconds of original ruler/logo/main-dropdown panel and six
+textured buttons with readable localized labels against the blue diagnostic
+background. No interaction is required; automatic exit0 is mandatory.
+Evidence goes to `build/dev-runtimes/native/Generals/x64-21-fix2/runs/<timestamp>`.
+On early termination, failure, missing/corrupt UI, unreadable text or abnormal
+cleanup/visibility, stop and preserve the exact run. Return its path, console
+result and visual observation. Do not retry, rebuild/restage or launch Zero Hour.
+No next trial starts automatically. Earlier candidate instructions below are
+historical and superseded by this fix2 boundary.
+
 ## X64.21 failure localized; fix1 awaits reviewed runtime confirmation
 
 Reviewed Generals `x64-21-final/runs/20261012T1822476915817Z` exited1

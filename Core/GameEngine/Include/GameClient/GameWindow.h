@@ -47,6 +47,7 @@
 #pragma once
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
+#include <stdint.h>
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Lib/BaseType.h"
@@ -73,7 +74,12 @@ enum { WIN_COLOR_UNDEFINED = GAME_COLOR_UNDEFINED };
 
 // WindowMsgData --------------------------------------------------------------
 //-----------------------------------------------------------------------------
+// UI messages carry pointers as well as integers (for example GGM_SET_LABEL).
+#if defined(_WIN64)
+typedef uintptr_t WindowMsgData;
+#else
 typedef UnsignedInt WindowMsgData;
+#endif
 
 //-----------------------------------------------------------------------------
 enum WindowMsgHandledType CPP_11(: Int) { MSG_IGNORED, MSG_HANDLED };
