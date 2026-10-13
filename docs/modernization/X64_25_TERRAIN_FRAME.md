@@ -127,3 +127,54 @@ the target is read back before the UI is drawn and `terrain_probe` records
 now fails a run whose terrain pass leaves < 5% non-black pixels, so a black world can no
 longer be a machine PASS. If the probe is nonzero but the screen is black, the cause is
 UI-layer covering; if zero, the camera/transform/texture values in the probe locate it.
+
+## Acceptance: X64.25 first native D3D11 terrain frame - FORMALLY ACCEPTED
+
+Reviewed run (immutable, never rerun):
+`build/dev-runtimes/native/Generals/x64-25-ordinary-terrain-fix2/runs/20261013T0503179685543Z`,
+stage `x64-25-ordinary-terrain-fix2` (EXE SHA256 `F373137CE9EE...6696C9`, re-hashed equal
+to the staged binary; built from `b6920957c`).
+
+Recorded separately:
+
+- **Machine gate: PASS.** OS exit 0, no timeout/error, isolated paths match, 237 contiguous
+  same-process records, zero `fail` rows, no dumps, `shutdown-exception.bin` empty,
+  `live_residencies=0` before backend release. Classifier valid: map Alpine Assault with
+  5 players, 1800 live logic frames, `FP_summary calls=14782`, ordinary `exitGame`;
+  `terrain_first_frame draws=32 atlas_uploads=1 tile_uploads=16`; `terrain_summary
+  frames=3600 draws=115200 atlas_uploads=1 tile_uploads=16 tile_updates=0`; 4845 presents.
+- **Terrain pixel probe:** `terrain_probe nonblack_pct=80 center_rgb=546F30
+  cam=(1351,1458,329) fwd=(-0.00,0.79,-0.61)` read back after the terrain pass and before
+  the UI: a plausible grass-colored center pixel, camera pitched about 37 degrees down.
+- **Developer visual gate: PASS.** Terrain is clearly visible; grass/ground rendered
+  correctly under the original UI. Visible terrain is therefore confirmed on AMD64/D3D11.
+  (The previous fix1 visual FAIL was the face-culling inversion documented above.)
+
+### Bottom black strip: expected by the original viewport contract (not a defect)
+
+Developer observation: a black horizontal area over roughly the bottom 10 percent of the
+viewport. Source-backed explanation, no speculative change made:
+
+- `GlobalData::m_viewportHeightScale` defaults to **0.80** (`GlobalData.cpp:847`, "Default
+  value for the original Control Bar"). `ControlBar::setScaledViewportHeight()` sets the
+  tactical view height to `displayHeight * 0.80` whenever the Control Bar is shown
+  (`ControlBar.cpp:3060`, `ControlBarCallback.cpp`), `setFullViewportHeight()` restores 100
+  percent. `W3DView::setHeight` narrows the camera viewport to that fraction.
+- The native pass draws exactly the camera viewport: the probe's `nonblack_pct=80` equals
+  the 480 of 600 rows the 80 percent viewport covers, i.e. the terrain fills the whole world
+  viewport and the strip below it (rows 480-599, 20 percent) is by contract not world.
+- In the original game that strip is covered by the opaque Control Bar art. The remaining
+  black seen (about half of the strip) is, most likely and not verified, the part of the UI layer not painting
+  opaque Control Bar art in this headless-world profile. That is a UI/Control Bar fidelity
+  item (windows/images drawn by `winRepaint`), independent of the world pass; it was not
+  changed here. The command-line `-fullViewport` would set scale 1.0 but is not part of the
+  strict profile grammar.
+
+Open follow-up (not blocking acceptance): confirm with a UI-only review which Control Bar
+windows are drawn in-game under this profile (the world viewport itself is correct).
+
+### Known gaps carried forward (unchanged from the scope section)
+
+No cloud/noise pass, dynamic lights, shoreline/extra-blend, roads, bridges, props,
+scorches, shroud/fog, meshes, water, shadows or particles. `tile_updates=0` over the run
+means camera scrolling/terrain re-lighting was not exercised by this scripted run.
