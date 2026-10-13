@@ -71,6 +71,11 @@ struct Stats
     unsigned waterPatches;        // water areas emitted
     unsigned shroudCells;         // shroud overlay cells emitted
     unsigned scorches;            // scorch marks emitted
+    unsigned tracks;              // terrain track strips emitted (vehicle tread marks)
+    unsigned bibs;                // building bibs emitted (normal + highlighted)
+    unsigned waterSparkles;       // standing-water patches drawn with the sparkle/noise pixel shader
+    unsigned waterRivers;         // river strips drawn with the river pixel shader (alpha edge on the GPU)
+    unsigned groundLines;         // waypoint / rally lines emitted on the ground layer
     unsigned dropped;             // emissions refused by the chunk pool
     // Particle pipeline (ParticleSystemManager::PipelineStats mirrored at render time):
     unsigned pipelineRequested;       // createParticleSystem calls (FX nuggets, weapons, damage states ...)
@@ -92,6 +97,10 @@ void resetStatsForTests();
 // Line render objects registered with NativeWorldObjects (called from the object pass).
 bool emitLine3D(D3D11Backend &backend, Line3DClass &line, float distanceSquared);
 bool emitSegLine(D3D11Backend &backend, SegmentedLineClass &line, const Vector3 &cameraPosition, float distanceSquared);
+// Terrain-pass overlays of the legacy renderer (drawn with the terrain, before objects, PASS_ALWAYS): the
+// waypoint/rally lines are snapshotted here while the waypoint buffer runs inside the terrain pass and emitted
+// on the ground layer by the next collect(). `line` is copied; it may be reused by the caller immediately.
+void queueGroundLine(SegmentedLineClass &line);
 
 // Game-state-driven producers, called once per frame after the objects were processed.
 void collect(D3D11Backend &backend, CameraClass &camera);
@@ -111,6 +120,9 @@ void setShroudFilter(bool enable);
 // Multiplier (r,g,b in 0..1) the shroud applies at a world position (objects that are fogged or shrouded are
 // drawn through the shroud like the legacy shroud material pass). 1,1,1 when no shroud is active.
 void shroudMultiplierAt(float x, float y, float rgb[3]);
+// World size of one logic shroud cell (the partition cell the logic sends levels for); the radar maps
+// logic cells to radar pixels with it where the legacy code asks W3DShroud::getCellWidth().
+float shroudCellWorldSize();
 // Test hook: installs a shroud level grid without a loaded map (cleared by uninstall()/releaseAll()).
 void setShroudForTests(int cellsX, int cellsY, float cellSize, const unsigned char *levels, unsigned char border);
 
@@ -130,6 +142,7 @@ inline void setShroudLevel(int, int, unsigned char) {}
 inline void setBorderShroudLevel(unsigned char) {}
 inline void setShroudFilter(bool) {}
 inline void shroudMultiplierAt(float, float, float rgb[3]) { rgb[0] = rgb[1] = rgb[2] = 1.0f; }
+inline float shroudCellWorldSize() { return 0.0f; }
 inline void setShroudForTests(int, int, float, const unsigned char *, unsigned char) {}
 inline void addScorch(float, float, float, float, int, bool) {}
 inline void clearScorches() {}

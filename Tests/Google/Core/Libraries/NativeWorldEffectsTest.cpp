@@ -142,6 +142,38 @@ TEST(NativeWorldEffectsTest, RiverStripWalksInwardAndAppliesTheEdgeAlphaProfile)
     EXPECT_FALSE(NativeWorldEffects::Geometry::river(flat.data(), 3, 0, 0.0f, 0xffffffffu, {}, bad));
 }
 
+TEST(NativeWorldEffectsTest, RiverWithoutCpuProfileKeepsTheLegacyTwoVertexRowsForTheGpuAlphaEdge)
+{
+    // The retail river pixel shader samples TWAlphaEdge across the strip with the second coordinate set
+    // (u2 = 1 inner / 0 outer); the first set is the river texture (HEIGHT_TO_USE 0.5 inner / 0 outer).
+    const float pts[8][3] = {{0, 0, 3}, {40, 0, 3}, {80, 0, 3}, {120, 0, 3}, {120, 20, 3}, {80, 20, 3}, {40, 20, 3}, {0, 20, 3}};
+    std::vector<float> flat;
+    for (auto &p : pts) { flat.push_back(p[0]); flat.push_back(p[1]); flat.push_back(p[2]); }
+    Mesh mesh;
+    ASSERT_TRUE(NativeWorldEffects::Geometry::river(flat.data(), 8, 3, 0.0f, 0xff808080u, {}, mesh));
+    ASSERT_EQ(mesh.vertices.size(), 8u);          // 4 rows x (outer, inner)
+    EXPECT_EQ(mesh.indices.size(), 3u * 6u);
+    for (size_t row = 0; row < 4; ++row) {
+        const WorldVertexXYZDUV2 &outer = mesh.vertices[row * 2], &inner = mesh.vertices[row * 2 + 1];
+        EXPECT_FLOAT_EQ(outer.u0, 0.0f); EXPECT_FLOAT_EQ(inner.u0, 0.5f);
+        EXPECT_FLOAT_EQ(outer.u1, 0.0f); EXPECT_FLOAT_EQ(inner.u1, 1.0f);
+        EXPECT_EQ(outer.diffuse >> 24, 0xffu);    // vertex alpha untouched: it only weights the sparkle term
+        EXPECT_FLOAT_EQ(outer.v0, outer.v1);
+    }
+}
+
+TEST(NativeWorldEffectsTest, StandingWaterCarriesTheSparkleCoordinatesInTheSecondSet)
+{
+    const float corners[4][3] = {{100, 100, 7}, {0, 100, 7}, {0, 0, 7}, {100, 0, 7}};
+    Mesh mesh;
+    NativeWorldEffects::Geometry::standingWater(corners, 0.0f, 0x80ffffffu, mesh);
+    ASSERT_FALSE(mesh.vertices.empty());
+    for (const WorldVertexXYZDUV2 &v : mesh.vertices) {
+        EXPECT_NEAR(v.u1, v.x / 50.0f, 1e-5f);                       // BUMP_SIZE
+        EXPECT_NEAR(v.v1, (v.y + 0.3f * v.x) / 50.0f, 1e-5f);
+    }
+}
+
 float latticeHeight(int x, int y) { return 2.0f + 0.1f * static_cast<float>(x) + 0.2f * static_cast<float>(y); }
 bool latticeFlip(int x, int y) { return ((x + y) & 1) != 0; }
 

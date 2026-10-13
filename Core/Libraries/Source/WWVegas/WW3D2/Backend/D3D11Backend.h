@@ -95,6 +95,12 @@ public:
     Texture2DResidency *Create_Render2D_Residency(TextureClass &) override;
     void Apply_Render2D_Texture(TextureClass &, unsigned) override;
     bool Prepare_File_Texture(TextureClass &) override;
+    bool Supports_Dynamic_Render2D_Content() const override { return true; }
+    // Mutable counterpart of Create_Content_Residency: DEFAULT usage so a CPU revision change can be
+    // re-uploaded through Update_Content_Residency (same conversion, same texel layout).
+    Texture2DResidency *Create_Dynamic_Content_Residency(const Texture2DCPUContent &);
+    void Update_Content_Residency(Texture2DResidency &, const Texture2DCPUContent &);
+    unsigned Dynamic_Uploads() const;
     void Copy_Render2D_Surface(SurfaceClass &, SurfaceClass &) override;
 private:
     struct Impl;

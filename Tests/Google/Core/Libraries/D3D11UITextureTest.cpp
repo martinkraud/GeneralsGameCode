@@ -263,6 +263,51 @@ TEST(UITextureTest, EightBitAlphaAndPaddedUploadRetainStraightAlpha)
     }
 }
 
+TEST(UITextureTest, DynamicContentIsReuploadedOnlyWhenTheRevisionChanges)
+{
+    // Radar-style mutable UI content: DEFAULT-usage residency, CPU content revision, UpdateSubresource.
+    for (WW3DFormat format : {WW3D_FORMAT_A8R8G8B8, WW3D_FORMAT_X8R8G8B8, WW3D_FORMAT_R5G6B5, WW3D_FORMAT_A4R4G4B4}) {
+        UITextureContent content(new Texture2DCPUContent(4, 4, format, 0));
+        const unsigned bytes = (format == WW3D_FORMAT_R5G6B5 || format == WW3D_FORMAT_A4R4G4B4) ? 2 : 4;
+        auto fill = [&](unsigned value) {
+            int pitch; auto *bits = static_cast<unsigned char *>(content->Lock(&pitch));
+            for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
+                unsigned char *p = bits + y * pitch + x * bytes;
+                if (bytes == 4) { p[0] = unsigned(value); p[1] = 0; p[2] = 0; p[3] = 255; }   // B,G,R,A
+                else if (format == WW3D_FORMAT_R5G6B5) { const unsigned short v = static_cast<unsigned short>(value >> 3); std::memcpy(p, &v, 2); }
+                else { const unsigned short v = static_cast<unsigned short>(0xf000 | (value >> 4)); std::memcpy(p, &v, 2); }
+            }
+            content->Unlock();
+        };
+        const unsigned first = content->Revision();
+        fill(255);
+        EXPECT_GT(content->Revision(), first);
+        D3D11Backend::Configuration c; c.software = true; c.width = c.height = 4;
+        auto backend = D3D11Backend::Create(c); Quad q(4, 4); q.color.fill(0xffffffff);
+        std::unique_ptr<Texture2DResidency> r(backend->Create_Dynamic_Content_Residency(*content));
+        auto draw = [&] {
+            backend->Clear(true, false, Vector3(0, 0, 0)); backend->Begin_Scene();
+            backend->Submit_Render2D_Content(q.s, r.get(), UISampler()); backend->End_Scene(false);
+            return backend->Readback_RGBA8();
+        };
+        auto pixels = draw();
+        const unsigned firstBlue = pixels[2];   // RGBA readback: byte 2 is blue
+        EXPECT_GT(firstBlue, 200u) << "format " << format;
+        // CPU writes are invisible until Update_Content_Residency runs.
+        fill(32);
+        EXPECT_EQ(draw(), pixels);
+        const unsigned before = backend->Dynamic_Uploads();
+        backend->Update_Content_Residency(*r, *content);
+        EXPECT_EQ(backend->Dynamic_Uploads(), before + 1);
+        const auto updated = draw();
+        EXPECT_LT(updated[2], firstBlue) << "format " << format;
+        EXPECT_NE(updated, pixels);
+        // The static (immutable) route must reject updates instead of silently ignoring them.
+        std::unique_ptr<Texture2DResidency> immutable(backend->Create_Content_Residency(*content));
+        EXPECT_ANY_THROW(backend->Update_Content_Residency(*immutable, *content));
+    }
+}
+
 TEST(UITextureTest, ActualSixteenBitReferencePolicyQuantizesBeforeUpload)
 {
     for (unsigned bytes : {3u, 4u}) {
@@ -504,6 +549,94 @@ TEST(WorldTest, DepthWriteOffTestsButDoesNotOccludeLaterGeometry)
     px = f.Frame({f.Submission(near_.get(), WorldMaterial::TerrainBase, true),
                   f.Submission(far_.get(), WorldMaterial::TerrainBase, true)});
     EXPECT_EQ(px[0], 0); EXPECT_EQ(px[2], 255);
+}
+
+TEST(WorldTest, DepthAlwaysOverlayPassesOverNearerSurfacesWithoutWritingDepth)
+{
+    // Legacy bibs / waypoint lines: PASS_ALWAYS, depth write off (detailAlphaShader), drawn with the terrain
+    // before the objects. The overlay must show over a nearer terrain surface and must not change the depth
+    // buffer, so a later (object) draw is still tested against the terrain.
+    WorldFixture f;
+    std::unique_ptr<GeometryResidency> nearTerrain(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.25f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));  // red
+    std::unique_ptr<GeometryResidency> farOverlay(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.75f, Argb(255, 255, 255, 255), 1, 0, 1, 0)));   // blue
+    std::unique_ptr<GeometryResidency> midObject(f.backend->Create_Geometry_Residency(WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0)));    // red
+    auto terrain = f.Submission(nearTerrain.get(), WorldMaterial::TerrainOverlay, true);
+    auto overlay = f.Submission(farOverlay.get(), WorldMaterial::TerrainOverlay, false);
+    // LEQUAL (the default): the farther overlay is hidden by the nearer terrain.
+    auto px = f.Frame({terrain, overlay});
+    EXPECT_EQ(px[0], 255); EXPECT_EQ(px[2], 0);
+    // PASS_ALWAYS: the overlay overwrites the pixel.
+    overlay.depth_always = true;
+    px = f.Frame({terrain, overlay});
+    EXPECT_EQ(px[0], 0); EXPECT_EQ(px[2], 255);
+    // It did not write depth: an object behind the terrain but in front of the overlay depth stays hidden
+    // by the terrain (0.5 > 0.25), exactly as if the overlay were not there.
+    auto object = f.Submission(midObject.get(), WorldMaterial::TerrainOverlay, true);
+    px = f.Frame({terrain, overlay, object});
+    EXPECT_EQ(px[0], 0); EXPECT_EQ(px[2], 255);   // overlay still on top; the object was depth-rejected
+    // Order of a separate far terrain: overlay (always) then nearer object: object wins by depth.
+    auto farTerrain = f.Submission(farOverlay.get(), WorldMaterial::TerrainOverlay, true);
+    px = f.Frame({farTerrain, overlay, object});
+    EXPECT_EQ(px[0], 255); EXPECT_EQ(px[2], 0);   // object (mid, red) in front of the far terrain, over the overlay
+}
+
+namespace {
+std::unique_ptr<Texture2DResidency> SolidResidency(D3D11Backend &backend, unsigned r, unsigned g, unsigned b, unsigned a)
+{
+    UITextureContent content(new Texture2DCPUContent(1, 1, WW3D_FORMAT_A8R8G8B8, 4));
+    int pitch; auto *p = static_cast<unsigned char *>(content->Lock(&pitch));
+    p[0] = static_cast<unsigned char>(b); p[1] = static_cast<unsigned char>(g);
+    p[2] = static_cast<unsigned char>(r); p[3] = static_cast<unsigned char>(a);
+    content->Unlock();
+    return std::unique_ptr<Texture2DResidency>(backend.Create_Content_Residency(*content));
+}
+}
+
+TEST(WorldTest, StandingWaterAddsSparkleTimesNoiseToTheLitBaseLikeTheTrapezoidPixelShader)
+{
+    // TrapezoidWaterCode: r0 = v0 * t0; r0.rgb += t1 * t2 (then the framebuffer blend).
+    WorldFixture f;
+    auto sparkle = SolidResidency(*f.backend, 255, 255, 255, 255);
+    auto noise = SolidResidency(*f.backend, 100, 100, 100, 255);
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(255, 128, 255, 64), 0, 0, 0, 0)));   // uv0 -> the red texel, uv1 anywhere
+    WorldSubmission plain = f.Submission(g.get(), WorldMaterial::Water, false);
+    plain.texgen_scale = 1.0f / 16.0f;
+    // Without the sparkle stages only the lit base remains (null stages sample as black).
+    auto px = f.Frame({plain});
+    EXPECT_NEAR(px[0], 128, 1.5); EXPECT_NEAR(px[1], 0, 1.5); EXPECT_NEAR(px[2], 0, 1.5);
+    WorldSubmission lit = plain;
+    lit.cloud = sparkle.get(); lit.noise = noise.get();
+    px = f.Frame({lit});
+    // sparkle (white) x noise (100/255) = +100 on every channel, added before the blend.
+    EXPECT_NEAR(px[0], 128 + 100, 1.5); EXPECT_NEAR(px[1], 100, 1.5); EXPECT_NEAR(px[2], 100, 1.5);
+    EXPECT_EQ(px[3], 255);
+}
+
+TEST(WorldTest, RiverWaterUsesTheAlphaEdgeForOpacityAndAddsSparkleWeightedByVertexAlpha)
+{
+    // RiverWaterCode: rgb = v0.rgb*t0.rgb + (t1*t2 + t3.rgb)*v0.a ; a = t0.a * t3.a
+    WorldFixture f;
+    auto sparkle = SolidResidency(*f.backend, 255, 255, 255, 255);
+    auto noise = SolidResidency(*f.backend, 100, 100, 100, 255);
+    auto edge = SolidResidency(*f.backend, 0, 0, 0, 128);
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(255, 128, 255, 64), 0, 0, 0, 0)));
+    WorldSubmission river = f.Submission(g.get(), WorldMaterial::Water, false);
+    river.water_river = true;
+    river.cloud = sparkle.get(); river.noise = noise.get(); river.aux = edge.get();
+    river.texgen_scale = 1.0f / 16.0f;
+    auto px = f.Frame({river});
+    // alpha = 1 * 128/255; rgb = (128,0,0)/255 + 0.392 (v0.a = 1) -> blended over black with that alpha.
+    const double a = 128 / 255.0;
+    EXPECT_NEAR(px[0], (128 + 100) * a, 2.0); EXPECT_NEAR(px[1], 100 * a, 2.0); EXPECT_NEAR(px[2], 100 * a, 2.0);
+    // The vertex alpha weights only the added term, not the opacity.
+    std::unique_ptr<GeometryResidency> half(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(128, 128, 255, 64), 0, 0, 0, 0)));
+    river.geometry = half.get(); river.index_count = half->Index_Count();
+    px = f.Frame({river});
+    const double va = 128 / 255.0;
+    EXPECT_NEAR(px[0], (128 + 100 * va) * a, 2.0); EXPECT_NEAR(px[1], (100 * va) * a, 2.0);
 }
 
 TEST(WorldTest, TerrainBaseModulatesDiffuseAndBlendPassUsesSecondUVSetAndAlpha)

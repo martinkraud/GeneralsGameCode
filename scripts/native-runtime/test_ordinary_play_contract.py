@@ -158,9 +158,10 @@ class OrdinaryPlayContract(unittest.TestCase):
     def test_x64_29_review_fixes_are_pinned(self):
         objects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp")
         # The particle layer was emitted but never submitted: iterate by count, never up to a named layer.
-        self.assertIn("for (unsigned layer = 0; layer < LayerCount; ++layer) {", objects)
+        self.assertIn("for (unsigned order = 0; order < LayerCount; ++order) {", objects)
+        self.assertIn("const unsigned layer = kLayerOrder[order];", objects)
+        self.assertIn("static_assert(LayerGround + 1 == LayerCount", objects)
         self.assertNotIn("layer <= LayerOverlay", objects)
-        self.assertIn("static_assert(LayerParticle + 1 == LayerCount", objects)
         effects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp")
         # Legacy renderStencilShadows: SRCBLEND = DESTCOLOR, DESTBLEND = ZERO (multiply by the shadow color).
         volume = effects.split("void EmitVolumeShadow(", 1)[1].split("void CollectShadows(", 1)[0]
@@ -184,6 +185,42 @@ class OrdinaryPlayContract(unittest.TestCase):
         self.assertIn("GENERALS_NATIVE_REVIEW_SCALE", host)
         mouse = read("Core/GameEngineDevice/Source/Win32Device/GameClient/Win32Mouse.cpp")
         self.assertIn("NativeOrdinaryHost::clientToLogical", mouse)
+
+    def test_x64_30_world_ui_completeness_is_pinned(self):
+        # Radar: the real W3DRadar in the play profile only (the dummy elsewhere and under GENERALS_NATIVE_DISABLE=radar).
+        engine = read("Core/GameEngineDevice/Include/Win32Device/Common/Win32GameEngine.h")
+        self.assertIn('if (dummy && !(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("radar")))', engine)
+        # Dynamic UI textures: CPU-backed content, revision-driven re-upload in the D3D11 bridge.
+        texture = read("Core/Libraries/Source/WWVegas/WW3D2/texture.cpp")
+        self.assertIn("backend->Supports_Dynamic_Render2D_Content()", texture)
+        self.assertIn("return new SurfaceClass(Render2DCPUContent);", texture)
+        bridge = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp")
+        self.assertIn("content->Revision() != texture.Render2D_Uploaded_Revision()", bridge)
+        backend = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp")
+        self.assertIn("UpdateSubresource(resource->texture.Get(), 0, nullptr, image.source, image.pitch, 0)", backend)
+        # The legacy radar keeps its shape: the raster rules moved into the shared header, same three textures.
+        radar = read("Core/GameEngineDevice/Source/W3DDevice/Common/System/W3DRadar.cpp")
+        for token in ("RadarRaster::plotMarker(", "RadarRaster::stealthAlpha(", "RadarRaster::shroudCellRect(",
+                      "RadarRaster::shadeForHeight(", "NativeWorldEffects::shroudCellWorldSize()",
+                      "m_terrainTexture", "m_overlayTexture", "m_shroudTexture", "drawViewBox", "drawEvents"):
+            self.assertIn(token, radar)
+        # Terrain tracks, bibs, waypoints: legacy bookkeeping kept, presentation native.
+        tracks = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DTerrainTracks.cpp")
+        self.assertIn("void TerrainTracksRenderObjClassSystem::forEachNativeTrack(", tracks)
+        self.assertIn("void TerrainTracksRenderObjClass::addEdgeToTrack(Real x, Real y)", tracks)
+        effects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp")
+        for token in ("void CollectTracks(", "void CollectBibs(", "void CollectGroundLines(", "NativeWorldObjects::EffectLayerGround",
+                      "b.depthAlways = depthAlways;", "e.depthAlways = true;", "b.waterKind = trigger->isRiver() ? 2 : 1;"):
+            self.assertIn(token, effects)
+        waypoints = read("Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3dWaypointBuffer.cpp")
+        self.assertIn("NativeWorldEffects::queueGroundLine( *m_line );", waypoints)
+        self.assertIn("NativeWorldObjects::addFrameObject( clone );", waypoints)
+        # Water uses the retail fixed pixel shader semantics (LegacyFixedPixelShader.h).
+        self.assertIn("float4 PSWaterStanding(PW p)", backend)
+        self.assertIn("return float4(rgb, t0.a * t3.a);", backend)
+        # Trees and props (no drawable) are drawn through the shroud like bridges and ghosts.
+        objects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp")
+        self.assertIn("if (!info) input.shrouded = true;", objects)
 
     def test_zero_hour_sources_do_not_mention_play(self):
         zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")

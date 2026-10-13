@@ -54,6 +54,9 @@
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DDebugIcons.h"
 #include "W3DDevice/GameClient/W3DTerrainTracks.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include "W3DDevice/GameClient/W3DShadow.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/FlatHeightMap.h"
@@ -212,6 +215,16 @@ void W3DTerrainVisual::init()
 	m_terrainRenderObject = NEW_REF( HeightMapRenderObjClass, () );
 	m_terrainRenderObject->Set_Collision_Type( PICK_TYPE_TERRAIN );
 	TheTerrainRenderObject = m_terrainRenderObject;
+
+#if defined(_WIN64)
+	// Native play profile (m_headless stays TRUE): the terrain tracks keep the legacy edge bookkeeping
+	// and are presented by NativeWorldEffects; no DX8 buffers or scene registration are created.
+	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("tracks"))
+	{
+		TheTerrainTracksRenderObjClassSystem = NEW TerrainTracksRenderObjClassSystem;
+		TheTerrainTracksRenderObjClassSystem->initNative();
+	}
+#endif
 
 	if (!TheGlobalData->m_headless)
 	{

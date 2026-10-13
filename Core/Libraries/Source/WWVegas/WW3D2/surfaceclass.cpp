@@ -54,6 +54,7 @@
 #include "WWMath/vector2i.h"
 #include "colorspace.h"
 #include "WWLib/bound.h"
+#include "Texture2DCPUContent.h"
 #include <d3dx8.h>
 
 void Convert_Pixel(Vector3 &rgb, const SurfaceClass::SurfaceDescription &sd, const unsigned char * pixel)
@@ -188,8 +189,21 @@ SurfaceClass::SurfaceClass(IDirect3DSurface8 *d3d_surface)	:
 	SurfaceFormat=desc.Format;
 }
 
+SurfaceClass::SurfaceClass(Texture2DCPUContent *content) :
+	D3DSurface(nullptr),
+	CPUContent(content)
+{
+	WWASSERT(content);
+	CPUContent->Add_Ref();
+	SurfaceFormat = CPUContent->Describe().format;
+}
+
 SurfaceClass::~SurfaceClass()
 {
+	if (CPUContent) {
+		CPUContent->Release_Ref();
+		CPUContent = nullptr;
+	}
 	if (D3DSurface) {
 		D3DSurface->Release();
 		D3DSurface = nullptr;
@@ -198,6 +212,14 @@ SurfaceClass::~SurfaceClass()
 
 void SurfaceClass::Get_Description(SurfaceDescription &surface_desc)
 {
+	if (CPUContent)
+	{
+		const Texture2DDescription d = CPUContent->Describe();
+		surface_desc.Format = d.format;
+		surface_desc.Width = d.width;
+		surface_desc.Height = d.height;
+		return;
+	}
 	D3DSURFACE_DESC d3d_desc;
 	::ZeroMemory(&d3d_desc, sizeof(D3DSURFACE_DESC));
 	DX8_ErrorCode(D3DSurface->GetDesc(&d3d_desc));
@@ -215,6 +237,8 @@ unsigned int SurfaceClass::Get_Bytes_Per_Pixel()
 
 SurfaceClass::LockedSurfacePtr SurfaceClass::Lock(int *pitch)
 {
+	if (CPUContent)
+		return CPUContent->Lock(pitch);
 	D3DLOCKED_RECT lock_rect;
 	::ZeroMemory(&lock_rect, sizeof(D3DLOCKED_RECT));
 	DX8_ErrorCode(D3DSurface->LockRect(&lock_rect, nullptr, 0));
@@ -240,6 +264,11 @@ SurfaceClass::LockedSurfacePtr SurfaceClass::Lock(int *pitch, const Vector2i &mi
 
 void SurfaceClass::Unlock()
 {
+	if (CPUContent)
+	{
+		CPUContent->Unlock();
+		return;
+	}
 	DX8_ErrorCode(D3DSurface->UnlockRect());
 }
 
@@ -260,6 +289,14 @@ void SurfaceClass::Unlock()
  *=============================================================================================*/
 void SurfaceClass::Clear()
 {
+	if (CPUContent)
+	{
+		int cpu_pitch = 0;
+		void *bits = CPUContent->Lock(&cpu_pitch);
+		memset(bits, 0, static_cast<size_t>(cpu_pitch) * CPUContent->Storage_Rows());
+		CPUContent->Unlock();
+		return;
+	}
 	SurfaceDescription sd;
 	Get_Description(sd);
 

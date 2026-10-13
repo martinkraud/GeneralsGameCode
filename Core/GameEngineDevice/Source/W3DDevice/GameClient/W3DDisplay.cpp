@@ -1821,6 +1821,9 @@ void W3DDisplay::update()
 		WW3D::Update_Logic_Frame_Time(TheFramePacer->getLogicTimeStepMilliseconds());
 		if (StartupDiagnostics::ordinaryPlay())
 		{
+			// Terrain tracks fade and expire here in the non-headless update (before the WW3D sync).
+			if (TheTerrainTracksRenderObjClassSystem)
+				TheTerrainTracksRenderObjClassSystem->update();
 			// Same binding as the non-headless update: draw modules advance their per-sync work
 			// (tank tread scroll, dust) on WW3D::Get_Sync_Frame_Time().
 			WW3D::Sync(TheGameLogic->hasUpdated());

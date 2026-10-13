@@ -46,6 +46,9 @@
 #include "W3DDevice/Common/W3DFunctionLexicon.h"
 #include "W3DDevice/Common/W3DRadar.h"
 #include "W3DDevice/Common/W3DThingFactory.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 
 
 
@@ -104,8 +107,15 @@ inline ParticleSystemManager* Win32GameEngine::createParticleSystemManager(Bool 
 inline NetworkInterface *Win32GameEngine::createNetwork() { return NetworkInterface::createNetwork(); }
 inline Radar *Win32GameEngine::createRadar(Bool dummy)
 {
+#if defined(_WIN64)
+	// Native play profile: m_headless stays TRUE, but the world is real and so is the radar. Every
+	// other profile keeps the dummy.
+	if (dummy && !(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("radar")))
+		return NEW RadarDummy;
+#else
 	if (dummy)
 		return NEW RadarDummy;
+#endif
 	return NEW W3DRadar;
 }
 inline WebBrowser *Win32GameEngine::createWebBrowser() { return NEW CComObject<W3DWebBrowser>; }

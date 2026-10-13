@@ -94,8 +94,12 @@ struct Chunk
     std::vector<unsigned short> indices;
 };
 
-enum Layer : unsigned char { LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4, LayerCount = 5 };
-static_assert(LayerParticle + 1 == LayerCount, "submission iterates every layer up to LayerCount");
+enum Layer : unsigned char { LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4,
+                             LayerGround = 5, LayerCount = 6 };
+static_assert(LayerGround + 1 == LayerCount, "submission iterates every layer up to LayerCount");
+// Submission order: the ground overlays first (terrain-pass objects), then the layers in numeric order.
+constexpr Layer kLayerOrder[LayerCount] = {LayerGround, LayerOpaque, LayerDecal, LayerTranslucent, LayerOverlay, LayerParticle};
+std::vector<RenderObjClass *> g_frameObjects;   // addFrameObject, consumed by render()
 
 struct Batch
 {
@@ -111,6 +115,11 @@ struct Batch
     bool translucent;
     unsigned char layer;
     bool stencilOnce;
+    bool depthAlways;
+    int waterKind;
+    Texture2DResidency *waterSparkle, *waterNoise, *waterEdge;
+    float waterNoiseOffset[2];
+    float waterNoiseScale;
 };
 
 struct CachedTexture
@@ -1002,6 +1011,11 @@ bool emitEffect(D3D11Backend &backend, const EffectBatch &b)
     out.translucent = b.layer == EffectLayerTranslucent || b.layer == EffectLayerParticle;
     out.layer = static_cast<unsigned char>(b.layer);
     out.stencilOnce = b.stencilOnce;
+    out.depthAlways = b.depthAlways;
+    out.waterKind = b.waterKind;
+    out.waterSparkle = b.waterSparkle; out.waterNoise = b.waterNoise; out.waterEdge = b.waterEdge;
+    out.waterNoiseOffset[0] = b.waterNoiseOffset[0]; out.waterNoiseOffset[1] = b.waterNoiseOffset[1];
+    out.waterNoiseScale = b.waterNoiseScale;
     s.batches.push_back(out);
     s.stats.vertices += b.vertexCount;
     s.stats.triangles += b.indexCount / 3;
@@ -1081,15 +1095,24 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         sub.no_diffuse = b.noDiffuse;
         sub.blend = b.blend;
         sub.stencil_once = b.stencilOnce;
+        sub.depth_always = b.depthAlways;
+        if (b.waterKind) {
+            sub.material = WorldMaterial::Water;
+            sub.water_river = b.waterKind == 2;
+            sub.cloud = b.waterSparkle; sub.noise = b.waterNoise; sub.aux = b.waterEdge;
+            sub.cloud_offset[0] = b.waterNoiseOffset[0]; sub.cloud_offset[1] = b.waterNoiseOffset[1];
+            sub.texgen_scale = b.waterNoiseScale;
+        }
         backend.Submit_World(sub);
     };
     int submissions = 0;
     unsigned translucent = 0;
-    // Draw order: opaque objects (registration order), terrain decals (emission order), translucent
-    // objects/water back to front, particles back to front, screen-space-of-the-world overlays (shroud).
+    // Draw order: ground overlays (bibs, waypoint lines), opaque objects (registration order), terrain decals
+    // (emission order), translucent objects/water back to front, particles back to front, overlays (shroud).
     // X64.29 review: the bound was left at LayerOverlay after the layers were renumbered, so the particle layer
     // (and every effect after it) was emitted but never submitted. Iterate by count, never by name.
-    for (unsigned layer = 0; layer < LayerCount; ++layer) {
+    for (unsigned order = 0; order < LayerCount; ++order) {
+        const unsigned layer = kLayerOrder[order];
         std::vector<const Batch *> list;
         for (const Batch &b : s.batches) {
             const unsigned bl = b.layer;
@@ -1115,12 +1138,19 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
     return submissions;
 }
 
+void addFrameObject(RenderObjClass *object)
+{
+    if (object && g_frameObjects.size() < 1024) g_frameObjects.push_back(object);
+}
+
 int render(D3D11Backend &backend, CameraClass &camera)
 {
     State &s = S();
+    std::vector<RenderObjClass *> frameObjects;
+    frameObjects.swap(g_frameObjects);   // valid for this frame only
     if (s.entries.empty()) return 0;
     std::vector<ObjectInput> inputs;
-    inputs.reserve(s.entries.size());
+    inputs.reserve(s.entries.size() + frameObjects.size());
     for (const Entry &entry : s.entries) {
         RenderObjClass *object = entry.object;
         if (object->Is_Hidden()) { ++s.stats.hidden; object->Set_Visible(0); continue; }
@@ -1135,6 +1165,11 @@ int render(D3D11Backend &backend, CameraClass &camera)
         // is always fogged; live objects use the partition shroud status with the 2 second grace after a
         // clear sighting (aircraft that pop out of the shroud). Anything past CLEAR is drawn through the shroud.
         if (info && !info->m_drawable) input.shrouded = true;
+        // Trees and props (no drawable) are drawn through the shroud by the legacy tree/prop buffers (the shroud
+        // texture in the tree shader, the shroud material pass for props). The ground-level overlay cannot
+        // reach them, exactly like the bridges, so they take the per-vertex shroud level at their position
+        // (clear cells multiply by 1: nothing changes where the player can see).
+        if (!info) input.shrouded = true;
         if (info && info->m_drawable) {
             Drawable *draw = info->m_drawable;
             if (draw->isDrawableEffectivelyHidden() || draw->getFullyObscuredByShroud()) {
@@ -1165,6 +1200,13 @@ int render(D3D11Backend &backend, CameraClass &camera)
         }
         // else: a ghost object (fogged remnant). It is drawn like the building it remembers; the shroud
         // overlay dims it with the surrounding fog.
+        inputs.push_back(input);
+    }
+    for (RenderObjClass *object : frameObjects) {
+        if (object->Is_Hidden()) continue;
+        ObjectInput input = {};
+        input.object = object;
+        input.opacity = 1.0f;
         inputs.push_back(input);
     }
     SceneLighting lights, infantry;

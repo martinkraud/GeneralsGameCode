@@ -103,6 +103,7 @@ public:
     ComPtr<ID3D11Texture2D> texture;
     ComPtr<ID3D11ShaderResourceView> view;
     Texture2DDescription description;
+    bool dynamic = false;
     bool Describe(Texture2DDescription &out) override { out = description; return true; }
     // Immutable sentence resources: mutable mapping is a later boundary.
     Texture2DContent *Map(unsigned, const Texture2DRegion *) override { return nullptr; }
@@ -167,6 +168,24 @@ float4 PSTerrainCombined(PW p) : SV_TARGET {
     if (useTex.x > 0.5) c *= cloudTex.Sample(cloudSampler, p.wxy * combined.z + combined.xy).rgb;
     if (useTex.y > 0.5) c *= noiseTex.Sample(noiseSampler, p.wxy * combined.z).rgb;
     return float4(c, 1.0);
+}
+// Water (LegacyFixedPixelShader.h TrapezoidWaterCode / RiverWaterCode; the t3 shroud multiply of the standing
+// water program is the native shroud overlay, which also covers the water).
+Texture2D auxTex : register(t3); SamplerState auxSampler : register(s3);
+float4 PSWaterStanding(PW p) : SV_TARGET {
+    float4 r = image.Sample(imageSampler, p.uv) * p.col;                      // mul r0, v0, t0
+    float3 sparkle = cloudTex.Sample(cloudSampler, p.uvb).rgb *
+                     noiseTex.Sample(noiseSampler, p.wxy * combined.z + combined.xy).rgb;   // t1 * t2
+    r.rgb += sparkle;                                                          // mad r0.rgb, t1, t2, r0
+    return r;
+}
+float4 PSWaterRiver(PW p) : SV_TARGET {
+    float4 t0 = image.Sample(imageSampler, p.uv);
+    float4 t1 = cloudTex.Sample(cloudSampler, p.uv);
+    float4 t2 = noiseTex.Sample(noiseSampler, p.wxy * combined.z + combined.xy);
+    float4 t3 = auxTex.Sample(auxSampler, p.uvb);
+    float3 rgb = p.col.rgb * t0.rgb + (t1.rgb * t2.rgb + t3.rgb) * p.col.a;
+    return float4(rgb, t0.a * t3.a);
 }
 // Terrain combiner: rgb = tex * diffuse; alpha only participates in the blend pass.
 float4 PSTerrain(PW p) : SV_TARGET {
@@ -240,7 +259,7 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11Texture2D> depthTexture;
     ComPtr<ID3D11DepthStencilView> dsv;
     ComPtr<ID3D11VertexShader> worldVS;
-    ComPtr<ID3D11PixelShader> terrainPS, terrainCombinedPS, overlayPS;
+    ComPtr<ID3D11PixelShader> terrainPS, terrainCombinedPS, overlayPS, waterStandingPS, waterRiverPS;
     ComPtr<ID3D11RasterizerState> worldRasterNoCull;
     ComPtr<ID3D11BlendState> blendAlphaOnly;
     ComPtr<ID3D11BlendState> worldBlends[static_cast<size_t>(WorldBlend::Count)];
@@ -248,7 +267,7 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11InputLayout> worldLayout;
     ComPtr<ID3D11Buffer> worldCB;
     ComPtr<ID3D11RasterizerState> worldRaster;
-    ComPtr<ID3D11DepthStencilState> depthWrite, depthTestOnly, depthStencilOnce;
+    ComPtr<ID3D11DepthStencilState> depthWrite, depthTestOnly, depthStencilOnce, depthAlways;
     std::map<unsigned, ComPtr<ID3D11SamplerState>> worldSamplers;
     bool worldReady = false;
     ComPtr<ID3D11ShaderResourceView> white, bound;
@@ -293,6 +312,12 @@ struct D3D11Backend::Impl {
             auto overlayCode = CompileWorld("PSOverlay", "ps_4_0");
             Check(device->CreatePixelShader(overlayCode->GetBufferPointer(), overlayCode->GetBufferSize(), nullptr, &overlayPS),
                   "Create overlay PS");
+            auto standingCode = CompileWorld("PSWaterStanding", "ps_4_0");
+            Check(device->CreatePixelShader(standingCode->GetBufferPointer(), standingCode->GetBufferSize(), nullptr, &waterStandingPS),
+                  "Create standing-water PS");
+            auto riverCode = CompileWorld("PSWaterRiver", "ps_4_0");
+            Check(device->CreatePixelShader(riverCode->GetBufferPointer(), riverCode->GetBufferSize(), nullptr, &waterRiverPS),
+                  "Create river-water PS");
             D3D11_BLEND_DESC bd{};
             bd.RenderTarget[0].BlendEnable = FALSE;
             bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;   // D3DCOLORWRITEENABLE_ALPHA
@@ -367,6 +392,10 @@ struct D3D11Backend::Impl {
         d.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
         d.BackFace = d.FrontFace;
         Check(device->CreateDepthStencilState(&d, &depthStencilOnce), "Create stencil-once state");
+        // ShaderClass::PASS_ALWAYS without depth write (the legacy bib / waypoint-line shaders).
+        D3D11_DEPTH_STENCIL_DESC always{}; always.DepthEnable = TRUE; always.DepthFunc = D3D11_COMPARISON_ALWAYS;
+        always.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+        Check(device->CreateDepthStencilState(&always, &depthAlways), "Create depth-always state");
         worldReady = true;
     }
     void Buffer(ComPtr<ID3D11Buffer> &buffer, unsigned &capacity, unsigned needed, unsigned bind)
@@ -501,53 +530,95 @@ std::vector<unsigned char> D3D11Backend::Convert_Sentence_RGBA8(const Texture2DC
         }
     return out;
 }
-Texture2DResidency *D3D11Backend::Create_Content_Residency(const Texture2DCPUContent &content)
-{
-    auto result = std::make_unique<Residency>();
-    result->device = impl->device; result->description = content.Describe();
-    const auto format = result->description.format;
+namespace {
+// CPU content -> the exact bytes the GPU texture holds (RGBA8, or the block-compressed bytes as they are).
+struct UploadImage {
     std::vector<unsigned char> pixels;
     DXGI_FORMAT native = DXGI_FORMAT_R8G8B8A8_UNORM;
-    unsigned pitch = result->description.width * 4;
+    unsigned pitch = 0;
     const void *source = nullptr;
+};
+UploadImage ConvertForUpload(const Texture2DCPUContent &content)
+{
+    UploadImage out;
+    const auto description = content.Describe();
+    const auto format = description.format;
+    out.pitch = description.width * 4;
     if (format == WW3D_FORMAT_A4R4G4B4) {
-        pixels = Convert_Sentence_RGBA8(content); source = pixels.data();
+        out.pixels = D3D11Backend::Convert_Sentence_RGBA8(content); out.source = out.pixels.data();
     } else if (format == WW3D_FORMAT_R5G6B5) {
-        pixels.resize(size_t(result->description.width) * result->description.height * 4);
-        for (unsigned y = 0; y < result->description.height; ++y) for (unsigned x = 0; x < result->description.width; ++x) {
+        out.pixels.resize(size_t(description.width) * description.height * 4);
+        for (unsigned y = 0; y < description.height; ++y) for (unsigned x = 0; x < description.width; ++x) {
             unsigned short value; std::memcpy(&value, content.Pixels() + size_t(y) * content.Row_Pitch() + x * 2, 2);
-            auto *p = pixels.data() + size_t(y) * pitch + x * 4;
+            auto *p = out.pixels.data() + size_t(y) * out.pitch + x * 4;
             p[0] = (((value >> 11) & 31) * 255 + 15) / 31;
             p[1] = (((value >> 5) & 63) * 255 + 31) / 63;
             p[2] = ((value & 31) * 255 + 15) / 31; p[3] = 255;
         }
-        source = pixels.data();
+        out.source = out.pixels.data();
     } else if (format == WW3D_FORMAT_A8R8G8B8 || format == WW3D_FORMAT_X8R8G8B8) {
-        pixels.resize(size_t(result->description.width) * result->description.height * 4);
-        for (unsigned y = 0; y < result->description.height; ++y) for (unsigned x = 0; x < result->description.width; ++x) {
+        out.pixels.resize(size_t(description.width) * description.height * 4);
+        for (unsigned y = 0; y < description.height; ++y) for (unsigned x = 0; x < description.width; ++x) {
             const auto *s = content.Pixels() + size_t(y) * content.Row_Pitch() + x * 4;
-            auto *p = pixels.data() + size_t(y) * pitch + x * 4;
+            auto *p = out.pixels.data() + size_t(y) * out.pitch + x * 4;
             p[0] = s[2]; p[1] = s[1]; p[2] = s[0]; p[3] = format == WW3D_FORMAT_A8R8G8B8 ? s[3] : 255;
         }
-        source = pixels.data();
+        out.source = out.pixels.data();
     } else {
         switch (format) {
-        case WW3D_FORMAT_DXT1: native = DXGI_FORMAT_BC1_UNORM; break;
-        case WW3D_FORMAT_DXT3: native = DXGI_FORMAT_BC2_UNORM; break;
-        case WW3D_FORMAT_DXT5: native = DXGI_FORMAT_BC3_UNORM; break;
+        case WW3D_FORMAT_DXT1: out.native = DXGI_FORMAT_BC1_UNORM; break;
+        case WW3D_FORMAT_DXT3: out.native = DXGI_FORMAT_BC2_UNORM; break;
+        case WW3D_FORMAT_DXT5: out.native = DXGI_FORMAT_BC3_UNORM; break;
         default: Unsupported();
         }
-        pitch = content.Row_Pitch(); source = content.Pixels();
+        out.pitch = content.Row_Pitch(); out.source = content.Pixels();
     }
+    return out;
+}
+std::atomic<unsigned> dynamicUploads{0};
+}
+Texture2DResidency *D3D11Backend::Create_Content_Residency(const Texture2DCPUContent &content)
+{
+    auto result = std::make_unique<Residency>();
+    result->device = impl->device; result->description = content.Describe();
+    const UploadImage image = ConvertForUpload(content);
     D3D11_TEXTURE2D_DESC d{}; d.Width = result->description.width; d.Height = result->description.height;
-    d.ArraySize = d.MipLevels = 1; d.Format = native;
+    d.ArraySize = d.MipLevels = 1; d.Format = image.native;
     d.SampleDesc.Count = 1; d.Usage = D3D11_USAGE_IMMUTABLE; d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    D3D11_SUBRESOURCE_DATA data{source, pitch, 0};
+    D3D11_SUBRESOURCE_DATA data{image.source, image.pitch, 0};
     Check(impl->device->CreateTexture2D(&d, &data, &result->texture), "Upload sentence texture");
     Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create sentence SRV");
     ++impl->textures;
     return result.release();
 }
+Texture2DResidency *D3D11Backend::Create_Dynamic_Content_Residency(const Texture2DCPUContent &content)
+{
+    auto result = std::make_unique<Residency>();
+    result->device = impl->device; result->description = content.Describe();
+    result->dynamic = true;
+    const UploadImage image = ConvertForUpload(content);
+    if (image.native != DXGI_FORMAT_R8G8B8A8_UNORM) Unsupported(); // dynamic content is uncompressed UI data
+    D3D11_TEXTURE2D_DESC d{}; d.Width = result->description.width; d.Height = result->description.height;
+    d.ArraySize = d.MipLevels = 1; d.Format = image.native;
+    d.SampleDesc.Count = 1; d.Usage = D3D11_USAGE_DEFAULT; d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA data{image.source, image.pitch, 0};
+    Check(impl->device->CreateTexture2D(&d, &data, &result->texture), "Upload dynamic UI texture");
+    Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create dynamic UI SRV");
+    ++impl->textures;
+    return result.release();
+}
+void D3D11Backend::Update_Content_Residency(Texture2DResidency &residency, const Texture2DCPUContent &content)
+{
+    auto *resource = dynamic_cast<Residency *>(&residency);
+    if (!resource || !resource->dynamic || resource->device.Get() != impl->device.Get()) Unsupported();
+    const auto d = content.Describe();
+    if (d.width != resource->description.width || d.height != resource->description.height ||
+        d.format != resource->description.format) Unsupported();
+    const UploadImage image = ConvertForUpload(content);
+    impl->context->UpdateSubresource(resource->texture.Get(), 0, nullptr, image.source, image.pitch, 0);
+    ++dynamicUploads;
+}
+unsigned D3D11Backend::Dynamic_Uploads() const { return dynamicUploads.load(); }
 void D3D11Backend::Bind_Content(Texture2DResidency *content, const Texture2DSampler &sampler)
 {
     const bool ui = ValidateSampler(sampler);
@@ -796,12 +867,18 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     if (!impl->scene || !impl->dsv || !g || g->device.Get() != impl->device.Get() || s.index_count % 3 ||
         s.first_index > g->indexCount || s.index_count > g->indexCount - s.first_index) Unsupported();
     if (s.material != WorldMaterial::TerrainBase && s.material != WorldMaterial::TerrainBlend &&
-        s.material != WorldMaterial::TerrainCombined && s.material != WorldMaterial::TerrainOverlay) Unsupported();
+        s.material != WorldMaterial::TerrainCombined && s.material != WorldMaterial::TerrainOverlay &&
+        s.material != WorldMaterial::Water) Unsupported();
+    const bool water = s.material == WorldMaterial::Water;
     if (!s.texture) Unsupported();
     auto *texture = dynamic_cast<Residency *>(s.texture);
     if (!texture || texture->device.Get() != impl->device.Get()) Unsupported();
-    Residency *cloud = nullptr, *noise = nullptr;
-    if (s.material == WorldMaterial::TerrainCombined || s.material == WorldMaterial::TerrainOverlay) {
+    Residency *cloud = nullptr, *noise = nullptr, *aux = nullptr;
+    if (water && s.aux) {
+        aux = dynamic_cast<Residency *>(s.aux);
+        if (!aux || aux->device.Get() != impl->device.Get()) Unsupported();
+    }
+    if (s.material == WorldMaterial::TerrainCombined || s.material == WorldMaterial::TerrainOverlay || water) {
         if (s.cloud) {
             cloud = dynamic_cast<Residency *>(s.cloud);
             if (!cloud || cloud->device.Get() != impl->device.Get()) Unsupported();
@@ -825,7 +902,7 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     constants[16] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // UV set
     constants[17] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // use texture/diffuse alpha
     std::memcpy(constants + 20, s.world, sizeof(s.world));
-    if (s.material == WorldMaterial::TerrainCombined || s.material == WorldMaterial::TerrainOverlay) {
+    if (s.material == WorldMaterial::TerrainCombined || s.material == WorldMaterial::TerrainOverlay || water) {
         constants[36] = s.cloud_offset[0]; constants[37] = s.cloud_offset[1]; constants[38] = s.texgen_scale;
         constants[40] = cloud ? 1.0f : 0.0f; constants[41] = noise ? 1.0f : 0.0f;
     }
@@ -851,17 +928,18 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     auto *srv = texture->view.Get(); auto *smp = sampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, impl->dsv.Get());
     ID3D11BlendState *blendState = s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get();
-    if (s.material == WorldMaterial::TerrainOverlay) {
+    if (s.material == WorldMaterial::TerrainOverlay || water) {
         if (static_cast<size_t>(s.blend) >= static_cast<size_t>(WorldBlend::Count)) Unsupported();
-        blendState = s.alpha_only ? impl->blendAlphaOnly.Get() : impl->worldBlends[static_cast<size_t>(s.blend)].Get();
+        blendState = (s.alpha_only && !water) ? impl->blendAlphaOnly.Get() : impl->worldBlends[static_cast<size_t>(s.blend)].Get();
     }
     impl->context->OMSetBlendState(blendState,
                                    nullptr, 0xffffffff);
     ID3D11DepthStencilState *depthState = s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get();
     if (s.material == WorldMaterial::TerrainOverlay && s.stencil_once && impl->dsv) depthState = impl->depthStencilOnce.Get();
+    else if (s.material == WorldMaterial::TerrainOverlay && s.depth_always && impl->dsv) depthState = impl->depthAlways.Get();
     impl->context->OMSetDepthStencilState(depthState, 0);
-    impl->context->RSSetState((s.material == WorldMaterial::TerrainOverlay && s.double_sided) ? impl->worldRasterNoCull.Get()
-                                                                                              : impl->worldRaster.Get());
+    impl->context->RSSetState(((s.material == WorldMaterial::TerrainOverlay || water) && s.double_sided) ? impl->worldRasterNoCull.Get()
+                                                                                                         : impl->worldRaster.Get());
     impl->context->IASetInputLayout(impl->worldLayout.Get());
     impl->context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
     impl->context->IASetIndexBuffer(g->indices.Get(), DXGI_FORMAT_R16_UINT, 0);
@@ -871,12 +949,16 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     ID3D11PixelShader *pixelShader = impl->terrainPS.Get();
     if (s.material == WorldMaterial::TerrainCombined) pixelShader = impl->terrainCombinedPS.Get();
     else if (s.material == WorldMaterial::TerrainOverlay) pixelShader = impl->overlayPS.Get();
+    else if (water) pixelShader = s.water_river ? impl->waterRiverPS.Get() : impl->waterStandingPS.Get();
     impl->context->PSSetShader(pixelShader, nullptr, 0);
     impl->context->PSSetConstantBuffers(0, 1, &cb);
-    ID3D11ShaderResourceView *views[3] = {srv, cloud ? cloud->view.Get() : nullptr, noise ? noise->view.Get() : nullptr};
-    ID3D11SamplerState *samplers[3] = {smp, impl->cloudSampler.Get(), impl->noiseSampler.Get()};
-    impl->context->PSSetShaderResources(0, 3, views);
-    impl->context->PSSetSamplers(0, 3, samplers);
+    ID3D11ShaderResourceView *views[4] = {srv, cloud ? cloud->view.Get() : nullptr, noise ? noise->view.Get() : nullptr,
+                                          aux ? aux->view.Get() : nullptr};
+    // The legacy water stages are all bilinear + wrapping (setupFlatWaterShader / setupJbaWaterShader).
+    ID3D11SamplerState *samplers[4] = {smp, impl->cloudSampler.Get(), water ? impl->cloudSampler.Get() : impl->noiseSampler.Get(),
+                                       impl->cloudSampler.Get()};
+    impl->context->PSSetShaderResources(0, 4, views);
+    impl->context->PSSetSamplers(0, 4, samplers);
     impl->context->DrawIndexed(s.index_count, s.first_index, 0);
     ++impl->draws;
     // The Render2D path binds its own pipeline per draw; leave no stale depth state.

@@ -24,6 +24,9 @@ public:
     Texture2DCPUContent *Snapshot() const;
     void Copy_Rows(void *destination, int destination_pitch) const;
     const unsigned char *Pixels() const;
+    // Dynamic UI content (radar, later video): bumped on every Unlock so a residency can tell when its
+    // GPU copy is stale. Sentence/file snapshots never change after creation and ignore it.
+    unsigned Revision() const { return revision; }
     int Row_Pitch() const { return pitch; }
     unsigned Storage_Rows() const { return rows; }
     unsigned Row_Bytes() const { return row_bytes; }
@@ -35,4 +38,5 @@ private:
     int pitch;
     unsigned char *pixels;
     bool locked = false;
+    unsigned revision = 1;
 };

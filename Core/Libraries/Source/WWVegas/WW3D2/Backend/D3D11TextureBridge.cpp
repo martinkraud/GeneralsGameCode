@@ -45,6 +45,10 @@ std::unique_ptr<D3D11Backend> D3D11Backend::Create_For_W3D(const Configuration &
     bridge.create = [](D3D11Backend &backend, TextureClass &texture) -> Texture2DResidency * {
         const auto *content = texture.Get_Render2D_CPU_Content();
         if (!content) throw std::runtime_error("D3D11 requires supported CPU content");
+        if (texture.Is_Render2D_Dynamic()) {
+            texture.Render2D_Uploaded_Revision() = content->Revision();
+            return backend.Create_Dynamic_Content_Residency(*content);
+        }
         return backend.Create_Content_Residency(*content);
     };
     bridge.apply = [](D3D11Backend &backend, TextureClass &texture, unsigned stage) {
@@ -58,8 +62,16 @@ std::unique_ptr<D3D11Backend> D3D11Backend::Create_For_W3D(const Configuration &
         if (!texture.Get_Render2D_CPU_Content()) throw std::runtime_error("D3D11 requires CPU content");
         backend.Set_UI_Filter_Policy(static_cast<TextureFilterClass::TextureFilterMode>(WW3D::Get_Texture_Filter()),
                                      WW3D::Get_Anisotropy_Level());
-        backend.Bind_Content(&texture.Get_Render2D_Residency(),
-                             Describe_Texture2D_Sampler(texture.Get_Filter()));
+        Texture2DResidency &residency = texture.Get_Render2D_Residency();
+        if (texture.Is_Render2D_Dynamic()) {
+            // Dynamic UI content: re-upload only when a surface lock was released since the last upload.
+            const auto *content = texture.Get_Render2D_CPU_Content();
+            if (content->Revision() != texture.Render2D_Uploaded_Revision()) {
+                backend.Update_Content_Residency(residency, *content);
+                texture.Render2D_Uploaded_Revision() = content->Revision();
+            }
+        }
+        backend.Bind_Content(&residency, Describe_Texture2D_Sampler(texture.Get_Filter()));
     };
     Configuration effective = config;
     effective.depth_buffer = config.depth_buffer || Depth_Buffer_For_W3D_Enabled();

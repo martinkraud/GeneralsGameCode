@@ -128,6 +128,10 @@ public:
 	// The active rendering backend.
 	// Created in Init and destroyed in Shutdown, so it is never null in between.
 	static IRenderBackend *	Get_Render_Backend()						{ return RenderBackend; }
+#if defined(_WIN64)
+	// Offline tests install a backend without the full WW3D::Init (window, device, asset manager).
+	static void					Set_Render_Backend_For_Tests(IRenderBackend *backend)	{ RenderBackend = backend; }
+#endif
 
 	static int					Get_Render_Device_Count();
 	static const char *		Get_Render_Device_Name(int device_index);

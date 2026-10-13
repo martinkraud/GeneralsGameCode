@@ -280,6 +280,11 @@ public:
 	~TextureClass() override;
 	const Texture2DCPUContent *Get_Render2D_CPU_Content() const { return Render2DCPUContent; }
 	void Discard_Render2D_CPU_Content();
+	// Native dynamic UI content (radar, later video): level zero is CPU-backed and mutable through
+	// Get_Surface_Level(); the backend re-uploads it when the content revision changes.
+	bool Is_Render2D_Dynamic() const { return Render2DDynamic; }
+	Texture2DCPUContent *Peek_Render2D_Dynamic_Content() { return Render2DDynamic ? Render2DCPUContent : nullptr; }
+	unsigned &Render2D_Uploaded_Revision() { return Render2DUploadedRevision; }
 	void Install_Render2D_File_Content(const Texture2DCPUContent &content);
 	void Set_D3D_Base_Texture(IDirect3DBaseTexture8 *tex) override
 	{ Discard_Render2D_CPU_Content(); TextureBaseClass::Set_D3D_Base_Texture(tex); }
@@ -367,6 +372,8 @@ protected:
 
 private:
 	bool Render2DUsed = false;
+	bool Render2DDynamic = false;
+	unsigned Render2DUploadedRevision = 0;
 	Texture2DCPUContent *Render2DCPUContent = nullptr;
 };
 

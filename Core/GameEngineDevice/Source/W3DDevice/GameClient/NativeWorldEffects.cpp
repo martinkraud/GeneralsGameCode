@@ -3,6 +3,7 @@
 // terrain decals, planar shadows, water and shroud follow in the same translation unit.
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/NativeWorldEffects.h"
+#include "W3DDevice/GameClient/W3DTerrainTracks.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "Common/GlobalData.h"
 #include "Common/StartupDiagnostics.h"
@@ -143,24 +144,91 @@ bool emitLine3D(D3D11Backend &backend, Line3DClass &line, float distanceSquared)
     return true;
 }
 
+namespace
+{
+// Everything a segmented line needs to become a ribbon, independent of the render object.
+struct SegLineData
+{
+    std::vector<Vector3> points;       // world space
+    Vector3 rgb;
+    float opacity;
+    float width;
+    SegLineRendererClass::TextureMapMode mode;
+    float tile;
+    Vector2 uvRate;
+    std::string texture;               // empty = untextured
+    unsigned shaderBits;
+};
+std::vector<SegLineData> g_groundLines;   // snapshots queued by queueGroundLine
+
+bool EmitSegLineData(D3D11Backend &backend, const SegLineData &data, const Vector3 &cameraPosition,
+                     float distanceSquared, int layer, bool depthAlways);
+}
+
 bool emitSegLine(D3D11Backend &backend, SegmentedLineClass &line, const Vector3 &cameraPosition, float distanceSquared)
 {
     if (!StartupDiagnostics::nativeFeature("lines")) return false;
     const int count = line.Get_Num_Points();
     if (count < 2 || count > 512) return false;
     const Matrix3D &tm = line.Get_Transform();
-    std::vector<Vector3> points(static_cast<size_t>(count));
+    SegLineData data;
+    data.points.resize(static_cast<size_t>(count));
     for (int i = 0; i < count; ++i) {
         Vector3 local;
         line.Get_Point_Location(static_cast<unsigned>(i), local);
-        Matrix3D::Transform_Vector(tm, local, &points[static_cast<size_t>(i)]);
+        Matrix3D::Transform_Vector(tm, local, &data.points[static_cast<size_t>(i)]);
     }
-    Vector3 rgb;
-    line.Get_Color(rgb);
-    const unsigned packed = PackColor(rgb.X, rgb.Y, rgb.Z, line.Get_Opacity());
-    const float half = line.Get_Width() * 0.5f;
-    const SegLineRendererClass::TextureMapMode mode = line.Get_Texture_Mapping_Mode();
-    const float tile = line.Get_Texture_Tile_Factor();
+    line.Get_Color(data.rgb);
+    data.opacity = line.Get_Opacity();
+    data.width = line.Get_Width();
+    data.mode = line.Get_Texture_Mapping_Mode();
+    data.tile = line.Get_Texture_Tile_Factor();
+    data.uvRate = line.Get_UV_Offset_Rate();
+    data.shaderBits = line.Get_Shader().Get_Bits();
+    if (TextureClass *texture = line.Get_Texture()) {
+        data.texture = texture->Get_Texture_Name().str();
+        texture->Release_Ref();
+    }
+    return EmitSegLineData(backend, data, cameraPosition, distanceSquared, NativeWorldObjects::EffectLayerTranslucent, false);
+}
+
+void queueGroundLine(SegmentedLineClass &line)
+{
+    if (!StartupDiagnostics::nativeFeature("waypoints")) return;
+    const int count = line.Get_Num_Points();
+    if (count < 2 || count > 512 || g_groundLines.size() >= 64) return;
+    const Matrix3D &tm = line.Get_Transform();
+    SegLineData data;
+    data.points.resize(static_cast<size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        Vector3 local;
+        line.Get_Point_Location(static_cast<unsigned>(i), local);
+        Matrix3D::Transform_Vector(tm, local, &data.points[static_cast<size_t>(i)]);
+    }
+    line.Get_Color(data.rgb);
+    data.opacity = line.Get_Opacity();
+    data.width = line.Get_Width();
+    data.mode = line.Get_Texture_Mapping_Mode();
+    data.tile = line.Get_Texture_Tile_Factor();
+    data.uvRate = line.Get_UV_Offset_Rate();
+    data.shaderBits = line.Get_Shader().Get_Bits();
+    if (TextureClass *texture = line.Get_Texture()) {
+        data.texture = texture->Get_Texture_Name().str();
+        texture->Release_Ref();
+    }
+    g_groundLines.push_back(std::move(data));
+}
+
+namespace
+{
+bool EmitSegLineData(D3D11Backend &backend, const SegLineData &data, const Vector3 &cameraPosition,
+                     float distanceSquared, int layer, bool depthAlways)
+{
+    const std::vector<Vector3> &points = data.points;
+    const unsigned packed = PackColor(data.rgb.X, data.rgb.Y, data.rgb.Z, data.opacity);
+    const float half = data.width * 0.5f;
+    const SegLineRendererClass::TextureMapMode mode = data.mode;
+    const float tile = data.tile;
 
     std::vector<float> halfWidth(points.size(), half), v(points.size(), 0.0f);
     std::vector<unsigned> colors(points.size(), packed);
@@ -173,7 +241,7 @@ bool emitSegLine(D3D11Backend &backend, SegmentedLineClass &line, const Vector3 
         }
     }
     // Scrolling texture (energy beams): rate per second of logic time, wrapped.
-    const Vector2 rate = line.Get_UV_Offset_Rate();
+    const Vector2 rate = data.uvRate;
     const float seconds = static_cast<float>(WW3D::Get_Logic_Time_Milliseconds()) * 0.001f;
     float uo = rate.X * seconds, vo = rate.Y * seconds;
     uo -= std::floor(uo); vo -= std::floor(vo);
@@ -183,15 +251,11 @@ bool emitSegLine(D3D11Backend &backend, SegmentedLineClass &line, const Vector3 
     AppendRibbon(vertices, indices, points, halfWidth, colors, v, cameraPosition, uLeft, uRight, uo, vo);
     if (vertices.empty()) return false;
 
-    TextureClass *texture = line.Get_Texture();
     Texture2DResidency *residency = nullptr;
-    if (texture) {
-        residency = NativeWorldObjects::effectTexture(backend, texture->Get_Texture_Name().str());
-        texture->Release_Ref();
-    }
-    const NativeWorldObjects::EffectState state =
-        NativeWorldObjects::EffectStateFromShader(line.Get_Shader().Get_Bits(), true);
-    NativeWorldObjects::EffectBatch b = BaseBatch(state, distanceSquared, NativeWorldObjects::EffectLayerTranslucent);
+    if (!data.texture.empty())
+        residency = NativeWorldObjects::effectTexture(backend, data.texture.c_str());
+    const NativeWorldObjects::EffectState state = NativeWorldObjects::EffectStateFromShader(data.shaderBits, true);
+    NativeWorldObjects::EffectBatch b = BaseBatch(state, distanceSquared, layer);
     b.vertices = vertices.data();
     b.vertexCount = static_cast<unsigned>(vertices.size());
     b.indices = indices.data();
@@ -199,10 +263,12 @@ bool emitSegLine(D3D11Backend &backend, SegmentedLineClass &line, const Vector3 
     b.texture = residency;
     b.doubleSided = true;
     b.noDiffuse = false;   // the renderer enables the gradient: the ribbon color/opacity is the vertex color
+    b.depthAlways = depthAlways;
     if (!NativeWorldObjects::emitEffect(backend, b)) { ++g_stats.dropped; return false; }
     ++g_stats.segLines;
     g_stats.segQuads += static_cast<unsigned>(points.size() - 1);
     return true;
+}
 }
 
 namespace
@@ -806,6 +872,25 @@ void CollectWater(D3D11Backend &backend, CameraClass &camera)
         }
     }
 
+    // Retail pixel shaders (sparkles + noise, river alpha edge) need their three textures; when any of them is
+    // missing the plain flat water of the accepted baseline is drawn instead (never a white sheet).
+    static int shaderAssets = -1;
+    if (shaderAssets < 0) {
+        std::vector<unsigned char> probe;
+        unsigned w = 0, h = 0;
+        shaderAssets = NativeWorldObjects::effectImage("WaterSurfaceBubbles.tga", probe, w, h) &&
+                       NativeWorldObjects::effectImage("Noise0000.tga", probe, w, h) &&
+                       NativeWorldObjects::effectImage("TWAlphaEdge.tga", probe, w, h) ? 1 : 0;
+    }
+    Texture2DResidency *sparkleTexture = nullptr, *noiseTexture = nullptr, *edgeTexture = nullptr;
+    if (shaderAssets) {
+        sparkleTexture = NativeWorldObjects::effectTexture(backend, "WaterSurfaceBubbles.tga");
+        noiseTexture = NativeWorldObjects::effectTexture(backend, "Noise0000.tga");
+        edgeTexture = NativeWorldObjects::effectTexture(backend, "TWAlphaEdge.tga");
+    }
+    const bool waterShaders = sparkleTexture && noiseTexture && edgeTexture && texture;
+    static const std::vector<float> noProfile;
+
     Geometry::Mesh mesh;
     for (PolygonTrigger *trigger = PolygonTrigger::getFirstPolygonTrigger(); trigger; trigger = trigger->getNext()) {
         if (!trigger->isWaterArea() || trigger->getNumPoints() <= 2) continue;
@@ -830,7 +915,8 @@ void CollectWater(D3D11Backend &backend, CameraClass &camera)
         WorldBlend blend = flatBlend;
         if (trigger->isRiver()) {
             blend = riverBlend;
-            if (!Geometry::river(points.data(), count, trigger->getRiverStart(), phase, diffuse, edge.alpha, mesh)) continue;
+            if (!Geometry::river(points.data(), count, trigger->getRiverStart(), phase, diffuse,
+                                 waterShaders ? noProfile : edge.alpha, mesh)) continue;
         } else {
             for (Int k = 1; k < count - 1; k += 2) {
                 const float *p3 = &points[0];
@@ -850,6 +936,15 @@ void CollectWater(D3D11Backend &backend, CameraClass &camera)
         b.texture = texture;
         b.blend = blend;
         b.depthWrite = false; b.doubleSided = true; b.noDiffuse = false;
+        if (waterShaders) {
+            b.waterKind = trigger->isRiver() ? 2 : 1;
+            b.waterSparkle = sparkleTexture; b.waterNoise = noiseTexture; b.waterEdge = edgeTexture;
+            // The noise stage's texgen matrix: camera-space position through the inverse view (= world xy),
+            // scaled by NOISE_REPEAT_FACTOR (1/16), translated by the water scroll origin.
+            b.waterNoiseOffset[0] = b.waterNoiseOffset[1] = phase;
+            b.waterNoiseScale = 1.0f / 16.0f;
+            if (b.waterKind == 1) ++g_stats.waterSparkles; else ++g_stats.waterRivers;
+        }
         const Vector3 d = centroid - cameraPosition;
         b.distance = d.X * d.X + d.Y * d.Y + d.Z * d.Z;
         b.layer = NativeWorldObjects::EffectLayerTranslucent;
@@ -991,6 +1086,103 @@ void CollectScorches(D3D11Backend &backend, CameraClass &camera)
     emit(g_scorches);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Terrain tracks (W3DTerrainTracks): the legacy system keeps the edge bookkeeping; this presents the
+// strips flush() would have drawn (alpha shader: SRC_ALPHA / INV_SRC_ALPHA, depth test, no depth write).
+// Their layer is the decal layer, below the shroud overlay, so fogged tracks darken like the terrain.
+// ---------------------------------------------------------------------------------------------
+void CollectTracks(D3D11Backend &backend, CameraClass &camera)
+{
+    if (!TheTerrainTracksRenderObjClassSystem || !TheTerrainTracksRenderObjClassSystem->isNative()) return;
+    struct Context { D3D11Backend *backend; Vector3 camera; } context = { &backend, camera.Get_Position() };
+    TheTerrainTracksRenderObjClassSystem->forEachNativeTrack(
+        [](void *user, const char *texture, const TerrainTracksRenderObjClassSystem::NativeTrackVertex *vertices,
+           unsigned vertexCount, const unsigned short *indices, unsigned indexCount) {
+            Context &c = *static_cast<Context *>(user);
+            static std::vector<WorldVertexXYZDUV2> converted;
+            converted.resize(vertexCount);
+            float cx = 0.0f, cy = 0.0f, cz = 0.0f;
+            for (unsigned i = 0; i < vertexCount; ++i) {
+                WorldVertexXYZDUV2 &v = converted[i];
+                v.x = vertices[i].x; v.y = vertices[i].y; v.z = vertices[i].z;
+                v.diffuse = vertices[i].diffuse;
+                v.u0 = v.u1 = vertices[i].u;
+                v.v0 = v.v1 = vertices[i].v;
+                cx += v.x; cy += v.y; cz += v.z;
+            }
+            if (!vertexCount) return;
+            NativeWorldObjects::EffectBatch e = {};
+            e.vertices = converted.data(); e.vertexCount = vertexCount;
+            e.indices = indices; e.indexCount = indexCount;
+            e.texture = NativeWorldObjects::effectTexture(*c.backend, texture);
+            e.blend = WorldBlend::SrcAlpha;
+            e.depthWrite = false; e.doubleSided = true; e.clamp = false; e.noDiffuse = false;
+            const Vector3 d = Vector3(cx / vertexCount, cy / vertexCount, cz / vertexCount) - c.camera;
+            e.distance = d.X * d.X + d.Y * d.Y + d.Z * d.Z;
+            e.layer = NativeWorldObjects::EffectLayerDecal;
+            if (NativeWorldObjects::emitEffect(*c.backend, e)) ++g_stats.tracks; else ++g_stats.dropped;
+        }, &context);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Terrain-pass overlays: building bibs (W3DBibBuffer: detailAlphaShader = SRC_ALPHA, PASS_ALWAYS, no depth
+// write, no culling, clamped, vertex diffuse = terrain light) and the waypoint / rally lines queued by the
+// waypoint buffer (additive, PASS_ALWAYS). Both belong to the terrain pass of the legacy renderer, so they
+// are submitted on the ground layer, before the objects.
+// ---------------------------------------------------------------------------------------------
+void CollectBibs(D3D11Backend &backend, CameraClass &camera)
+{
+#if RTS_GENERALS
+    if (!TheTerrainRenderObject) return;
+    struct Context { D3D11Backend *backend; Vector3 camera; } context = { &backend, camera.Get_Position() };
+    TheTerrainRenderObject->forEachNativeBib(
+        [](void *user, const Vector3 corners[4], bool highlight) {
+            Context &c = *static_cast<Context *>(user);
+            WorldVertexXYZDUV2 v[4];
+            static const float uv[4][2] = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
+            // W3DBibBuffer::loadBibsInVertexAndIndexBuffers: ambient + diffuse of the first terrain light, clamped.
+            auto channel = [](float ambient, float diffuse) {
+                return static_cast<unsigned>(std::min(1.0f, ambient + diffuse) * 255.0f);
+            };
+            const unsigned diffuse = 0xff000000u |
+                (channel(TheGlobalData->m_terrainAmbient[0].red, TheGlobalData->m_terrainDiffuse[0].red) << 16) |
+                (channel(TheGlobalData->m_terrainAmbient[0].green, TheGlobalData->m_terrainDiffuse[0].green) << 8) |
+                channel(TheGlobalData->m_terrainAmbient[0].blue, TheGlobalData->m_terrainDiffuse[0].blue);
+            float cx = 0, cy = 0, cz = 0;
+            for (int i = 0; i < 4; ++i) {
+                v[i].x = corners[i].X; v[i].y = corners[i].Y; v[i].z = corners[i].Z;
+                v[i].diffuse = diffuse;
+                v[i].u0 = v[i].u1 = uv[i][0]; v[i].v0 = v[i].v1 = uv[i][1];
+                cx += corners[i].X; cy += corners[i].Y; cz += corners[i].Z;
+            }
+            static const unsigned short indices[6] = {0, 1, 2, 0, 2, 3};
+            NativeWorldObjects::EffectBatch e = {};
+            e.vertices = v; e.vertexCount = 4;
+            e.indices = indices; e.indexCount = 6;
+            e.texture = NativeWorldObjects::effectTexture(*c.backend, highlight ? "TBRedBib.tga" : "TBBib.tga");
+            e.blend = WorldBlend::SrcAlpha;
+            e.depthWrite = false; e.depthAlways = true; e.doubleSided = true; e.clamp = true; e.noDiffuse = false;
+            const Vector3 d = Vector3(cx * 0.25f, cy * 0.25f, cz * 0.25f) - c.camera;
+            e.distance = d.X * d.X + d.Y * d.Y + d.Z * d.Z;
+            e.layer = NativeWorldObjects::EffectLayerGround;
+            if (NativeWorldObjects::emitEffect(*c.backend, e)) ++g_stats.bibs; else ++g_stats.dropped;
+        }, &context);
+#else
+    (void)backend; (void)camera;   // Zero Hour: the bib buffer has no native form yet
+#endif
+}
+
+void CollectGroundLines(D3D11Backend &backend, CameraClass &camera)
+{
+    const Vector3 cameraPosition = camera.Get_Position();
+    for (const SegLineData &data : g_groundLines) {
+        const Vector3 d = data.points.front() - cameraPosition;
+        if (EmitSegLineData(backend, data, cameraPosition, d.X * d.X + d.Y * d.Y + d.Z * d.Z,
+                            NativeWorldObjects::EffectLayerGround, true)) ++g_stats.groundLines;
+    }
+    g_groundLines.clear();
+}
+
 void CollectShroud(D3D11Backend &backend, CameraClass &camera)
 {
     if (!EnsureShroud()) return;
@@ -1076,6 +1268,12 @@ void setBorderShroudLevel(unsigned char level)
     g_shroud.border = level;
 }
 
+float shroudCellWorldSize()
+{
+    if (g_shroud.forced) return g_shroud.cell;
+    return TheGlobalData && TheGlobalData->m_partitionCellSize > 1.0f ? TheGlobalData->m_partitionCellSize : 40.0f;
+}
+
 void setShroudFilter(bool enable)
 {
     g_shroud.filter = enable;
@@ -1133,6 +1331,9 @@ void clearScorches()
 void collect(D3D11Backend &backend, CameraClass &camera)
 {
     if (StartupDiagnostics::nativeFeature("scorches")) CollectScorches(backend, camera);
+    if (StartupDiagnostics::nativeFeature("tracks")) CollectTracks(backend, camera);
+    if (StartupDiagnostics::nativeFeature("bibs")) CollectBibs(backend, camera);
+    CollectGroundLines(backend, camera);
     if (StartupDiagnostics::nativeFeature("shadows")) CollectShadows(backend, camera);
     if (StartupDiagnostics::nativeFeature("water")) CollectWater(backend, camera);
     if (StartupDiagnostics::nativeFeature("shroud")) CollectShroud(backend, camera);
@@ -1179,8 +1380,11 @@ void standingWater(const float corners[4][3], float scrollPhase, unsigned diffus
             WorldVertexXYZDUV2 v;
             v.x = vertex.X; v.y = vertex.Y; v.z = vertex.Z;
             v.diffuse = diffuse;
-            v.u0 = v.u1 = vertex.X * ooWaterFactor + constA * std::sin(constC + vertex.X * constD);
-            v.v0 = v.v1 = vertex.Y * ooWaterFactor + constB * std::sin(constC + vertex.Y * constD);
+            v.u0 = vertex.X * ooWaterFactor + constA * std::sin(constC + vertex.X * constD);
+            v.v0 = vertex.Y * ooWaterFactor + constB * std::sin(constC + vertex.Y * constD);
+            // Second set (drawTrapezoidWater: vb->u2 / v2): the sparkle texture coordinates, BUMP_SIZE = 50.
+            v.u1 = vertex.X / 50.0f;
+            v.v1 = (vertex.Y + 0.3f * vertex.X) / 50.0f;
             out.vertices.push_back(v);
         }
     }
@@ -1212,11 +1416,14 @@ bool river(const float *points, int pointCount, int riverStart, float scrollPhas
         if (i == innerNdx) endLen = len;
     }
     if (endLen < 1e-3f) return false;
+    // No CPU edge profile: the exact legacy layout, two vertices per row (inner u = 0.5 / 1, outer 0 / 0); the
+    // alpha-edge texture is sampled on the GPU with the second coordinate set like the river pixel shader.
+    const bool gpuEdge = edge.empty();
     const float lengthOfRiver = totalLen / 2.0f - endLen;
     const float repeatCount = lengthOfRiver / endLen;
     const float vScale = repeatCount / static_cast<float>(rectangleCount);
     const float constA = 3.0f * scrollPhase;
-    const int kAcross = 6;
+    const int kAcross = gpuEdge ? 1 : 6;
     const unsigned base = static_cast<unsigned>(out.vertices.size());
     const float baseAlpha = static_cast<float>((diffuse >> 24) & 0xff) / 255.0f;
     auto edgeAlpha = [&](float t) -> float {
@@ -1240,7 +1447,8 @@ bool river(const float *points, int pointCount, int riverStart, float scrollPhas
             v.z = outerPt[2] + (innerPt[2] - outerPt[2]) * t;
             const float a = baseAlpha * edgeAlpha(t);
             v.diffuse = (static_cast<unsigned>(a * 255.0f + 0.5f) << 24) | (diffuse & 0x00ffffffu);
-            v.u0 = v.u1 = 0.5f * t;          // legacy HEIGHT_TO_USE (0.5) on the inner edge, 0 outside
+            v.u0 = 0.5f * t;                 // legacy HEIGHT_TO_USE (0.5) on the inner edge, 0 outside
+            v.u1 = t;                        // legacy u2: 1 inner / 0 outer (alpha-edge texture across the river)
             v.v0 = v.v1 = wobble;
             out.vertices.push_back(v);
         }

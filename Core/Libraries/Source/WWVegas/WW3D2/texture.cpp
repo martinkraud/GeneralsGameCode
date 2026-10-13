@@ -41,6 +41,7 @@
 
 #include "texture.h"
 #include "IRenderBackend.h"
+#include "Texture2DCPUContent.h"
 
 #include <d3d8.h>
 #include <d3dx8core.h>
@@ -611,6 +612,23 @@ TextureClass::TextureClass
 	default : break;
 	}
 
+	// Native backends keep procedural single-mip UI textures (radar) as CPU content: the legacy surface
+	// code path (Get_Surface_Level / Lock / Draw_Pixel) is served by the content and the backend
+	// re-uploads it on a revision change. No DX8 storage exists in that mode.
+	if (IRenderBackend *backend = WW3D::Get_Render_Backend();
+		backend && backend->Supports_Dynamic_Render2D_Content() && !rendertarget)
+	{
+		Render2DCPUContent = new Texture2DCPUContent(width, height, format, 0);
+		int content_pitch = 0;
+		void *bits = Render2DCPUContent->Lock(&content_pitch);
+		memset(bits, 0, static_cast<size_t>(content_pitch) * Render2DCPUContent->Storage_Rows());
+		Render2DCPUContent->Unlock();
+		Render2DDynamic = true;
+		Render2DUsed = true;
+		LastAccessed=WW3D::Get_Sync_Time();
+		return;
+	}
+
 	D3DPOOL d3dpool=(D3DPOOL)0;
 	switch(pool)
 	{
@@ -978,6 +996,11 @@ void TextureClass::Apply(unsigned int stage)
 */
 SurfaceClass *TextureClass::Get_Surface_Level(unsigned int level)
 {
+	if (Render2DDynamic && Render2DCPUContent)
+	{
+		WWASSERT(level == 0);
+		return new SurfaceClass(Render2DCPUContent);
+	}
 	if (Get_Render2D_CPU_Content() && !Peek_D3D_Base_Texture()) Get_Render2D_Residency();
 	if (!Peek_D3D_Texture())
 	{

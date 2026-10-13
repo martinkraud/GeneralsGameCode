@@ -62,7 +62,14 @@ public:
 //   rgba = tex(uv0) * [diffuse] * [cloud] * [noise]         (all four channels, as roadnoise2.pso)
 // then an optional alpha test (clip alpha < alpha_test), source-alpha blend over the target
 // (no blend in `alpha_only` mode, which writes only the destination alpha channel).
-enum class WorldMaterial { TerrainBase, TerrainBlend, TerrainCombined, TerrainOverlay };
+//
+// Water is the retail fixed pixel-shader pair of WaterRenderObjClass (LegacyFixedPixelShader.h):
+//   standing (TrapezoidWaterCode):  r0 = v0 * t0(uv0);  r0.rgb += t1(uv1) * t2(world xy)       [t3 shroud: overlay]
+//   river    (RiverWaterCode):      rgb = v0.rgb * t0(uv0) + (t1(uv0) * t2(world xy) + t3(uv1).rgb) * v0.a
+//                                   a   = t0.a * t3.a
+// t0 = `texture`, t1 = `cloud` (sparkles), t2 = `noise` (world-XY texgen like the cloud/noise of the terrain:
+// world * texgen_scale + cloud_offset), t3 = `aux` (river alpha edge). Always linear, wrapping; blend by `blend`.
+enum class WorldMaterial { TerrainBase, TerrainBlend, TerrainCombined, TerrainOverlay, Water };
 
 // Blend equations of the TerrainOverlay family (legacy ShaderClass src/dst blend pairs seen on
 // roads, bridges and W3D meshes). SrcAlpha is the zero-initialized default.
@@ -108,6 +115,9 @@ struct WorldSubmission
     bool alpha_only;                // write destination alpha only, no blending (shoreline)
     bool no_diffuse;                // ignore vertex diffuse (GRADIENT_DISABLE presets)
     bool stencil_once;              // TerrainOverlay: depth test only, each pixel passes once per stencil clear
+    bool depth_always;              // TerrainOverlay: ShaderClass::PASS_ALWAYS, never writes depth (bibs, waypoint lines)
+    Texture2DResidency *aux;        // Water: t3 (river alpha edge); null otherwise
+    bool water_river;               // Water: river pixel shader instead of the standing-water one
     WorldBlend blend;               // blend equation (ignored when alpha_only)
 };
 

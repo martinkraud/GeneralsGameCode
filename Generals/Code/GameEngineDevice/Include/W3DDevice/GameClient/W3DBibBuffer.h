@@ -86,6 +86,13 @@ friend class BaseHeightMapRenderObjClass;
 public:
 
 	W3DBibBuffer();
+#if defined(_WIN64)
+	// Native play profile: the bib list only (no DX8 buffers or textures); NativeWorldEffects draws it.
+	explicit W3DBibBuffer(Bool native);
+	typedef void (*NativeBibFn)(void *user, const Vector3 corners[4], bool highlight);
+	/// Visits every live bib, normal ones first and highlighted ones last (the legacy draw order).
+	Int forEachNativeBib(NativeBibFn fn, void *user) const;
+#endif
 	~W3DBibBuffer();
 	/// Add a bib at location.  Name is the w3d model name.
 	void addBib(Vector3 corners[4], ObjectID id, Bool highlight);
@@ -122,6 +129,9 @@ protected:
 	Bool		m_updateAllKeys;  ///< Set to true when the view changes.
 	Bool		m_initialized;		///< True if the subsystem initialized.
 	Bool		m_isTerrainPass;  ///< True if the terrain was drawn in this W3D scene render pass.
+#if defined(_WIN64)
+	Bool		m_native;			///< native presentation: no DX8 resources
+#endif
 
 	void loadBibsInVertexAndIndexBuffers(); ///< Fills the index and vertex buffers for drawing.
 	void allocateBibBuffers();							 ///< Allocates the buffers.

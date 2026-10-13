@@ -117,7 +117,10 @@ unsigned sceneryCount();
 // shroud). They emit already-lit world-space triangles into the same per-frame batch lists the object
 // renderer uses; layers fix the draw order (opaque objects, terrain decals, sorted translucents, particles,
 // overlays). Valid only inside the effect callbacks of a frame.
-enum EffectLayer { EffectLayerDecal = 1, EffectLayerTranslucent = 2, EffectLayerOverlay = 3, EffectLayerParticle = 4 };
+// EffectLayerGround is drawn before everything else of the objects pass (the legacy terrain-pass overlays:
+// building bibs and waypoint/rally lines are rendered with the terrain, before objects, with PASS_ALWAYS).
+enum EffectLayer { EffectLayerDecal = 1, EffectLayerTranslucent = 2, EffectLayerOverlay = 3, EffectLayerParticle = 4,
+                   EffectLayerGround = 5 };
 struct EffectBatch
 {
     const WorldVertexXYZDUV2 *vertices;
@@ -131,6 +134,14 @@ struct EffectBatch
     bool noDiffuse;
     bool clamp;
     bool stencilOnce;              // blend each covered pixel at most once (planar shadows)
+    bool depthAlways;              // ShaderClass::PASS_ALWAYS (no depth write): bibs, waypoint lines
+    // Water (retail fixed pixel shaders): 0 = ordinary effect, 1 = standing water, 2 = river. `texture` is t0.
+    int waterKind;
+    Texture2DResidency *waterSparkle;   // t1 (WaterSurfaceBubbles)
+    Texture2DResidency *waterNoise;     // t2 (Noise0000, world-XY texgen)
+    Texture2DResidency *waterEdge;      // t3 (TWAlphaEdge, river)
+    float waterNoiseOffset[2];
+    float waterNoiseScale;
     float alphaTest;               // 0 = none, else 0..1 reference
     float distance;                // squared camera distance for back-to-front sorting
     int layer;                     // EffectLayer
@@ -144,6 +155,10 @@ Texture2DResidency *effectWhiteTexture(D3D11Backend &backend);
 bool effectImage(const char *name, std::vector<unsigned char> &rgba, unsigned &width, unsigned &height);
 bool emitEffect(D3D11Backend &backend, const EffectBatch &batch);   // false when the chunk pool is full
 
+// Render objects that exist only for this frame (the waypoint "hockey puck" nodes the legacy waypoint buffer
+// draws with WW3D::Render from inside the terrain pass). Borrowed until the next render(); drawn like any
+// other registered object, with the shroud/tint defaults of a clear object.
+void addFrameObject(RenderObjClass *object);
 // Draws every registered object visible to the camera on top of the terrain pass (same camera,
 // viewport and depth buffer). Returns the number of draw submissions issued.
 int render(D3D11Backend &backend, CameraClass &camera);

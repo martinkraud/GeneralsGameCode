@@ -42,6 +42,7 @@
 #include "ww3dformat.h"
 
 struct IDirect3DSurface8;
+class Texture2DCPUContent;
 class Vector2i;
 class Vector3;
 
@@ -73,6 +74,10 @@ class SurfaceClass : public RefCountClass
 
 		// Create the surface from a D3D pointer
 		SurfaceClass(IDirect3DSurface8 *d3d_surface);
+		// CPU-backed surface over native dynamic UI content (see TextureClass::Is_Render2D_Dynamic).
+		// Supports Get_Description / Lock / Unlock / Clear and the pixel/line helpers (radar, video);
+		// the D3D-only copy/stretch/hue helpers are not available on this kind of surface.
+		explicit SurfaceClass(Texture2DCPUContent *content);
 
 		virtual ~SurfaceClass() override;
 
@@ -147,6 +152,8 @@ class SurfaceClass : public RefCountClass
 
 		// Direct3D surface object
 		IDirect3DSurface8 *D3DSurface;
+		// Native dynamic UI content (owned reference); D3DSurface is null in that mode.
+		Texture2DCPUContent *CPUContent = nullptr;
 
 		WW3DFormat SurfaceFormat;
 	friend class TextureClass;

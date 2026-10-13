@@ -50,10 +50,17 @@
 #include "GameClient/TerrainVisual.h"
 #include "GameClient/Water.h"
 #include "W3DDevice/Common/W3DRadar.h"
+#include "W3DDevice/Common/W3DRadarRaster.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/W3DShroud.h"
 #include "WW3D2/texture.h"
 #include "WW3D2/dx8caps.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#include "WW3D2/IRenderBackend.h"
+#include "WW3D2/ww3d.h"
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
+#endif
 #include "WWMath/vector2i.h"
 
 
@@ -67,10 +74,7 @@ enum { OVERLAY_REFRESH_RATE = 6 };  ///< over updates once this many frames
 inline Bool legalRadarPoint( Int px, Int py )
 {
 
-	if( px < 0 || py < 0 || px >= RADAR_CELL_WIDTH || py >= RADAR_CELL_HEIGHT )
-		return FALSE;
-
-	return TRUE;
+	return RadarRaster::legalPoint( px, py ) ? TRUE : FALSE;
 
 }
 
@@ -78,6 +82,21 @@ inline Bool legalRadarPoint( Int px, Int py )
 // ------------------------------------------------------------------------------------------------
 static WW3DFormat findFormat(const WW3DFormat formats[])
 {
+#if defined(_WIN64)
+	// Native backend: the radar textures are CPU-backed dynamic UI content, which holds the 16/32 bit
+	// formats below (R8G8B8 has no native representation, exactly like the legacy fallback to X8R8G8B8
+	// on hardware without 24 bit textures).
+	if (IRenderBackend *backend = WW3D::Get_Render_Backend(); backend && backend->Supports_Dynamic_Render2D_Content())
+	{
+		for( Int i = 0; formats[ i ] != WW3D_FORMAT_UNKNOWN; i++ )
+		{
+			const WW3DFormat f = formats[ i ];
+			if( f == WW3D_FORMAT_A8R8G8B8 || f == WW3D_FORMAT_X8R8G8B8 || f == WW3D_FORMAT_R5G6B5 || f == WW3D_FORMAT_A4R4G4B4 )
+				return f;
+		}
+		return WW3D_FORMAT_UNKNOWN;
+	}
+#endif
 	for( Int i = 0; formats[ i ] != WW3D_FORMAT_UNKNOWN; i++ )
 	{
 
@@ -726,14 +745,7 @@ void W3DRadar::renderObjectList( const RadarObject *listHead, TextureClass *text
 			UnsignedByte r, g, b, a;
 			GameGetColorComponents( argbColor, &r, &g, &b, &a );
 
-			const UnsignedInt framesForTransition = LOGICFRAMES_PER_SECOND;
-			const UnsignedByte minAlpha = 32;
-
-			Real alphaScale = INT_TO_REAL(TheGameLogic->getFrame() % framesForTransition) / (framesForTransition / 2.0f);
-			if( alphaScale > 0.0f )
-				a = REAL_TO_UNSIGNEDBYTE( ((alphaScale - 1.0f) * (255.0f - minAlpha)) + minAlpha );
-			else
-				a = REAL_TO_UNSIGNEDBYTE( (alphaScale * (255.0f - minAlpha)) + minAlpha );
+			a = RadarRaster::stealthAlpha( TheGameLogic->getFrame(), LOGICFRAMES_PER_SECOND );
 			argbColor = GameMakeColor( r, g, b, a );
 
 		}
@@ -741,20 +753,10 @@ void W3DRadar::renderObjectList( const RadarObject *listHead, TextureClass *text
 		const unsigned int pixelColor = ARGB_Color_To_WW3D_Color(surfaceDesc.Format, argbColor);
 
 		// draw the blip, but make sure the points are legal
-		if( legalRadarPoint( radarPoint.x, radarPoint.y ) )
-			surface->Draw_Pixel( radarPoint.x, radarPoint.y, pixelColor, bytesPerPixel, pBits, pitch );
-
-		radarPoint.y++;
-		if( legalRadarPoint( radarPoint.x, radarPoint.y ) )
-			surface->Draw_Pixel( radarPoint.x, radarPoint.y, pixelColor, bytesPerPixel, pBits, pitch );
-
-		radarPoint.x++;
-		if( legalRadarPoint( radarPoint.x, radarPoint.y ) )
-			surface->Draw_Pixel( radarPoint.x, radarPoint.y, pixelColor, bytesPerPixel, pBits, pitch );
-
-		radarPoint.y--;
-		if( legalRadarPoint( radarPoint.x, radarPoint.y ) )
-			surface->Draw_Pixel( radarPoint.x, radarPoint.y, pixelColor, bytesPerPixel, pBits, pitch );
+		RadarRaster::plotMarker( radarPoint.x, radarPoint.y, [&]( Int px, Int py )
+		{
+			surface->Draw_Pixel( px, py, pixelColor, bytesPerPixel, pBits, pitch );
+		} );
 
 	}
 
@@ -775,65 +777,7 @@ void W3DRadar::interpolateColorForHeight( RGBColor *color,
 																					Real midZ,
 																					Real loZ )
 {
-	const Real howBright = 0.95f;  // bigger is brighter (0.0 to 1.0)
-	const Real howDark   = 0.60f;  // bigger is darker (0.0 to 1.0)
-
-	// sanity on map height (flat maps bomb)
-	if (hiZ == midZ)
-		hiZ = midZ+0.1f;
-	if (midZ == loZ)
-		loZ = midZ-0.1f;
-	if (hiZ == loZ)
-		hiZ = loZ+0.2f;
-
-	Real t;
-	RGBColor colorTarget;
-
-	// if "over" the middle height, interpolate lighter
-	if( height >= midZ )
-	{
-
-		// how far are we from the middleZ towards the hi Z
-		t = (height - midZ) / (hiZ - midZ);
-
-		// compute what our "lightest" color possible we want to use is
-		colorTarget.red = color->red + (1.0f - color->red) * howBright;
-		colorTarget.green = color->green + (1.0f - color->green) * howBright;
-		colorTarget.blue = color->blue + (1.0f - color->blue) * howBright;
-
-	}
-	else  // interpolate darker
-	{
-
-		// how far are we from the middleZ towards the low Z
-		t = (midZ - height) / (midZ - loZ);
-
-		// compute what the "darkest" color possible we want to use is
-		colorTarget.red = color->red + (0.0f - color->red) * howDark;
-		colorTarget.green = color->green + (0.0f - color->green) * howDark;
-		colorTarget.blue = color->blue + (0.0f - color->blue) * howDark;
-
-	}
-
-	// interpolate toward the target color
-	color->red = color->red + (colorTarget.red - color->red) * t;
-	color->green = color->green + (colorTarget.green - color->green) * t;
-	color->blue = color->blue + (colorTarget.blue - color->blue) * t;
-
-	// keep the color real
-	if( color->red < 0.0f )
-		color->red = 0.0f;
-	if( color->red > 1.0f )
-		color->red = 1.0f;
-	if( color->green < 0.0f )
-		color->green = 0.0f;
-	if( color->green > 1.0f )
-		color->green = 1.0f;
-	if( color->blue < 0.0f )
-		color->blue = 0.0f;
-	if( color->blue > 1.0f )
-		color->blue = 1.0f;
-
+	RadarRaster::shadeForHeight( color, height, hiZ, midZ, loZ );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1318,28 +1262,30 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 #endif
 
 	W3DShroud* shroud = TheTerrainRenderObject ? TheTerrainRenderObject->getShroud() : nullptr;
-	if (!shroud)
+	Int cellWidth = 0;
+	Int cellHeight = 0;
+	if (shroud)
+	{
+		cellWidth = shroud->getCellWidth();
+		cellHeight = shroud->getCellHeight();
+	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay())
+	{
+		// Native play profile: no W3DShroud; the logic cell size is the partition cell size W3DShroud
+		// would have been initialized with.
+		cellWidth = cellHeight = REAL_TO_INT( NativeWorldEffects::shroudCellWorldSize() );
+	}
+#endif
+	if (cellWidth <= 0 || cellHeight <= 0)
 		return;
 
-	Int mapMinX = shroudX * shroud->getCellWidth();
-	Int mapMinY = shroudY * shroud->getCellHeight();
-	Int mapMaxX = (shroudX+1) * shroud->getCellWidth();
-	Int mapMaxY = (shroudY+1) * shroud->getCellHeight();
-
-	ICoord2D radarPoint;
-	Coord3D worldPoint;
-
-	worldPoint.x = mapMinX;
-	worldPoint.y = mapMinY;
-	worldToRadar( &worldPoint, &radarPoint );
-	const Int radarMinX = radarPoint.x;
-	const Int radarMinY = radarPoint.y;
-
-	worldPoint.x = mapMaxX;
-	worldPoint.y = mapMaxY;
-	worldToRadar( &worldPoint, &radarPoint );
-	const Int radarMaxX = radarPoint.x;
-	const Int radarMaxY = radarPoint.y;
+	// the radar rectangle of this logic cell (worldToRadar's truncation and clamp)
+	const RadarRaster::CellRect cell = RadarRaster::shroudCellRect( shroudX, shroudY, cellWidth, cellHeight, m_xSample, m_ySample );
+	const Int radarMinX = cell.minX;
+	const Int radarMinY = cell.minY;
+	const Int radarMaxX = cell.maxX;
+	const Int radarMaxY = cell.maxY;
 
 	// Int radarMinX = REAL_TO_INT_FLOOR(mapMinX / getXSample());
 	// Int radarMinY = REAL_TO_INT_FLOOR(mapMinY / getYSample());
@@ -1350,13 +1296,8 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 
 	//Logic is saying shroud.  We can add alpha levels here in client if needed.
 	// W3DShroud is a 0-255 alpha byte.  Logic shroud is a double reference count.
-	Int alpha;
-	if( setting == CELLSHROUD_SHROUDED )
-		alpha = 255;
-	else if( setting == CELLSHROUD_FOGGED )
-		alpha = 127;///< @todo placeholder to get feedback on logic work while graphic side being decided
-	else
-		alpha = 0;
+	// shrouded opaque, fogged 127 (a placeholder in the original too), clear none
+	const Int alpha = RadarRaster::shroudAlpha( setting );
 
 	if (m_shroudSurface == nullptr)
 	{

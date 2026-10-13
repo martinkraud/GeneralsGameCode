@@ -2403,6 +2403,18 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 				}, &ctx);
 			if (bridges) ++n.stats.bridgeFrames;
 		}
+
+		// (5) Waypoint / rally lines and nodes (W3DWaypointBuffer, drawn with the terrain before objects):
+		// the legacy path computation runs unchanged; its lines and nodes are handed to the native ground
+		// layer / object pass. The buffer needs the asset manager, so it is created on the first frame.
+		if (StartupDiagnostics::nativeFeature("waypoints")) {
+			if (!m_waypointBuffer) {
+				m_waypointBuffer = NEW W3DWaypointBuffer;
+				m_waypointBuffer->setNative(TRUE);
+			}
+			RenderInfoClass waypointInfo(camera);
+			m_waypointBuffer->drawWaypoints(waypointInfo);
+		}
 #endif
 	}
 

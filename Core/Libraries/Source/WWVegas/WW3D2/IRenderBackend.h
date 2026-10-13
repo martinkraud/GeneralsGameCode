@@ -76,5 +76,9 @@ public:
     // A backend may provide CPU file content before legacy Init allocates GPU
     // storage. False retains the complete reference loader (the DX8 default).
     virtual bool Prepare_File_Texture(TextureClass &) { return false; }
+    // True when TextureClass(width,height,format) may be CPU-backed, mutable through its surface
+    // locks and re-uploaded by the backend when the content revision changes (radar, later video).
+    // The DX8 reference backend keeps its native procedural textures (false).
+    virtual bool Supports_Dynamic_Render2D_Content() const { return false; }
     virtual void Copy_Render2D_Surface(SurfaceClass &source, SurfaceClass &destination) = 0;
 };

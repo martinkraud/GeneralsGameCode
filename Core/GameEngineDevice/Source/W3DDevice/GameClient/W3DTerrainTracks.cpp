@@ -80,6 +80,9 @@ TerrainTracksRenderObjClass::~TerrainTracksRenderObjClass()
 TerrainTracksRenderObjClass::TerrainTracksRenderObjClass()
 {
 	m_stageZeroTexture=nullptr;
+#if defined(_WIN64)
+	m_nativeTexture[0]='\0';
+#endif
 	m_lastAnchor=Vector3(0,1,2.25);
 	m_haveAnchor=false;
 	m_haveCap=true;
@@ -169,6 +172,14 @@ void TerrainTracksRenderObjClass::init( Real width, Real length, const Char *tex
 	//no sense culling these things since they have very irregular shape and fade
 	//out over time.
 	Set_Force_Visible(TRUE);
+#if defined(_WIN64)
+	if (TheTerrainTracksRenderObjClassSystem && TheTerrainTracksRenderObjClassSystem->isNative())
+	{
+		// Native presentation reads the file itself; no legacy TextureClass is created.
+		strlcpy(m_nativeTexture, texturename, ARRAY_SIZE(m_nativeTexture));
+		return;
+	}
+#endif
 	m_stageZeroTexture=WW3DAssetManager::Get_Instance()->Get_Texture(texturename);
 }
 
@@ -499,7 +510,8 @@ TerrainTracksRenderObjClass *TerrainTracksRenderObjClassSystem::bindTrack( Rende
 
 		mod->init(computeTrackSpacing(renderObject),length,texturename);
 		mod->m_bound=true;
-		m_TerrainTracksScene->Add_Render_Object( mod);
+		if (m_TerrainTracksScene)
+			m_TerrainTracksScene->Add_Render_Object( mod);
 	}
 
 	return mod;
@@ -549,7 +561,8 @@ void TerrainTracksRenderObjClassSystem::releaseTrack( TerrainTracksRenderObjClas
 		m_freeModules->m_prevSystem = mod;
 	m_freeModules = mod;
 	mod->freeTerrainTracksResources();
-	m_TerrainTracksScene->Remove_Render_Object(mod);
+	if (m_TerrainTracksScene)
+		m_TerrainTracksScene->Remove_Render_Object(mod);
 }
 
 //=============================================================================
@@ -563,6 +576,9 @@ TerrainTracksRenderObjClassSystem::TerrainTracksRenderObjClassSystem()
 	m_freeModules = nullptr;
 	m_TerrainTracksScene = nullptr;
 	m_edgesToFlush = 0;
+#if defined(_WIN64)
+	m_native = FALSE;
+#endif
 	m_indexBuffer = nullptr;
 	m_vertexMaterialClass = nullptr;
 	m_vertexBuffer = nullptr;
@@ -595,6 +611,10 @@ TerrainTracksRenderObjClassSystem::~TerrainTracksRenderObjClassSystem()
 //=============================================================================
 void TerrainTracksRenderObjClassSystem::ReAcquireResources()
 {
+#if defined(_WIN64)
+	if (m_native)
+		return;	// no DX8 buffers in the native presentation
+#endif
 	Int i;
 	const Int numModules=TheGlobalData->m_maxTerrainTracks;
 
@@ -654,6 +674,9 @@ void TerrainTracksRenderObjClassSystem::init( SceneClass *TerrainTracksScene )
 
 	ReAcquireResources();
 	//go with a preset material for now.
+#if defined(_WIN64)
+	if (!m_native)
+#endif
 	m_vertexMaterialClass=VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);
 
 	//use a multi-texture shader: (text1*diffuse)*text2.
@@ -980,5 +1003,70 @@ void TerrainTracksRenderObjClassSystem::setDetail()
 	//We changed the maximum number of visible edges so re-allocate our resources to match.
 	ReAcquireResources();
 };
+
+#if defined(_WIN64)
+/** Native play profile: pre-allocate the track objects without any DX8 resources or scene. */
+void TerrainTracksRenderObjClassSystem::initNative()
+{
+	m_native = TRUE;
+	init( nullptr );
+}
+
+/** The geometry flush() would draw, per track object. The shade, fade and index pattern are the
+	* legacy ones; the caller draws each strip with the alpha shader (SRC_ALPHA, no depth write). */
+void TerrainTracksRenderObjClassSystem::forEachNativeTrack( NativeTrackVisitor visitor, void *user ) const
+{
+	if (!visitor || !TheGlobalData || !TheGlobalData->m_makeTrackMarks)
+		return;
+
+	Real shadeR = TheGlobalData->m_terrainAmbient[0].red + TheGlobalData->m_terrainDiffuse[0].red / 2;
+	Real shadeG = TheGlobalData->m_terrainAmbient[0].green + TheGlobalData->m_terrainDiffuse[0].green / 2;
+	Real shadeB = TheGlobalData->m_terrainAmbient[0].blue + TheGlobalData->m_terrainDiffuse[0].blue / 2;
+	shadeR *= 255.0f;
+	shadeG *= 255.0f;
+	shadeB *= 255.0f;
+	const Int diffuseLight = REAL_TO_INT(shadeB) | (REAL_TO_INT(shadeG) << 8) | (REAL_TO_INT(shadeR) << 16);
+	const Real numFadedEdges = (Real)(m_maxTankTrackEdges - m_maxTankTrackOpaqueEdges);
+
+	static std::vector<NativeTrackVertex> vertices;
+	static std::vector<unsigned short> indices;
+
+	for (const TerrainTracksRenderObjClass *mod = m_usedModules; mod; mod = mod->m_nextSystem)
+	{
+		if (mod->m_activeEdgeCount < 2 || mod->m_nativeTexture[0] == '\0')
+			continue;
+
+		vertices.clear();
+		indices.clear();
+		Int index = mod->m_bottomIndex;
+		for (Int i = 0; i < mod->m_activeEdgeCount; i++, index++)
+		{
+			if (index >= m_maxTankTrackEdges)
+				index = 0;
+
+			Real distanceFade = 1.0f;
+			if ((mod->m_activeEdgeCount - 1 - i) >= m_maxTankTrackOpaqueEdges)
+				distanceFade = 1.0f - (Real)((mod->m_activeEdgeCount - i) - m_maxTankTrackOpaqueEdges) / numFadedEdges;
+			distanceFade *= mod->m_edges[index].alpha;	//adjust fade with distance from start of track
+
+			const unsigned diffuse = (unsigned)diffuseLight | ((unsigned)REAL_TO_INT(distanceFade * 255.0f) << 24);
+			for (Int side = 0; side < 2; ++side)
+			{
+				const Vector3 &p = mod->m_edges[index].endPointPos[side];
+				const Vector2 &uv = mod->m_edges[index].endPointUV[side];
+				vertices.push_back( { p.X, p.Y, p.Z, diffuse, uv.X, uv.Y } );
+			}
+		}
+		for (Int i = 0; i < mod->m_activeEdgeCount - 1; i++)
+		{
+			const unsigned short a = (unsigned short)(i * 2), b = (unsigned short)(i * 2 + 1);
+			const unsigned short c = (unsigned short)((i + 1) * 2 + 1), d = (unsigned short)((i + 1) * 2);
+			indices.push_back(a); indices.push_back(b); indices.push_back(c);
+			indices.push_back(a); indices.push_back(c); indices.push_back(d);
+		}
+		visitor( user, mod->m_nativeTexture, vertices.data(), (unsigned)vertices.size(), indices.data(), (unsigned)indices.size() );
+	}
+}
+#endif
 
 TerrainTracksRenderObjClassSystem *TheTerrainTracksRenderObjClassSystem=nullptr;	///< singleton for track drawing system.

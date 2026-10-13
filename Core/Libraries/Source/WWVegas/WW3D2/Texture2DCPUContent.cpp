@@ -50,7 +50,7 @@ void *Texture2DCPUContent::Lock(int *row_pitch)
     return pixels;
 }
 
-void Texture2DCPUContent::Unlock() { WWASSERT(locked); locked = false; }
+void Texture2DCPUContent::Unlock() { WWASSERT(locked); locked = false; ++revision; }
 
 const unsigned char *Texture2DCPUContent::Pixels() const { WWASSERT(!locked); return pixels; }
 

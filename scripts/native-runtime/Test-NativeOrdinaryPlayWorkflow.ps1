@@ -40,7 +40,7 @@ Add terrain_probe observed 'nonblack_pct=62 center_rgb=3A4B2C cam=(1200,800,300)
 Add ui_probe observed 'whole_nonblack_pct=88 strip_nonblack_pct=64 strip_left=20 strip_mid=96 strip_right=98'
 Add ui_probe_window observed 'ControlBar.wnd:ControlBarParent hidden=0 pos=0,416 size=800x184'
 Add ui_probe_window observed 'ControlBar.wnd:LeftHUD hidden=0 pos=7,443 size=167x152'
-Add ui_probe_facts observed 'radar=dummy control_bar=1 viewport_scale=0.80 view_height=480 display_height=600'
+Add ui_probe_facts observed 'radar=real control_bar=1 viewport_scale=0.80 view_height=480 display_height=600'
 Add game_exit complete 'match ended by the player or the rules; logic not in game'
 Add play_summary complete 'receipts=6 images=3 left=120 right=70 keys=300 wheel=20 select=30 move=22 attack=11 stop=2 guard=1 build=4 produce=9 upgrade=1 rally=0 sell=0'
 Add terrain_summary complete 'frames=2800 draws=54900 atlas_uploads=1 tile_uploads=12 tile_updates=34 cloud_frames=2800 noise_frames=2800 macro_loads=2 extra_frames=2500 extra_tiles=40000 road_frames=2700 road_draws=5200 bridge_frames=2800 bridge_draws=11200 shore_frames=2400 shore_tiles=60000 texture_loads=5'

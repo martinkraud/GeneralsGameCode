@@ -72,6 +72,9 @@ public:
 
 protected:
 	TextureClass *m_stageZeroTexture;	///<primary texture
+#if defined(_WIN64)
+	Char		m_nativeTexture[96];	///<native presentation: the texture file name (no legacy TextureClass is created)
+#endif
 	SphereClass	m_boundingSphere;		///<bounding sphere of TerrainTracks
 	AABoxClass	m_boundingBox;			///<bounding box of TerrainTracks
 	Int			m_activeEdgeCount;			///<number of active edges in segment list
@@ -124,6 +127,18 @@ public:
 	void update();	///<update the state of all edges (fade alpha, remove old, etc.)
 
 	void init( SceneClass *TerrainTracksScene);	///< pre-allocate track objects
+#if defined(_WIN64)
+	// Native play profile. The edge bookkeeping (bindTrack/addEdgeToTrack/addCapEdgeToTrack/update fade and
+	// expiry) is the legacy code unchanged; only the DX8 buffers and the scene registration are absent, and
+	// flush() is replaced by forEachNativeTrack(), which yields exactly the vertices flush() would have
+	// written (terrain light shade with the fade alpha, the same strip index pattern).
+	struct NativeTrackVertex { float x, y, z; unsigned diffuse; float u, v; };
+	typedef void (*NativeTrackVisitor)(void *user, const char *texture, const NativeTrackVertex *vertices,
+		unsigned vertexCount, const unsigned short *indices, unsigned indexCount);
+	void initNative();
+	Bool isNative() const { return m_native; }
+	void forEachNativeTrack( NativeTrackVisitor visitor, void *user ) const;
+#endif
 	void shutdown();		///< release all pre-allocated track objects, called by destructor
 	void Reset();	///<empties the system, ready for a new scene.
 
@@ -141,6 +156,9 @@ protected:
 	SceneClass	*m_TerrainTracksScene;		///<scene that will contain all the TerrainTracks
 
 	Int	m_edgesToFlush;			///< number of edges to flush on next render.
+#if defined(_WIN64)
+	Bool m_native;					///< native presentation (no DX8 buffers, no scene registration)
+#endif
 
 	void releaseTrack( TerrainTracksRenderObjClass *mod );	///<returns track object to free store.
 	void clearTracks();	///<reset the amount of visible track marks of each object.

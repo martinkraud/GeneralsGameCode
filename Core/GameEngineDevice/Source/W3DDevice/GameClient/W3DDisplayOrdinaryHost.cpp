@@ -1005,6 +1005,10 @@ int W3DDisplay::runOrdinaryGameHost()
                 fx.shadowsSeen, fx.shadowNoGeometry, fx.waterPatches, fx.shroudCells, fx.scorches, fx.dropped,
                 NativeWorldObjects::stats().effectBatches);
             StartupDiagnostics::checkpoint("world_effects_summary", "observed", detail);
+            // X64.30 world overlays (separate receipt: the accepted summary format is unchanged).
+            sprintf_s(detail, "tracks=%u bibs=%u ground_lines=%u water_sparkles=%u water_rivers=%u",
+                fx.tracks, fx.bibs, fx.groundLines, fx.waterSparkles, fx.waterRivers);
+            StartupDiagnostics::checkpoint("world_overlays", "observed", detail);
             // Particle pipeline: where effects are lost between the FX request and the D3D11 submission.
             sprintf_s(detail, "requested=%u null_template=%u created=%u removed=%u alive=%u peak_systems=%u particles_added=%u"
                 " alive_particles=%u peak_particles=%u manager_updates=%u manager_draws=%u systems_with_particles=%u"
