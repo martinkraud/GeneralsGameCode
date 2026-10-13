@@ -66,6 +66,12 @@ void RadiusDecalTemplate::createRadiusDecal(const Coord3D& pos, Real radius, con
 	// it is now considered nonEmpty, regardless of the state of m_decal, etc
 	result.m_empty = false;
 
+	// The native play profile has no projected shadow manager (no legacy scene). The decal is then not
+	// drawn, exactly as when the manager fails to create one; the logic-visible state (m_empty) is
+	// already set above, so simulation behavior is unchanged.
+	if (TheProjectedShadowManager == nullptr)
+		return;
+
 	if (!m_onlyVisibleToOwningPlayer ||
 			owningPlayer->getPlayerIndex() == ThePlayerList->getLocalPlayer()->getPlayerIndex())
 	{

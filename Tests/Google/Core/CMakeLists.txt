@@ -15,6 +15,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/GroundTranslationPolicyTest.cpp
     GameEngine/Common/GroundTranslationBenchmark.cpp
     GameEngine/Common/OptionPreferencesTest.cpp
+    GameEngine/Common/PlayWorldLifecycleTest.cpp
     Libraries/Compression/CompressionManagerTest.cpp
     Libraries/Render2DSubmissionTest.cpp
     Libraries/Texture2DTest.cpp

@@ -218,6 +218,17 @@ rendered fault-free, classifier/contracts. Doc: `FIRST_PLAYABLE_ROADMAP.md` sect
 tools for C++/Python containing `\`); a global text replace once made a helper call itself - the static
 contract test caught it.
 
+**X64.28 native result (runs `20261013T1151501824715Z` and `20261013T1155367083324Z`, candidate
+`x64-28-play-world`): real interactive gameplay was reached, the acceptance wrapper correctly reported
+FAILED.** Two independent defects (both preserved, evidence immutable): (1) Exit Game -> teardown access
+violation: the play tap was a static object handed to `attachTranslator`; `MessageStream` owns and deletes
+translators, so `removeTranslator` freed a non-heap pointer (`DynamicMemoryAllocator::freeBytes`); (2)
+radius-cursor (reconnaissance drone special power) access violation: `RadiusDecalTemplate::createRadiusDecal`
+dereferenced the null `TheProjectedShadowManager` of the scene-less profile. A third, classifier-visible
+defect: `world_objects_first_frame` was logged one record before `terrain_first_frame`. Fixes, regression
+tests and the `x64-28-play-world-fix1` candidate: `X64_28_PLAY_WORLD.md` sections 9-11. Next: developer runs
+fix1 once; do not rerun `x64-28-play-world`.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a

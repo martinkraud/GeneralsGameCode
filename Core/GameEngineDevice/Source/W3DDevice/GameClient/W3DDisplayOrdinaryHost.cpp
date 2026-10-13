@@ -448,6 +448,11 @@ void LogControlBarFacts()
 }
 }
 
+// The world-objects receipt is produced inside the pass but must follow terrain_first_frame in the
+// log (the classifier's phase order); the menu-frame code publishes it right after that receipt.
+static char g_worldObjectsFirstDetail[400];
+static bool g_worldObjectsFirstPending = false;
+
 // Terrain-only native world pass (profile ordinaryTerrain, in game, map loaded). Returns the
 // number of draws; zero when there is nothing to draw yet (shell, loading, no camera).
 static int drawNativeTerrainPass()
@@ -472,11 +477,10 @@ static int drawNativeTerrainPass()
         const NativeWorldObjects::Stats os = NativeWorldObjects::stats();
         if (!reported && os.lastObjectsDrawn) {
             reported = true;
-            char detail[400];
-            sprintf_s(detail, "registered=%u objects_drawn=%u batches=%u triangles=%u meshes_drawn=%u skinned=%u textures=%u texture_failures=%u team_colored=%u unsupported_states=%u",
+            sprintf_s(g_worldObjectsFirstDetail, "registered=%u objects_drawn=%u batches=%u triangles=%u meshes_drawn=%u skinned=%u textures=%u texture_failures=%u team_colored=%u unsupported_states=%u",
                 NativeWorldObjects::registered(), os.lastObjectsDrawn, os.lastBatches, os.lastTriangles,
                 os.meshesDrawn, os.skinned, os.textureLoads, os.textureFailures, os.teamColored, os.unsupportedState);
-            StartupDiagnostics::checkpoint("world_objects_first_frame", "complete", detail);
+            g_worldObjectsFirstPending = true;
         }
     }
     return draws;
@@ -502,6 +506,10 @@ void W3DDisplay::drawOrdinaryMenuFrame()
                     HeightMapRenderObjClass::nativeUseCloud() ? 1 : 0, TheGlobalData->m_useLightMap ? 1 : 0, softEdge,
                     g_mapFeatures.extraBlendTiles, g_mapFeatures.shorelineTiles, g_mapFeatures.roadSegments, g_mapFeatures.bridges);
                 StartupDiagnostics::checkpoint("terrain_first_frame", "complete", detail);
+            }
+            if (g_worldObjectsFirstPending) {
+                g_worldObjectsFirstPending = false;
+                StartupDiagnostics::checkpoint("world_objects_first_frame", "complete", g_worldObjectsFirstDetail);
             }
             const bool firstProbe = (g_terrainFrames == 29);
             if (firstProbe || g_motionStepRequest) {
@@ -767,7 +775,9 @@ public:
         return KEEP_MESSAGE;
     }
 };
-PlayTap g_playTap;
+// The message stream owns every attached translator (MessageStream::TranslatorData deletes it on
+// removal), so the tap must be heap-allocated; a static instance made removeTranslator() free a
+// non-heap pointer at Exit Game (X64.28 run 20261013T1151501824715Z).
 
 // Bounded scripted camera exercise (X64.26): six deterministic look-at moves relative to the
 // start pivot, each large enough (700 world units, > half the 129-cell draw window of 1290) to
@@ -867,7 +877,7 @@ int W3DDisplay::runOrdinaryGameHost()
                     TheGlobalData->m_mapName.str(), ThePlayerList ? ThePlayerList->getPlayerCount() : -1, startFrame);
                 StartupDiagnostics::checkpoint("game_start", "complete", detail);
                 if (play && TheMessageStream)
-                    playTap = TheMessageStream->attachTranslator(&g_playTap, 998000000);
+                    playTap = TheMessageStream->attachTranslator(MSGNEW("PlayTap") PlayTap, 998000000);
             }
             if (inGame && !exiting) {
                 const unsigned frame = TheGameLogic->getFrame();

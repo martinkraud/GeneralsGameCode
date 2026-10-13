@@ -130,7 +130,7 @@ void W3DDebrisDraw::setModelName(AsciiString name, Color color, ShadowType t)
 			m_renderObject->Set_Transform(transform);
 		}
 
-		if (t != SHADOW_NONE)
+		if (t != SHADOW_NONE && TheW3DShadowManager != nullptr)
 		{
 			Shadow::ShadowTypeInfo shadowInfo;
 			shadowInfo.m_type = t;

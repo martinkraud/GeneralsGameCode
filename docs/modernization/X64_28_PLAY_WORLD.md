@@ -1,6 +1,9 @@
 # X64.28 - play world (CP1 of FIRST PLAYABLE)
 
-Status: offline batch complete, candidate staged and preflighted, **not executed**. Awaiting the developer's
+Status: candidate `x64-28-play-world` was executed natively twice (section 9): playable, with two
+crashes and a receipt-order defect. Fix candidate `x64-28-play-world-fix1` is staged and preflighted,
+**not executed**. Original status: offline batch complete, candidate staged and preflighted,
+**not executed**. Awaiting the developer's
 native run. Plan and dependency graph: `FIRST_PLAYABLE_ROADMAP.md`. Current state: `AGENT_HANDOFF.md`.
 
 ## 1. Scope
@@ -98,3 +101,95 @@ marks; waypoints; tree sway/topple; specular, env map, multi-pass, MODULATE2X, d
 - Trees missing or z-fighting; translucent sorting artifacts, stealth fade.
 - Frame hitches (CPU lighting/skinning); crash at first tracer/laser/police car.
 - Run ending early with `boundary`/`menu_exit`; log capacity approaching 2048.
+
+## 9. Native evidence (candidate `x64-28-play-world`, two developer runs)
+
+Both runs are preserved under `build/dev-runtimes/native/Generals/x64-28-play-world/runs/`; failed-run
+evidence is immutable. The developer launched the candidate twice by mistake; both are used.
+
+| Run | Outcome | Last receipt | Crash |
+| --- | --- | --- | --- |
+| `20261013T1151501824715Z` | played ~3375 logic frames (~112 s), then Exit Game | `game_exit` complete (`logic not in game`) | `0xC0000005` after `game_exit`, before `play_summary`: `MessageStream::removeTranslator` -> `PlayTap` scalar deleting destructor -> `DynamicMemoryAllocator::freeBytes` (GameMemory.cpp:2347), called from `W3DDisplay::runOrdinaryGameHost` (W3DDisplayOrdinaryHost.cpp:946) |
+| `20261013T1155367083324Z` | played ~830 logic frames, then reconnaissance drone | `play_progress` frame 451 | `0xC0000005` read of address 0: `RadiusDecalTemplate::createRadiusDecal` (RadiusDecal.cpp:80) <- `InGameUI::setRadiusCursor` (InGameUI.cpp:1487) <- `InGameUI::createCommandHint` (InGameUI.cpp:3060) <- `HintSpyTranslator` <- `MessageStream::propagateMessages` |
+
+Method: crash dumps (`CrashMG`/`CrashFG`) symbolized against the staged PDB with a dbghelp tool (exception
+record, thread context, stack walk plus raw return-address scan), cross-checked with the receipts and the
+recorded replays (`Replays/00000000.rep`, parsed record by record).
+
+Root causes (independent, no shared cause; both are "legacy lifecycle assumption the native profile broke"):
+
+1. **Exit Game**: ownership. `MessageStream::TranslatorData::~TranslatorData` does `delete m_translator`; the play
+   tap was a namespace-scope static. Removal at the end of the host loop freed a non-heap pointer. Not related
+   to rendering, the shell transition itself, or the Control Bar.
+2. **Radius cursor / drone**: the native play profile never creates `W3DShadowManager`, so
+   `TheProjectedShadowManager` is null; `createRadiusDecal` used it without a check. The trigger is any special
+   power / command that shows a radius cursor (the drone, artillery, paradrop, ...), not the drone object.
+3. **Receipt order** (found while reading the classifier errors): `world_objects_first_frame` was emitted inside
+   the object pass, i.e. one record before `terrain_first_frame`, which the evidence route requires first. The
+   classifier was right; the emission order was wrong. (Both runs report `Order/code mismatch
+   world_objects_first_frame` for this reason, plus the missing completions caused by the crashes.)
+
+### 9.1 Contracts natively proven by the successful portions
+
+Evidence: receipts (`world_objects_first_frame`, `play_progress`), composed frames, and replay command streams.
+
+| Contract | Evidence | Status |
+| --- | --- | --- |
+| Native world objects drawn | 694 registered; objects_drawn 6 -> 30 over the run, 124 meshes/150 batches/2144 triangles first frame, 0 texture failures, 0 unsupported states | proven (visual quality is the developer's observation) |
+| Buildings and units | developer: base, constructed structures; replay: 5 `DOZER_CONSTRUCT`, 17 `QUEUE_UNIT_CREATE` | proven |
+| Animation | 3 skinned objects first frame; developer played with units | counters only; developer observation |
+| Selection / picking | 13 `CREATE_SELECTED_GROUP` (run 1), 3 (run 2); `select` counter 12 | proven |
+| Camera and input | `keys` 415, `left` 16, `right` 2, camera moved (470,1569)->(462,1468) | proven |
+| Original Control Bar | developer used it; build/produce/science/rally commands issued through it (`PURCHASE_SCIENCE`, `SET_RALLY_POINT`) | proven |
+| Building / production | money 10000 -> 600; 17 queued units; 5 structures | proven |
+| Movement / attack orders | **no `DO_MOVETO`/attack messages in either replay** | NOT proven (not exercised) |
+| AI activity | AI commands are not in the replay and no per-AI receipt exists; logic CRC advanced | NOT proven |
+| Clean exit | crashed in teardown | NOT proven (defect 1) |
+| Radius cursor / special powers | crashed | NOT proven (defect 2) |
+
+## 10. Fixes (fix1)
+
+1. `W3DDisplayOrdinaryHost.cpp`: the tap is created with `MSGNEW("PlayTap") PlayTap` and owned by the stream
+   (static instance removed).
+2. `RadiusDecal.cpp`: after setting the logic-visible `m_empty = false`, return when
+   `TheProjectedShadowManager` is null (the decal is simply not drawn; simulation state identical).
+3. Same family, found by audit of every legacy shadow/scene singleton that is null in the headless world
+   selection (`TheW3DShadowManager`, `TheProjectedShadowManager`, `TheTerrainTracksRenderObjClassSystem`,
+   `TheWaterRenderObj`, `TheSmudgeManager`, `W3DDisplay::m_3DScene`, `m_3DInterfaceScene`, tree/prop/bib/waypoint
+   buffers, shroud): one more unguarded use, `W3DDebrisDraw::setModelName` (`TheW3DShadowManager->addShadow` for
+   every spawned debris with a shadow type, i.e. the first destroyed unit) is now guarded. All other uses were
+   already guarded (shadow/track/water/smudge in the draw modules, scene in laser/rope/tracer/projectile/
+   police-car, shroud/bib/waypoint buffers); `W3DDefaultDraw` and `W3DMouse` W3D-cursor paths are debug-only or
+   not selected by `-winCursors`.
+4. `world_objects_first_frame` is published right after `terrain_first_frame` (pending receipt), keeping the
+   classifier route unchanged.
+
+Regression coverage: `Tests/Google/Core/GameEngine/Common/PlayWorldLifecycleTest.cpp` (stream ownership
+contract; `createRadiusDecal` with a null manager is non-empty and safe; runs in `g_googletest`/`z_googletest`,
+Win32 and Win64), and `test_ordinary_play_contract.py` (heap tap, no `attachTranslator(&`, guard order in
+RadiusDecal, all shadow-manager dereferences guarded, receipt order). The classifier and acceptance contracts are
+unchanged.
+
+Not covered natively: teardown after `game_exit` (summaries, `releaseAll`, display detach) has only run in the
+offline workflow tests, never in a native play run; fix1's first run is its first real exercise.
+
+## 11. Candidate `x64-28-play-world-fix1`
+
+| Item | Value |
+| --- | --- |
+| Path | `build/dev-runtimes/native/Generals/x64-28-play-world-fix1` |
+| `generalsv.exe` SHA-256 | `7EACE4771B302A8C7E1B622C8AA8006731B3D543C6F1710E2629D68685B4326B` (7,526,912 bytes) |
+| `generalsv.pdb` SHA-256 | `93BABC359F39C6331C5F884D4B2786FE8DF611DDE8915E94C6FA1C6E6861B3DC` |
+| `manifest.json` SHA-256 | `667FC8AE150CF1BC6025E2CA17DBD2D7E0FCCBA056BC502C0FB9C9E805914B3B` |
+| `ordinaryplay.json` SHA-256 | `CB86F0DC908EBFF93B2664799F20887D4F78826391326FEF61A4831231AAFDE3` |
+
+```powershell
+pwsh -NoProfile -File scripts/native-runtime/Invoke-NativeOrdinaryPlay.ps1 -Title Generals -Name x64-28-play-world-fix1 -RunReviewedOrdinaryPlay
+```
+
+Validation: Win64 build + ctest 17/17, Win32 build + ctest 25/25, `g_googletest` 171 pass with offline-asset env
+vars, 7 Python contract files, 5 PowerShell workflow tests, stage + preflight PASS.
+
+Please test in fix1: a reconnaissance drone (and one other radius-cursor power if available); Exit Game from the
+in-game menu (expect `play_summary`..`WinMain` receipts and a PASS from the wrapper); issue explicit move and
+attack orders (none were exercised); watch AI base activity; let a unit die (debris path); then quit.

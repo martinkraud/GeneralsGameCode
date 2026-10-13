@@ -82,8 +82,45 @@ class OrdinaryPlayContract(unittest.TestCase):
         body = host.split("class PlayTap : public GameMessageTranslator {", 1)[1].split("PlayTap g_playTap;", 1)[0]
         self.assertIn("return KEEP_MESSAGE;", body)
         self.assertNotIn("DESTROY_MESSAGE", body)
-        self.assertIn("attachTranslator(&g_playTap, 998000000)", host)
+        self.assertIn('attachTranslator(MSGNEW("PlayTap") PlayTap, 998000000)', host)
         self.assertIn("removeTranslator(playTap)", host)
+
+    def test_play_tap_is_heap_allocated_because_the_stream_owns_translators(self):
+        # X64.28 run 20261013T1151501824715Z: a static tap was deleted by MessageStream::removeTranslator.
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        self.assertNotIn("PlayTap g_playTap;", host)
+        self.assertNotIn("attachTranslator(&", host)
+        self.assertIn('attachTranslator(MSGNEW("PlayTap") PlayTap, 998000000)', host)
+        stream = read("Core/GameEngine/Include/Common/MessageStream.h")
+        self.assertIn("delete m_translator;", stream)
+
+    def test_scene_less_profile_never_dereferences_legacy_shadow_managers(self):
+        # X64.28 run 20261013T1155367083324Z: createRadiusDecal used the null TheProjectedShadowManager.
+        decal = read("Core/GameEngine/Source/GameClient/RadiusDecal.cpp")
+        guard = decal.index("if (TheProjectedShadowManager == nullptr)")
+        self.assertLess(decal.index("result.m_empty = false;"), guard)
+        self.assertLess(guard, decal.index("TheProjectedShadowManager->addDecal"))
+        self.assertLess(guard, decal.index("owningPlayer->getPlayerIndex()"))
+        debris = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DDebrisDraw.cpp")
+        self.assertIn("if (t != SHADOW_NONE && TheW3DShadowManager != nullptr)", debris)
+        # Every remaining dereference of the shadow managers in the shared draw modules is null-guarded.
+        for path in ("Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DModelDraw.cpp",
+                     "Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DDebrisDraw.cpp"):
+            lines = read(path).splitlines()
+            for number, line in enumerate(lines):
+                if "TheW3DShadowManager->addShadow" in line or "TheProjectedShadowManager->addDecal" in line:
+                    context = " ".join(lines[max(0, number - 20):number + 1])
+                    self.assertTrue("TheW3DShadowManager &&" in context or "TheW3DShadowManager != nullptr" in context
+                                    or "if (TheProjectedShadowManager)" in context, f"{path}:{number + 1}")
+
+    def test_world_objects_receipt_follows_terrain_first_frame(self):
+        # X64.28 native runs logged world_objects_first_frame one record before terrain_first_frame.
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        terrain = host.index('checkpoint("terrain_first_frame"')
+        self.assertEqual(host.count('checkpoint("world_objects_first_frame"'), 1)
+        self.assertLess(terrain, host.index('checkpoint("world_objects_first_frame"'))
+        common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
+        self.assertIn("'terrain_first_frame','world_objects_first_frame','play_summary'", common)
 
     def test_zero_hour_sources_do_not_mention_play(self):
         zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")
