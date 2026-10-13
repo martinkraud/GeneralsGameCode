@@ -451,12 +451,12 @@ struct WorldFixture {
         std::memcpy(p, texels, 8); content->Unlock();
         texture.reset(backend->Create_Content_Residency(*content));
     }
-    // Full-screen clip-space quad (clockwise on screen) at depth z.
+    // Full-screen clip-space quad, counter-clockwise on screen (a legacy D3DCULL_CW front face).
     static GeometryCPUContent Quad(float z, unsigned diffuse, float u0, float v0, float u1, float v1) {
         GeometryCPUContent g;
         g.vertices = {{-1, 1, z, diffuse, u0, v0, u1, v1}, {1, 1, z, diffuse, u0, v0, u1, v1},
                       {1, -1, z, diffuse, u0, v0, u1, v1}, {-1, -1, z, diffuse, u0, v0, u1, v1}};
-        g.indices = {0, 1, 2, 0, 2, 3};
+        g.indices = {0, 2, 1, 0, 3, 2};
         return g;
     }
     WorldSubmission Submission(GeometryResidency *g, WorldMaterial m, bool write) {
@@ -529,7 +529,7 @@ TEST(WorldTest, LegacyBackFaceCullingAndInPlaceVertexUpdate)
 {
     WorldFixture f;
     auto content = WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0, 0, 0, 0);
-    std::swap(content.indices[1], content.indices[2]); std::swap(content.indices[4], content.indices[5]); // CCW
+    std::swap(content.indices[1], content.indices[2]); std::swap(content.indices[4], content.indices[5]); // clockwise: culled
     std::unique_ptr<GeometryResidency> ccw(f.backend->Create_Geometry_Residency(content));
     auto px = f.Frame({f.Submission(ccw.get(), WorldMaterial::TerrainBase, true)});
     for (unsigned i = 0; i < 64; ++i) { EXPECT_EQ(px[i * 4], 0); EXPECT_EQ(px[i * 4 + 1], 0); EXPECT_EQ(px[i * 4 + 2], 0); }
@@ -543,6 +543,43 @@ TEST(WorldTest, LegacyBackFaceCullingAndInPlaceVertexUpdate)
     f.backend->Update_Geometry_Vertices(*cw, 0, v, 4);
     px = f.Frame({f.Submission(cw.get(), WorldMaterial::TerrainBase, true)});
     EXPECT_EQ(px[0], 0); EXPECT_EQ(px[1], 0); // red texel * green diffuse = black
+}
+
+// X64.25 regression: a terrain-style tile (HeightMap vertex order and index pattern, z-up
+// world, Westwood right-handed camera + Get_D3D_Projection_Matrix form) must produce pixels.
+// The first native run drew nothing because the world rasterizer culled the legacy front face.
+TEST(WorldTest, TerrainTileThroughLegacyCameraAndProjectionIsVisible)
+{
+    WorldFixture f;
+    GeometryCPUContent tile;
+    // Cells are 4 vertices: 0=(x,y) 1=(x+1,y) 2=(x+1,y+1) 3=(x,y+1); indices (0,2,3),(0,1,2).
+    for (int cy = 0; cy < 2; ++cy)
+        for (int cx = 0; cx < 2; ++cx) {
+            const unsigned short base = static_cast<unsigned short>(tile.vertices.size());
+            const float x = static_cast<float>(cx), y = static_cast<float>(cy);
+            const unsigned white = Argb(255, 255, 255, 255);
+            tile.vertices.push_back({x, y, 0, white, 0.25f, 0.5f, 0.25f, 0.5f});
+            tile.vertices.push_back({x + 1, y, 0, white, 0.25f, 0.5f, 0.25f, 0.5f});
+            tile.vertices.push_back({x + 1, y + 1, 0, white, 0.25f, 0.5f, 0.25f, 0.5f});
+            tile.vertices.push_back({x, y + 1, 0, white, 0.25f, 0.5f, 0.25f, 0.5f});
+            for (unsigned short i : {0, 2, 3, 0, 1, 2}) tile.indices.push_back(static_cast<unsigned short>(base + i));
+        }
+    std::unique_ptr<GeometryResidency> geometry(f.backend->Create_Geometry_Residency(tile));
+    auto submission = f.Submission(geometry.get(), WorldMaterial::TerrainBase, true);
+    // Camera at (1,-3,4) looking at (1,1,0): inverse (view) as a Matrix3D 3x4.
+    const float view3[12] = {1, 0, 0, -1, 0, 0.70710678f, 0.70710678f, -0.70710678f,
+                             0, -0.70710678f, 0.70710678f, -4.9497476f};
+    World_From_Matrix3D(view3, submission.view);
+    const float zn = 1.0f, zf = 50.0f, sx = 1.2f, sy = 1.6f;
+    const float proj4[16] = {sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, -zf / (zf - zn), -zf * zn / (zf - zn), 0, 0, -1, 0};
+    World_From_Matrix4x4(proj4, submission.projection);
+    auto px = f.Frame({submission});
+    unsigned lit = 0;
+    for (unsigned i = 0; i < 64; ++i) lit += (px[i * 4] | px[i * 4 + 1] | px[i * 4 + 2]) ? 1u : 0u;
+    EXPECT_GE(lit, 2u) << "terrain tile produced no visible pixels";
+    // The look-at target (tile center) maps to the viewport center and is the textured colour.
+    const unsigned center = (4 * 8 + 4) * 4;
+    EXPECT_GT(px[center] | px[center + 1] | px[center + 2], 0);
 }
 
 TEST(WorldTest, ResidencyCountingAndExplicitUnsupportedCases)
@@ -597,7 +634,7 @@ TEST(WorldTest, MippedAtlasResidencySelectsLevelsAndRejectsBrokenChains)
     GeometryCPUContent g;
     g.vertices = {{-1, 1, 0.5f, 0xffffffffu, 0, 0, 0, 0}, {1, 1, 0.5f, 0xffffffffu, 1, 0, 1, 0},
                   {1, -1, 0.5f, 0xffffffffu, 1, 1, 1, 1}, {-1, -1, 0.5f, 0xffffffffu, 0, 1, 0, 1}};
-    g.indices = {0, 1, 2, 0, 2, 3};
+    g.indices = {0, 2, 1, 0, 3, 2};
     std::unique_ptr<GeometryResidency> geo(backend->Create_Geometry_Residency(g));
     WorldSubmission s{};
     s.geometry = geo.get(); s.index_count = 6; s.texture = atlas.get();

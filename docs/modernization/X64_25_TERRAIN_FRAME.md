@@ -98,3 +98,32 @@ chain is accepted and a wrong-size level is still rejected. `renderNative` addit
 reports invalid viewport / non-finite transforms with descriptive messages instead of the
 generic backend error. The failed run is preserved under the original stage; a fresh
 stage `x64-25-ordinary-terrain-fix1` replaces it.
+
+## fix1 run: machine PASS, visual FAIL (20261012T2233246334227Z) and fix2
+
+Facts kept separate. Machine: exit 0, 16 tiles uploaded, 32 draws first frame,
+frames=3601 draws=115232, `live_residencies=0`. Visual (developer): the world viewport
+stayed completely black while the original cursor/UI was alive.
+
+Diagnosis (evidence + source): everything submitted (atlas 1 upload, 16 tile uploads,
+2 draws per tile) but no pixels resulted. Legacy WW3D sets `D3DRS_CULLMODE = D3DCULL_CW`
+(`shader.cpp` `_PolygonCullMode = D3DCULL_CW`, `dx8wrapper.cpp` default): clockwise
+(on-screen) triangles are culled, counter-clockwise are front faces. The R1a world
+rasterizer was written with the opposite convention (`FrontCounterClockwise = FALSE`,
+documented as "D3DCULL_CCW"), so every terrain triangle was back-face culled. The R1a
+tests encoded the same inversion (their quad was clockwise), which is why they passed.
+The terrain cell pattern (0,2,3)(0,1,2) over (x,y),(x+1,y),(x+1,y+1),(x,y+1) is
+counter-clockwise seen from +Z, i.e. a front face under the legacy default.
+
+Fix: `FrontCounterClockwise = TRUE` for the world pipeline (same as Render2D). Tests:
+the shared quad is now CCW; `LegacyBackFaceCullingAndInPlaceVertexUpdate` asserts
+clockwise is culled; new `TerrainTileThroughLegacyCameraAndProjectionIsVisible` renders a
+HeightMap-ordered tile through a Westwood right-handed camera and the
+`Get_D3D_Projection_Matrix` form and requires lit pixels, centered on the look-at point.
+
+New instrumentation (next run tests a concrete hypothesis): after the 30th terrain frame
+the target is read back before the UI is drawn and `terrain_probe` records
+`nonblack_pct`, the center pixel, the camera position and forward vector. The classifier
+now fails a run whose terrain pass leaves < 5% non-black pixels, so a black world can no
+longer be a machine PASS. If the probe is nonzero but the screen is black, the cause is
+UI-layer covering; if zero, the camera/transform/texture values in the probe locate it.

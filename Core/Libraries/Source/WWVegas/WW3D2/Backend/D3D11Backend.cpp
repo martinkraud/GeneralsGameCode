@@ -263,9 +263,11 @@ struct D3D11Backend::Impl {
         Check(device->CreateInputLayout(e, 4, vsCode->GetBufferPointer(), vsCode->GetBufferSize(), &worldLayout), "Create world layout");
         D3D11_BUFFER_DESC cb{}; cb.ByteWidth = 80; cb.Usage = D3D11_USAGE_DEFAULT; cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         Check(device->CreateBuffer(&cb, nullptr, &worldCB), "Create world constants");
-        // Legacy default D3DCULL_CCW: clockwise triangles are front faces.
+        // Legacy default D3DCULL_CW (shader.cpp _PolygonCullMode): clockwise triangles are
+        // culled, counter-clockwise (on screen) triangles are front faces. X64.25 run
+        // 20261012T2233246334227Z drew nothing because this was inverted.
         D3D11_RASTERIZER_DESC r{}; r.FillMode = D3D11_FILL_SOLID; r.CullMode = D3D11_CULL_BACK;
-        r.FrontCounterClockwise = FALSE; r.DepthClipEnable = TRUE;
+        r.FrontCounterClockwise = TRUE; r.DepthClipEnable = TRUE;
         Check(device->CreateRasterizerState(&r, &worldRaster), "Create world raster state");
         D3D11_DEPTH_STENCIL_DESC d{}; d.DepthEnable = TRUE; d.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
         d.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;

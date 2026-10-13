@@ -347,6 +347,9 @@ function Test-NativeOrdinaryTerrainEvidence([string]$Log,[int]$ProcessId,$Receip
         if($m[1].Length -gt 6 -or $m[2].Length -gt 6){$errors.Add('Terrain numeric overflow')}
         elseif([int]$m[2] -lt 1 -or [int]$m[1] -ne 2*[int]$m[2]){$errors.Add('Terrain draws are not exactly base+blend per uploaded tile')}
     }
+    $probe=@($rows|Where-Object{$_.Stage -eq 'terrain_probe' -and $_.Status -eq 'observed'})
+    if($probe.Count -ne 1 -or $probe[0].Detail -notmatch '^nonblack_pct=(\d{1,3}) center_rgb='){$errors.Add('Missing terrain pixel probe')}
+    elseif([int]$Matches[1] -lt 5){$errors.Add('Terrain pass left the frame black (probe)')}
     if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+)$'){$errors.Add('Invalid terrain summary')}
     else{
         $m=$Matches

@@ -395,6 +395,28 @@ void W3DDisplay::drawOrdinaryMenuFrame()
                     terrainDraws, stats.atlasUploads, stats.tileUploads);
                 StartupDiagnostics::checkpoint("terrain_first_frame", "complete", detail);
             }
+            if (g_terrainFrames == 29) {
+                // One-time evidence: what the terrain pass actually left in the target before the
+                // UI is drawn (separates "nothing submitted/visible" from "covered by the UI").
+                char detail[256];
+                if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+                    const std::vector<unsigned char> pixels = backend->Readback_RGBA8();
+                    size_t lit = 0;
+                    for (size_t i = 0; i + 3 < pixels.size(); i += 4)
+                        if (pixels[i] | pixels[i + 1] | pixels[i + 2]) ++lit;
+                    const size_t total = pixels.size() / 4;
+                    const size_t c = (total / 2 + 400) * 4 < pixels.size() ? (total / 2 + 400) * 4 : 0;
+                    Vector3 cam(0, 0, 0), fwd(0, 0, 0);
+                    if (auto *view = dynamic_cast<W3DView *>(TheTacticalView)) {
+                        cam = view->get3DCamera()->Get_Position();
+                        fwd = view->get3DCamera()->Get_Forward_Dir();
+                    }
+                    sprintf_s(detail, "nonblack_pct=%u center_rgb=%02X%02X%02X cam=(%.0f,%.0f,%.0f) fwd=(%.2f,%.2f,%.2f)",
+                        total ? static_cast<unsigned>(lit * 100 / total) : 0u, pixels[c], pixels[c + 1], pixels[c + 2],
+                        cam.X, cam.Y, cam.Z, fwd.X, fwd.Y, fwd.Z);
+                    StartupDiagnostics::checkpoint("terrain_probe", "observed", detail);
+                }
+            }
             ++g_terrainFrames;
             g_terrainDraws += static_cast<unsigned>(terrainDraws);
             g_terrainStats = static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
