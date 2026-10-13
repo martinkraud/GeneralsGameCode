@@ -135,3 +135,90 @@ between 32x32 tiles, flicker or UV scrambling.
 
 Not in scope: shoreline, roads, bridges, props, scorches, shroud, meshes, water,
 shadows, particles, radar, HUD fixes.
+
+## Acceptance: X64.26 terrain fidelity and dynamic terrain exercise - FORMALLY ACCEPTED
+
+Reviewed run (immutable, never rerun):
+`build/dev-runtimes/native/Generals/x64-26-terrain-fidelity/runs/20261013T0533511829002Z`
+(stage `x64-26-terrain-fidelity`, built from `e23b1dbb2`, EXE SHA256 `09EB69BC...378D57`).
+Machine PASS and developer visual PASS are recorded separately.
+
+### Machine gate: PASS (independently re-read)
+
+OS exit 0, no timeout/error, isolated paths match, 255 contiguous same-process records,
+zero `fail` rows, no dumps, `shutdown-exception.bin` empty, `live_residencies=0` before
+backend release (atlas, 16 tiles, cloud and noise all released). Alpine Assault, 5 players,
+1800 logic frames, `FP_summary calls=13654`, ordinary `exitGame`.
+
+- Terrain: `terrain_first_frame draws=16 atlas_uploads=1 tile_uploads=16 use_cloud=1
+  use_noise=1`; `terrain_summary frames=3600 draws=57600 (= 3600 x 16) atlas_uploads=1
+  tile_uploads=16 tile_updates=84 cloud_frames=3600 noise_frames=3600 macro_loads=2`.
+  Cloud and noise ran on every terrain frame; both macro textures loaded exactly once.
+- `terrain_probe nonblack_pct=80 center_rgb=374A21` (pre-UI, same camera as X64.25).
+
+### Scripted camera exercise: behaved as designed
+
+Six `terrain_move` rows at logic frames 120/330/540/750/960/1170 and six `terrain_motion`
+probes 90 frames later, six distinct pivots, every probe 80 % non-black (the full 0.80
+viewport):
+
+| step | target pivot | cumulative `tile_updates` |
+| --- | --- | --- |
+| 1 | (2051,1862) | 16 |
+| 2 | (2051,2290) | 28 |
+| 3 | (1351,2290) | 44 |
+| 4 | (651,2290) | 60 |
+| 5 | (651,1862) | 68 |
+| 6 | (1351,1162) | 84 |
+
+`tile_updates` strictly increases on every step (X64.25 had 0), so
+`Update_Geometry_Vertices` was exercised through the ordinary `updateCenter`/`updateBlock`
+path with correct content afterwards. Steps 2-4 targets were clamped to 300 units inside
+the map extent (y = 2290) by design. The developer's observation that manual camera
+controls did not respond is consistent with this profile (no gameplay input translators are
+attached to the camera); the jumps seen were these six scripted moves.
+
+### Image evidence
+
+`terrain_world_frame.bmp` / `terrain_ui_frame.bmp` were decoded and inspected: the world
+viewport (rows 0-479) is 100 % lit, shows plausible grass/ground with blended texture
+transitions, soft darker cloud-shadow regions and macro noise detail, no seams or
+scrambled UVs. Rows 480-599 are 0 % lit in both images.
+
+### Developer visual gate: PASS
+
+Terrain visible and correct throughout; abrupt scripted camera jumps; no stale patches,
+tile seams, flicker or UV scrambling.
+
+### Control Bar painting review: result (bounded investigation, no code change)
+
+Root cause of the black bottom strip, from the receipts and source:
+
+- `ui_probe_window`: `ControlBar.wnd:ControlBarParent hidden=0 pos=0,1216 size=800x184`;
+  `LeftHUD pos=7,1243`, `RightHUD pos=621,1283`, `BackgroundMarker pos=8,1395`. The whole
+  bar is positioned at y = 1216 on a 600-pixel display: it is **not hidden, it is parked
+  below the screen**. `ui_probe` strip non-black = 0 % in all three thirds.
+- `ShowControlBar(FALSE)` (`ControlBarCallback.cpp:496`, called at game start from
+  `GameLogic.cpp:2107`) registers `WIN_ANIMATION_SLIDE_BOTTOM` (500 ms) with
+  `m_animateWindowManager`; the window starts off-screen and is brought in by
+  `m_animateWindowManager->update()`, which only runs from `ControlBar::update()`. That
+  function returns at once under the headless world selection (`ControlBar.cpp:1402`), so
+  the slide-in never advances and the bar stays parked. The same early return also keeps the
+  scheme manager and video manager idle.
+- The viewport is correctly scaled to 80 % (`view_height=480 display_height=600
+  viewport_scale=0.80`) because `ShowControlBar` calls `setScaledViewportHeight()`, which
+  is why a 20 % band exists but nothing paints into it.
+- `radar=dummy` is also recorded: even with the bar on screen the radar bezel would stay
+  empty until a radar renderer exists.
+
+Conclusion: the strip is a UI-layer consequence of the headless `ControlBar::update`
+guard, independent of the terrain pass (whole-viewport terrain is verified). Recommended
+bounded follow-up (not done here, one profile-local change): call
+`TheControlBar->m_animateWindowManager->update()` (or `ShowControlBar(TRUE)` immediate)
+under `ordinaryTerrain()` so the bar slides in, then review scheme art and radar separately.
+
+### Carried forward
+
+Not rendered: shoreline/extra-blend tiles, roads, bridges, props, scorches, shroud/fog,
+dynamic lights, meshes, water, shadows, particles, radar/HUD content. Static terrain
+re-light on time-of-day change was not exercised.
