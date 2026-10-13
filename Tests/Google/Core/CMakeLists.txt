@@ -23,6 +23,7 @@ set(COREI_GOOGLETEST_SRC
     Libraries/NativeTerrainTest.cpp
     Libraries/NativeWorldObjectsTest.cpp
     Libraries/NativeWorldEffectsTest.cpp
+    Libraries/NativeParticlePipelineTest.cpp
 )
 
 add_library(corei_googletest INTERFACE)

@@ -1005,6 +1005,15 @@ int W3DDisplay::runOrdinaryGameHost()
                 fx.shadowsSeen, fx.shadowNoGeometry, fx.waterPatches, fx.shroudCells, fx.scorches, fx.dropped,
                 NativeWorldObjects::stats().effectBatches);
             StartupDiagnostics::checkpoint("world_effects_summary", "observed", detail);
+            // Particle pipeline: where effects are lost between the FX request and the D3D11 submission.
+            sprintf_s(detail, "requested=%u null_template=%u created=%u removed=%u alive=%u peak_systems=%u particles_added=%u"
+                " alive_particles=%u peak_particles=%u manager_updates=%u manager_draws=%u systems_with_particles=%u"
+                " quads_emitted=%u batches=%u streaks=%u submitted_by_layer=%u,%u,%u,%u,%u",
+                fx.pipelineRequested, fx.pipelineNullTemplate, fx.pipelineCreated, fx.pipelineRemoved, fx.systemsAlive,
+                fx.pipelinePeakSystems, fx.pipelineParticlesAdded, fx.particlesAlive, fx.particlesAliveMax,
+                fx.pipelineUpdates, fx.pipelineDraws, fx.particleSystems, fx.particlesDrawn, fx.particleBatches,
+                fx.streaks, os.layerDraws[0], os.layerDraws[1], os.layerDraws[2], os.layerDraws[3], os.layerDraws[4]);
+            StartupDiagnostics::checkpoint("particle_pipeline", "observed", detail);
             for (unsigned i = 0; i < NativeWorldObjects::failedTextureCount() && i < 12; ++i) {
                 sprintf_s(detail, "texture=%.200s", NativeWorldObjects::failedTexture(i));
                 StartupDiagnostics::checkpoint("world_objects_texture_failure", "observed", detail);

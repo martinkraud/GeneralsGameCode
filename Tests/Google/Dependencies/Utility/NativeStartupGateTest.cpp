@@ -465,6 +465,45 @@ TEST(NativeOrdinaryHostGate, Win32NeverEnablesTheProfile) {
 }
 #endif
 
+TEST(NativeOrdinaryHostWindow, ReviewScaleFitsTheDesktopAndKeepsTheLogicalDisplayAndInputIntact) {
+    // 1080p desktop: work area 1920x1040, frame about 16x39 -> 150 % (1200x900 client).
+    _putenv("GENERALS_NATIVE_REVIEW_SCALE=");
+    EXPECT_EQ(NativeOrdinaryHost::chooseReviewScalePercent(1920, 1040, 16, 39), 150);
+    // A 1366x768 laptop cannot hold 150 %: the largest fitting scale is chosen, never below 100.
+    EXPECT_EQ(NativeOrdinaryHost::chooseReviewScalePercent(1366, 728, 16, 39), 114);
+    EXPECT_EQ(NativeOrdinaryHost::chooseReviewScalePercent(800, 560, 16, 39), 100);
+    // Explicit request (factor or percent), clamped to the desktop.
+    _putenv("GENERALS_NATIVE_REVIEW_SCALE=1.25");
+    EXPECT_EQ(NativeOrdinaryHost::chooseReviewScalePercent(1920, 1040, 16, 39), 125);
+    _putenv("GENERALS_NATIVE_REVIEW_SCALE=200");
+    EXPECT_EQ(NativeOrdinaryHost::chooseReviewScalePercent(1920, 1040, 16, 39), 166);
+    _putenv("GENERALS_NATIVE_REVIEW_SCALE=0.5");
+    EXPECT_EQ(NativeOrdinaryHost::chooseReviewScalePercent(1920, 1040, 16, 39), 100);   // never smaller than logical
+    _putenv("GENERALS_NATIVE_REVIEW_SCALE=");
+
+    NativeOrdinaryHost::WindowGeometry unscaled = {}, scaled = {};
+    ASSERT_TRUE(NativeOrdinaryHost::computeWindowGeometry(1920, 1080, unscaled));
+    ASSERT_TRUE(NativeOrdinaryHost::computeWindowGeometry(1920, 1080, scaled, 150));
+    EXPECT_EQ(scaled.width - unscaled.width, 400);    // 1200 - 800 client
+    EXPECT_EQ(scaled.height - unscaled.height, 300);  // 900 - 600 client
+    EXPECT_EQ(scaled.x, 1920 / 2 - 600);
+
+    // Input maps back to the logical 800x600 display; identity at 100 %.
+    long x = 1199, y = 899;
+    NativeOrdinaryHost::activeScalePercent() = 100;
+    NativeOrdinaryHost::clientToLogical(x, y);
+    EXPECT_EQ(x, 1199); EXPECT_EQ(y, 899);
+    NativeOrdinaryHost::activeScalePercent() = 150;
+    NativeOrdinaryHost::clientToLogical(x, y);
+    EXPECT_EQ(x, 799); EXPECT_EQ(y, 599);
+    x = 600; y = 450;
+    NativeOrdinaryHost::clientToLogical(x, y);
+    EXPECT_EQ(x, 400); EXPECT_EQ(y, 300);   // window center is the display center
+    EXPECT_EQ(NativeOrdinaryHost::scaledSize(800, 150), 1200);
+    EXPECT_EQ(NativeOrdinaryHost::scaledSize(600, 150), 900);
+    NativeOrdinaryHost::activeScalePercent() = 100;
+}
+
 TEST(NativeOrdinaryHostWindow, ClientAreaIsExactlyTheProfileSizeWithLegacyStyle) {
     NativeOrdinaryHost::WindowGeometry geometry = {};
     ASSERT_TRUE(NativeOrdinaryHost::computeWindowGeometry(1920, 1080, geometry));

@@ -889,6 +889,22 @@ public:
 
 	UnsignedInt getParticleSystemCount() const { return m_particleSystemCount; }
 
+	/// Pipeline diagnostics (cumulative since construction): where particle effects are lost on the way to
+	/// the renderer. Pure counters; they never influence the simulation.
+	struct PipelineStats
+	{
+		UnsignedInt systemsRequested;     ///< createParticleSystem calls
+		UnsignedInt systemsNullTemplate;  ///< ... refused because the template was not found (name typo, missing INI)
+		UnsignedInt systemsCreated;       ///< ParticleSystem objects instantiated
+		UnsignedInt systemsRemoved;       ///< systems that left the manager list
+		UnsignedInt particlesAdded;       ///< particles entering the overall list
+		UnsignedInt updateCalls;          ///< ParticleSystemManager::update calls
+		UnsignedInt drawCalls;            ///< ParticleSystemManager::draw calls that integrated time
+		UnsignedInt peakSystems;          ///< most systems alive at once
+		UnsignedInt peakParticles;        ///< most particles alive at once
+	};
+	const PipelineStats &getPipelineStats() const { return m_pipeline; }
+
 	// @todo const this jkmcd
 	ParticleSystemList &getAllParticleSystems() { return m_allParticleSystemList; }
 
@@ -918,6 +934,7 @@ protected:
 
 	ParticleSystemList m_allParticleSystemList;
 
+	PipelineStats m_pipeline;
 	UnsignedInt m_particleCount;
 	UnsignedInt m_fieldParticleCount; ///< this does not need to be xfered, since it is evaluated every frame
 	UnsignedInt m_particleSystemCount;

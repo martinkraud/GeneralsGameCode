@@ -171,3 +171,45 @@ Visual / gameplay checklist for the review (Lone Eagle again; it has water, brid
    exit cleanly with `PASS`). Frame rate should remain interactive; note any hitch with many units.
 9. Known absent by design: minimap contents, tank/tire tracks, heat distortion, snow, tree sway, bibs,
    water sparkle/bump.
+
+## 9. Native review of `x64-29-gameplay-render-completeness` and fix1
+
+Evidence: run `20261013T2039557801674Z` (valid wrapper PASS, 11,903 logic frames) and the two shorter runs.
+Receipts and the composed frames were correlated with each observation.
+
+| Observation | Root cause | Fix |
+| --- | --- | --- |
+| No smoke, explosions or flames | **Particle layer never submitted.** The effect receipts were healthy (1.2 M quads, 248 k batches emitted, `dropped=0`), so the chain was intact up to the batch list. When the layers were renumbered (overlay before particles) the submission loop was left at `layer <= LayerOverlay`; layer 4 was emitted, counted and never drawn. | Loop by `LayerCount` with a `static_assert`; a layer-by-layer pixel test; `particle_pipeline` receipt (requested / null template / created / removed / particles added / alive / peaks / manager updates and draws / quads / batches / submitted per layer); `ParticleSystemManager::PipelineStats`; render-rate `DRAW()` integration restored (particles moved only in 30 Hz steps); retail `ParticleSystem.ini` test: 806 templates parsed, 60 created, 1,394 particles alive, 48,611 quads, 5,612 particle-layer submissions, visible pixels |
+| Square/block pattern on slopes | **Overlay tessellation did not match the terrain.** The shroud overlay was built on its own sub-grid with interpolated `getGroundHeight` heights and a fixed diagonal; on steep terrain parts of its triangles fell under the terrain surface and the unshaded terrain showed through as squares. The same pattern applied to scorches and decals. | Shroud overlay and scorches are built on the terrain lattice with the terrain's own heights and cell diagonals (`getFlipState`), lifted by a constant; decals use a 2.5 unit lattice with a slope-dependent lift |
+| Shadows grey / wrong tone | The legacy `renderStencilShadows` blends **SRC = DESTCOLOR, DST = ZERO** (the framebuffer is multiplied by the shadow color; its alpha is unused). Native used SrcAlpha with the shadow alpha, which lightens bright ground toward the color. | `WorldBlend::Multiply` with the map shadow color, stencil-once kept |
+| Revealed buildings stay visible in fog | **Original behavior is correct; the dimming was missing.** In Generals a previously seen building stays as a ghost object (`RTS3DScene::renderOneObject`: a drawable info without a drawable is always fogged; objects with status past CLEAR are rendered through the shroud material pass, which darkens them to the fog level). Native drew ghosts at full brightness because the overlay only covers the ground. The live building was correctly hidden (`setFullyObscuredByShroud`) and replaced by its ghost. | `ObjectInput::shrouded` (ghosts, fogged, partial clear incl. the 2 s grace) multiplies lit vertex colors by the shroud level at the vertex position |
+| Window too small | 800x600 client | Review window: the logical display, UI and input stay 800x600; the window client is scaled (default 150 % = 1200x900, clamped to the work area, `GENERALS_NATIVE_REVIEW_SCALE` overrides) and DXGI stretches the swap chain; mouse coordinates are mapped back. The accepted `app_window` receipt is unchanged; a `review_window` receipt reports the scale |
+
+Adjacent findings: the retail sweep and effect tests did not cover the submission loop (now covered); particle
+textures with a missing file are counted (`exfthrower01.tga` is absent from the retail archives); the
+`g_googletest` binary shares process globals, so the particle test creates and restores its own engine
+globals; the `ParticleSystemManagerDummy` hid the real-manager path until X64.29 (now exercised in a test).
+
+## 10. Candidate `x64-29-gameplay-render-completeness-fix1`
+
+| Item | Value |
+| --- | --- |
+| Path | `build/dev-runtimes/native/Generals/x64-29-gameplay-render-completeness-fix1` |
+| `generalsv.exe` SHA-256 | `E8368F402D09910A5EFCF8B4C40F26483A8C8DB202A65414155D1528F3325103` (7,602,688 bytes) |
+| `generalsv.pdb` SHA-256 | `D65622127E757B7FA95DD76D70F47E3F3B01AFE84D039B1E33651599949023AC` |
+| `manifest.json` SHA-256 | `78AA3A28DE506112E63A1315C528ACF653B9C715530716183A9338005834B636` |
+| `ordinaryplay.json` SHA-256 | `604FD7E08470C34BE763211A5B66A596983C421905272489A87E7149031CBC01` |
+
+```powershell
+pwsh -NoProfile -File scripts/native-runtime/Invoke-NativeOrdinaryPlay.ps1 -Title Generals -Name x64-29-gameplay-render-completeness-fix1 -RunReviewedOrdinaryPlay
+```
+
+Validation: Win64 build + ctest 17/17, Win32 full build + ctest 25/25, `g_googletest` 183 pass (retail sweep
+`unsupported_state=0`, particle pipeline, layers, shroud dimming), `d3d11_ui_test` 32, `native_startup_gate_test`
+32, 7 Python contract files, 5 PowerShell workflows, stage + preflight PASS.
+
+Inspect in the next review: particles during combat, destruction and building fire/smoke (and
+`particle_pipeline` in `startup.log`); shadow tone (a bluish/dark multiply, no lightening) and no overlay
+squares on mountain slopes; fogged ghost buildings dimmed to the fog level and visible live buildings bright;
+the 1200x900 window (mouse position and edge scrolling still exact at the corners); and everything from the
+first checklist.

@@ -37,9 +37,14 @@ void standingWater(const float corners[4][3], float scrollPhase, unsigned diffus
 // the width (empty = opaque). False when the polygon is not a valid river.
 bool river(const float *points, int pointCount, int riverStart, float scrollPhase, unsigned diffuse,
            const std::vector<float> &edge, Mesh &out);
-// Shroud overlay over the cell rectangle [x0,x1) x [y0,y1); `ground` supplies the surface height.
+// Shroud overlay over the terrain lattice rectangle [lx0,lx1) x [ly0,ly1) (10 world units per lattice cell,
+// origin at the playable area): the terrain's own heights (`height`) and cell diagonals (`flip`), so the overlay
+// lies in the terrain surface. `levels` are the cellsX x cellsY shroud cells of `cell` world units.
 bool shroud(const unsigned char *levels, int cellsX, int cellsY, float cell, unsigned char border, bool filter,
-            int x0, int y0, int x1, int y1, int sub, float (*ground)(float, float), const float color[3], Mesh &out);
+            int lx0, int ly0, int lx1, int ly1, float (*height)(int, int), bool (*flip)(int, int),
+            const float color[3], Mesh &out);
+// Packed ARGB texel of a shroud level (level * shroud color, fully lit at 255).
+unsigned ShroudTexel(float level, const float color[3]);
 // One camera-facing particle quad (PointGroupClass QUADS layout).
 void billboard(const float center[3], const float right[3], const float up[3], float size, float angle,
                unsigned color, Mesh &out);
@@ -67,6 +72,19 @@ struct Stats
     unsigned shroudCells;         // shroud overlay cells emitted
     unsigned scorches;            // scorch marks emitted
     unsigned dropped;             // emissions refused by the chunk pool
+    // Particle pipeline (ParticleSystemManager::PipelineStats mirrored at render time):
+    unsigned pipelineRequested;       // createParticleSystem calls (FX nuggets, weapons, damage states ...)
+    unsigned pipelineNullTemplate;    // ... refused: template not found
+    unsigned pipelineCreated;         // systems instantiated
+    unsigned pipelineRemoved;         // systems that ended
+    unsigned pipelineParticlesAdded;  // particles created
+    unsigned pipelineUpdates;         // manager update calls (logic frames)
+    unsigned pipelineDraws;           // render-rate integrations
+    unsigned pipelinePeakSystems;
+    unsigned pipelinePeakParticles;
+    unsigned systemsAlive;            // right now
+    unsigned particlesAlive;          // right now
+    unsigned particlesAliveMax;
 };
 Stats stats();
 void resetStatsForTests();
@@ -90,6 +108,11 @@ void setShadowColor(unsigned argb);
 void setShroudLevel(int x, int y, unsigned char level);
 void setBorderShroudLevel(unsigned char level);
 void setShroudFilter(bool enable);
+// Multiplier (r,g,b in 0..1) the shroud applies at a world position (objects that are fogged or shrouded are
+// drawn through the shroud like the legacy shroud material pass). 1,1,1 when no shroud is active.
+void shroudMultiplierAt(float x, float y, float rgb[3]);
+// Test hook: installs a shroud level grid without a loaded map (cleared by uninstall()/releaseAll()).
+void setShroudForTests(int cellsX, int cellsY, float cellSize, const unsigned char *levels, unsigned char border);
 
 // Scorch marks (W3DScorch equivalent): terrain-following decals from the 3x3 EXScorch01 atlas.
 void addScorch(float x, float y, float z, float radius, int type, bool permanent);
@@ -106,6 +129,8 @@ inline void setShadowColor(unsigned) {}
 inline void setShroudLevel(int, int, unsigned char) {}
 inline void setBorderShroudLevel(unsigned char) {}
 inline void setShroudFilter(bool) {}
+inline void shroudMultiplierAt(float, float, float rgb[3]) { rgb[0] = rgb[1] = rgb[2] = 1.0f; }
+inline void setShroudForTests(int, int, float, const unsigned char *, unsigned char) {}
 inline void addScorch(float, float, float, float, int, bool) {}
 inline void clearScorches() {}
 }

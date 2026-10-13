@@ -20,6 +20,9 @@
 #include "GameClient/Drawable.h"
 #include "GameClient/DrawableInfo.h"
 #include "GameLogic/Object.h"
+#include "GameLogic/GameLogic.h"
+#include "Common/PlayerList.h"
+#include "Common/Player.h"
 #include "GameLogic/PartitionManager.h"
 #include "Common/FileSystem.h"
 #include "Common/File.h"
@@ -91,7 +94,8 @@ struct Chunk
     std::vector<unsigned short> indices;
 };
 
-enum Layer : unsigned char { LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4 };
+enum Layer : unsigned char { LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4, LayerCount = 5 };
+static_assert(LayerParticle + 1 == LayerCount, "submission iterates every layer up to LayerCount");
 
 struct Batch
 {
@@ -153,6 +157,7 @@ void NoteFailure(const std::string &name)
 
 FileReader g_testReader;
 unsigned g_testTargetSize[2] = {0, 0};
+std::function<void(D3D11Backend &)> g_frameHook;
 
 UITextureBytes ReadFile(const std::string &file)
 {
@@ -312,11 +317,23 @@ struct Frame
     float opacity;
     float tint[3];
     bool infantry;
+    bool shrouded;          // drawn through the shroud (legacy shroud material pass: fogged ghosts, partial clear)
     float distance;
     Vector3 cameraPosition;
     Matrix3D view;          // D3D-convention world -> camera transform (texture generation)
     unsigned drawnMeshes;
 };
+
+// Legacy shroud material pass for one vertex: the projected shroud texture multiplies the lit color.
+unsigned ApplyShroud(unsigned argb, float x, float y)
+{
+    float m[3];
+    NativeWorldEffects::shroudMultiplierAt(x, y, m);
+    if (m[0] >= 0.999f && m[1] >= 0.999f && m[2] >= 0.999f) return argb;
+    auto scale = [](unsigned c, float k) { return static_cast<unsigned>(std::min(255.0f, static_cast<float>(c) * k + 0.5f)); };
+    return (argb & 0xff000000u) | (scale((argb >> 16) & 0xff, m[0]) << 16) | (scale((argb >> 8) & 0xff, m[1]) << 8) |
+           scale(argb & 0xff, m[2]);
+}
 
 unsigned PackColor(float r, float g, float b, float a)
 {
@@ -592,6 +609,7 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
                 if (!dcg && dig && looks[m].emissiveFromVertex) vertexColor = dig[v];
                 out.diffuse = LitColor(looks[m], f, lights, normal[v], vertexColor,
                                        dcg != nullptr || (dig && looks[m].emissiveFromVertex), 1.0f);
+                if (f.shrouded) out.diffuse = ApplyShroud(out.diffuse, position[v].X, position[v].Y);
                 float u = uv ? uv[v].X : 0.0f;
                 float w = uv ? uv[v].Y : 0.0f;
                 if (mapped) {
@@ -669,6 +687,7 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
                     if (additive) { for (float &c : look.diffuse) c *= f.opacity; for (float &c : look.ambient) c *= f.opacity; }
                     vtx.diffuse = LitColor(look, f, lights, normal[v], vertexColor,
                                            dcg != nullptr || (dig && looks[m].emissiveFromVertex), alphaScale);
+                    if (f.shrouded) vtx.diffuse = ApplyShroud(vtx.diffuse, position[v].X, position[v].Y);
                 }
             }
             if (out.noDiffuse && opacityOverride && !additive) out.noDiffuse = false;
@@ -1021,6 +1040,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         f.opacity = input.opacity;
         f.tint[0] = input.tint[0]; f.tint[1] = input.tint[1]; f.tint[2] = input.tint[2];
         f.infantry = input.infantry;
+        f.shrouded = input.shrouded;
         const SphereClass &sphere = object->Get_Bounding_Sphere();
         if (camera.Cull_Sphere(sphere)) { ++s.stats.culled; object->Set_Visible(0); continue; }
         object->Set_Visible(1);
@@ -1034,6 +1054,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
 
     // Game-state-driven effects (particles, decals, shadows, water, shroud) join the same batch lists.
     NativeWorldEffects::collect(backend, camera);
+    if (g_frameHook) g_frameHook(backend);
 
     // Upload each chunk once, then submit: opaque in order, translucent back to front.
     WorldSubmission base;
@@ -1066,7 +1087,9 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
     unsigned translucent = 0;
     // Draw order: opaque objects (registration order), terrain decals (emission order), translucent
     // objects/water back to front, particles back to front, screen-space-of-the-world overlays (shroud).
-    for (unsigned layer = LayerOpaque; layer <= LayerOverlay; ++layer) {
+    // X64.29 review: the bound was left at LayerOverlay after the layers were renumbered, so the particle layer
+    // (and every effect after it) was emitted but never submitted. Iterate by count, never by name.
+    for (unsigned layer = 0; layer < LayerCount; ++layer) {
         std::vector<const Batch *> list;
         for (const Batch &b : s.batches) {
             const unsigned bl = b.layer;
@@ -1076,6 +1099,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
             std::stable_sort(list.begin(), list.end(), [](const Batch *a, const Batch *b) { return a->distance > b->distance; });
         for (const Batch *b : list) {
             submit(*b); ++submissions;
+            ++s.stats.layerDraws[layer];
             if (layer != LayerOpaque) ++translucent;
         }
     }
@@ -1107,10 +1131,28 @@ int render(D3D11Backend &backend, CameraClass &camera)
         input.foliage = entry.foliage;
         input.opacity = 1.0f;
         DrawableInfo *info = static_cast<DrawableInfo *>(object->Get_User_Data());
+        // RTS3DScene::renderOneObject: a drawable info without a drawable is a ghost (a fogged remnant), which
+        // is always fogged; live objects use the partition shroud status with the 2 second grace after a
+        // clear sighting (aircraft that pop out of the shroud). Anything past CLEAR is drawn through the shroud.
+        if (info && !info->m_drawable) input.shrouded = true;
         if (info && info->m_drawable) {
             Drawable *draw = info->m_drawable;
             if (draw->isDrawableEffectivelyHidden() || draw->getFullyObscuredByShroud()) {
                 ++s.stats.hidden; object->Set_Visible(0); continue;
+            }
+            if (const Object *owner = draw->getObject()) {
+                Int local = 0;
+                if (ThePlayerList && ThePlayerList->getLocalPlayer()) local = ThePlayerList->getLocalPlayer()->getPlayerIndex();
+                ObjectShroudStatus ss = owner->getShroudedStatus(local);
+                if (ss == OBJECTSHROUD_CLEAR) {
+                    draw->setShroudClearFrame(TheGameLogic ? TheGameLogic->getFrame() : 0);
+                } else if (ss >= OBJECTSHROUD_FOGGED && draw->getShroudClearFrame() != InvalidShroudClearFrame && TheGameLogic) {
+                    UnsignedInt limit = 2 * LOGICFRAMES_PER_SECOND;
+                    if (owner->isEffectivelyDead()) limit += 3 * LOGICFRAMES_PER_SECOND;
+                    if (TheGameLogic->getFrame() < limit + draw->getShroudClearFrame()) ss = OBJECTSHROUD_PARTIAL_CLEAR;
+                }
+                if (TheGlobalData && !TheGlobalData->m_shroudOn) ss = OBJECTSHROUD_CLEAR;
+                input.shrouded = ss > OBJECTSHROUD_CLEAR;
             }
             input.opacity = draw->getEffectiveOpacity();
             input.infantry = draw->isKindOf(KINDOF_INFANTRY);
@@ -1129,6 +1171,11 @@ int render(D3D11Backend &backend, CameraClass &camera)
     BuildLights(lights, false);
     BuildLights(infantry, true);
     return renderObjects(backend, camera, lights, infantry, inputs.data(), static_cast<unsigned>(inputs.size()));
+}
+
+void setFrameEffectHookForTests(std::function<void(D3D11Backend &)> hook)
+{
+    g_frameHook = std::move(hook);
 }
 
 void setRenderTargetSizeForTests(unsigned width, unsigned height)

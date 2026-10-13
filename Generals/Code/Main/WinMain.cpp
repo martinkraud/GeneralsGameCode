@@ -800,7 +800,19 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 	StartupDiagnostics::checkpoint( "app_window_class", "complete", "Game Window" );
 
 	NativeOrdinaryHost::WindowGeometry geometry = {};
-	if( !NativeOrdinaryHost::computeWindowGeometry( GetSystemMetrics( SM_CXSCREEN ), GetSystemMetrics( SM_CYSCREEN ), geometry ) )
+	// Developer-review window (play profile): the same 800x600 logical display shown larger.
+	int reviewPercent = 100;
+	if( StartupDiagnostics::ordinaryPlay() )
+	{
+		RECT work = { 0, 0, GetSystemMetrics( SM_CXSCREEN ), GetSystemMetrics( SM_CYSCREEN ) };
+		SystemParametersInfo( SPI_GETWORKAREA, 0, &work, 0 );
+		NativeOrdinaryHost::WindowGeometry probe = {};
+		if( NativeOrdinaryHost::computeWindowGeometry( 0, 0, probe, 100 ) )
+			reviewPercent = NativeOrdinaryHost::chooseReviewScalePercent( work.right - work.left, work.bottom - work.top,
+				probe.width - NativeOrdinaryHost::ClientWidth, probe.height - NativeOrdinaryHost::ClientHeight );
+		NativeOrdinaryHost::activeScalePercent() = reviewPercent;
+	}
+	if( !NativeOrdinaryHost::computeWindowGeometry( GetSystemMetrics( SM_CXSCREEN ), GetSystemMetrics( SM_CYSCREEN ), geometry, reviewPercent ) )
 		hostFail( "AdjustWindowRect" );
 
 	gInitializing = true;
@@ -811,7 +823,7 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 		hostFail( "CreateWindow" );
 	ApplicationHWnd = hWnd;  // same global the legacy path owns
 	if( !NativeOrdinaryHost::clientIsExact( hWnd ) )
-		hostFail( "Client area is not 800x600" );
+		hostFail( "Client area is not 800x600 (or its review scale)" );
 
 	SetWindowPos( hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
 	SetFocus( hWnd );
@@ -824,6 +836,15 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 	// Presentation owns the surface from here: never repaint the loading bitmap.
 	gDoPaint = false;
 	StartupDiagnostics::checkpoint( "app_window", "complete", "client=800x600 windowed=1 class=Game Window" );
+	if( StartupDiagnostics::ordinaryPlay() )
+	{
+		// Separate receipt: the accepted app_window detail stays byte-identical for the classifiers.
+		char detail[96];
+		sprintf_s( detail, "review_scale=%d%% window_client=%dx%d logical=800x600", NativeOrdinaryHost::activeScalePercent(),
+			NativeOrdinaryHost::scaledSize( 800, NativeOrdinaryHost::activeScalePercent() ),
+			NativeOrdinaryHost::scaledSize( 600, NativeOrdinaryHost::activeScalePercent() ) );
+		StartupDiagnostics::checkpoint( "review_window", "observed", detail );
+	}
 }
 
 static void releaseOrdinaryHostWindow( HINSTANCE hInstance )

@@ -3117,6 +3117,7 @@ ParticleSystemManager::ParticleSystemManager()
 {
 
 	m_uniqueSystemID = INVALID_PARTICLE_SYSTEM_ID;
+	memset(&m_pipeline, 0, sizeof(m_pipeline));
 
 	m_onScreenParticleCount = 0;
 	m_localPlayerIndex = 0;
@@ -3223,6 +3224,7 @@ void ParticleSystemManager::update()
 	// TheSuperHackers @tweak Complete the render update of the previous logic frame before the logic update
 	// changes the rates, so that every logic frame integrates exactly one logic time step.
 	completeLogicFrameDrawUpdate();
+	++m_pipeline.updateCalls;
 
 	ParticleSystemListIt it = m_allParticleSystemList.begin();
 	while( it != m_allParticleSystemList.end() )
@@ -3285,6 +3287,7 @@ void ParticleSystemManager::draw()
 		const Real timeScale = logicFramePhase - m_drawnLogicFramePhase;
 		drawSystems(timeScale);
 		m_drawnLogicFramePhase = logicFramePhase;
+		++m_pipeline.drawCalls;
 	}
 }
 
@@ -3327,12 +3330,18 @@ void ParticleSystemManager::setOnScreenParticleCount(int count)
 // ------------------------------------------------------------------------------------------------
 ParticleSystem *ParticleSystemManager::createParticleSystem( const ParticleSystemTemplate *sysTemplate, Bool createSlaves )
 {
+	++m_pipeline.systemsRequested;
+
 	// sanity
 	if (sysTemplate == nullptr)
+	{
+		++m_pipeline.systemsNullTemplate;
 		return nullptr;
+	}
 
 	m_uniqueSystemID = (ParticleSystemID)((UnsignedInt)m_uniqueSystemID + 1);
 	ParticleSystem *sys = newInstance(ParticleSystem)( sysTemplate, m_uniqueSystemID, createSlaves );
+	++m_pipeline.systemsCreated;
 	return sys;
 }
 
@@ -3487,6 +3496,9 @@ void ParticleSystemManager::addParticle( Particle *particleToAdd, ParticlePriori
 	particleToAdd->m_inOverallList = TRUE;
 
 	++m_particleCount;
+	++m_pipeline.particlesAdded;
+	if (m_particleCount > m_pipeline.peakParticles)
+		m_pipeline.peakParticles = m_particleCount;
 
 
 }
@@ -3530,6 +3542,8 @@ void ParticleSystemManager::friend_addParticleSystem( ParticleSystem *particleSy
 	m_allParticleSystemList.push_back(particleSystemToAdd);
 	m_systemMap[particleSystemToAdd->getSystemID()] = particleSystemToAdd;
 	++m_particleSystemCount;
+	if (m_particleSystemCount > m_pipeline.peakSystems)
+		m_pipeline.peakSystems = m_particleSystemCount;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -3542,6 +3556,7 @@ void ParticleSystemManager::friend_removeParticleSystem( ParticleSystem *particl
 		m_systemMap.erase((*it)->getSystemID());
 		m_allParticleSystemList.erase(it);
 		--m_particleSystemCount;
+		++m_pipeline.systemsRemoved;
 	} else {
 		DEBUG_CRASH(("ParticleSystemManager::friend_removeParticleSystem: ParticleSystem to remove was not recognized"));
 	}

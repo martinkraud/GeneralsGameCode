@@ -263,6 +263,22 @@ struct ParticleQuadBuilder
 void CollectParticles(D3D11Backend &backend, CameraClass &camera)
 {
     if (!TheParticleSystemManager || TheParticleSystemManager->isDummy()) return;
+    // Render-rate integration of the logic frame (W3DDisplay::draw does this before the scene render):
+    // particles advance smoothly between logic updates instead of in 30 Hz steps.
+    TheParticleSystemManager->DRAW();
+    const ParticleSystemManager::PipelineStats &pipeline = TheParticleSystemManager->getPipelineStats();
+    g_stats.pipelineRequested = pipeline.systemsRequested;
+    g_stats.pipelineNullTemplate = pipeline.systemsNullTemplate;
+    g_stats.pipelineCreated = pipeline.systemsCreated;
+    g_stats.pipelineRemoved = pipeline.systemsRemoved;
+    g_stats.pipelineParticlesAdded = pipeline.particlesAdded;
+    g_stats.pipelineUpdates = pipeline.updateCalls;
+    g_stats.pipelineDraws = pipeline.drawCalls;
+    g_stats.pipelinePeakSystems = pipeline.peakSystems;
+    g_stats.pipelinePeakParticles = pipeline.peakParticles;
+    g_stats.systemsAlive = TheParticleSystemManager->getParticleSystemCount();
+    g_stats.particlesAlive = TheParticleSystemManager->getParticleCount();
+    if (g_stats.particlesAlive > g_stats.particlesAliveMax) g_stats.particlesAliveMax = g_stats.particlesAlive;
     const Matrix3D &ct = camera.Get_Transform();
     ParticleQuadBuilder builder;
     Vector3 right, up;
@@ -460,6 +476,26 @@ float GroundHeight(float x, float y)
     return TheTerrainLogic->getGroundHeight(x, y);
 }
 
+// The terrain height field itself (what the terrain mesh is built from): lattice index relative to the
+// playable origin; the heights of bridges and objects are deliberately not part of it.
+float TerrainLatticeHeight(int lx, int ly)
+{
+    WorldHeightMap *map = TheTerrainRenderObject ? TheTerrainRenderObject->getMap() : nullptr;
+    if (!map) return 0.0f;
+    const int border = map->getBorderSizeInline();
+    const int x = std::max(0, std::min(map->getXExtent() - 1, lx + border));
+    const int y = std::max(0, std::min(map->getYExtent() - 1, ly + border));
+    return static_cast<float>(map->getDataPtr()[x + y * map->getXExtent()]) * MAP_HEIGHT_SCALE;
+}
+
+bool TerrainLatticeFlip(int lx, int ly)
+{
+    WorldHeightMap *map = TheTerrainRenderObject ? TheTerrainRenderObject->getMap() : nullptr;
+    if (!map) return false;
+    const int border = map->getBorderSizeInline();
+    return map->getFlipState(lx + border, ly + border) != FALSE;
+}
+
 // Terrain-conforming textured grid (SHADOW_DECAL, ALPHA_DECAL, ADDITIVE_DECAL and radius decals).
 void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, float cy, float yaw, float distance)
 {
@@ -471,8 +507,11 @@ void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, floa
         }
     }
     if (!(sx > 0.01f) || !(sy > 0.01f) || sx > 4000.0f || sy > 4000.0f) return;
-    int nu = static_cast<int>(std::ceil(sx / 10.0f)) + 1, nv = static_cast<int>(std::ceil(sy / 10.0f)) + 1;
-    nu = std::max(2, std::min(nu, 17)); nv = std::max(2, std::min(nv, 17));
+    // 2.5 unit steps (a quarter of the terrain cell) keep the decal within a fraction of a unit of the
+    // surface; the lift below covers the remaining fold deviation on steep slopes.
+    int nu = static_cast<int>(std::ceil(sx / 2.5f)) + 1, nv = static_cast<int>(std::ceil(sy / 2.5f)) + 1;
+    nu = std::max(2, std::min(nu, 33)); nv = std::max(2, std::min(nv, 33));
+    const float stepX = sx / static_cast<float>(nu - 1), stepY = sy / static_cast<float>(nv - 1);
     const float c = std::cos(yaw), s = std::sin(yaw);
     static std::vector<WorldVertexXYZDUV2> vertices;
     static std::vector<unsigned short> indices;
@@ -486,7 +525,10 @@ void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, floa
             WorldVertexXYZDUV2 v;
             v.x = cx + lx * c - ly * s;
             v.y = cy + lx * s + ly * c;
-            v.z = GroundHeight(v.x, v.y) + 0.35f;
+            const float h = GroundHeight(v.x, v.y);
+            const float gx = (GroundHeight(v.x + 1.25f, v.y) - h) / 1.25f, gy = (GroundHeight(v.x, v.y + 1.25f) - h) / 1.25f;
+            const float slope = std::min(2.0f, std::sqrt(gx * gx + gy * gy));
+            v.z = h + 0.3f + slope * 0.5f * std::max(stepX, stepY);
             v.diffuse = color;
             v.u0 = v.u1 = fu; v.v0 = v.v1 = 1.0f - fv;
             vertices.push_back(v);
@@ -585,7 +627,9 @@ void EmitVolumeShadow(D3D11Backend &backend, const NativeShadow &shadow, const V
     static std::vector<WorldVertexXYZDUV2> vertices;
     static std::vector<unsigned short> indices;
     vertices.resize(positions.size());
-    const unsigned color = g_shadowColor;
+    // renderStencilShadows: SRCBLEND = DESTCOLOR, DESTBLEND = ZERO with the shadow color: the framebuffer is
+    // multiplied by the shadow color (its alpha is not used) wherever the stencil is set.
+    const unsigned color = 0xff000000u | (g_shadowColor & 0x00ffffffu);
     const Vector3 center = object->Get_Position();
     // Small objects (units) are projected onto the terrain plane fitted at their position (three height
     // samples); large ones (structures) follow the height field per vertex. Both avoid a height lookup
@@ -624,7 +668,7 @@ void EmitVolumeShadow(D3D11Backend &backend, const NativeShadow &shadow, const V
     NativeWorldObjects::EffectBatch b = {};
     b.vertices = vertices.data(); b.vertexCount = static_cast<unsigned>(vertices.size());
     b.indices = indices.data(); b.indexCount = static_cast<unsigned>(indices.size());
-    b.blend = WorldBlend::SrcAlpha;
+    b.blend = WorldBlend::Multiply;
     b.depthWrite = false;
     b.doubleSided = true;
     b.stencilOnce = true;
@@ -826,6 +870,7 @@ struct ShroudState
     unsigned char border = 0;
     bool filter = true;
     unsigned updates = 0;
+    bool forced = false;     // test hook: levels supplied without a map
 };
 ShroudState g_shroud;
 
@@ -833,6 +878,7 @@ ShroudState g_shroud;
 // inside the logic-side shroud update) and followed by a refresh, like W3DShroud::init.
 bool ShroudReady()
 {
+    if (g_shroud.forced) return !g_shroud.levels.empty();
     if (!TheTerrainRenderObject || !TheGlobalData) return false;
     WorldHeightMap *map = TheTerrainRenderObject->getMap();
     const float cell = TheGlobalData->m_partitionCellSize > 1.0f ? TheGlobalData->m_partitionCellSize : 40.0f;
@@ -910,7 +956,7 @@ void CollectScorches(D3D11Backend &backend, CameraClass &camera)
                     const float X = static_cast<float>(i) * 10.0f, Y = static_cast<float>(j) * 10.0f;
                     WorldVertexXYZDUV2 v;
                     v.x = X; v.y = Y;
-                    v.z = GroundHeight(X, Y) + 0.2f;   // MAP_HEIGHT_SCALE / 10 above the terrain
+                    v.z = TerrainLatticeHeight(i, j) + 0.2f;   // MAP_HEIGHT_SCALE / 10 above the terrain
                     v.diffuse = diffuse;
                     v.u0 = v.u1 = (uOffset + 0.5f + (X - sc.x) / (2.0f * sc.radius)) / 4.0f;
                     v.v0 = v.v1 = (vOffset + 0.5f + (Y - sc.y) / (2.0f * sc.radius)) / 4.0f;
@@ -920,8 +966,13 @@ void CollectScorches(D3D11Backend &backend, CameraClass &camera)
             for (int j = 0; j + 1 < ny; ++j) {
                 for (int i = 0; i + 1 < nx; ++i) {
                     const unsigned short a = static_cast<unsigned short>(j * nx + i), c = static_cast<unsigned short>(a + nx);
-                    mesh.indices.push_back(a); mesh.indices.push_back(static_cast<unsigned short>(c + 1)); mesh.indices.push_back(c);
-                    mesh.indices.push_back(a); mesh.indices.push_back(static_cast<unsigned short>(a + 1)); mesh.indices.push_back(static_cast<unsigned short>(c + 1));
+                    if (TerrainLatticeFlip(minX + i, minY + j)) {   // the terrain's own diagonal (W3DScorch flip state)
+                        mesh.indices.push_back(static_cast<unsigned short>(a + 1)); mesh.indices.push_back(c); mesh.indices.push_back(a);
+                        mesh.indices.push_back(static_cast<unsigned short>(a + 1)); mesh.indices.push_back(static_cast<unsigned short>(c + 1)); mesh.indices.push_back(c);
+                    } else {
+                        mesh.indices.push_back(a); mesh.indices.push_back(static_cast<unsigned short>(c + 1)); mesh.indices.push_back(c);
+                        mesh.indices.push_back(a); mesh.indices.push_back(static_cast<unsigned short>(a + 1)); mesh.indices.push_back(static_cast<unsigned short>(c + 1));
+                    }
                 }
             }
             NativeWorldObjects::EffectBatch e = {};
@@ -946,31 +997,37 @@ void CollectShroud(D3D11Backend &backend, CameraClass &camera)
     AABoxClass visible;
     if (!TheTerrainRenderObject->getMaximumVisibleBox(camera.Get_Frustum(), &visible, TRUE)) return;
     const float cell = g_shroud.cell;
-    int x0 = static_cast<int>(std::floor((visible.Center.X - visible.Extent.X) / cell)) - 1;
-    int x1 = static_cast<int>(std::ceil((visible.Center.X + visible.Extent.X) / cell)) + 1;
-    int y0 = static_cast<int>(std::floor((visible.Center.Y - visible.Extent.Y) / cell)) - 1;
-    int y1 = static_cast<int>(std::ceil((visible.Center.Y + visible.Extent.Y) / cell)) + 1;
-    x0 = std::max(x0, -2); y0 = std::max(y0, -2);
-    x1 = std::min(x1, g_shroud.cellsX + 1); y1 = std::min(y1, g_shroud.cellsY + 1);
-    if (x1 <= x0 || y1 <= y0 || x1 - x0 > 120 || y1 - y0 > 120) return;
-    int sub = std::max(1, std::min(4, static_cast<int>(cell / 10.0f)));
-    // Reduce the tessellation until the overlay fits one batch (zoomed-out views).
-    while (sub > 1 && static_cast<size_t>((x1 - x0) * sub + 1) * static_cast<size_t>((y1 - y0) * sub + 1) > 60000) --sub;
+    WorldHeightMap *map = TheTerrainRenderObject->getMap();
+    const int border = map->getBorderSizeInline();
+    // Terrain lattice rectangle under the visible box (one lattice cell of margin), inside the drawn map.
+    int lx0 = static_cast<int>(std::floor((visible.Center.X - visible.Extent.X) / 10.0f)) - 1;
+    int lx1 = static_cast<int>(std::ceil((visible.Center.X + visible.Extent.X) / 10.0f)) + 1;
+    int ly0 = static_cast<int>(std::floor((visible.Center.Y - visible.Extent.Y) / 10.0f)) - 1;
+    int ly1 = static_cast<int>(std::ceil((visible.Center.Y + visible.Extent.Y) / 10.0f)) + 1;
+    lx0 = std::max(lx0, -border); ly0 = std::max(ly0, -border);
+    lx1 = std::min(lx1, map->getXExtent() - 1 - border); ly1 = std::min(ly1, map->getYExtent() - 1 - border);
+    if (lx1 <= lx0 || ly1 <= ly0) return;
+    // A zoomed-out view can exceed one batch: split into horizontal bands.
+    const int bandRows = std::max(1, 59000 / (lx1 - lx0 + 1) - 1);
     const float color[3] = {TheGlobalData->m_shroudColor.red, TheGlobalData->m_shroudColor.green,
                             TheGlobalData->m_shroudColor.blue};
     static Geometry::Mesh mesh;
-    mesh.vertices.clear(); mesh.indices.clear();
-    if (!Geometry::shroud(g_shroud.levels.data(), g_shroud.cellsX, g_shroud.cellsY, cell, g_shroud.border,
-                          g_shroud.filter, x0, y0, x1, y1, sub, &GroundHeight, color, mesh)) return;
-    NativeWorldObjects::EffectBatch b = {};
-    b.vertices = mesh.vertices.data(); b.vertexCount = static_cast<unsigned>(mesh.vertices.size());
-    b.indices = mesh.indices.data(); b.indexCount = static_cast<unsigned>(mesh.indices.size());
-    b.blend = WorldBlend::Multiply;
-    b.depthWrite = false; b.doubleSided = true; b.noDiffuse = false;
-    b.layer = NativeWorldObjects::EffectLayerOverlay;
-    if (NativeWorldObjects::emitEffect(backend, b))
-        g_stats.shroudCells += static_cast<unsigned>((x1 - x0) * (y1 - y0));
-    else ++g_stats.dropped;
+    for (int row = ly0; row < ly1; row += bandRows) {
+        const int rowEnd = std::min(ly1, row + bandRows);
+        mesh.vertices.clear(); mesh.indices.clear();
+        if (!Geometry::shroud(g_shroud.levels.data(), g_shroud.cellsX, g_shroud.cellsY, cell, g_shroud.border,
+                              g_shroud.filter, lx0, row, lx1, rowEnd, &TerrainLatticeHeight, &TerrainLatticeFlip,
+                              color, mesh)) continue;
+        NativeWorldObjects::EffectBatch b = {};
+        b.vertices = mesh.vertices.data(); b.vertexCount = static_cast<unsigned>(mesh.vertices.size());
+        b.indices = mesh.indices.data(); b.indexCount = static_cast<unsigned>(mesh.indices.size());
+        b.blend = WorldBlend::Multiply;
+        b.depthWrite = false; b.doubleSided = true; b.noDiffuse = false;
+        b.layer = NativeWorldObjects::EffectLayerOverlay;
+        if (NativeWorldObjects::emitEffect(backend, b))
+            g_stats.shroudCells += static_cast<unsigned>((lx1 - lx0) * (rowEnd - row));
+        else ++g_stats.dropped;
+    }
 }
 } // namespace
 
@@ -1022,6 +1079,40 @@ void setBorderShroudLevel(unsigned char level)
 void setShroudFilter(bool enable)
 {
     g_shroud.filter = enable;
+}
+
+void setShroudForTests(int cellsX, int cellsY, float cellSize, const unsigned char *levels, unsigned char border)
+{
+    g_shroud = ShroudState{};
+    g_shroud.forced = true;
+    g_shroud.cellsX = cellsX; g_shroud.cellsY = cellsY; g_shroud.cell = cellSize; g_shroud.border = border;
+    g_shroud.levels.assign(levels, levels + static_cast<size_t>(cellsX) * cellsY);
+}
+
+void shroudMultiplierAt(float x, float y, float rgb[3])
+{
+    rgb[0] = rgb[1] = rgb[2] = 1.0f;
+    if (!ShroudReady()) return;
+    auto at = [&](int cx, int cy) -> float {
+        if (cx < 0 || cy < 0 || cx >= g_shroud.cellsX || cy >= g_shroud.cellsY) return static_cast<float>(g_shroud.border);
+        return static_cast<float>(g_shroud.levels[static_cast<size_t>(cy) * g_shroud.cellsX + cx]);
+    };
+    float level;
+    if (g_shroud.filter) {
+        const float cx = x / g_shroud.cell - 0.5f, cy = y / g_shroud.cell - 0.5f;
+        const int ix = static_cast<int>(std::floor(cx)), iy = static_cast<int>(std::floor(cy));
+        const float tx = cx - static_cast<float>(ix), ty = cy - static_cast<float>(iy);
+        level = (at(ix, iy) * (1 - tx) + at(ix + 1, iy) * tx) * (1 - ty) + (at(ix, iy + 1) * (1 - tx) + at(ix + 1, iy + 1) * tx) * ty;
+    } else {
+        level = at(static_cast<int>(std::floor(x / g_shroud.cell)), static_cast<int>(std::floor(y / g_shroud.cell)));
+    }
+    const float color[3] = {TheGlobalData ? TheGlobalData->m_shroudColor.red : 1.0f,
+                            TheGlobalData ? TheGlobalData->m_shroudColor.green : 1.0f,
+                            TheGlobalData ? TheGlobalData->m_shroudColor.blue : 1.0f};
+    const unsigned t = Geometry::ShroudTexel(level, color);
+    rgb[0] = static_cast<float>((t >> 16) & 0xff) / 255.0f;
+    rgb[1] = static_cast<float>((t >> 8) & 0xff) / 255.0f;
+    rgb[2] = static_cast<float>(t & 0xff) / 255.0f;
 }
 
 void addScorch(float x, float y, float z, float radius, int type, bool permanent)
@@ -1167,58 +1258,68 @@ bool river(const float *points, int pointCount, int riverStart, float scrollPhas
 }
 
 bool shroud(const unsigned char *levels, int cellsX, int cellsY, float cell, unsigned char border, bool filter,
-            int x0, int y0, int x1, int y1, int sub, float (*ground)(float, float), const float color[3], Mesh &out)
+            int lx0, int ly0, int lx1, int ly1, float (*height)(int, int), bool (*flip)(int, int),
+            const float color[3], Mesh &out)
 {
-    if (!levels || cellsX <= 0 || cellsY <= 0 || x1 <= x0 || y1 <= y0 || sub < 1) return false;
-    const int nx = x1 - x0, ny = y1 - y0;
-    const int vx = nx * sub + 1, vy = ny * sub + 1;
+    // The overlay is built on the terrain lattice (10 world units) with the terrain's own heights and cell
+    // diagonals, then lifted by a constant. Any other tessellation (arbitrary sub-division, interpolated
+    // heights) cuts under the surface on steep slopes and leaves unshaded squares there (X64.29 review).
+    if (!levels || cellsX <= 0 || cellsY <= 0 || lx1 <= lx0 || ly1 <= ly0 || !height) return false;
+    const int nx = lx1 - lx0, ny = ly1 - ly0;
+    const int vx = nx + 1, vy = ny + 1;
     if (static_cast<size_t>(vx) * vy > 60000) return false;
     auto at = [&](int x, int y) -> float {
         if (x < 0 || y < 0 || x >= cellsX || y >= cellsY) return static_cast<float>(border);
         return static_cast<float>(levels[static_cast<size_t>(y) * cellsX + x]);
     };
-    auto packed = [&](float level) -> unsigned {
-        const unsigned char l = static_cast<unsigned char>(std::min(255.0f, std::max(0.0f, level)) + 0.5f);
-        // texel = level * shroudColor, fully lit at 255 (W3DShroud::setShroudLevel)
-        float r = 255.0f, g = 255.0f, b = 255.0f;
-        if (l != 255) { r = l * color[0]; g = l * color[1]; b = l * color[2]; }
-        auto q = [](float v) { return static_cast<unsigned>(std::max(0.0f, std::min(255.0f, v + 0.5f))); };
-        return 0xff000000u | (q(r) << 16) | (q(g) << 8) | q(b);
-    };
     out.vertices.reserve(out.vertices.size() + static_cast<size_t>(vx) * vy);
     const unsigned base = static_cast<unsigned>(out.vertices.size());
     for (int j = 0; j < vy; ++j) {
         for (int i = 0; i < vx; ++i) {
-            const float fx = static_cast<float>(x0) + static_cast<float>(i) / static_cast<float>(sub);
-            const float fy = static_cast<float>(y0) + static_cast<float>(j) / static_cast<float>(sub);
-            const float wx = fx * cell, wy = fy * cell;
+            const int lx = lx0 + i, ly = ly0 + j;
+            const float wx = static_cast<float>(lx) * 10.0f, wy = static_cast<float>(ly) * 10.0f;
             float level;
             if (filter) {
                 // bilinear between neighbouring cell centers (texel centers at cell + 0.5)
-                const float cx = fx - 0.5f, cy = fy - 0.5f;
+                const float cx = wx / cell - 0.5f, cy = wy / cell - 0.5f;
                 const int ix = static_cast<int>(std::floor(cx)), iy = static_cast<int>(std::floor(cy));
                 const float tx = cx - static_cast<float>(ix), ty = cy - static_cast<float>(iy);
                 level = (at(ix, iy) * (1 - tx) + at(ix + 1, iy) * tx) * (1 - ty) +
                         (at(ix, iy + 1) * (1 - tx) + at(ix + 1, iy + 1) * tx) * ty;
             } else {
-                level = at(static_cast<int>(std::floor(fx)), static_cast<int>(std::floor(fy)));
+                level = at(static_cast<int>(std::floor(wx / cell)), static_cast<int>(std::floor(wy / cell)));
             }
             WorldVertexXYZDUV2 v;
-            v.x = wx; v.y = wy; v.z = (ground ? ground(wx, wy) : 0.0f) + 0.6f;
-            v.diffuse = packed(level);
+            v.x = wx; v.y = wy; v.z = height(lx, ly) + 0.35f;
+            v.diffuse = ShroudTexel(level, color);
             v.u0 = v.u1 = v.v0 = v.v1 = 0.0f;
             out.vertices.push_back(v);
         }
     }
-    for (int j = 0; j + 1 < vy; ++j) {
-        for (int i = 0; i + 1 < vx; ++i) {
-            const unsigned short a = static_cast<unsigned short>(base + j * vx + i), b = static_cast<unsigned short>(a + 1);
-            const unsigned short c = static_cast<unsigned short>(a + vx), d = static_cast<unsigned short>(c + 1);
-            out.indices.push_back(a); out.indices.push_back(c); out.indices.push_back(b);
-            out.indices.push_back(b); out.indices.push_back(c); out.indices.push_back(d);
+    for (int j = 0; j < ny; ++j) {
+        for (int i = 0; i < nx; ++i) {
+            const unsigned short a0 = static_cast<unsigned short>(base + j * vx + i), a1 = static_cast<unsigned short>(a0 + 1);
+            const unsigned short c0 = static_cast<unsigned short>(a0 + vx), c1 = static_cast<unsigned short>(c0 + 1);
+            if (flip && flip(lx0 + i, ly0 + j)) {
+                out.indices.push_back(a1); out.indices.push_back(c0); out.indices.push_back(a0);
+                out.indices.push_back(a1); out.indices.push_back(c1); out.indices.push_back(c0);
+            } else {
+                out.indices.push_back(a0); out.indices.push_back(c1); out.indices.push_back(c0);
+                out.indices.push_back(a0); out.indices.push_back(a1); out.indices.push_back(c1);
+            }
         }
     }
     return true;
+}
+
+unsigned ShroudTexel(float level, const float color[3])
+{
+    // texel = level * shroudColor, fully lit at 255 (W3DShroud::setShroudLevel)
+    const unsigned char l = static_cast<unsigned char>(std::min(255.0f, std::max(0.0f, level)) + 0.5f);
+    float r = 255.0f, g = 255.0f, b = 255.0f;
+    if (l != 255) { r = l * color[0]; g = l * color[1]; b = l * color[2]; }
+    auto q = [](float v) { return static_cast<unsigned>(std::max(0.0f, std::min(255.0f, v + 0.5f))); };
+    return 0xff000000u | (q(r) << 16) | (q(g) << 8) | q(b);
 }
 
 void billboard(const float center[3], const float right[3], const float up[3], float size, float angle,

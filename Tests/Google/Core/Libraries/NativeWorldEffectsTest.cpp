@@ -80,7 +80,6 @@ unsigned Differing(const std::vector<unsigned char> &a, const std::vector<unsign
     return n;
 }
 
-float ground(float x, float y) { return 2.0f + 0.01f * x + 0.02f * y; }
 
 bool WriteBmp(const std::string &path, const std::vector<unsigned char> &rgba, unsigned w, unsigned h)
 {
@@ -143,38 +142,131 @@ TEST(NativeWorldEffectsTest, RiverStripWalksInwardAndAppliesTheEdgeAlphaProfile)
     EXPECT_FALSE(NativeWorldEffects::Geometry::river(flat.data(), 3, 0, 0.0f, 0xffffffffu, {}, bad));
 }
 
-TEST(NativeWorldEffectsTest, ShroudOverlayFollowsTheTerrainAndTheCellLevels)
+float latticeHeight(int x, int y) { return 2.0f + 0.1f * static_cast<float>(x) + 0.2f * static_cast<float>(y); }
+bool latticeFlip(int x, int y) { return ((x + y) & 1) != 0; }
+
+TEST(NativeWorldEffectsTest, ShroudOverlayLiesInTheTerrainSurfaceWithTheTerrainDiagonals)
 {
-    // 4x4 cells of 40 units; everything clear (255) except cell (1,1) shrouded (0) and (2,1) fogged (127).
+    // 4x4 shroud cells of 40 units (a 16x16 terrain lattice); all clear (255) except cell (1,1) shrouded (0)
+    // and cell (2,1) fogged (127).
     std::vector<unsigned char> levels(16, 255);
     levels[1 * 4 + 1] = 0;
     levels[1 * 4 + 2] = 127;
     const float white[3] = {1.0f, 1.0f, 1.0f};
     Mesh smooth, blocky;
-    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 0, true, 0, 0, 4, 4, 2, &ground, white, smooth));
-    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 0, false, 0, 0, 4, 4, 2, &ground, white, blocky));
-    const int vx = 4 * 2 + 1;
+    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 0, true, 0, 0, 16, 16, &latticeHeight, &latticeFlip, white, smooth));
+    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 0, false, 0, 0, 16, 16, &latticeHeight, &latticeFlip, white, blocky));
+    const int vx = 17;
     auto at = [&](const Mesh &m, int i, int j) { return m.vertices[static_cast<size_t>(j) * vx + i]; };
-    // Heights come from the supplied terrain plus the bias.
-    EXPECT_NEAR(at(smooth, 3, 5).z, ground(at(smooth, 3, 5).x, at(smooth, 3, 5).y) + 0.6f, 1e-4f);
-    // Blocky: inside the shrouded cell the overlay is black, inside a clear cell white.
-    EXPECT_EQ(at(blocky, 2, 2).diffuse & 0xffffffu, 0x000000u);   // world (40,40): cell (1,1) corner -> cell (1,1)
+    ASSERT_EQ(smooth.vertices.size(), static_cast<size_t>(17 * 17));
+    ASSERT_EQ(smooth.indices.size(), static_cast<size_t>(16 * 16 * 6));
+    // Every vertex is a terrain lattice vertex lifted by a constant (so the overlay is in the surface).
+    for (int j = 0; j < 17; j += 5)
+        for (int i = 0; i < 17; i += 3) {
+            EXPECT_FLOAT_EQ(at(smooth, i, j).x, static_cast<float>(i) * 10.0f);
+            EXPECT_FLOAT_EQ(at(smooth, i, j).y, static_cast<float>(j) * 10.0f);
+            EXPECT_NEAR(at(smooth, i, j).z, latticeHeight(i, j) + 0.35f, 1e-4f);
+        }
+    // Cell (0,0) is not flipped, cell (1,0) is flipped: the diagonals follow the terrain's.
+    auto cellTriangles = [&](int i, int j) {
+        const size_t first = (static_cast<size_t>(j) * 16 + i) * 6;
+        return std::vector<unsigned short>(smooth.indices.begin() + first, smooth.indices.begin() + first + 6);
+    };
+    const unsigned short a0 = 0, a1 = 1, c0 = 17, c1 = 18;
+    EXPECT_EQ(cellTriangles(0, 0), (std::vector<unsigned short>{a0, c1, c0, a0, a1, c1}));
+    const unsigned short b0 = 1, b1 = 2, d0 = 18, d1 = 19;
+    EXPECT_EQ(cellTriangles(1, 0), (std::vector<unsigned short>{b1, d0, b0, b1, d1, d0}));
+    // Piecewise-constant sampling: inside the shrouded cell black, inside a clear cell white, fog about half.
+    EXPECT_EQ(at(blocky, 5, 5).diffuse & 0xffffffu, 0x000000u);      // world (50,50): cell (1,1)
     EXPECT_EQ(at(blocky, 0, 0).diffuse & 0xffffffu, 0xffffffu);
-    // Smooth: the same vertex lies between texel centers, so it is a blend (neither black nor white).
-    const unsigned s = at(smooth, 2, 2).diffuse & 0xff;
-    EXPECT_GT(s, 0u);
-    EXPECT_LT(s, 255u);
-    // Fogged cell is dimmed to about half.
-    const unsigned f = at(blocky, 5, 3).diffuse & 0xff;   // world (100,60): cell (2,1)
-    EXPECT_NEAR(static_cast<float>(f), 127.0f, 1.0f);
+    EXPECT_NEAR(static_cast<float>(at(blocky, 9, 5).diffuse & 0xff), 127.0f, 1.0f);   // world (90,50): cell (2,1)
+    // Bilinear between cell centers (20 + 40 k): at the shrouded cell's own center the level is 0, at the
+    // boundary to a clear cell it is halfway.
+    EXPECT_EQ(at(smooth, 6, 6).diffuse & 0xff, 0u);                  // world (60,60): center of cell (1,1)
+    const unsigned boundary = at(smooth, 8, 6).diffuse & 0xff;       // world (80,60): between (1,1)=0 and (2,1)=127
+    EXPECT_NEAR(static_cast<float>(boundary), 63.5f, 1.5f);
     // A tinted shroud color multiplies the level.
     const float tint[3] = {1.0f, 0.5f, 0.0f};
     Mesh tinted;
-    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 0, false, 0, 0, 4, 4, 1, &ground, tint, tinted));
-    const unsigned fogged = tinted.vertices[static_cast<size_t>(1) * 5 + 2].diffuse;   // cell (2,1)
+    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 0, false, 0, 0, 16, 16, &latticeHeight, &latticeFlip, tint, tinted));
+    const unsigned fogged = at(tinted, 9, 5).diffuse;
     EXPECT_NEAR(static_cast<float>((fogged >> 16) & 0xff), 127.0f, 1.0f);
     EXPECT_NEAR(static_cast<float>((fogged >> 8) & 0xff), 64.0f, 1.0f);
     EXPECT_EQ(fogged & 0xff, 0u);
+    // Outside the shroud grid the border level applies.
+    Mesh outside;
+    ASSERT_TRUE(NativeWorldEffects::Geometry::shroud(levels.data(), 4, 4, 40.0f, 77, false, -4, -4, 0, 0, &latticeHeight, nullptr, white, outside));
+    EXPECT_EQ(outside.vertices[0].diffuse & 0xff, 77u);
+}
+
+namespace
+{
+// One opaque-alpha quad on the z=0 plane around the origin, in a single flat color.
+void EmitColorQuad(D3D11Backend &backend, unsigned argb, int layer)
+{
+    WorldVertexXYZDUV2 v[4];
+    const float h = 30.0f;
+    const float xs[4] = {-h, h, h, -h}, ys[4] = {-h, -h, h, h};
+    for (int i = 0; i < 4; ++i) {
+        v[i].x = xs[i]; v[i].y = ys[i]; v[i].z = 0.0f; v[i].diffuse = argb;
+        v[i].u0 = v[i].v0 = v[i].u1 = v[i].v1 = 0.0f;
+    }
+    static const unsigned short idx[6] = {0, 2, 1, 0, 3, 2};
+    NativeWorldObjects::EffectBatch b = {};
+    b.vertices = v; b.vertexCount = 4; b.indices = idx; b.indexCount = 6;
+    b.blend = WorldBlend::SrcAlpha;
+    b.depthWrite = false; b.doubleSided = true; b.noDiffuse = false;
+    b.layer = layer;
+    EXPECT_TRUE(NativeWorldObjects::emitEffect(backend, b));
+}
+
+std::vector<unsigned char> CenterPixel(const std::vector<unsigned char> &px, unsigned size)
+{
+    const size_t at = (static_cast<size_t>(size / 2) * size + size / 2) * 4;
+    return {px[at], px[at + 1], px[at + 2]};
+}
+}
+
+TEST(NativeWorldEffectsTest, EveryEffectLayerIsSubmittedAndDrawnInOrder)
+{
+    // Regression for the X64.29 review (no smoke, flames or explosions): the submission loop stopped one layer
+    // short, so the particle layer was emitted, counted, and never drawn. Each layer must reach D3D11, later
+    // layers must paint over earlier ones.
+    Rig rig;
+    ASSERT_TRUE(rig.backend);
+    const int layers[] = {NativeWorldObjects::EffectLayerDecal, NativeWorldObjects::EffectLayerTranslucent,
+                          NativeWorldObjects::EffectLayerOverlay, NativeWorldObjects::EffectLayerParticle};
+    const unsigned colors[] = {0xffff0000u, 0xff00ff00u, 0xff0000ffu, 0xffffff00u};   // red, green, blue, yellow
+    const unsigned char expectR[4] = {255, 0, 0, 255}, expectG[4] = {0, 255, 0, 255}, expectB[4] = {0, 0, 255, 0};
+
+    // Each layer alone is visible.
+    for (int i = 0; i < 4; ++i) {
+        NativeWorldObjects::resetStatsForTests();
+        NativeWorldObjects::setFrameEffectHookForTests([&](D3D11Backend &b) { EmitColorQuad(b, colors[i], layers[i]); });
+        const std::vector<unsigned char> frame = rig.render(nullptr, 0);
+        const std::vector<unsigned char> c = CenterPixel(frame, rig.size);
+        EXPECT_EQ(c[0], expectR[i]) << "layer " << layers[i];
+        EXPECT_EQ(c[1], expectG[i]) << "layer " << layers[i];
+        EXPECT_EQ(c[2], expectB[i]) << "layer " << layers[i];
+        EXPECT_GE(NativeWorldObjects::stats().layerDraws[layers[i]], 1u) << "layer " << layers[i];
+    }
+
+    // All layers at once, emitted in reverse order: the highest layer wins regardless of emission order.
+    NativeWorldObjects::resetStatsForTests();
+    NativeWorldObjects::setFrameEffectHookForTests([&](D3D11Backend &b) {
+        for (int i = 3; i >= 0; --i) EmitColorQuad(b, colors[i], layers[i]);
+    });
+    std::vector<unsigned char> c = CenterPixel(rig.render(nullptr, 0), rig.size);
+    EXPECT_EQ(c[0], 255); EXPECT_EQ(c[1], 255); EXPECT_EQ(c[2], 0);   // the particle layer (yellow) is on top
+    for (int i = 0; i < 4; ++i) EXPECT_GE(NativeWorldObjects::stats().layerDraws[layers[i]], 1u);
+
+    // Without the particle layer the shroud overlay is on top, then translucents, then decals.
+    NativeWorldObjects::setFrameEffectHookForTests([&](D3D11Backend &b) {
+        for (int i = 0; i < 3; ++i) EmitColorQuad(b, colors[i], layers[i]);
+    });
+    c = CenterPixel(rig.render(nullptr, 0), rig.size);
+    EXPECT_EQ(c[0], 0); EXPECT_EQ(c[1], 0); EXPECT_EQ(c[2], 255);
+    NativeWorldObjects::setFrameEffectHookForTests({});
 }
 
 TEST(NativeWorldEffectsTest, BillboardQuadIsCameraFacingAndRotates)
@@ -282,6 +374,79 @@ TEST(NativeWorldEffectsTest, ShadowManagerSurvivesReleaseAfterUninstall)
     NativeWorldEffects::uninstall();   // display detach comes before late drawable teardown in some paths
     shadow->release();                 // must not touch the removed manager
     SUCCEED();
+}
+
+TEST(NativeWorldEffectsTest, ObjectsDrawnThroughTheShroudAreDimmedLikeTheLegacyShroudPass)
+{
+    // A fogged ghost (or a partially clear object) is rendered with the shroud material pass: its lit color is
+    // multiplied by the shroud level at its position. Live clear objects are untouched.
+    const char *assets = std::getenv("GENERALS_OFFLINE_ASSETS");
+    if (!assets || !*assets) GTEST_SKIP() << "GENERALS_OFFLINE_ASSETS not set (opt-in asset test)";
+    std::string dir = assets;
+    if (dir.back() != '\\' && dir.back() != '/') dir += '\\';
+    SimpleFileFactoryClass factory;
+    factory.Set_Sub_Directory(dir.c_str());
+    FileFactoryClass *previous = _TheFileFactory;
+    _TheFileFactory = &factory;
+    NativeWorldObjects::setFileReaderForTests([dir](const std::string &path, std::vector<unsigned char> &bytes) {
+        std::string leaf = path;
+        const size_t slash = leaf.find_last_of("\\/");
+        if (slash != std::string::npos) leaf = leaf.substr(slash + 1);
+        std::ifstream file(dir + leaf, std::ios::binary);
+        if (!file) return false;
+        bytes.assign(std::istreambuf_iterator<char>(file), {});
+        return true;
+    });
+    {
+        WW3DAssetManager manager;
+        manager.Set_WW3D_Load_On_Demand(true);
+        RenderObjClass *building = manager.Create_Render_Obj("ABBARRACKS");
+        ASSERT_NE(building, nullptr);
+        Rig rig(192);
+        ASSERT_TRUE(rig.backend);
+        rig.lights.count = 1;
+        rig.lights.direction[0][0] = 0.3f; rig.lights.direction[0][1] = -0.4f; rig.lights.direction[0][2] = 0.85f;
+        rig.lights.diffuse[0][0] = rig.lights.diffuse[0][1] = rig.lights.diffuse[0][2] = 0.8f;
+        NativeWorldObjects::ObjectInput input = {};
+        input.object = building;
+        input.opacity = 1.0f;
+        auto brightness = [](const std::vector<unsigned char> &px) {
+            double sum = 0; unsigned n = 0;
+            for (size_t i = 0; i + 3 < px.size(); i += 4) {
+                const unsigned v = px[i] + px[i + 1] + px[i + 2];
+                if (px[i] != 51 && v > 0) { sum += v; ++n; }
+            }
+            return n ? sum / n : 0.0;
+        };
+        const std::vector<unsigned char> clear = rig.render(&input, 1);
+        ASSERT_GT(brightness(clear), 30.0);
+
+        // Every shroud cell fogged (127): a shrouded object is about half as bright, a clear one unchanged.
+        std::vector<unsigned char> levels(64 * 64, 127);
+        NativeWorldEffects::setShroudForTests(64, 64, 40.0f, levels.data(), 127);
+        const std::vector<unsigned char> clearInFog = rig.render(&input, 1);
+        input.shrouded = true;
+        const std::vector<unsigned char> fogged = rig.render(&input, 1);
+        EXPECT_EQ(Differing(clear, clearInFog), 0u) << "a clear object is not shrouded";
+        EXPECT_GT(Differing(clear, fogged), 500u);
+        const double ratio = brightness(fogged) / std::max(1.0, brightness(clear));
+        EXPECT_NEAR(ratio, 127.0 / 255.0, 0.12) << "fog level 127 halves the object's brightness";
+
+        // Fully shrouded cells black the object out; fully clear cells leave it as it was.
+        std::fill(levels.begin(), levels.end(), 0);
+        NativeWorldEffects::setShroudForTests(64, 64, 40.0f, levels.data(), 0);
+        EXPECT_LT(brightness(rig.render(&input, 1)), brightness(clear) * 0.05);
+        std::fill(levels.begin(), levels.end(), 255);
+        NativeWorldEffects::setShroudForTests(64, 64, 40.0f, levels.data(), 255);
+        EXPECT_EQ(Differing(clear, rig.render(&input, 1)), 0u);
+
+        NativeWorldEffects::uninstall();
+        NativeWorldObjects::releaseAll();
+        building->Release_Ref();
+        manager.Free_Assets();
+    }
+    NativeWorldObjects::setFileReaderForTests({});
+    _TheFileFactory = previous;
 }
 
 TEST(NativeWorldEffectsTest, PlanarVolumeShadowIsBlendedOncePerPixel)

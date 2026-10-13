@@ -35,6 +35,9 @@
 #include "GameClient/GameClient.h"
 #include "Win32Device/GameClient/Win32Mouse.h"
 #include "WinMain.h"
+#if defined(_WIN64)
+#include "Common/NativeOrdinaryHost.h"
+#endif
 
 
 // EXTERN /////////////////////////////////////////////////////////////////////////////////////////
@@ -233,6 +236,15 @@ void Win32Mouse::translateEvent( UnsignedInt eventIndex, MouseIO *result )
 		}
 
 	}
+#if defined(_WIN64)
+	{
+		// Developer-review window (play profile): window coordinates back to the logical 800x600 display.
+		long x = result->pos.x, y = result->pos.y;
+		NativeOrdinaryHost::clientToLogical( x, y );
+		result->pos.x = x;
+		result->pos.y = y;
+	}
+#endif
 
 }
 

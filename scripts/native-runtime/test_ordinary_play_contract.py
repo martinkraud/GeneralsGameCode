@@ -155,6 +155,32 @@ class OrdinaryPlayContract(unittest.TestCase):
         objects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp")
         self.assertIn("LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4", objects)
 
+    def test_x64_29_review_fixes_are_pinned(self):
+        objects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp")
+        # The particle layer was emitted but never submitted: iterate by count, never up to a named layer.
+        self.assertIn("for (unsigned layer = 0; layer < LayerCount; ++layer) {", objects)
+        self.assertNotIn("layer <= LayerOverlay", objects)
+        self.assertIn("static_assert(LayerParticle + 1 == LayerCount", objects)
+        effects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp")
+        # Legacy renderStencilShadows: SRCBLEND = DESTCOLOR, DESTBLEND = ZERO (multiply by the shadow color).
+        volume = effects.split("void EmitVolumeShadow(", 1)[1].split("void CollectShadows(", 1)[0]
+        self.assertIn("b.blend = WorldBlend::Multiply;", volume)
+        self.assertIn("b.stencilOnce = true;", volume)
+        # Overlay/scorch geometry lies on the terrain lattice with the terrain's own diagonals.
+        self.assertIn("TerrainLatticeFlip", effects)
+        self.assertIn("&TerrainLatticeHeight, &TerrainLatticeFlip", effects)
+        # Objects fogged/ghosted are drawn through the shroud like the legacy shroud material pass.
+        self.assertIn("if (info && !info->m_drawable) input.shrouded = true;", objects)
+        self.assertIn("input.shrouded = ss > OBJECTSHROUD_CLEAR;", objects)
+        # The review window keeps the accepted app_window receipt and the logical 800x600 display.
+        main = read("Generals/Code/Main/WinMain.cpp")
+        self.assertIn('"client=800x600 windowed=1 class=Game Window"', main)
+        self.assertIn('checkpoint( "review_window", "observed"', main)
+        host = read("Core/GameEngine/Include/Common/NativeOrdinaryHost.h")
+        self.assertIn("GENERALS_NATIVE_REVIEW_SCALE", host)
+        mouse = read("Core/GameEngineDevice/Source/Win32Device/GameClient/Win32Mouse.cpp")
+        self.assertIn("NativeOrdinaryHost::clientToLogical", mouse)
+
     def test_zero_hour_sources_do_not_mention_play(self):
         zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")
         self.assertNotIn("ordinaryPlay", zh)

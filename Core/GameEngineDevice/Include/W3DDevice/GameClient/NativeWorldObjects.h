@@ -60,6 +60,7 @@ struct Stats
     unsigned textureFailures;  // textures that could not be decoded (white fallback)
     unsigned teamColored;      // team-color recolors applied
     unsigned effectBatches;    // batches emitted by the effect producers (particles, lines, decals, water, shroud)
+    unsigned layerDraws[8];    // draw submissions per layer: opaque, decal, translucent, shroud overlay, particles
     unsigned unsupportedClass; // render objects of classes not drawn by this pass
     unsigned unsupportedState; // shader/material states approximated or ignored (sum of the families below)
     // Family breakdown of unsupportedState (X64.29): measured per drawn mesh/batch, never silently dropped.
@@ -96,6 +97,7 @@ struct ObjectInput
     float opacity;      // Drawable::getEffectiveOpacity (1 = opaque)
     float tint[3];      // summed FX tint + selection color added to ambient
     bool infantry;      // uses the infantry light scale set
+    bool shrouded;      // fogged/shrouded/partially clear object or fogged ghost: drawn through the shroud
     const char *textureOverride;   // replaces every polygon texture (tree atlas textures), or null
     bool foliage;       // alpha-tested, double-sided, depth-writing (the tree buffer shader state)
 };
@@ -151,6 +153,8 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
 // Test hook: replaces the engine file factory as the texture byte source (empty = engine factory).
 using FileReader = std::function<bool(const std::string &path, std::vector<unsigned char> &bytes)>;
 void setFileReaderForTests(FileReader reader);
+// Test hook: called once per frame after the effect producers, before submission; may call emitEffect.
+void setFrameEffectHookForTests(std::function<void(D3D11Backend &)> hook);
 // Test hook: render-target size used for the viewport instead of WW3D's (0 = use WW3D).
 void setRenderTargetSizeForTests(unsigned width, unsigned height);
 Stats stats();

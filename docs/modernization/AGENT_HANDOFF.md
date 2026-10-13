@@ -258,6 +258,10 @@ backend. Deferred: radar minimap, terrain tracks, smudge, snow, tree sway, bibs/
 soft projection shadows, dual-stage materials. Crash isolation: `GENERALS_NATIVE_DISABLE` (comma list of
 particles, ghosts, shadows, water, shroud, scorches, lines, mappers). The First Playable baseline
 (`x64-28-play-world-fix2`) stays the regression reference; do not rerun the earlier candidates.
+**X64.29 review stabilization:** root causes and fixes in `GAMEPLAY_RENDERING_COMPLETENESS.md` section 9
+(particle layer never submitted; overlay tessellation vs terrain; multiply shadows; shroud pass for ghosts;
+review window scale). Candidate `x64-29-gameplay-render-completeness-fix1` staged and preflighted, not executed.
+Env: `GENERALS_NATIVE_REVIEW_SCALE` (percent or factor, default 150), `GENERALS_NATIVE_DISABLE`.
 
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
