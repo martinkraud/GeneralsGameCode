@@ -44,6 +44,7 @@
 #include "WW3D2/rendobj.h"
 #include "W3DDevice/GameClient/Module/W3DDebrisDraw.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DShadow.h"
@@ -75,6 +76,8 @@ W3DDebrisDraw::~W3DDebrisDraw()
 	{
 		if (W3DDisplay::m_3DScene != nullptr)
 			W3DDisplay::m_3DScene->Remove_Render_Object(m_renderObject);
+		else
+			NativeWorldObjects::remove(m_renderObject);
   	REF_PTR_RELEASE(m_renderObject);
  		m_renderObject = nullptr;
 	}
@@ -114,6 +117,8 @@ void W3DDebrisDraw::setModelName(AsciiString name, Color color, ShadowType t)
 		{
 			if (W3DDisplay::m_3DScene != nullptr)
 				W3DDisplay::m_3DScene->Add_Render_Object(m_renderObject);
+			else
+				NativeWorldObjects::add(m_renderObject, hexColor);
 
 			m_renderObject->Set_User_Data(getDrawable()->getDrawableInfo());
 

@@ -56,6 +56,7 @@
 #include "GameLogic/Module/PhysicsUpdate.h"
 #include "W3DDevice/GameClient/Module/W3DModelDraw.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DShadow.h"
@@ -2816,6 +2817,8 @@ void W3DModelDraw::nukeCurrentRender(Matrix3D* xform)
 			*xform = m_renderObject->Get_Transform();
 		if (W3DDisplay::m_3DScene != nullptr)
 			W3DDisplay::m_3DScene->Remove_Render_Object(m_renderObject);
+		else
+			NativeWorldObjects::remove(m_renderObject);
 		REF_PTR_RELEASE(m_renderObject);
 		m_renderObject = nullptr;
 	}
@@ -3146,6 +3149,8 @@ void W3DModelDraw::setModelState(const ModelConditionInfo* newState)
 			// add render object to our scene
 			if (W3DDisplay::m_3DScene != nullptr)
 				W3DDisplay::m_3DScene->Add_Render_Object(m_renderObject);
+			else
+				NativeWorldObjects::add(m_renderObject, m_hexColor);
 
 			// tie in our drawable as the user data pointer in the render object
 			m_renderObject->Set_User_Data(draw->getDrawableInfo());

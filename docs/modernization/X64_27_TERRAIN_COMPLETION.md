@@ -176,3 +176,34 @@ map_roads=588 map_bridges=0`, i.e. 4 overlay draws in the first frame (extra-ble
 Gate: no change. The classifier correctly reported the missing summary/teardown rows as failures.
 Candidate: `x64-27-terrain-completion-fix2`. **Select Lone Eagle explicitly in Skirmish setup** (the UI
 remembers the last map).
+
+## fix2 run: FORMALLY ACCEPTED (20261013T0638444013011Z)
+
+Run `build/dev-runtimes/native/Generals/x64-27-terrain-completion-fix2/runs/20261013T0638444013011Z`
+(immutable). Machine gate PASS, developer visual review PASS, recorded separately.
+
+Machine evidence (independent review of `startup.log`, `exit.json`, `launch.json`):
+
+- OS exit 0, no timeout/launcher error, 263 contiguous same-process records, zero fail rows, no dumps,
+  `shutdown-exception.bin` empty. `game_summary presents=5384 updates=5305 logic_frames=1800
+  exit=frame_bound driver=hardware`.
+- `terrain_summary frames=3600 draws=72845 atlas_uploads=1 tile_uploads=16 tile_updates=84
+  cloud_frames=3600 noise_frames=3600 macro_loads=2 extra_frames=3600 extra_tiles=274669 road_frames=3600
+  road_draws=11645 bridge_frames=0 shore_frames=0 texture_loads=5` (the 640-byte summary buffer held it).
+- Map reported by the engine: `map_extra=350 map_shore=0 map_roads=588 map_bridges=0` (**Alpine Assault**).
+  The classifier therefore correctly required extra-blend and road coverage and did not require bridges or
+  shoreline.
+- Camera exercise intact: six scripted moves, `tile_updates` 16 -> 84 strictly increasing, every probe 80 %
+  non-black. `ui_probe` strip 64/62/66 % (left/mid/right), whole 91 %; `ControlBarParent hidden=0
+  pos=0,416 size=800x184`, `radar=dummy`.
+- `ui_residency_release live_residencies=0 before backend release`; final `WinMain exit`.
+
+Developer visual review: terrain, roads and rail-like infrastructure, moving cloud shadows, and the
+original Control Bar all correct.
+
+What this accepts: native D3D11 terrain completion for the paths executed on Alpine Assault - combined
+single-pass terrain, extra-blend tiles, roads, cloud/noise, dynamic geometry, the profile-only Control Bar
+presentation update and teardown. **Not exercised, therefore not accepted:** bridges (`detailAlphaShader`
+alpha-test path) and destination-alpha shoreline. They remain covered by the offline WARP contract tests
+only; the next native run that uses a map with bridges/shoreline (Lone Eagle) closes them. This is carried
+as a coverage item inside the larger batches of `FIRST_PLAYABLE_ROADMAP.md`, not as a separate checkpoint.

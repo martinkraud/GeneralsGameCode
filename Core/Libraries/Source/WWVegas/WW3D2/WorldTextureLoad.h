@@ -213,11 +213,11 @@ inline void BuildMips(WorldTextureImage &image, unsigned levels)
 }
 }
 
-// `name` is the legacy texture name with a 3-letter extension (usually .tga); the .dds sibling is tried first.
-inline WorldTextureResult Load_World_Texture(const std::string &name, const UITextureReader &read, unsigned levels)
+// Decodes only the top level (no mip chain); callers that recolor the texels build mips afterwards.
+inline WorldTextureResult Load_World_Texture_Base(const std::string &name, const UITextureReader &read)
 {
     WorldTextureResult result;
-    if (name.size() < 4 || name[name.size() - 4] != '.' || levels < 1 || levels > 12) {
+    if (name.size() < 4 || name[name.size() - 4] != '.') {
         result.status = UITextureStatus::Unsupported; return result;
     }
     const UITextureBytes dds = read(name.substr(0, name.size() - 3) + "dds");
@@ -228,8 +228,17 @@ inline WorldTextureResult Load_World_Texture(const std::string &name, const UITe
         if (tga.status != UITextureStatus::Ready) { result.status = tga.status; return result; }
         result = WorldTexture::DecodeTGA(tga.bytes);
     } else {
-        result.status = dds.status; return result;
+        result.status = dds.status;
     }
+    return result;
+}
+
+// `name` is the legacy texture name with a 3-letter extension (usually .tga); the .dds sibling is tried first.
+inline WorldTextureResult Load_World_Texture(const std::string &name, const UITextureReader &read, unsigned levels)
+{
+    WorldTextureResult result;
+    if (levels < 1 || levels > 12) { result.status = UITextureStatus::Unsupported; return result; }
+    result = Load_World_Texture_Base(name, read);
     if (result.status == UITextureStatus::Ready) WorldTexture::BuildMips(result.image, levels);
     return result;
 }

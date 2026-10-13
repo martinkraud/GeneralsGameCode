@@ -243,6 +243,7 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11PixelShader> terrainPS, terrainCombinedPS, overlayPS;
     ComPtr<ID3D11RasterizerState> worldRasterNoCull;
     ComPtr<ID3D11BlendState> blendAlphaOnly;
+    ComPtr<ID3D11BlendState> worldBlends[static_cast<size_t>(WorldBlend::Count)];
     ComPtr<ID3D11SamplerState> cloudSampler, noiseSampler;
     ComPtr<ID3D11InputLayout> worldLayout;
     ComPtr<ID3D11Buffer> worldCB;
@@ -296,6 +297,33 @@ struct D3D11Backend::Impl {
             bd.RenderTarget[0].BlendEnable = FALSE;
             bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;   // D3DCOLORWRITEENABLE_ALPHA
             Check(device->CreateBlendState(&bd, &blendAlphaOnly), "Create alpha-only blend state");
+            struct Pair { D3D11_BLEND src, dst; bool enable; };
+            static const Pair pairs[static_cast<size_t>(WorldBlend::Count)] = {
+                {D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, true},   // SrcAlpha
+                {D3D11_BLEND_ONE, D3D11_BLEND_ZERO, false},                 // Opaque
+                {D3D11_BLEND_ONE, D3D11_BLEND_ONE, true},                   // Additive
+                {D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_ONE, true},             // AdditiveAlpha
+                {D3D11_BLEND_ZERO, D3D11_BLEND_SRC_COLOR, true},            // Multiply
+                {D3D11_BLEND_ZERO, D3D11_BLEND_INV_SRC_COLOR, true},        // InvMultiply
+                {D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, true},         // Premultiplied
+            };
+            for (size_t i = 0; i < static_cast<size_t>(WorldBlend::Count); ++i) {
+                D3D11_BLEND_DESC d{};
+                auto &rt = d.RenderTarget[0];
+                rt.BlendEnable = pairs[i].enable ? TRUE : FALSE;
+                // The alpha channel cannot use *_COLOR factors in D3D11; the equivalent alpha factor is used.
+                auto alphaFactor = [](D3D11_BLEND b) {
+                    return b == D3D11_BLEND_SRC_COLOR ? D3D11_BLEND_SRC_ALPHA
+                         : b == D3D11_BLEND_INV_SRC_COLOR ? D3D11_BLEND_INV_SRC_ALPHA : b;
+                };
+                rt.SrcBlend = pairs[i].src;
+                rt.DestBlend = pairs[i].dst;
+                rt.SrcBlendAlpha = alphaFactor(pairs[i].src);
+                rt.DestBlendAlpha = alphaFactor(pairs[i].dst);
+                rt.BlendOp = rt.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+                rt.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+                Check(device->CreateBlendState(&d, &worldBlends[i]), "Create world blend state");
+            }
         }
         {
             // Legacy stage states: cloud = bilinear, noise = min point / mag linear; both wrap,
@@ -813,8 +841,10 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     auto *srv = texture->view.Get(); auto *smp = sampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, impl->dsv.Get());
     ID3D11BlendState *blendState = s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get();
-    if (s.material == WorldMaterial::TerrainOverlay)
-        blendState = s.alpha_only ? impl->blendAlphaOnly.Get() : impl->blend.Get();
+    if (s.material == WorldMaterial::TerrainOverlay) {
+        if (static_cast<size_t>(s.blend) >= static_cast<size_t>(WorldBlend::Count)) Unsupported();
+        blendState = s.alpha_only ? impl->blendAlphaOnly.Get() : impl->worldBlends[static_cast<size_t>(s.blend)].Get();
+    }
     impl->context->OMSetBlendState(blendState,
                                    nullptr, 0xffffffff);
     impl->context->OMSetDepthStencilState(s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get(), 0);

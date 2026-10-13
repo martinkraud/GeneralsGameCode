@@ -10,6 +10,7 @@ set(GAMEENGINEDEVICE_SRC
 #    Include/W3DDevice/GameClient/camerashakesystem.h
     Include/W3DDevice/GameClient/FlatHeightMap.h
     Include/W3DDevice/GameClient/HeightMap.h
+    Include/W3DDevice/GameClient/NativeWorldObjects.h
     Include/W3DDevice/GameClient/Module/W3DDebrisDraw.h
     Include/W3DDevice/GameClient/Module/W3DDefaultDraw.h
     Include/W3DDevice/GameClient/Module/W3DDependencyModelDraw.h
@@ -138,6 +139,7 @@ set(GAMEENGINEDEVICE_SRC
     Source/W3DDevice/GameClient/GUI/W3DGameWindow.cpp
     Source/W3DDevice/GameClient/GUI/W3DGameWindowManager.cpp
     Source/W3DDevice/GameClient/HeightMap.cpp
+    Source/W3DDevice/GameClient/NativeWorldObjects.cpp
 #    Source/W3DDevice/GameClient/Shadow/W3DBufferManager.cpp
 #    Source/W3DDevice/GameClient/Shadow/W3DProjectedShadow.cpp
 #    Source/W3DDevice/GameClient/Shadow/W3DShadow.cpp

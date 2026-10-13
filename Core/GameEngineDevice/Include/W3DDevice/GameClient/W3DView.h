@@ -151,6 +151,11 @@ public:
 	virtual void stepView() override; ///< Update view for every fixed time step
 
 	virtual void draw() override;  ///< draw this view
+#if defined(_WIN64)
+	/// Native terrain profile: the per-drawable 2D UI pass (health bars, veterancy, names) that the
+	/// legacy draw() runs after the 3D scene. Same iteration and callbacks, no legacy scene.
+	void drawNativeWorldOverlays();
+#endif
 	virtual void update() override;	///<called once per frame to determine the final camera and object transforms
 
 	virtual Drawable *pickDrawable( const ICoord2D *screen, Bool forceAttack, PickType pickType ) override;  ///< pick drawable given the screen pixel coords.  If force attack, picks bridges.

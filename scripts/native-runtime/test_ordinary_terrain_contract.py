@@ -96,8 +96,10 @@ class OrdinaryTerrainContract(unittest.TestCase):
         view = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DView.cpp")
         # Unconditional edits are headless-only or null-scene-only (never true on Win32 W3DView).
         self.assertIn("W3DDisplay::m_3DScene ? W3DDisplay::m_3DScene->createLightsIterator() : nullptr", view)
-        self.assertIn("// The headless world selection (native terrain profile) has no drawable rendering.", view)
-        self.assertIn("if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryTerrain())", view)
+        # X64.28: drawable rendering is enabled only for the play profile; the terrain profile and every
+        # other headless selection keep returning before the drawable iteration.
+        self.assertIn("// The headless world selection has no drawable rendering, except in the native play profile", view)
+        self.assertIn("if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryPlay())", view)
 
     def test_native_pass_is_terrain_only_and_explicit(self):
         heightmap = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp")

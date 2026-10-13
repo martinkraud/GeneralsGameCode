@@ -1439,10 +1439,18 @@ void ControlBar::update()
 	if (TheGlobalData->m_headless)
 	{
 #if defined(_WIN64)
-		if (StartupDiagnostics::ordinaryTerrain())
-			updateNativePresentation();
-#endif
+		// The native play profile runs the complete update (context UI, command buttons, build/production
+		// state): the real window manager and Control Bar windows exist there. The terrain-only profile
+		// keeps the presentation subset. Every other headless run has no Control Bar windows at all.
+		if (!StartupDiagnostics::ordinaryPlay())
+		{
+			if (StartupDiagnostics::ordinaryTerrain())
+				updateNativePresentation();
+			return;
+		}
+#else
 		return;
+#endif
 	}
 	getStarImage();
 	updateRadarAttackGlow();

@@ -682,3 +682,64 @@ TEST(NativeOrdinaryTerrainGate, ConfigureImpliesGameStackAndGameNeverImpliesTerr
     ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
 }
 #endif
+
+// ---------------------------------------------------------------------------
+// Ordinary-play profile (X64.28): fifth distinct token; implies terrain/game/menu/host.
+// ---------------------------------------------------------------------------
+TEST(NativeOrdinaryPlayGate, DistinctStrictToken) {
+    HostArgs args;
+    char *copy[12] = {};
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    char play[] = "-nativeOrdinaryPlay";
+    copy[9] = play;
+#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryPlayArguments(11, copy));
+#else
+    EXPECT_TRUE(StartupDiagnostics::validOrdinaryPlayArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryTerrainArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryGameArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryMenuArguments(11, copy));
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryHostArguments(11, copy));
+    char extra[] = "-file"; copy[11] = extra;
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryPlayArguments(12, copy));
+    // The terrain token never validates as play.
+    char terrain[] = "-nativeOrdinaryTerrain"; copy[9] = terrain;
+    EXPECT_FALSE(StartupDiagnostics::validOrdinaryPlayArguments(11, copy));
+#endif
+}
+
+#if defined(_WIN64) && !(defined(RTS_ZEROHOUR) && RTS_ZEROHOUR)
+TEST(NativeOrdinaryPlayGate, ConfigureImpliesTerrainStackAndTerrainNeverImpliesPlay) {
+    char temp[MAX_PATH], unique[MAX_PATH];
+    ASSERT_NE(GetTempPathA(MAX_PATH, temp), 0u);
+    ASSERT_NE(GetTempFileNameA(temp, "x28", 0, unique), 0u);
+    ASSERT_TRUE(DeleteFileA(unique)); ASSERT_TRUE(CreateDirectoryA(unique, nullptr));
+    std::string root(unique), data = root + "\\userdata", dump = data + "\\CrashDumps", log = root + "\\startup.log";
+    ASSERT_TRUE(CreateDirectoryA(data.c_str(), nullptr)); ASSERT_TRUE(CreateDirectoryA(dump.c_str(), nullptr));
+    HostArgs args;
+    std::strcpy(args.root, unique);
+    char *copy[11];
+    for (int i = 0; i < 11; ++i) copy[i] = const_cast<char *>(args.tokens[i]);
+    copy[9] = const_cast<char *>("-nativeOrdinaryPlay");
+    StartupDiagnostics::state() = {};
+    const bool configured = StartupDiagnostics::configure(11, copy);
+    ASSERT_TRUE(configured) << "requested=" << StartupDiagnostics::state().requested
+        << " valid=" << StartupDiagnostics::state().valid << " play=" << StartupDiagnostics::state().ordinaryPlay
+        << " terrain=" << StartupDiagnostics::state().ordinaryTerrain << " root=" << copy[10];
+    EXPECT_TRUE(StartupDiagnostics::ordinaryPlay());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryTerrain());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryGame());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryMenu());
+    EXPECT_TRUE(StartupDiagnostics::ordinaryHost());
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    copy[9] = const_cast<char *>("-nativeOrdinaryTerrain");
+    ASSERT_TRUE(StartupDiagnostics::configure(11, copy));
+    EXPECT_TRUE(StartupDiagnostics::ordinaryTerrain());
+    EXPECT_FALSE(StartupDiagnostics::ordinaryPlay()); // the accepted terrain profile stays scripted/bounded
+    StartupDiagnostics::close(); StartupDiagnostics::state() = {};
+    ASSERT_TRUE(DeleteFileA(log.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(dump.c_str())); ASSERT_TRUE(RemoveDirectoryA(data.c_str()));
+    ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
+}
+#endif

@@ -753,6 +753,45 @@ TEST(WorldTest, OverlayAlphaOnlyWritesDestinationAlphaAndLeavesColor)
     EXPECT_EQ(px[3], 77);        // destination alpha = LUT alpha
 }
 
+TEST(WorldTest, OverlayBlendModesMatchLegacyShaderBlendPairsOverAGrayTarget)
+{
+    // The W3D mesh shader blend pairs (ShaderClass src/dst) over a 128-gray destination.
+    WorldFixture f;
+    auto tex = SolidTexture(*f.backend, 200, 100, 50, 255);
+    std::unique_ptr<GeometryResidency> opaque(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f)));
+    std::unique_ptr<GeometryResidency> half(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(128, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f)));
+    auto draw = [&](GeometryResidency *geometry, WorldBlend blend) {
+        auto sub = f.Submission(geometry, WorldMaterial::TerrainOverlay, false);
+        sub.texture = tex.get();
+        sub.blend = blend;
+        f.backend->Clear(true, true, Vector3(128.0f / 255.0f, 128.0f / 255.0f, 128.0f / 255.0f), 1.0f, 1.0f, 0);
+        f.backend->Begin_Scene();
+        f.backend->Submit_World(sub);
+        f.backend->End_Scene(false);
+        return f.backend->Readback_RGBA8();
+    };
+    const float a = 128.0f / 255.0f;
+    auto px = draw(opaque.get(), WorldBlend::Opaque);                       // ONE, ZERO
+    EXPECT_NEAR(px[0], 200, 1.5); EXPECT_NEAR(px[1], 100, 1.5); EXPECT_NEAR(px[2], 50, 1.5);
+    px = draw(opaque.get(), WorldBlend::Additive);                          // ONE, ONE
+    EXPECT_NEAR(px[0], 255, 1.5); EXPECT_NEAR(px[1], 228, 1.5); EXPECT_NEAR(px[2], 178, 1.5);
+    px = draw(half.get(), WorldBlend::AdditiveAlpha);                       // SRC_ALPHA, ONE
+    EXPECT_NEAR(px[0], 128 + 200 * a, 2.0); EXPECT_NEAR(px[1], 128 + 100 * a, 2.0); EXPECT_NEAR(px[2], 128 + 50 * a, 2.0);
+    px = draw(opaque.get(), WorldBlend::Multiply);                          // ZERO, SRC_COLOR
+    EXPECT_NEAR(px[0], 128.0f * 200 / 255, 2.0); EXPECT_NEAR(px[1], 128.0f * 100 / 255, 2.0);
+    EXPECT_NEAR(px[2], 128.0f * 50 / 255, 2.0);
+    px = draw(opaque.get(), WorldBlend::InvMultiply);                       // ZERO, ONE_MINUS_SRC_COLOR
+    EXPECT_NEAR(px[0], 128.0f * 55 / 255, 2.0); EXPECT_NEAR(px[1], 128.0f * 155 / 255, 2.0);
+    EXPECT_NEAR(px[2], 128.0f * 205 / 255, 2.0);
+    px = draw(half.get(), WorldBlend::SrcAlpha);                            // SRC_ALPHA, ONE_MINUS_SRC_ALPHA
+    EXPECT_NEAR(px[0], 200 * a + 128 * (1 - a), 2.0);
+    px = draw(half.get(), WorldBlend::Premultiplied);                       // ONE, ONE_MINUS_SRC_ALPHA
+    EXPECT_NEAR(px[0], std::min(255.0f, 200 + 128 * (1 - a)), 2.0);         // source rgb is not scaled by alpha
+    EXPECT_NEAR(px[1], 100 + 128 * (1 - a), 2.0);
+}
+
 TEST(WorldTest, DynamicGeometryUpdatesVerticesAndIndicesAndDrawsVaryingCounts)
 {
     WorldFixture f;

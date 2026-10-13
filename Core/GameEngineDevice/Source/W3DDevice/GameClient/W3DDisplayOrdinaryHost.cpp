@@ -33,9 +33,15 @@
 #include "GameClient/View.h"
 #include "W3DDevice/GameClient/W3DView.h"
 #include "W3DDevice/GameClient/HeightMap.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/BaseHeightMap.h"
 #include "WW3D2/camera.h"
 #include "GameClient/ControlBar.h"
+#include "GameClient/InGameUI.h"
+#include "GameClient/Drawable.h"
+#include "GameLogic/Object.h"
+#include "Common/Player.h"
+#include "Common/Money.h"
 #include "GameClient/Water.h"
 #include "GameClient/GameWindow.h"
 #include "Common/Radar.h"
@@ -180,6 +186,7 @@ void W3DDisplay::releaseOrdinaryHostPresentation()
     // Called after the asset manager released the global UI textures.
     StartupDiagnostics::checkpoint("display_detach", "begin", "ordinary destructor");
     if (StartupDiagnostics::ordinaryTerrain()) {
+        NativeWorldObjects::releaseAll();   // residencies and render-object references first (play profile)
         if (TheTerrainRenderObject) {
             if (auto *terrain = dynamic_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject))
                 terrain->releaseNativeResources();
@@ -458,6 +465,20 @@ static int drawNativeTerrainPass()
     if (!backend) throw std::runtime_error("Terrain pass requires the D3D11 backend");
     backend->Clear(false, true, Vector3(0.0f, 0.0f, 0.0f), 1.0f, 1.0f, 0); // depth only
     const int draws = terrain->renderNative(*camera);
+    if (draws && StartupDiagnostics::ordinaryPlay()) {
+        // World objects (buildings, units) share the terrain camera, viewport and depth buffer.
+        NativeWorldObjects::render(*backend, *camera);
+        static bool reported = false;
+        const NativeWorldObjects::Stats os = NativeWorldObjects::stats();
+        if (!reported && os.lastObjectsDrawn) {
+            reported = true;
+            char detail[400];
+            sprintf_s(detail, "registered=%u objects_drawn=%u batches=%u triangles=%u meshes_drawn=%u skinned=%u textures=%u texture_failures=%u team_colored=%u unsupported_states=%u",
+                NativeWorldObjects::registered(), os.lastObjectsDrawn, os.lastBatches, os.lastTriangles,
+                os.meshesDrawn, os.skinned, os.textureLoads, os.textureFailures, os.teamColored, os.unsupportedState);
+            StartupDiagnostics::checkpoint("world_objects_first_frame", "complete", detail);
+        }
+    }
     return draws;
 }
 
@@ -519,7 +540,15 @@ void W3DDisplay::drawOrdinaryMenuFrame()
             g_terrainDraws += static_cast<unsigned>(terrainDraws);
             g_terrainStats = static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
         }
-        if (TheWindowManager) TheWindowManager->winRepaint();
+        if (StartupDiagnostics::ordinaryPlay() && terrainDraws && TheInGameUI) {
+            // Native play profile: the legacy in-game composition after the 3D scene - per-drawable
+            // icon UI (health bars, veterancy, names), then InGameUI::DRAW which draws the selection
+            // region, move/placement hints, messages and repaints every window (Control Bar included).
+            if (auto *view = dynamic_cast<W3DView *>(TheTacticalView)) view->drawNativeWorldOverlays();
+            TheInGameUI->DRAW();
+        } else if (TheWindowManager) {
+            TheWindowManager->winRepaint();
+        }
         if (TheMouse) TheMouse->DRAW();
         if (StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 240) {
             // Bounded Control Bar review: composed frame after the UI (bottom 20% = outside the
@@ -700,6 +729,46 @@ Bool GamePushGuard(const AsciiString &filename) {
     return FALSE;
 }
 
+// Message tap (play profile): counts the user's commands as they pass the client translators, after
+// the command translators have produced them and before the dispatcher consumes them. Observation
+// only (always KEEP_MESSAGE); the counters feed the bounded play receipts.
+struct PlayCounters {
+    unsigned leftDown = 0, rightDown = 0, keys = 0, wheel = 0;
+    unsigned selections = 0, moves = 0, attacks = 0, stops = 0, guards = 0;
+    unsigned builds = 0, produced = 0, upgrades = 0, rallies = 0, sells = 0;
+};
+PlayCounters g_play;
+class PlayTap : public GameMessageTranslator {
+public:
+    GameMessageDisposition translateGameMessage(const GameMessage *msg) override {
+        switch (msg->getType()) {
+        case GameMessage::MSG_RAW_MOUSE_LEFT_BUTTON_DOWN: ++g_play.leftDown; break;
+        case GameMessage::MSG_RAW_MOUSE_RIGHT_BUTTON_DOWN: ++g_play.rightDown; break;
+        case GameMessage::MSG_RAW_KEY_DOWN: ++g_play.keys; break;
+        case GameMessage::MSG_RAW_MOUSE_WHEEL: ++g_play.wheel; break;
+        case GameMessage::MSG_CREATE_SELECTED_GROUP:
+        case GameMessage::MSG_CREATE_SELECTED_GROUP_NO_SOUND: ++g_play.selections; break;
+        case GameMessage::MSG_DO_MOVETO:
+        case GameMessage::MSG_DO_ATTACKMOVETO:
+        case GameMessage::MSG_DO_FORCEMOVETO: ++g_play.moves; break;
+        case GameMessage::MSG_DO_ATTACK_OBJECT:
+        case GameMessage::MSG_DO_FORCE_ATTACK_OBJECT:
+        case GameMessage::MSG_DO_FORCE_ATTACK_GROUND: ++g_play.attacks; break;
+        case GameMessage::MSG_DO_STOP: ++g_play.stops; break;
+        case GameMessage::MSG_DO_GUARD_POSITION: ++g_play.guards; break;
+        case GameMessage::MSG_DOZER_CONSTRUCT:
+        case GameMessage::MSG_DOZER_CONSTRUCT_LINE: ++g_play.builds; break;
+        case GameMessage::MSG_QUEUE_UNIT_CREATE: ++g_play.produced; break;
+        case GameMessage::MSG_QUEUE_UPGRADE: ++g_play.upgrades; break;
+        case GameMessage::MSG_SET_RALLY_POINT: ++g_play.rallies; break;
+        case GameMessage::MSG_SELL: ++g_play.sells; break;
+        default: break;
+        }
+        return KEEP_MESSAGE;
+    }
+};
+PlayTap g_playTap;
+
 // Bounded scripted camera exercise (X64.26): six deterministic look-at moves relative to the
 // start pivot, each large enough (700 world units, > half the 129-cell draw window of 1290) to
 // re-center the terrain draw window and rewrite vertex-buffer tiles through the ordinary
@@ -747,8 +816,13 @@ int W3DDisplay::runOrdinaryGameHost()
         StartupDiagnostics::checkpoint("game_host", "fail", "preconditions", 1);
         return 1;
     }
-    const unsigned kTotalMs = 900000;        // 15 minutes wall clock
+    // The play profile is user driven: no scripted camera and no logic-frame bound; the wall-clock
+    // bound is the only unattended end (60 minutes), the user normally leaves through the game.
+    const bool play = StartupDiagnostics::ordinaryPlay();
+    const unsigned kTotalMs = play ? 3600000 : 900000;
     const unsigned kLogicFrameBound = 1800;  // 60 s of logic at 30 fps after the game starts
+    TranslatorID playTap = 0;
+    unsigned nextPlayReceipt = 0, playReceipts = 0, playImages = 0;
     const unsigned kMilestones[] = { 1, 30, 150, 300, 900, 1800 };
     unsigned nextMilestone = 0, updates = 0, elapsed = 0, startFrame = 0, lastFrame = 0;
     int result = 1;
@@ -792,6 +866,8 @@ int W3DDisplay::runOrdinaryGameHost()
                 sprintf_s(detail, "mode=%d map=%s players=%d frame=%u", static_cast<int>(TheGameLogic->getGameMode()),
                     TheGlobalData->m_mapName.str(), ThePlayerList ? ThePlayerList->getPlayerCount() : -1, startFrame);
                 StartupDiagnostics::checkpoint("game_start", "complete", detail);
+                if (play && TheMessageStream)
+                    playTap = TheMessageStream->attachTranslator(&g_playTap, 998000000);
             }
             if (inGame && !exiting) {
                 const unsigned frame = TheGameLogic->getFrame();
@@ -803,15 +879,46 @@ int W3DDisplay::runOrdinaryGameHost()
                     StartupDiagnostics::checkpoint("game_progress", "observed", detail);
                     ++nextMilestone;
                 }
-                if (frame - startFrame >= kLogicFrameBound) {
+                if (play && frame - startFrame >= nextPlayReceipt && playReceipts < 120) {
+                    // Bounded progress evidence of what the player did and what the world pass drew.
+                    const NativeWorldObjects::Stats os = NativeWorldObjects::stats();
+                    Player *local = ThePlayerList ? ThePlayerList->getLocalPlayer() : nullptr;
+                    const Coord3D camera = TheTacticalView ? TheTacticalView->getPosition() : Coord3D{0, 0, 0};
+                    sprintf_s(detail, "logic_frame=%u crc=%08X money=%u selected=%d cam=(%.0f,%.0f) objects_drawn=%u triangles=%u"
+                        " left=%u right=%u keys=%u wheel=%u select=%u move=%u attack=%u stop=%u guard=%u build=%u produce=%u upgrade=%u rally=%u sell=%u",
+                        frame, TheGameLogic->getCRC(), local && local->getMoney() ? local->getMoney()->countMoney() : 0u,
+                        TheInGameUI ? TheInGameUI->getSelectCount() : -1, camera.x, camera.y, os.lastObjectsDrawn, os.lastTriangles,
+                        g_play.leftDown, g_play.rightDown, g_play.keys, g_play.wheel, g_play.selections, g_play.moves,
+                        g_play.attacks, g_play.stops, g_play.guards, g_play.builds, g_play.produced, g_play.upgrades,
+                        g_play.rallies, g_play.sells);
+                    StartupDiagnostics::checkpoint("play_progress", "observed", detail);
+                    ++playReceipts;
+                    nextPlayReceipt = (frame - startFrame) + (playReceipts < 4 ? 450 : 1800);   // 15 s x3, then 60 s
+                    if (playImages < 3) {
+                        // Composed frames (world + UI) next to the log: evidence of what was on screen.
+                        if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+                            char name[48];
+                            sprintf_s(name, "play_frame_%u.bmp", ++playImages);
+                            if (!WriteBmp(name, backend->Readback_RGBA8(), 800, 600))
+                                StartupDiagnostics::checkpoint("play_image", "observed", "image not written");
+                        }
+                    }
+                }
+                if (!play && frame - startFrame >= kLogicFrameBound) {
                     // Ordinary exit message; processed on the next updates.
                     TheGameLogic->exitGame();
                     exiting = true;
                     exitReason = "frame_bound";
                 }
             }
-            if (StartupDiagnostics::ordinaryTerrain() && inGame && !exiting && TheTacticalView && TheTerrainLogic)
+            if (StartupDiagnostics::ordinaryTerrain() && !play && inGame && !exiting && TheTacticalView && TheTerrainLogic)
                 DriveTerrainExercise(TheGameLogic->getFrame() - startFrame);
+            if (play && inGame && !exiting && !TheGameLogic->isInGame()) {
+                // The player left the match (quit menu, victory/defeat flow): ordinary clear-game-data ran.
+                StartupDiagnostics::checkpoint("game_exit", "complete", "match ended by the player or the rules; logic not in game");
+                exitReason = "game_ended";
+                break;
+            }
             if (exiting && ++exitingUpdates > 600)
                 throw std::runtime_error("Game did not exit after exitGame()");
             if (exiting && !TheGameLogic->isInGame()) {
@@ -835,9 +942,17 @@ int W3DDisplay::runOrdinaryGameHost()
     }
     TheShell->setPushGuard(nullptr);
     ClipCursor(nullptr);
+    if (playTap && TheMessageStream) TheMessageStream->removeTranslator(playTap);
     if (g_menuBoundary.hit) {
         sprintf_s(detail, "reason=%s %s", g_menuBoundary.reason, g_menuBoundary.detail);
         StartupDiagnostics::checkpoint("menu_boundary", "observed", detail);
+    }
+    if (play) {
+        sprintf_s(detail, "receipts=%u images=%u left=%u right=%u keys=%u wheel=%u select=%u move=%u attack=%u stop=%u guard=%u"
+            " build=%u produce=%u upgrade=%u rally=%u sell=%u", playReceipts, playImages, g_play.leftDown, g_play.rightDown,
+            g_play.keys, g_play.wheel, g_play.selections, g_play.moves, g_play.attacks, g_play.stops, g_play.guards,
+            g_play.builds, g_play.produced, g_play.upgrades, g_play.rallies, g_play.sells);
+        StartupDiagnostics::checkpoint("play_summary", "complete", detail);
     }
     sprintf_s(detail, "calls=%u (first receipts bounded; verified every call)", nativeFloatingPointModeCalls());
     StartupDiagnostics::checkpoint("FP_summary", "observed", detail);
@@ -851,6 +966,20 @@ int W3DDisplay::runOrdinaryGameHost()
             g_terrainStats.worldTextureLoads);
         StartupDiagnostics::checkpoint("terrain_summary", g_terrainFrames ? "complete" : "fail", detail, g_terrainFrames ? 0 : 1);
         if (!g_terrainFrames) result = 1;
+        if (play) {
+            const NativeWorldObjects::Stats os = NativeWorldObjects::stats();
+            sprintf_s(detail, "frames=%u registered=%u objects=%u objects_drawn=%u hidden=%u culled=%u meshes=%u meshes_drawn=%u skinned=%u"
+                " batches=%u translucent_batches=%u vertices=%u triangles=%u texture_loads=%u texture_failures=%u team_colored=%u"
+                " unsupported_class=%u unsupported_state=%u chunk_overflow=%u",
+                os.frames, NativeWorldObjects::registered(), os.objects, os.objectsDrawn, os.hidden, os.culled, os.meshes,
+                os.meshesDrawn, os.skinned, os.batches, os.translucentBatches, os.vertices, os.triangles, os.textureLoads,
+                os.textureFailures, os.teamColored, os.unsupportedClass, os.unsupportedState, os.chunkOverflow);
+            StartupDiagnostics::checkpoint("world_objects_summary", "complete", detail);
+            for (unsigned i = 0; i < NativeWorldObjects::failedTextureCount() && i < 12; ++i) {
+                sprintf_s(detail, "texture=%.200s", NativeWorldObjects::failedTexture(i));
+                StartupDiagnostics::checkpoint("world_objects_texture_failure", "observed", detail);
+            }
+        }
     }
     sprintf_s(detail, "presents=%u updates=%u elapsed_ms=%u game=%u logic_frames=%u exit=%s driver=hardware",
         m_hostPresents, updates, elapsed, inGame ? 1u : 0u,

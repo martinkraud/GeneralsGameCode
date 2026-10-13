@@ -84,6 +84,7 @@
 
 #include "W3DDevice/Common/W3DConvert.h"
 #include "W3DDevice/GameClient/HeightMap.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
@@ -1283,6 +1284,26 @@ static void drawablePostDraw( Drawable *draw, void *userData )
 
 }
 
+#if defined(_WIN64)
+//-------------------------------------------------------------------------------------------------
+/** Native profile counterpart of the tail of draw(): the post-draw (icon UI) pass over the drawables
+	* in the view and the text-bearing drawables flush. The 2D scene is not part of this profile. */
+//-------------------------------------------------------------------------------------------------
+void W3DView::drawNativeWorldOverlays()
+{
+	Region3D axisAlignedRegion;
+	getAxisAlignedViewRegion(axisAlignedRegion);
+
+	TheGameClient->resetRenderedObjectCount();
+
+	TheDisplay->beginBatch();
+	TheGameClient->iterateDrawablesInRegion( &axisAlignedRegion, drawablePostDraw, this );
+	TheDisplay->endBatch();
+
+	TheGameClient->flushTextBearingDrawables();
+}
+#endif
+
 //-------------------------------------------------------------------------------------------------
 // Display AI debug visuals
 //-------------------------------------------------------------------------------------------------
@@ -1695,9 +1716,16 @@ void W3DView::update()
 	TheTerrainVisual->updateSeismicSimulations();
 #endif
 
-	// The headless world selection (native terrain profile) has no drawable rendering.
+	// The headless world selection has no drawable rendering, except in the native play profile
+	// where Drawable::draw() drives the render-object transforms and animations that the native
+	// world-object renderer (NativeWorldObjects) reads.
+#if defined(_WIN64)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryPlay())
+		return;
+#else
 	if (TheGlobalData->m_headless)
 		return;
+#endif
 
 	Region3D axisAlignedRegion;
 	getAxisAlignedViewRegion(axisAlignedRegion);
@@ -2496,10 +2524,15 @@ Drawable *W3DView::pickDrawable( const ICoord2D *screen, Bool forceAttack, PickT
 	if( screen == nullptr )
 		return nullptr;
 
-	// The headless world selection (native terrain profile) has no legacy scene to ray cast
-	// into; like the dummy view it picks nothing.
+	// The headless world selection has no legacy scene to ray cast into; like the dummy view it
+	// picks nothing, except in the native play profile where the native object registry is cast.
+#if defined(_WIN64)
+	if( W3DDisplay::m_3DScene == nullptr && !StartupDiagnostics::ordinaryPlay() )
+		return nullptr;
+#else
 	if( W3DDisplay::m_3DScene == nullptr )
 		return nullptr;
+#endif
 
 	// don't pick a drawable if there is a window under the cursor
 	GameWindow *window = nullptr;
@@ -2529,7 +2562,14 @@ Drawable *W3DView::pickDrawable( const ICoord2D *screen, Bool forceAttack, PickT
 	//Don't check against translucent or hidden objects
 	RayCollisionTestClass raytest(lineseg,&result,COLL_TYPE_ALL,false,false);
 
-	if( W3DDisplay::m_3DScene->castRay( raytest, false, (Int)pickType ) )
+	Bool pickHit = FALSE;
+	if( W3DDisplay::m_3DScene )
+		pickHit = W3DDisplay::m_3DScene->castRay( raytest, false, (Int)pickType );
+#if defined(_WIN64)
+	else
+		pickHit = NativeWorldObjects::castRay( raytest, false, (Int)pickType );
+#endif
+	if( pickHit )
 		renderObj = raytest.CollidedRenderObj;
 
 	// for right now there is no drawable data in a render object which is			 	// if we've found a render object, return our drawable associated with it,

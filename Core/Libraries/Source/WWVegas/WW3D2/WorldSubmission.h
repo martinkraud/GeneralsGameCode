@@ -64,6 +64,20 @@ public:
 // (no blend in `alpha_only` mode, which writes only the destination alpha channel).
 enum class WorldMaterial { TerrainBase, TerrainBlend, TerrainCombined, TerrainOverlay };
 
+// Blend equations of the TerrainOverlay family (legacy ShaderClass src/dst blend pairs seen on
+// roads, bridges and W3D meshes). SrcAlpha is the zero-initialized default.
+enum class WorldBlend : unsigned char
+{
+    SrcAlpha,         // SRC_ALPHA, ONE_MINUS_SRC_ALPHA
+    Opaque,           // ONE, ZERO (blending disabled)
+    Additive,         // ONE, ONE
+    AdditiveAlpha,    // SRC_ALPHA, ONE
+    Multiply,         // ZERO, SRC_COLOR
+    InvMultiply,      // ZERO, ONE_MINUS_SRC_COLOR
+    Premultiplied,    // ONE, ONE_MINUS_SRC_ALPHA
+    Count
+};
+
 struct WorldSubmission
 {
     GeometryResidency *geometry;
@@ -91,6 +105,7 @@ struct WorldSubmission
     bool double_sided;              // cull mode none (bridges)
     bool alpha_only;                // write destination alpha only, no blending (shoreline)
     bool no_diffuse;                // ignore vertex diffuse (GRADIENT_DISABLE presets)
+    WorldBlend blend;               // blend equation (ignored when alpha_only)
 };
 
 inline void World_Identity(float (&m)[16])

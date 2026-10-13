@@ -63,7 +63,7 @@ Int GameMain()
             else if (StartupDiagnostics::ordinaryMenu()) exitcode = TheDisplay->runOrdinaryMenuHost();
             else exitcode = TheDisplay->runOrdinaryHostGate();
             StartupDiagnostics::checkpoint("ordinary_host_boundary", exitcode ? "fail" : "complete",
-                StartupDiagnostics::ordinaryTerrain() ? "ordinary game loop; GameLogic live; terrain-only D3D11 world pass; execute/replay not entered" : StartupDiagnostics::ordinaryGame() ? "ordinary game loop; GameLogic live; no world rendering; execute/replay not entered"
+                StartupDiagnostics::ordinaryPlay() ? "ordinary game loop; GameLogic live; native D3D11 world objects and interactive input; execute/replay not entered" : StartupDiagnostics::ordinaryTerrain() ? "ordinary game loop; GameLogic live; terrain-only D3D11 world pass; execute/replay not entered" : StartupDiagnostics::ordinaryGame() ? "ordinary game loop; GameLogic live; no world rendering; execute/replay not entered"
                                                    : "execute/replay/simulation/GameLogic skipped", exitcode);
         }
         else if (StartupDiagnostics::displaySmoke())

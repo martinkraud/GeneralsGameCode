@@ -423,3 +423,179 @@ function Test-NativeOrdinaryTerrainEvidence([string]$Log,[int]$ProcessId,$Receip
     if(@($rows|Where-Object{$_.Stage -eq 'menu_boundary'}).Count){$errors.Add('Shell push boundary reached')}
     return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
 }
+
+# ---------------------------------------------------------------------------
+# Ordinary-play profile (X64.28): native world objects, picking, the in-game UI draw and the full
+# Control Bar update; user-driven (no scripted camera, no logic-frame bound).
+# ---------------------------------------------------------------------------
+function Get-NativeOrdinaryPlayMode {
+    return 'nativeOrdinaryPlay; ordinary WinMain/ApplicationHWnd/W3DDisplay + real WindowManager/Shell; ordinary engine loop with live GameLogic; headless world selection; hardware D3D11 native presentation; native terrain + world objects; interactive input, in-game UI and Control Bar; user-driven play'
+}
+function Get-NativeOrdinaryPlayArguments([string]$Root) {
+    return @('-win','-xres','800','-yres','600','-nologo','-noshellmap','-winCursors','-nativeOrdinaryPlay',$Root)
+}
+function Read-NativeOrdinaryPlayStage([string]$Title,[string]$Name) {
+    if($Title -ne 'Generals'){throw 'The ordinary play profile validates Generals only'}
+    $manifest=Read-NativeStage $Title $Name
+    $path=Join-Path $manifest.StagePath 'ordinaryplay.json'
+    if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw 'Not an ordinary-play stage'}
+    $play=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if($play.Mode -ne (Get-NativeOrdinaryPlayMode) -or $play.StagePath -ne $manifest.StagePath -or
+        $play.ManifestSHA256 -ne (Get-FileHash -LiteralPath (Join-Path $manifest.StagePath 'manifest.json')).Hash){
+        throw 'Not an intact reviewed ordinary-play stage'
+    }
+    $manifest.Dependencies=@(Assert-NativeGraphicsDependencies (Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))) $manifest.GamePath)
+    return $manifest
+}
+
+function Test-NativeOrdinaryPlayEvidence([string]$Log,[int]$ProcessId,$Receipt) {
+    $rows=@();$errors=[Collections.Generic.List[string]]::new()
+    foreach($line in ($Log -split "`n")) {
+        if(!$line){continue}; $f=$line.TrimEnd("`r") -split "`t",9
+        if($f.Count -ne 9 -or $f[0] -notmatch '^\d+$' -or $f[3] -notmatch '^\d+$' -or $f[7] -notmatch '^\d+$'){$errors.Add('Malformed checkpoint/trailer');continue}
+        $sequence=0;$rowPid=0;$code=[uint32]0
+        if(![int]::TryParse($f[0],[ref]$sequence) -or ![int]::TryParse($f[3],[ref]$rowPid) -or ![uint32]::TryParse($f[7],[ref]$code)){$errors.Add('Numeric checkpoint overflow');continue}
+        if($sequence -ne $rows.Count+1 -or $rowPid -ne $ProcessId){$errors.Add('Sequence/PID mismatch')}
+        if($f[6] -eq 'fail'){$errors.Add("Failed phase $($f[5])")}
+        $rows+=,[pscustomobject]@{Stage=$f[5];Status=$f[6];Code=$code;Detail=$f[8]}
+    }
+    function Completions([string]$Stage){@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq $Stage -and $rows[$i].Status -eq 'complete'){$i}})}
+    # The in-process log is capped at 2048 records and fails closed; a run that fills it
+    # lost its tail evidence (X64.25 run 20261012T2112467768379Z: unthrottled FP receipts).
+    if($rows.Count -ge 2000){$errors.Add('Startup log capacity exhausted; tail evidence lost')}
+    $route=@('app_window_class','app_window','TheKeyboard.init','display_config','terrain_optin','graphics_device','display_module_audit',
+        'display_size','display_ordinary_init','TheWindowManager.init','TheShell.init','TheMouse.init','engine_init',
+        'graphics_present','game_start','terrain_first_frame','world_objects_first_frame','play_summary','terrain_summary','world_objects_summary','game_summary','ordinary_host_boundary','ui_residency_release',
+        'display_detach','engine_cleanup','app_window_release','minidumper_shutdown','WinMain')
+    $completed=@{};$previous=-1
+    foreach($stage in $route){
+        $at=@(Completions $stage)
+        if($at.Count -ne 1){$errors.Add("Missing/duplicate completion $stage");$completed[$stage]=[pscustomobject]@{Detail='';Code=1};continue}
+        $completed[$stage]=$rows[$at[0]]
+        if($at[0] -le $previous -or $rows[$at[0]].Code -ne 0){$errors.Add("Order/code mismatch $stage")};$previous=$at[0]
+    }
+    foreach($key in 'module','userdata','dump_path','startup_parse'){
+        $want=switch($key){module{$Receipt.Executable};userdata{$Receipt.UserData};dump_path{$Receipt.DumpPath+'\'};startup_parse{$Receipt.WorkingDirectory}}
+        $found=@($rows|Where-Object{$_.Stage -eq $key -and $_.Status -ne 'begin'})
+        if($found.Count -ne 1 -or $found[0].Detail -ne $want){$errors.Add("Path mismatch $key")}
+    }
+    if(@($rows|Where-Object{$_.Stage -eq 'WinMain' -and $_.Status -eq 'begin' -and $_.Detail -match 'Generals AMD64 ordinary play$'}).Count -ne 1){$errors.Add('Wrong mode identity')}
+    if($completed['app_window'].Detail -ne 'client=800x600 windowed=1 class=Game Window'){$errors.Add('Wrong application window')}
+    if($completed['display_size'].Detail -ne 'device=800x600 target=800x600 bits=32 windowed=1'){$errors.Add('Wrong display dimensions')}
+    if($completed['graphics_device'].Detail -notmatch '^driver=hardware feature=0x(.*)'){$errors.Add('Missing hardware device identity')}
+    if($completed['display_module_audit'].Detail -ne 'd3d8=0 d3dx8=0 d3d11=1 dxgi=1'){$errors.Add('D3D8/D3DX module audit failed or modern modules absent')}
+    if($completed['ui_residency_release'].Detail -ne 'live_residencies=0 before backend release'){$errors.Add('UI residency not released before backend')}
+    if($completed['ordinary_host_boundary'].Detail -ne 'ordinary game loop; GameLogic live; native D3D11 world objects and interactive input; execute/replay not entered'){$errors.Add('Wrong execution boundary label')}
+    if($completed['game_start'].Detail -notmatch '^mode=\d+ map=\S.* players=([2-9]|\d\d) frame=\d+$'){$errors.Add('Game did not start with at least two players')}
+    $progress=@($rows|Where-Object{$_.Stage -eq 'game_progress' -and $_.Status -eq 'observed' -and $_.Detail -match '^logic_frame=\d+ crc=[0-9A-F]{8} presents=\d+$'})
+    if($progress.Count -lt 3){$errors.Add('Fewer than three logic progress observations')}
+    $summary=$completed['game_summary'].Detail
+    if($summary -notmatch '^presents=(\d+) updates=(\d+) elapsed_ms=(\d+) game=(\d) logic_frames=(\d+) exit=(game_ended|game_quit|boundary|time_bound) driver=hardware$'){$errors.Add('Invalid game summary or exit reason')}
+    else{
+        $m=$Matches
+        $overflow=$false
+        foreach($i in 1..5){if($m[$i].Length -gt 9){$overflow=$true}}
+        if($overflow){$errors.Add('Summary numeric overflow')}
+        else{
+            if([int]$m[1] -lt 1 -or [int]$m[2] -lt 1){$errors.Add('No presented frames')}
+            if([int]$m[4] -ne 1 -or [int]$m[5] -lt 150){$errors.Add('Fewer than 150 logic frames in game')}
+            if([int]$m[3] -gt 3700000){$errors.Add('Game loop exceeded its bound')}
+        }
+    }
+    if($completed['terrain_optin'].Detail -notmatch '^cpu_backed_geometry=1 depth_buffer=1 '){$errors.Add('Terrain opt-ins not recorded')}
+    $tileCount=0;$useCloud=0;$useNoise=0;$softEdge=0;$mapExtra=0;$mapShore=0;$mapRoads=0;$mapBridges=0
+    if($completed['terrain_first_frame'].Detail -notmatch '^tiles=(\d+) draws=(\d+) atlas_uploads=1 use_cloud=([01]) use_noise=([01]) soft_edge=([01]) map_extra=(\d+) map_shore=(\d+) map_roads=(\d+) map_bridges=(\d+) \(terrain combined single pass \+ overlays; UI follows\)$'){$errors.Add('Missing first terrain frame with one atlas upload')}
+    else{
+        $m=$Matches
+        $over=$false;foreach($i in 1..9){if($m[$i].Length -gt 6){$over=$true}}
+        if($over){$errors.Add('Terrain numeric overflow')}
+        elseif([int]$m[1] -lt 1 -or [int]$m[2] -lt [int]$m[1]){$errors.Add('First terrain frame did not draw every uploaded tile')}
+        else{$tileCount=[int]$m[1];$useCloud=[int]$m[3];$useNoise=[int]$m[4];$softEdge=[int]$m[5]
+             $mapExtra=[int]$m[6];$mapShore=[int]$m[7];$mapRoads=[int]$m[8];$mapBridges=[int]$m[9]}
+    }
+    $probe=@($rows|Where-Object{$_.Stage -eq 'terrain_probe' -and $_.Status -eq 'observed'})
+    if($probe.Count -ne 1 -or $probe[0].Detail -notmatch '^nonblack_pct=(\d{1,3}) center_rgb='){$errors.Add('Missing terrain pixel probe')}
+    elseif([int]$Matches[1] -lt 5){$errors.Add('Terrain pass left the frame black (probe)')}
+    if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+) cloud_frames=(\d+) noise_frames=(\d+) macro_loads=(\d+) extra_frames=(\d+) extra_tiles=(\d+) road_frames=(\d+) road_draws=(\d+) bridge_frames=(\d+) bridge_draws=(\d+) shore_frames=(\d+) shore_tiles=(\d+) texture_loads=(\d+)$'){$errors.Add('Invalid terrain summary')}
+    else{
+        $m=$Matches
+        $over=$false;foreach($i in 1..17){if($m[$i].Length -gt 9){$over=$true}}
+        if($over){$errors.Add('Terrain summary numeric overflow')}
+        else{
+            $frames=[int]$m[1]
+            if($frames -lt 30 -or [int]$m[3] -lt 1 -or [int]$m[4] -lt 1){$errors.Add('Too few terrain frames or no residency uploads')}
+            # Every draw is accounted for: one combined draw per tile per frame plus each overlay family.
+            $expected=$frames*$tileCount+[int]$m[9]+[int]$m[12]+[int]$m[14]+[int]$m[15]
+            if($tileCount -gt 0 -and [int]$m[2] -ne $expected){$errors.Add('Terrain draws differ from frames x tiles + overlay draws')}
+            # X64.26 contracts (retained): dynamic terrain really rewritten, macro passes ran.
+            if([int]$m[5] -lt 1){$errors.Add('No terrain geometry updates (tile_updates=0)')}
+            if($useCloud -eq 1 -and [int]$m[6] -ne $frames){$errors.Add('Cloud pass did not run every terrain frame')}
+            if($useCloud -eq 0 -and [int]$m[6] -ne 0){$errors.Add('Cloud pass ran while disabled')}
+            if($useNoise -eq 1 -and [int]$m[7] -ne $frames){$errors.Add('Noise pass did not run every terrain frame')}
+            if($useNoise -eq 0 -and [int]$m[7] -ne 0){$errors.Add('Noise pass ran while disabled')}
+            if([int]$m[8] -ne ($useCloud+$useNoise)){$errors.Add('Unexpected macro texture load count')}
+            # X64.27: overlay families must appear exactly when the loaded map contains them.
+            if($mapExtra -gt 0 -and [int]$m[9] -lt 1){$errors.Add('Map has extra-blend tiles but none were drawn')}
+            if($mapExtra -eq 0 -and [int]$m[9] -ne 0){$errors.Add('Extra-blend draws on a map without extra-blend tiles')}
+            if($mapRoads -gt 0 -and [int]$m[11] -lt 1){$errors.Add('Map has road segments but no road draw was observed')}
+            if($mapRoads -eq 0 -and [int]$m[12] -ne 0){$errors.Add('Road draws on a map without roads')}
+            if($mapBridges -gt 0 -and [int]$m[13] -lt 1){$errors.Add('Map has bridges but no bridge draw was observed')}
+            if($mapBridges -eq 0 -and [int]$m[14] -ne 0){$errors.Add('Bridge draws on a map without bridges')}
+            if($mapShore -gt 0 -and $softEdge -eq 1 -and [int]$m[15] -lt 1){$errors.Add('Map has shoreline tiles and soft water edge is enabled but no shoreline pass ran')}
+            if(($mapShore -eq 0 -or $softEdge -eq 0) -and [int]$m[15] -ne 0){$errors.Add('Shoreline pass ran without shoreline tiles or soft water edge')}
+            # Decoded road/bridge textures: at least one per drawn family, none when no family drew.
+            if(([int]$m[12]+[int]$m[14]) -gt 0 -and [int]$m[17] -lt 1){$errors.Add('Road/bridge draws without a loaded world texture')}
+            if(([int]$m[12]+[int]$m[14]) -eq 0 -and [int]$m[17] -ne 0){$errors.Add('World textures loaded without road/bridge draws')}
+        }
+    }
+    # The terrain profile's scripted camera exercise must not run under user-driven play.
+    if(@($rows|Where-Object{$_.Stage -eq 'terrain_move' -or $_.Stage -eq 'terrain_motion'}).Count){$errors.Add('Scripted camera exercise ran in the play profile')}
+    # World objects (X64.28): the native object pass drew at least one object when the match began and
+    # accounted for every unsupported condition without overflowing its chunk pool.
+    $first=$completed['world_objects_first_frame'].Detail
+    if($first -notmatch '^registered=(\d+) objects_drawn=(\d+) batches=(\d+) triangles=(\d+) meshes_drawn=(\d+) skinned=(\d+) textures=(\d+) texture_failures=(\d+) team_colored=(\d+) unsupported_states=(\d+)$'){$errors.Add('Invalid first world-objects frame receipt')}
+    else{
+        $m=$Matches;$over=$false;foreach($i in 1..10){if($m[$i].Length -gt 9){$over=$true}}
+        if($over){$errors.Add('World-objects numeric overflow')}
+        elseif([int]$m[2] -lt 1 -or [int]$m[3] -lt 1 -or [int]$m[4] -lt 1){$errors.Add('World-objects pass drew nothing in its first frame')}
+    }
+    $wo=$completed['world_objects_summary'].Detail
+    if($wo -notmatch '^frames=(\d+) registered=(\d+) objects=(\d+) objects_drawn=(\d+) hidden=(\d+) culled=(\d+) meshes=(\d+) meshes_drawn=(\d+) skinned=(\d+) batches=(\d+) translucent_batches=(\d+) vertices=(\d+) triangles=(\d+) texture_loads=(\d+) texture_failures=(\d+) team_colored=(\d+) unsupported_class=(\d+) unsupported_state=(\d+) chunk_overflow=(\d+)$'){$errors.Add('Invalid world-objects summary')}
+    else{
+        $m=$Matches;$over=$false;foreach($i in 1..19){if($m[$i].Length -gt 10){$over=$true}}
+        if($over){$errors.Add('World-objects summary numeric overflow')}
+        else{
+            if([int]$m[1] -lt 30){$errors.Add('Too few world-object frames')}
+            if([int]$m[4] -lt 1 -or [int]$m[10] -lt 1){$errors.Add('World objects were never drawn')}
+            if([int]$m[19] -ne 0){$errors.Add('World-object chunk overflow (meshes dropped)')}
+            if([int]$m[14] -lt 1){$errors.Add('No object textures were decoded')}
+        }
+    }
+    # Player activity is evidence for the developer review, not a pass condition by itself; the receipt
+    # must exist and be well formed so the review can read what was exercised.
+    $play=@($rows|Where-Object{$_.Stage -eq 'play_summary' -and $_.Status -eq 'complete'})
+    if($play.Count -ne 1 -or $play[0].Detail -notmatch '^receipts=(\d+) images=(\d+) left=(\d+) right=(\d+) keys=(\d+) wheel=(\d+) select=(\d+) move=(\d+) attack=(\d+) stop=(\d+) guard=(\d+) build=(\d+) produce=(\d+) upgrade=(\d+) rally=(\d+) sell=(\d+)$'){$errors.Add('Missing or malformed play summary')}
+    elseif([int]$Matches[1] -lt 1){$errors.Add('No play progress receipt was written')}
+    $progressPlay=@($rows|Where-Object{$_.Stage -eq 'play_progress' -and $_.Status -eq 'observed' -and $_.Detail -match '^logic_frame=\d+ crc=[0-9A-F]{8} money=\d+ selected=-?\d+ cam=\(-?\d+,-?\d+\) objects_drawn=\d+ triangles=\d+ left=\d+ right=\d+ keys=\d+ wheel=\d+ select=\d+ move=\d+ attack=\d+ stop=\d+ guard=\d+ build=\d+ produce=\d+ upgrade=\d+ rally=\d+ sell=\d+$'})
+    if($progressPlay.Count -lt 1){$errors.Add('No well-formed play progress receipt')}
+    # Control Bar visibility/state (X64.27): the bar must have slid into the 600-pixel display and
+    # painted opaque art into the bottom strip (radar bezel may stay empty: RadarDummy).
+    $ui=@($rows|Where-Object{$_.Stage -eq 'ui_probe' -and $_.Status -eq 'observed'})
+    if($ui.Count -ne 1 -or $ui[0].Detail -notmatch '^whole_nonblack_pct=(\d+) strip_nonblack_pct=(\d+) strip_left=(\d+) strip_mid=(\d+) strip_right=(\d+)$'){$errors.Add('Missing Control Bar/UI probe receipt')}
+    else{
+        if([int]$Matches[2] -lt 25){$errors.Add('Control Bar art did not paint into the bottom strip')}
+        if([int]$Matches[1] -lt 80){$errors.Add('Composed frame lost world pixels after the UI')}
+    }
+    $barRows=@($rows|Where-Object{$_.Stage -eq 'ui_probe_window' -and $_.Detail -like 'ControlBar.wnd:ControlBarParent *'})
+    if($barRows.Count -ne 1 -or $barRows[0].Detail -notmatch 'hidden=0 pos=(-?\d+),(-?\d+) size=(\d+)x(\d+)$'){$errors.Add('Missing Control Bar window state')}
+    elseif([int]$Matches[2] -lt 400 -or [int]$Matches[2] -ge 600){$errors.Add('Control Bar is not slid into the display')}
+    $armed=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq 'native_shutdown' -and $rows[$i].Status -eq 'armed' -and $rows[$i].Code -eq 0){$i}})
+    $mini=@(Completions 'minidumper_shutdown')
+    if($armed.Count -ne 1 -or $mini.Count -ne 1 -or $armed[0] -le $mini[0] -or $armed[0] -ge $rows.Count-1){$errors.Add('Missing/incorrect late observer boundary')}
+    if($rows.Count -eq 0 -or $rows[-1].Stage -ne 'WinMain' -or $rows[-1].Status -ne 'complete'){$errors.Add('Missing final WinMain completion')}
+    foreach($stage in 'init_only','display_attach','graphics_class','graphics_window','graphics_backend','graphics_boundary','ui_menu_load','ui_ordinary_content','keyboard','menu_summary'){
+        if(@($rows|Where-Object{$_.Stage -eq $stage}).Count){$errors.Add("Unexpected stage $stage")}
+    }
+    if(@($rows|Where-Object{$_.Stage -eq 'menu_boundary'}).Count){$errors.Add('Shell push boundary reached')}
+    return [pscustomobject]@{Valid=($errors.Count -eq 0);Errors=@($errors);Records=$rows.Count;Summary=$summary}
+}
