@@ -122,6 +122,18 @@ class OrdinaryPlayContract(unittest.TestCase):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         self.assertIn("'terrain_first_frame','world_objects_first_frame','play_summary'", common)
 
+    def test_last_logic_frame_is_not_overwritten_after_leaving_the_match(self):
+        # X64.28 fix1 run 20261013T1216116100741Z: clean Exit Game, but game_summary logic_frames=0.
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        update = host.index("lastFrame = frame;")
+        self.assertEqual(host.count("lastFrame = frame;"), 1)
+        guard = host.rindex("if (inGame && !exiting", 0, update)
+        self.assertIn("TheGameLogic->isInGame()", host[guard:update])
+        # The exit detection that follows runs in the same iteration, after the guarded update.
+        self.assertLess(update, host.index('exitReason = "game_ended";'))
+        common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
+        self.assertIn("-lt 150){$errors.Add('Fewer than 150 logic frames in game')}", common)  # contract unchanged
+
     def test_zero_hour_sources_do_not_mention_play(self):
         zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")
         self.assertNotIn("ordinaryPlay", zh)

@@ -879,7 +879,10 @@ int W3DDisplay::runOrdinaryGameHost()
                 if (play && TheMessageStream)
                     playTap = TheMessageStream->attachTranslator(MSGNEW("PlayTap") PlayTap, 998000000);
             }
-            if (inGame && !exiting) {
+            // Only while the logic is still in the game: the iteration that observes the player leaving the
+            // match runs after clear-game-data reset the frame counter, which must not replace the last in-game
+            // frame (X64.28 fix1 run 20261013T1216116100741Z reported logic_frames=0 after 6000+ frames).
+            if (inGame && !exiting && TheGameLogic->isInGame()) {
                 const unsigned frame = TheGameLogic->getFrame();
                 lastFrame = frame;
                 while (nextMilestone < sizeof(kMilestones) / sizeof(kMilestones[0]) &&

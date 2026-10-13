@@ -229,6 +229,17 @@ defect: `world_objects_first_frame` was logged one record before `terrain_first_
 tests and the `x64-28-play-world-fix1` candidate: `X64_28_PLAY_WORLD.md` sections 9-11. Next: developer runs
 fix1 once; do not rerun `x64-28-play-world`.
 
+**X64.28 fix1 native result (run `20261013T1216116100741Z`, candidate `x64-28-play-world-fix1`):** both
+earlier crashes are gone. Process exit code 0, no dump, complete teardown receipts (`game_exit` ..
+`WinMain`); the wrapper still said FAILED with exactly one classifier error, "Fewer than 150 logic frames in
+game", because the host printed `logic_frames=0`: the loop iteration that observes the player leaving the match
+ran after clear-game-data reset the frame counter and overwrote `lastFrame`. A host measurement defect, not a
+crash and not the PlayTap bug (the classifier contract was correct and is unchanged; the real log classifies
+Valid once `logic_frames` carries the last in-game frame). Fix + candidate `x64-28-play-world-fix2`:
+`X64_28_PLAY_WORLD.md` sections 12-14. Natively proven in this run: AI enemy units attacked the base (developer
+observation), 13 move + 1 attack orders, 28 queued units, 5 constructions, 36 selections, 6291 logic frames.
+Do not claim AI base construction: neither receipts nor the replay show it.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a

@@ -193,3 +193,81 @@ vars, 7 Python contract files, 5 PowerShell workflow tests, stage + preflight PA
 Please test in fix1: a reconnaissance drone (and one other radius-cursor power if available); Exit Game from the
 in-game menu (expect `play_summary`..`WinMain` receipts and a PASS from the wrapper); issue explicit move and
 attack orders (none were exercised); watch AI base activity; let a unit die (debris path); then quit.
+
+## 12. Native evidence (candidate `x64-28-play-world-fix1`, run `20261013T1216116100741Z`)
+
+Outcome: **clean process exit (code 0), no crash dump, no shutdown exception**; wrapper result FAILED with one
+classifier error: `Fewer than 150 logic frames in game`.
+
+Receipt sequence (all present, in order, code 0): `game_exit` (`match ended by the player or the rules`) ->
+`play_summary` -> `FP_summary` -> `terrain_summary` -> `world_objects_summary` (`registered=0`: every drawable had already been
+destroyed and unregistered) -> `game_summary` (`exit=game_ended`) -> `ordinary_host_boundary` ->
+`engine_cleanup` begin -> `display_detach` begin -> `ui_residency_release` (live_residencies=0) ->
+`display_detach` complete -> `engine_cleanup` complete -> `app_window_release` -> `minidumper_shutdown` ->
+`native_shutdown armed` -> `WinMain exit`. The previous PlayTap crash (before `play_summary`) did not recur:
+the first thing that failed in run 1 of the candidate is now the first thing that works.
+
+Root cause (new, distinct from the PlayTap ownership bug): `game_summary logic_frames=0`. In the host loop the
+block `if (inGame && !exiting)` updated `lastFrame = TheGameLogic->getFrame()` every iteration. When the
+player leaves the match, the same iteration that detects it (`!TheGameLogic->isInGame()` -> `game_exit`) runs
+that block after clear-game-data has reset the frame counter, so `lastFrame` became the start frame and
+`lastFrame - startFrame` was 0. Verified: the real log with only `logic_frames=0` replaced by the last in-game
+value classifies Valid with the unchanged classifier (`Test-NativeOrdinaryPlayEvidence`). The terrain/game
+profiles are unaffected because they exit through the `exiting` flag, which skips that block.
+
+What this run natively proves (receipts, replay command stream, developer observation):
+
+| Contract | Evidence | Status |
+| --- | --- | --- |
+| Interactive play loop, ~6291 logic frames (~210 s), 13,583 presents, no crash | play_summary, replay, exit 0 | proven |
+| World objects | 694 registered, up to 21 drawn, 1.5M meshes over the run, 0 texture failures, 0 unsupported classes, `unsupported_state=30488` (counted, fallback), `chunk_overflow=0` | proven |
+| Selection / box select / camera / wheel | 36 selections, 882 keys, 6 wheel, 52 left + 23 right clicks | proven |
+| Move orders | replay: 13 `DO_MOVETO`; receipt move=13 | proven |
+| Attack order | replay: 1 `DO_ATTACK_OBJECT`; receipt attack=1 | proven (single order) |
+| Build / production / cancel | 5 `DOZER_CONSTRUCT`, 28 `QUEUE_UNIT_CREATE`, 3 `CANCEL_UNIT_CREATE`, science + rally | proven |
+| Supply docking | 3 `DOCK` | proven |
+| Enemy AI active combat, pathing, attacking the player's base | developer observation of enemy units reaching and attacking the base | proven (visual) |
+| AI base construction / production | not in receipts or replay (AI commands are not recorded; no AI receipt exists) | NOT claimed |
+| Clean exit teardown | all teardown receipts, exit code 0 | proven natively (gate failed only on the metric above) |
+| Radius cursor / special power | not exercised in this run (fix1 radius guard stays unproven natively) | NOT proven |
+
+## 13. Fix (fix2) and adjacent audit
+
+1. `W3DDisplayOrdinaryHost.cpp`: the per-iteration in-game block is guarded with `TheGameLogic->isInGame()`, so
+   `lastFrame` always holds the last frame observed while in the match. Classifier and contracts unchanged.
+2. Adjacent audit of the same pattern ("a value sampled from engine state in a loop whose last iteration runs
+   after the engine reset it"): `startFrame`/`lastFrame` are the only host values that cross the exit
+   transition; `elapsed`/`updates` are host counters; the play-receipt block and milestone loop are inside the
+   guarded block (previously they could not fire only because the reset frame happened to be smaller than the
+   next threshold - the unsigned `frame - startFrame` would have underflowed); `DriveTerrainExercise` and the
+   `frame_bound` exit are non-play and reached only while `!exiting`.
+3. Ownership audit (second pass, motivated by the earlier teardown bug): no other static object is handed to
+   an engine-owned container in the host (`&g_` passed to engine APIs: none); the shell push guards are plain
+   function pointers cleared before return; `NativeWorldObjects` registry removal after `releaseAll` is a
+   no-op for unknown objects.
+
+Regression coverage: `test_ordinary_play_contract.py::test_last_logic_frame_is_not_overwritten_after_leaving_the_match`
+(single `lastFrame` assignment, guarded by `isInGame()`, executes before the exit detection, the 150-frame
+classifier contract untouched). Not covered by a host unit test: the host loop is Win64 native-only; the
+classifier outcome on the real log was checked offline as described above.
+
+## 14. Candidate `x64-28-play-world-fix2`
+
+| Item | Value |
+| --- | --- |
+| Path | `build/dev-runtimes/native/Generals/x64-28-play-world-fix2` |
+| `generalsv.exe` SHA-256 | `5A9FA5BC6AB782FDA6F6463513528616D8393968312094FDEC860467379C19A1` (7,526,912 bytes) |
+| `generalsv.pdb` SHA-256 | `4E1093BF887C1260479A033FACFFC207292233C868C11CC7DDD4D18AC84D5D4D` |
+| `manifest.json` SHA-256 | `28B51C4B52DDC8E0D78B1A0E974A48E461D99BDB4435C65209090CE24ED2FD32` |
+| `ordinaryplay.json` SHA-256 | `9213FD4D042D8AFC1DBF5A0043C797FC320739A26D3B597E2FEB804C8D23B440` |
+
+```powershell
+pwsh -NoProfile -File scripts/native-runtime/Invoke-NativeOrdinaryPlay.ps1 -Title Generals -Name x64-28-play-world-fix2 -RunReviewedOrdinaryPlay
+```
+
+Validation: Win64 build + ctest 17/17, Win32 build + ctest 25/25, `g_googletest` 171 pass with offline-asset env
+vars, 7 Python contract files, 5 PowerShell workflow tests, stage + preflight PASS.
+
+Please test in fix2: play at least a minute, then Exit Game (expect wrapper PASS with `logic_frames` equal to the
+match length). If you can, also use a radius-cursor power (reconnaissance drone) once, since fix1's guard has
+not been exercised natively. Do not rerun fix1 or the original candidate.
