@@ -105,6 +105,9 @@
 #include "W3DDevice/GameClient/W3DShadow.h"
 #include "W3DDevice/GameClient/W3DWater.h"
 #include "W3DDevice/GameClient/W3DShroud.h"
+#if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
+#endif
 #include "WW3D2/dx8wrapper.h"
 #include "WW3D2/light.h"
 #include "WW3D2/scene.h"
@@ -2366,7 +2369,16 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 						vertices.resize(batch.vertexCount);
 						for (Int i = 0; i < batch.vertexCount; ++i) {
 							const VertexFormatXYZNDUV1 &v = batch.vertices[i];
-							vertices[i] = {v.x, v.y, v.z, v.diffuse, v.u1, v.v1, v.u1, v.v1};
+							// Legacy drawBridges applies the shroud texture as a second pass over every bridge; the
+							// deck stands above the ground so the ground-level overlay cannot reach it. Same result
+							// per vertex: the lit color times the shroud level at the vertex position.
+							float shroud[3];
+							NativeWorldEffects::shroudMultiplierAt(v.x, v.y, shroud);
+							auto scale = [](unsigned c, float k) { return static_cast<unsigned>(c * k + 0.5f > 255.0f ? 255.0f : c * k + 0.5f); };
+							const unsigned argb = static_cast<unsigned>(v.diffuse);
+							const unsigned lit = (argb & 0xff000000u) | (scale((argb >> 16) & 0xff, shroud[0]) << 16) |
+							                     (scale((argb >> 8) & 0xff, shroud[1]) << 8) | scale(argb & 0xff, shroud[2]);
+							vertices[i] = {v.x, v.y, v.z, lit, v.u1, v.v1, v.u1, v.v1};
 						}
 						if (geometry.Vertex_Count() < static_cast<unsigned>(batch.vertexCount) ||
 							geometry.Index_Count() < static_cast<unsigned>(batch.indexCount))

@@ -213,3 +213,50 @@ Inspect in the next review: particles during combat, destruction and building fi
 squares on mountain slopes; fogged ghost buildings dimmed to the fog level and visible live buildings bright;
 the 1200x900 window (mouse position and edge scrolling still exact at the corners); and everything from the
 first checklist.
+
+## 11. Bridges under shroud (fix2)
+
+**Defect.** Bridges stayed fully lit under fog/shroud while the surrounding terrain was dark.
+
+**Path.** Legacy `W3DBridgeBuffer::drawBridges` draws each bridge with the terrain-lit vertex colors and then
+`HeightMapRenderObjClass::Render` applies the shroud as a *second material pass* over the bridge
+(`W3DShroud` texture, multiplicative, per-bridge). Native terrain renders shroud as an overlay mesh laid on the
+terrain lattice at ground level (section 9). A bridge deck stands above the ground, so the ground-level overlay is
+depth-hidden behind the deck and never darkens it; roads lie on the ground and are covered by the overlay (lift 0.078
+< 0.35). The native bridge upload (`HeightMap.cpp`, "(4) Bridges") copied `v.diffuse` unchanged.
+
+**Fix.** Each bridge vertex diffuse is multiplied by `NativeWorldEffects::shroudMultiplierAt(v.x, v.y)` when the
+batch is uploaded, i.e. the lit color times the shroud level at the vertex position, the same result as the legacy
+second pass and the same function the object shroud pass uses. This follows the local visibility state (clear,
+fogged, black) and is not a global darkening; it is re-evaluated on every shroud change because the bridge batch
+upload runs each frame. Contract: `test_x64_29_review_fixes_are_pinned`.
+
+## 12. Zero Hour: shared vs variant-specific, and when to start
+
+Measured on `dev/modern-engine` against `main`:
+
+| Layer | Status |
+| --- | --- |
+| **Shared (Core)**: D3D11 backend, `NativeOrdinaryHost`, `NativeWorldObjects`, `NativeWorldEffects` (particles, shadows, scorch, water, shroud overlay, ghosts' shroud), `HeightMap`/`BaseHeightMap`/`WorldHeightMap`, `W3DView`, `W3DDisplay`, `W3DParticleSys`, `W3DWater`, radar, UI/render2d, texture loading | One implementation, already compiled for both titles; `z_googletest` and `z_generals` build in every validation |
+| **Logic/engine hooks** (`GameEngine`, `GameClient`, `GameLogic`, `AI*`, `Locomotor`, `Weapon`, `Drawable`...) | Already ported to GeneralsMD (30 files) |
+| **ZH-specific device code not yet carrying native hooks** | `W3DBridgeBuffer` (.h/.cpp: CPU batch accessor `forEachNativeBridge`, native texture path, headless allocation), `W3DRoadBuffer` (.h/.cpp), `W3DGhostObject.cpp`, `W3DInGameUI` (.h/.cpp, partial), plus `WinMain.cpp` review-window/ordinary-host path |
+| **ZH-only differences that need their own review** | `W3DVolumetricShadow` (359 changed lines vs Generals), `W3DScene` (frenzy/material passes), `W3dWaypointBuffer`, `W3DFileSystem`, `W3DAssetManager`, mapper internals (only Scale/LinearOffset/ClassicEnv/Env `Native_Evaluate` kept), data: new INI, generals powers, 3D models, particle templates, shell map, campaign |
+| **Gates** | `StartupDiagnostics::validOrdinaryArguments` rejects ZH; `*NativeOrdinary*.ps1` `ValidateSet('Generals')`; classifiers/receipts pin the title |
+
+**Recommendation.** Do not wait for further Generals polish and do not fork the renderer. The next shared step is a
+small, offline **parameterization batch** (X64.30): (1) port the six ZH device hook files above with the same
+`#if defined(_WIN64)` discipline (mechanical: both trees already share the structure); (2) replace the ZH rejection
+in `validOrdinaryArguments` with a title/root-aware check keyed on a compile-time title constant, keeping the
+Generals grammar byte-identical; (3) generalize the Stage/Test/Invoke scripts `ValidateSet` to
+`'Generals','ZeroHour'` with the title carried through receipts and gate expectations; (4) run the offline sweeps
+(retail W3D prototype sweep, particle INI test, mapper gallery) against the ZH archives (`W3DZH.big`, `INIZH.big`,
+`TexturesZH.big`, `TerrainZH.big`) which cost no native time; (5) add `z_googletest` coverage for the shared native
+tests so both binaries exercise them.
+
+The next meaningful native checkpoint (**X64.30 candidates**) should include **both titles, as separate staged
+candidates run in the same review session**: Generals regression (fix2 as staged, bridge/shroud) and Zero Hour
+`-nativeOrdinaryHost` -> `Menu` -> `Terrain` progression (stop at Terrain; play follows after one clean ZH menu
+and terrain run). Reasons: shared-engine defects (shroud, shadows, particles) surface once, on the title where they
+are cheapest to read; ZH-only defects (bridge/road buffers, ghost, ZH shadow volumes) are isolated by the hook
+files above; and a Generals regression gate keeps the First Playable baseline protected. Keep Generals as the
+primary parity baseline and ZH as a second column in the evidence table, not a separate pipeline.

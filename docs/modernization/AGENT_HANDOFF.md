@@ -411,3 +411,5 @@ material choices. Update this handoff before transferring to another agent.
 This task stops after documentation. Do not begin X64.22 or normal-startup
 implementation as part of this handoff. The next task is the ordinary-startup
 blocker audit described above, under the next developer instruction.
+
+**X64.29 fix2:** bridges now follow local shroud (per-vertex shroud multiplier at upload); Zero Hour shared/specific audit and parallel-candidate recommendation in `GAMEPLAY_RENDERING_COMPLETENESS.md` sections 11-12.

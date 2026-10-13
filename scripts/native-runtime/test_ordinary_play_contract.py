@@ -172,6 +172,10 @@ class OrdinaryPlayContract(unittest.TestCase):
         # Objects fogged/ghosted are drawn through the shroud like the legacy shroud material pass.
         self.assertIn("if (info && !info->m_drawable) input.shrouded = true;", objects)
         self.assertIn("input.shrouded = ss > OBJECTSHROUD_CLEAR;", objects)
+        # Bridges: legacy drawBridges applies the shroud as a second pass; the deck is above the ground overlay,
+        # so the native upload multiplies each bridge vertex by the local shroud level.
+        heightmap = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp")
+        self.assertIn("NativeWorldEffects::shroudMultiplierAt(v.x, v.y, shroud);", heightmap)
         # The review window keeps the accepted app_window receipt and the logical 800x600 display.
         main = read("Generals/Code/Main/WinMain.cpp")
         self.assertIn('"client=800x600 windowed=1 class=Game Window"', main)
