@@ -413,3 +413,5 @@ implementation as part of this handoff. The next task is the ordinary-startup
 blocker audit described above, under the next developer instruction.
 
 **X64.29 fix2:** bridges now follow local shroud (per-vertex shroud multiplier at upload); Zero Hour shared/specific audit and parallel-candidate recommendation in `GAMEPLAY_RENDERING_COMPLETENESS.md` sections 11-12.
+
+**X64.29 CLOSED:** `x64-29-gameplay-render-completeness-fix2` accepted by developer visual review (2026-10-13); evidence preserved in `docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/`. Zero Hour X64.30 parameterization is deliberately postponed (audit kept in `GAMEPLAY_RENDERING_COMPLETENESS.md` sections 11-12). Next batch: World/UI Completeness (`WORLD_UI_COMPLETENESS.md`).

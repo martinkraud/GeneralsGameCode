@@ -31,8 +31,9 @@ visual acceptance by the agent, no weakened gates, immutable failed-run evidence
 | --- | --- | --- |
 | X64.27 | terrain completion | ACCEPTED (fix2 run `20261013T0638444013011Z`); bridges/shoreline unexercised |
 | **CP1 = X64.28** | world objects + interactive world + play host | **ACCEPTED 2026-10-13 (fix2 run `20261013T1227301326226Z`) - FIRST PLAYABLE baseline** |
-| CP2 | Gameplay + Rendering Completeness (see `GAMEPLAY_RENDERING_COMPLETENESS.md`): water, shroud/fog, ghosts, particles, lines, shadows, decals, scorches, material families | offline batch complete, candidate `x64-29-gameplay-render-completeness` staged, not executed |
-| CP3 | First Playable acceptance (full skirmish loop, AI, clean end) | planned (may merge with CP2) |
+| CP2 = X64.29 | Gameplay + Rendering Completeness (see `GAMEPLAY_RENDERING_COMPLETENESS.md`): water, shroud/fog, ghosts, particles, lines, shadows, decals, scorches, material families | **ACCEPTED 2026-10-13 (fix2, run `20261013T2148410437663Z`, evidence `evidence/x64-29-gameplay-render-completeness-fix2/`)** - regression baseline with X64.28 |
+| CP3 = X64.30 | World/UI Completeness: radar/minimap, terrain tracks, bibs/waypoints/overlays, water completeness, shroud integration audit, renderer completeness audit (`WORLD_UI_COMPLETENESS.md`) | in progress (offline batch) |
+| CP4 | Full skirmish acceptance (AI, clean end) | planned |
 
 ## 3. Dependency graph from accepted terrain to First Playable
 
