@@ -77,7 +77,7 @@ W3DProjectileStreamDraw::~W3DProjectileStreamDraw()
 	{
 		SegmentedLineClass *deadLine = m_allLines[lineIndex];
 		if (deadLine)
-		{	if (deadLine->Peek_Scene())
+		{	if (deadLine->Peek_Scene() && W3DDisplay::m_3DScene)
 				W3DDisplay::m_3DScene->Remove_Render_Object( deadLine );
 			REF_PTR_RELEASE( deadLine );
 		}
@@ -115,7 +115,7 @@ void W3DProjectileStreamDraw::setFullyObscuredByShroud(Bool fullyObscured)
 		for( Int lineIndex = 0; lineIndex < m_linesValid; lineIndex++ )
 		{
 			SegmentedLineClass *deadLine = m_allLines[lineIndex];
-			if (deadLine && !deadLine->Peek_Scene())
+			if (deadLine && !deadLine->Peek_Scene() && W3DDisplay::m_3DScene)
 				W3DDisplay::m_3DScene->Add_Render_Object(deadLine);
 		}
 	}
@@ -184,7 +184,7 @@ void W3DProjectileStreamDraw::doDrawModule(const Matrix3D* )
 	{
 		// Delete any line we aren't using anymore.
 		SegmentedLineClass *deadLine = m_allLines[lineIndex];
-		if (deadLine->Peek_Scene())
+		if (deadLine->Peek_Scene() && W3DDisplay::m_3DScene)
 			W3DDisplay::m_3DScene->Remove_Render_Object( deadLine );
 		REF_PTR_RELEASE( deadLine );
 
@@ -219,7 +219,8 @@ void W3DProjectileStreamDraw::makeOrUpdateLine( Vector3 *points, UnsignedInt poi
 		line->Set_Texture_Mapping_Mode(SegLineRendererClass::TILED_TEXTURE_MAP);	//this tiles the texture across the line
 		line->Set_Texture_Tile_Factor(data->m_tileFactor);	//number of times to tile texture across each segment
 		line->Set_UV_Offset_Rate(Vector2(0.0f,data->m_scrollRate));	//amount to scroll texture on each draw
-		W3DDisplay::m_3DScene->Add_Render_Object( line);	//add it to our scene so it gets rendered with other objects.
+		if (W3DDisplay::m_3DScene)
+			W3DDisplay::m_3DScene->Add_Render_Object( line);	//add it to our scene so it gets rendered with other objects.
 	}
 }
 

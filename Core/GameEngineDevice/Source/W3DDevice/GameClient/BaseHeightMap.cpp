@@ -91,6 +91,10 @@
 #include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.
 #include "W3DDevice/GameClient/BaseHeightMap.h"
 #if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "W3DDevice/GameClient/Module/W3DTreeDraw.h"
+#endif
+#if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
 #endif
 
@@ -2047,6 +2051,10 @@ void BaseHeightMapRenderObjClass::removeTreesAndPropsForConstruction(const Coord
 	if (m_propBuffer) {
 		m_propBuffer->removePropsForConstruction(pos, geom, angle);
 	}
+#if defined(_WIN64)
+	if (!m_treeBuffer && StartupDiagnostics::ordinaryPlay())
+		NativeWorldObjects::removeSceneryForConstruction(pos, geom, angle);
+#endif
 }
 
 //=============================================================================
@@ -2060,6 +2068,13 @@ void BaseHeightMapRenderObjClass::addTree(DrawableID id, Coord3D location, Real 
 	if (m_treeBuffer) {
 		m_treeBuffer->addTree(id, location, scale, angle, randomScaleAmount, data);
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay() && data) {
+		// Native play profile: static native render object (no sway/topple) instead of the tree buffer.
+		NativeWorldObjects::addScenery(NativeWorldObjects::SceneryTree, static_cast<int>(id), data->m_modelName.str(),
+			data->m_textureName.str(), location, scale, angle);
+	}
+#endif
 };
 
 //=============================================================================
@@ -2072,6 +2087,11 @@ void BaseHeightMapRenderObjClass::removeTree(DrawableID id)
 	if (m_treeBuffer) {
 		m_treeBuffer->removeTree(id);
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay()) {
+		NativeWorldObjects::removeScenery(NativeWorldObjects::SceneryTree, static_cast<int>(id));
+	}
+#endif
 };
 
 //=============================================================================
@@ -2084,6 +2104,11 @@ void BaseHeightMapRenderObjClass::removeAllTrees()
 	if (m_treeBuffer) {
 		m_treeBuffer->clearAllTrees();
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay()) {
+		NativeWorldObjects::removeAllScenery(NativeWorldObjects::SceneryTree);
+	}
+#endif
 };
 
 //=============================================================================
@@ -2096,6 +2121,10 @@ Bool BaseHeightMapRenderObjClass::updateTreePosition(DrawableID id, Coord3D loca
 	if (m_treeBuffer) {
 		return m_treeBuffer->updateTreePosition(id, location, angle);
 	}
+#if defined(_WIN64)
+	if (StartupDiagnostics::ordinaryPlay())
+		return NativeWorldObjects::updateScenery(NativeWorldObjects::SceneryTree, static_cast<int>(id), location, angle);
+#endif
 	return false;
 };
 
@@ -2110,6 +2139,11 @@ void BaseHeightMapRenderObjClass::addProp(Int id, Coord3D location, Real angle, 
 	if (m_propBuffer) {
 		m_propBuffer->addProp(id, location, angle, scale, modelName);
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay()) {
+		NativeWorldObjects::addScenery(NativeWorldObjects::SceneryProp, id, modelName.str(), nullptr, location, scale, angle);
+	}
+#endif
 };
 
 
@@ -2123,6 +2157,11 @@ void BaseHeightMapRenderObjClass::removeProp(Int id)
 	if (m_propBuffer) {
 		m_propBuffer->removeProp(id);
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay()) {
+		NativeWorldObjects::removeScenery(NativeWorldObjects::SceneryProp, id);
+	}
+#endif
 };
 
 //=============================================================================
@@ -2135,6 +2174,11 @@ void BaseHeightMapRenderObjClass::removeAllProps()
 	if (m_propBuffer) {
 		m_propBuffer->clearAllProps();
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay()) {
+		NativeWorldObjects::removeAllScenery(NativeWorldObjects::SceneryProp);
+	}
+#endif
 };
 
 //=============================================================================

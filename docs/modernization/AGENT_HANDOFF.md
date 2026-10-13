@@ -1,7 +1,8 @@
 # GeneralsGameCode: current cross-agent handoff
 
-Updated 2026-10-12 after independent X64.21-fix2 evidence review and the X64.22
-ordinary-startup audit (documentation only). This file is the
+Updated 2026-10-14 after the formal X64.27 acceptance and the X64.28 First Playable batch (the
+"Current primary objective" section below carries the running log; plan and dependency graph:
+`FIRST_PLAYABLE_ROADMAP.md`). This file is the
 current project summary, not a chronological transcript. Historical reports may
 contain superseded candidate instructions; use their latest acceptance sections.
 Developer task direction overrides any inferred roadmap task.
@@ -196,6 +197,26 @@ world rendering, cross-arch determinism, performance.
 **X64.26 terrain fidelity + dynamic terrain exercise FORMALLY ACCEPTED (2026-10-13).** Machine PASS and developer visual PASS recorded separately from run `build/dev-runtimes/native/Generals/x64-26-terrain-fidelity/runs/20261013T0533511829002Z` (exit 0, 255 records, 1800 logic frames, 3600 terrain frames with retail cloud+noise on every frame, six scripted camera moves, `tile_updates` 16->84 strictly increasing, `live_residencies=0`; EXE `09EB69BC...378D57`). Retail `terrain*.pso` decoded; single-pass combiner and world-XY texgen verified. Control Bar review: bar is parked at y=1216 because `ControlBar::update()` returns under headless so the slide-in animation never runs (radar is RadarDummy); bounded follow-up documented. Doc: `X64_26_TERRAIN_FIDELITY.md`. Next: shoreline/extra-blend, roads/bridges, R3 meshes; small Control Bar animation fix as a separate UI step.
 
 **X64.27 terrain completion + map infrastructure (2026-10-13): candidate staged, NOT executed.** Control Bar slide-in via a profile-only `ControlBar::updateNativePresentation()` (presentation subset of `update()`); native TerrainOverlay family (extra-blend 3-way tiles, roads, bridges, destination-alpha shoreline) decoded from `roadnoise2.pso`/`detailAlphaShader`; dynamic geometry + dds/TGA world texture decode; classifier requires each overlay family exactly when the loaded map reports it, plus Control Bar visibility. Acceptance map: `Lone Eagle` (all four families). Doc: `X64_27_TERRAIN_COMPLETION.md`. Out of scope: meshes, water, shadows, particles, radar, extended camera (later Modern Experience phase).
+
+**X64.27 FORMALLY ACCEPTED (2026-10-14)** from fix2 run
+`build/dev-runtimes/native/Generals/x64-27-terrain-completion-fix2/runs/20261013T0638444013011Z` (exit 0, 263
+records, 1800 logic frames, 3600 terrain frames, 4 overlay families counted, `live_residencies=0`; developer
+visual PASS: terrain, roads, moving cloud shadows, original Control Bar). The run used Alpine Assault, so
+bridges and shoreline were not exercised natively (WARP contracts only). Doc: `X64_27_TERRAIN_COMPLETION.md`.
+
+**NEW PRIMARY OBJECTIVE (2026-10-14): FIRST PLAYABLE GENERALS** with larger offline batches and one staged
+candidate per batch (target 2-4 native checkpoints). Plan, dependency graph, fidelity backlog and the
+record-only Developer Mode note: `FIRST_PLAYABLE_ROADMAP.md`.
+
+**X64.28 (CP1) world objects + interactive world + play profile - offline batch complete, candidate staged,
+NOT executed.** Profile `-nativeOrdinaryPlay` (implies terrain). Native object renderer
+(`Core/GameEngineDevice/.../NativeWorldObjects.*`: registry, CPU skin/lighting, shader-state mapping, team
+color, animation, trees/props), native picking, in-game UI/overlay draw, full Control Bar update, user-driven
+loop with message-tap receipts. Offline evidence: real models rendered through WARP, every W3D.big prototype
+rendered fault-free, classifier/contracts. Doc: `FIRST_PLAYABLE_ROADMAP.md` section 4 and
+`X64_28_PLAY_WORLD.md`. Lessons: bash heredocs in this environment halve backslashes (use the Write/Edit
+tools for C++/Python containing `\`); a global text replace once made a helper call itself - the static
+contract test caught it.
 
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer

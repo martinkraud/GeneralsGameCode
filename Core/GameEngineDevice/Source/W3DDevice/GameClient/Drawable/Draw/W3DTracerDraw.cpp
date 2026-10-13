@@ -91,7 +91,8 @@ W3DTracerDraw::~W3DTracerDraw()
 	// remove tracer from the scene and delete
 	if( m_theTracer )
 	{
-		W3DDisplay::m_3DScene->Remove_Render_Object( m_theTracer );
+		if (W3DDisplay::m_3DScene)
+			W3DDisplay::m_3DScene->Remove_Render_Object( m_theTracer );
 		REF_PTR_RELEASE( m_theTracer );
 	}
 }
@@ -126,7 +127,9 @@ void W3DTracerDraw::doDrawModule(const Matrix3D* transformMtx)
 																	 m_color.green,  // green
 																	 m_color.blue,  // blue
 																	 m_opacity );  // transparency
-		W3DDisplay::m_3DScene->Add_Render_Object( m_theTracer );
+		// The headless world selection (native play profile) has no legacy scene; tracers are not drawn there.
+		if (W3DDisplay::m_3DScene)
+			W3DDisplay::m_3DScene->Add_Render_Object( m_theTracer );
 
 		// set the transform for the tracer to that of the drawable
 		m_theTracer->Set_Transform( *transformMtx );

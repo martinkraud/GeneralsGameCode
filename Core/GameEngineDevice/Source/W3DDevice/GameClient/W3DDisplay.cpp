@@ -1816,6 +1816,12 @@ void W3DDisplay::update()
 	{
 		// Cloud scrolling reads the logic frame time exactly like the non-headless update.
 		WW3D::Update_Logic_Frame_Time(TheFramePacer->getLogicTimeStepMilliseconds());
+		if (StartupDiagnostics::ordinaryPlay())
+		{
+			// Same binding as the non-headless update: draw modules advance their per-sync work
+			// (tank tread scroll, dust) on WW3D::Get_Sync_Frame_Time().
+			WW3D::Sync(TheGameLogic->hasUpdated());
+		}
 		updateViews();
 		return;
 	}

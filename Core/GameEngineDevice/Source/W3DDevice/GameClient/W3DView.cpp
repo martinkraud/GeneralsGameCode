@@ -1294,6 +1294,59 @@ void W3DView::drawNativeWorldOverlays()
 	Region3D axisAlignedRegion;
 	getAxisAlignedViewRegion(axisAlignedRegion);
 
+	// Selection rings. The legacy ring is a projected terrain decal (W3DProjectedShadowManager), which this
+	// profile does not have; an equivalent circle on the terrain around each selected drawable is drawn
+	// with the 2D line path instead: green for the local player's units, red for enemies, white otherwise.
+	if (TheInGameUI)
+	{
+		const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+		Player *local = rts::getObservedOrLocalPlayer();
+		if (selected && !selected->empty())
+		{
+			TheDisplay->beginBatch();
+			for (DrawableListCIt it = selected->begin(); it != selected->end(); ++it)
+			{
+				const Drawable *draw = *it;
+				if (!draw || draw->isDrawableEffectivelyHidden())
+					continue;
+				const Object *obj = draw->getObject();
+				UnsignedInt color = GameMakeColor(255, 255, 255, 255);
+				if (obj && local)
+				{
+					const Player *owner = obj->getControllingPlayer();
+					if (owner == local)
+						color = GameMakeColor(40, 255, 40, 255);
+					else if (owner && local->getRelationship(obj->getTeam()) == ENEMIES)
+						color = GameMakeColor(255, 40, 40, 255);
+				}
+				Real radius = draw->getDrawableGeometryInfo().getBoundingCircleRadius();
+				if (radius < 6.0f) radius = 6.0f;
+				const Coord3D *center = draw->getPosition();
+				const Int kSegments = 28;
+				ICoord2D previous = {0, 0};
+				Bool havePrevious = FALSE, first = TRUE;
+				ICoord2D firstPoint = {0, 0};
+				for (Int i = 0; i <= kSegments; ++i)
+				{
+					const Real a = (Real)i * (2.0f * PI / (Real)kSegments);
+					Coord3D p;
+					p.x = center->x + radius * cosf(a);
+					p.y = center->y + radius * sinf(a);
+					p.z = TheTerrainLogic ? TheTerrainLogic->getGroundHeight(p.x, p.y) + 1.0f : center->z;
+					ICoord2D s;
+					const Bool visible = worldToScreen(&p, &s);
+					if (visible && havePrevious)
+						TheDisplay->drawLine(previous.x, previous.y, s.x, s.y, 2.0f, color);
+					if (visible && first) { firstPoint = s; first = FALSE; }
+					havePrevious = visible;
+					previous = s;
+				}
+				(void)firstPoint;
+			}
+			TheDisplay->endBatch();
+		}
+	}
+
 	TheGameClient->resetRenderedObjectCount();
 
 	TheDisplay->beginBatch();

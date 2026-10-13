@@ -15,6 +15,8 @@ class RenderObjClass;
 class CameraClass;
 class D3D11Backend;
 class RayCollisionTestClass;
+struct Coord3D;
+class GeometryInfo;
 
 namespace NativeWorldObjects
 {
@@ -77,7 +79,20 @@ struct ObjectInput
     float opacity;      // Drawable::getEffectiveOpacity (1 = opaque)
     float tint[3];      // summed FX tint + selection color added to ambient
     bool infantry;      // uses the infantry light scale set
+    const char *textureOverride;   // replaces every polygon texture (tree atlas textures), or null
+    bool foliage;       // alpha-tested, double-sided, depth-writing (the tree buffer shader state)
 };
+
+// Static scenery that the legacy tree/prop buffers draw from their own CPU data. Under the play profile
+// those buffers do not exist; the same placements become native render objects (no sway/topple).
+enum SceneryKind { SceneryTree = 0, SceneryProp = 1 };
+void addScenery(int kind, int id, const char *model, const char *texture, const Coord3D &location,
+                float scale, float angle);
+void removeScenery(int kind, int id);
+bool updateScenery(int kind, int id, const Coord3D &location, float angle);
+void removeAllScenery(int kind);
+void removeSceneryForConstruction(const Coord3D *position, const GeometryInfo &geometry, float angle);
+unsigned sceneryCount();
 
 // Draws every registered object visible to the camera on top of the terrain pass (same camera,
 // viewport and depth buffer). Returns the number of draw submissions issued.
@@ -91,6 +106,7 @@ void setFileReaderForTests(FileReader reader);
 // Test hook: render-target size used for the viewport instead of WW3D's (0 = use WW3D).
 void setRenderTargetSizeForTests(unsigned width, unsigned height);
 Stats stats();
+void resetStatsForTests();   // test hook: counters are cumulative per process
 // Bounded names of the first textures/classes that were not drawn faithfully (diagnostics).
 unsigned failedTextureCount();
 const char *failedTexture(unsigned index);

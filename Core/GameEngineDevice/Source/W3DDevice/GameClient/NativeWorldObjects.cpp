@@ -19,6 +19,11 @@
 #include "GameClient/Drawable.h"
 #include "GameClient/DrawableInfo.h"
 #include "GameLogic/Object.h"
+#include "GameLogic/PartitionManager.h"
+#include "Common/FileSystem.h"
+#include "Common/File.h"
+#include "W3DDevice/GameClient/W3DAssetManager.h"
+#include "W3DDevice/GameClient/W3DDisplay.h"
 #include <WW3D2/animobj.h>
 #include <WW3D2/camera.h>
 #include <WW3D2/coltest.h>
@@ -63,6 +68,16 @@ struct Entry
 {
     RenderObjClass *object;
     int hexColor;
+    std::string textureOverride;
+    bool foliage;
+};
+
+struct Scenery
+{
+    RenderObjClass *object;
+    float x, y, z;
+    float radius;
+    int kind;
 };
 
 struct Chunk
@@ -98,6 +113,7 @@ struct State
 {
     std::vector<Entry> entries;
     std::unordered_map<RenderObjClass *, size_t> index;
+    std::map<std::pair<int, int>, Scenery> scenery;
     D3D11Backend *backend = nullptr;
     std::vector<Chunk> chunks;
     size_t activeChunk = 0;
@@ -132,6 +148,18 @@ unsigned g_testTargetSize[2] = {0, 0};
 UITextureBytes ReadFile(const std::string &file)
 {
     UITextureBytes bytes;
+    if (!g_testReader && TheFileSystem && file.size() > 4 && (file.compare(0, 4, "Art/") == 0 || file.compare(0, 4, "Art\\") == 0)) {
+        // Full engine paths (tree textures live under Art/Terrain); other names go through the W3D file factory.
+        File *stream = TheFileSystem->openFile(file.c_str(), File::READ | File::BINARY);
+        if (!stream) return bytes;
+        const Int size = stream->size();
+        if (size <= 0 || size > 64 * 1024 * 1024) { stream->close(); bytes.status = UITextureStatus::Invalid; return bytes; }
+        bytes.bytes.resize(static_cast<size_t>(size));
+        const Int got = stream->read(bytes.bytes.data(), size);
+        stream->close();
+        bytes.status = got == size ? UITextureStatus::Ready : UITextureStatus::Invalid;
+        return bytes;
+    }
     if (g_testReader) {
         std::vector<unsigned char> data;
         if (g_testReader(file, data) && !data.empty()) { bytes.status = UITextureStatus::Ready; bytes.bytes = std::move(data); }
@@ -208,7 +236,8 @@ Texture2DResidency *WhiteTexture(D3D11Backend &backend)
 
 // Decoded object texture (dds-first, full mip chain), recolored for ZHC team textures. Failures are
 // recorded and answered with the white texture so the geometry is still visible and diagnosable.
-Texture2DResidency *ObjectTexture(D3D11Backend &backend, const char *rawName, int hexColor, bool &teamColored)
+Texture2DResidency *ObjectTexture(D3D11Backend &backend, const char *rawName, int hexColor, bool &teamColored,
+                                  bool terrainDirFirst = false)
 {
     State &s = S();
     teamColored = false;
@@ -222,7 +251,12 @@ Texture2DResidency *ObjectTexture(D3D11Backend &backend, const char *rawName, in
     auto found = s.textures.find(cacheKey);
     if (found == s.textures.end()) {
         CachedTexture entry;
-        WorldTextureResult base = Load_World_Texture_Base(name, ReadFile);
+        // Tree atlas textures: the legacy buffer looked in Art/Terrain first, then in Art/Textures.
+        WorldTextureResult base;
+        if (terrainDirFirst && name.find('/') == std::string::npos)
+            base = Load_World_Texture_Base("Art/Terrain/" + name, ReadFile);
+        if (base.status != UITextureStatus::Ready)
+            base = Load_World_Texture_Base(name, ReadFile);
         if (base.status == UITextureStatus::Ready && base.image.width && base.image.height) {
             if (team) RecolorTeamTexture(base.image, name[3], hexColor);
             WorldTexture::BuildMips(base.image, 16);
@@ -263,6 +297,8 @@ struct Frame
     LightSet lights;
     LightSet infantryLights;
     // per object
+    const char *textureOverride;
+    bool foliage;
     int hexColor;
     float opacity;
     float tint[3];
@@ -426,6 +462,16 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
     }
 
     const Vector2 *uv = model->Get_UV_Array(0, 0);
+    // Tank/truck treads publish their scroll as a Material_Override in the mesh user data (the DX8 path
+    // feeds it to the vertex material's linear-offset mapper); the offset is added to the UVs here.
+    float uvOffsetU = 0.0f, uvOffsetV = 0.0f;
+    if (void *userData = mesh->Get_User_Data()) {
+        if (*static_cast<int *>(userData) == RenderObjClass::USER_DATA_MATERIAL_OVERRIDE) {
+            const auto *override_ = static_cast<RenderObjClass::Material_Override *>(userData);
+            uvOffsetU = override_->customUVOffset.X;
+            uvOffsetV = override_->customUVOffset.Y;
+        }
+    }
     const unsigned *dcg = model->Get_DCG_Array(0);
     const unsigned *dig = model->Get_DIG_Array(0);
     const bool houseMesh = IsHouseColorMesh(mesh->Get_Name());
@@ -485,8 +531,8 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
             if (!dcg && dig && looks[m].emissiveFromVertex) vertexColor = dig[v];
             out.diffuse = LitColor(looks[m], f, lights, normal[v], vertexColor, dcg != nullptr || (dig && looks[m].emissiveFromVertex),
                                    1.0f);
-            out.u0 = uv ? uv[v].X : 0.0f;
-            out.v0 = uv ? uv[v].Y : 0.0f;
+            out.u0 = (uv ? uv[v].X : 0.0f) + uvOffsetU;
+            out.v0 = (uv ? uv[v].Y : 0.0f) + uvOffsetV;
             out.u1 = out.u0; out.v1 = out.v0;
             chunk.vertices.push_back(out);
         }
@@ -547,18 +593,32 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
 
         // texture
         bool teamColored = false;
-        const bool texturing = shader.Get_Texturing() == ShaderClass::TEXTURING_ENABLE && b.key.texture != nullptr;
+        const bool overridden = f.textureOverride != nullptr && *f.textureOverride;
+        const bool texturing = overridden ||
+            (shader.Get_Texturing() == ShaderClass::TEXTURING_ENABLE && b.key.texture != nullptr);
         if (texturing) {
-            out.texture = ObjectTexture(*f.backend, b.key.texture->Get_Texture_Name().str(), f.hexColor, teamColored);
+            const char *textureName = overridden ? f.textureOverride : b.key.texture->Get_Texture_Name().str();
+            out.texture = ObjectTexture(*f.backend, textureName, f.hexColor, teamColored, overridden);
             if (teamColored) ++s.stats.teamColored;
-            const TextureFilterClass &filter = b.key.texture->Get_Filter();
-            out.clamp = filter.Get_U_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP &&
-                        filter.Get_V_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP;
+            if (b.key.texture) {
+                const TextureFilterClass &filter = b.key.texture->Get_Filter();
+                out.clamp = filter.Get_U_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP &&
+                            filter.Get_V_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP;
+            }
         } else {
             out.texture = WhiteTexture(*f.backend);
         }
         out.linear = true;
         out.mipLinear = true;
+
+        if (f.foliage) {
+            // W3DTreeBuffer's SC_ALPHA_DETAIL: opaque, alpha tested, double sided, depth writing, modulate.
+            out.blend = WorldBlend::Opaque;
+            out.alphaTest = kAlphaRef;
+            out.doubleSided = true;
+            out.depthWrite = true;
+            out.noDiffuse = false;
+        }
 
         // emit indices into the shared chunk
         out.firstIndex = static_cast<unsigned>(chunk.indices.size());
@@ -566,7 +626,7 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
             chunk.indices.push_back(static_cast<unsigned short>(blockBase[m] + idx));
         out.indexCount = static_cast<unsigned>(b.indices.size());
         out.distance = f.distance;
-        out.translucent = out.blend != WorldBlend::Opaque || opacityOverride;
+        out.translucent = (out.blend != WorldBlend::Opaque && !f.foliage) || opacityOverride;
         if (out.alphaTest > 0.0f && out.blend == WorldBlend::Opaque) out.translucent = opacityOverride;
         s.batches.push_back(out);
         s.stats.triangles += out.indexCount / 3;
@@ -688,7 +748,7 @@ void add(RenderObjClass *object, int hexColor)
     if (s.index.find(object) != s.index.end()) { s.entries[s.index[object]].hexColor = hexColor; return; }
     object->Add_Ref();
     s.index[object] = s.entries.size();
-    s.entries.push_back(Entry{object, hexColor});
+    s.entries.push_back(Entry{object, hexColor, std::string(), false});
 }
 
 void remove(RenderObjClass *object)
@@ -776,6 +836,8 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         RenderObjClass *object = input.object;
         ++s.stats.objects;
         f.hexColor = input.hexColor;
+        f.textureOverride = input.textureOverride;
+        f.foliage = input.foliage;
         f.opacity = input.opacity;
         f.tint[0] = input.tint[0]; f.tint[1] = input.tint[1]; f.tint[2] = input.tint[2];
         f.infantry = input.infantry;
@@ -784,6 +846,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         object->Set_Visible(1);
         const Vector3 delta = sphere.Center - f.cameraPosition;
         f.distance = delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z;
+        if (!(f.distance - f.distance == 0.0f)) f.distance = 0.0f;   // non-finite bounds must not poison the sort
         f.drawnMeshes = 0;
         ProcessObject(f, object, s, 0);
         if (f.drawnMeshes) ++drawnObjects;
@@ -848,6 +911,8 @@ int render(D3D11Backend &backend, CameraClass &camera)
         ObjectInput input = {};
         input.object = object;
         input.hexColor = entry.hexColor;
+        input.textureOverride = entry.textureOverride.empty() ? nullptr : entry.textureOverride.c_str();
+        input.foliage = entry.foliage;
         input.opacity = 1.0f;
         DrawableInfo *info = static_cast<DrawableInfo *>(object->Get_User_Data());
         if (info && info->m_drawable) {
@@ -893,6 +958,12 @@ Stats stats()
     return S().stats;
 }
 
+void resetStatsForTests()
+{
+    S().stats = Stats{};
+    S().failedCount = 0;
+}
+
 unsigned failedTextureCount()
 {
     return S().failedCount;
@@ -904,12 +975,104 @@ const char *failedTexture(unsigned index)
     return index < kFailedNames && index < s.failedCount ? s.failed[index].c_str() : "";
 }
 
+
+namespace {
+void SetEntryState(RenderObjClass *object, const char *texture, bool foliage)
+{
+    State &s = S();
+    auto found = s.index.find(object);
+    if (found == s.index.end()) return;
+    Entry &entry = s.entries[found->second];
+    entry.textureOverride = texture ? texture : "";
+    entry.foliage = foliage;
+}
+}
+
+void addScenery(int kind, int id, const char *model, const char *texture, const Coord3D &location,
+                float scale, float angle)
+{
+    if (!active() || !model || !*model) return;
+    State &s = S();
+    removeScenery(kind, id);
+    if (!W3DDisplay::m_assetManager) return;
+    RenderObjClass *object = W3DDisplay::m_assetManager->Create_Render_Obj(model);
+    if (!object) return;
+    Matrix3D tm(true);
+    tm.Rotate_Z(angle);
+    tm.Scale(scale);
+    tm.Set_Translation(Vector3(location.x, location.y, location.z));
+    object->Set_Transform(tm);
+    object->Set_ObjectScale(scale);
+    object->Set_Collision_Type(0);          // scenery never blocks or answers unit picking rays
+    add(object, 0);
+    SetEntryState(object, texture && *texture ? texture : nullptr, kind == SceneryTree);
+    const SphereClass &sphere = object->Get_Bounding_Sphere();
+    s.scenery[{kind, id}] = Scenery{object, location.x, location.y, location.z, sphere.Radius, kind};
+    object->Release_Ref();                  // the registry holds the reference
+}
+
+void removeScenery(int kind, int id)
+{
+    State &s = S();
+    auto found = s.scenery.find({kind, id});
+    if (found == s.scenery.end()) return;
+    remove(found->second.object);
+    s.scenery.erase(found);
+}
+
+bool updateScenery(int kind, int id, const Coord3D &location, float angle)
+{
+    State &s = S();
+    auto found = s.scenery.find({kind, id});
+    if (found == s.scenery.end()) return false;
+    Matrix3D tm(true);
+    tm.Rotate_Z(angle);
+    tm.Scale(found->second.object->Get_ObjectScale());
+    tm.Set_Translation(Vector3(location.x, location.y, location.z));
+    found->second.object->Set_Transform(tm);
+    found->second.x = location.x; found->second.y = location.y; found->second.z = location.z;
+    return true;
+}
+
+void removeAllScenery(int kind)
+{
+    State &s = S();
+    for (auto it = s.scenery.begin(); it != s.scenery.end();) {
+        if (it->second.kind == kind) { remove(it->second.object); it = s.scenery.erase(it); }
+        else ++it;
+    }
+}
+
+void removeSceneryForConstruction(const Coord3D *position, const GeometryInfo &geometry, float angle)
+{
+    // Same collision rule as W3DTreeBuffer/W3DPropBuffer::remove*ForConstruction.
+    State &s = S();
+    for (auto it = s.scenery.begin(); it != s.scenery.end();) {
+        Coord3D at;
+        at.set(it->second.x, it->second.y, it->second.z);
+        const float radius = it->second.kind == SceneryTree ? 7.0f : it->second.radius;
+        GeometryInfo info(GEOMETRY_CYLINDER, false, 5 * radius, 2 * radius, 2 * radius);
+        if (ThePartitionManager && ThePartitionManager->geomCollidesWithGeom(position, geometry, angle, &at, info, 0.0f)) {
+            remove(it->second.object);
+            it = s.scenery.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+unsigned sceneryCount()
+{
+    return static_cast<unsigned>(S().scenery.size());
+}
+
 void releaseAll()
 {
     State &s = S();
     for (const Entry &e : s.entries) e.object->Release_Ref();
     s.entries.clear();
     s.index.clear();
+    s.scenery.clear();
     s.batches.clear();
     s.chunks.clear();
     s.textures.clear();

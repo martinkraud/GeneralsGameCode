@@ -51,7 +51,8 @@ W3DDynamicLight *W3DPoliceCarDraw::createDynamicLight()
 	W3DDynamicLight *light = nullptr;
 
 	// get me a dynamic light from the scene
-	light = W3DDisplay::m_3DScene->getADynamicLight();
+	// The headless world selection (native play profile) has no legacy scene and no dynamic lights.
+	light = W3DDisplay::m_3DScene ? W3DDisplay::m_3DScene->getADynamicLight() : nullptr;
 	if( light )
 	{
 
