@@ -10,6 +10,7 @@
 //     gradient; alpha override like DX8TextureCategoryClass
 //   * team color: ZHCD palette rows / ZHCA hue shift on the decoded texture, HOUSECOLOR materials
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
 
 #if defined(_WIN64)
 
@@ -30,6 +31,9 @@
 #include <WW3D2/rinfo.h>
 #include <WW3D2/colorspace.h>
 #include <WW3D2/hlod.h>
+#include <WW3D2/line3d.h>
+#include <WW3D2/segline.h>
+#include <WW3D2/mapper.h>
 #include <WW3D2/matinfo.h>
 #include <WW3D2/mesh.h>
 #include <WW3D2/meshmdl.h>
@@ -87,6 +91,8 @@ struct Chunk
     std::vector<unsigned short> indices;
 };
 
+enum Layer : unsigned char { LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4 };
+
 struct Batch
 {
     unsigned chunk;
@@ -99,6 +105,8 @@ struct Batch
     float alphaTest;
     float distance;
     bool translucent;
+    unsigned char layer;
+    bool stencilOnce;
 };
 
 struct CachedTexture
@@ -114,6 +122,7 @@ struct State
     std::vector<Entry> entries;
     std::unordered_map<RenderObjClass *, size_t> index;
     std::map<std::pair<int, int>, Scenery> scenery;
+    std::map<const RenderObjClass *, int> colorHints;   // snapshot clones inherit their original's team color
     D3D11Backend *backend = nullptr;
     std::vector<Chunk> chunks;
     size_t activeChunk = 0;
@@ -305,6 +314,7 @@ struct Frame
     bool infantry;
     float distance;
     Vector3 cameraPosition;
+    Matrix3D view;          // D3D-convention world -> camera transform (texture generation)
     unsigned drawnMeshes;
 };
 
@@ -404,6 +414,38 @@ unsigned LitColor(const MaterialLook &look, const Frame &f, const LightSet &ligh
     return PackColor(r, g, b, alpha);
 }
 
+// Legacy ShaderClass state reduced to what the native TerrainOverlay material can express.
+struct ShaderMapping
+{
+    WorldBlend blend = WorldBlend::SrcAlpha;
+    bool additive = false;
+    bool blendKnown = true;     // false: the pair is outside the supported WorldBlend set (approximated)
+    float alphaTest = 0.0f;
+    bool depthWrite = true;
+    bool doubleSided = false;
+    bool noDiffuse = false;
+};
+
+ShaderMapping MapShader(const ShaderClass &shader, bool twoSided)
+{
+    ShaderMapping m;
+    const ShaderClass::SrcBlendFuncType src = shader.Get_Src_Blend_Func();
+    const ShaderClass::DstBlendFuncType dst = shader.Get_Dst_Blend_Func();
+    if (src == ShaderClass::SRCBLEND_ONE && dst == ShaderClass::DSTBLEND_ZERO) m.blend = WorldBlend::Opaque;
+    else if (src == ShaderClass::SRCBLEND_SRC_ALPHA && dst == ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA) m.blend = WorldBlend::SrcAlpha;
+    else if (src == ShaderClass::SRCBLEND_ONE && dst == ShaderClass::DSTBLEND_ONE) { m.blend = WorldBlend::Additive; m.additive = true; }
+    else if (src == ShaderClass::SRCBLEND_SRC_ALPHA && dst == ShaderClass::DSTBLEND_ONE) m.blend = WorldBlend::AdditiveAlpha;
+    else if (src == ShaderClass::SRCBLEND_ZERO && dst == ShaderClass::DSTBLEND_SRC_COLOR) m.blend = WorldBlend::Multiply;
+    else if (src == ShaderClass::SRCBLEND_ZERO && dst == ShaderClass::DSTBLEND_ONE_MINUS_SRC_COLOR) m.blend = WorldBlend::InvMultiply;
+    else if (src == ShaderClass::SRCBLEND_ONE && dst == ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA) m.blend = WorldBlend::Premultiplied;
+    else { m.blend = WorldBlend::SrcAlpha; m.blendKnown = false; }
+    m.alphaTest = shader.Get_Alpha_Test() == ShaderClass::ALPHATEST_ENABLE ? kAlphaRef : 0.0f;
+    m.depthWrite = shader.Get_Depth_Mask() == ShaderClass::DEPTH_WRITE_ENABLE;
+    m.doubleSided = twoSided || shader.Get_Cull_Mode() == ShaderClass::CULL_MODE_DISABLE;
+    m.noDiffuse = shader.Get_Primary_Gradient() == ShaderClass::GRADIENT_DISABLE;
+    return m;
+}
+
 struct StateKey
 {
     unsigned shaderBits;
@@ -461,7 +503,10 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
         else normal[i] = Vector3(0, 0, 1);
     }
 
-    const Vector2 *uv = model->Get_UV_Array(0, 0);
+    const int passCount = std::max(1, std::min(model->Get_Pass_Count(), 4));
+    if (passCount > 1) ++s.stats.stateMultiPass;   // informational: every pass is drawn natively
+    const bool houseMesh = IsHouseColorMesh(mesh->Get_Name());
+    const bool twoSided = model->Get_Flag(MeshGeometryClass::TWO_SIDED) != 0;
     // Tank/truck treads publish their scroll as a Material_Override in the mesh user data (the DX8 path
     // feeds it to the vertex material's linear-offset mapper); the offset is added to the UVs here.
     float uvOffsetU = 0.0f, uvOffsetV = 0.0f;
@@ -472,169 +517,208 @@ void ProcessMesh(Frame &f, MeshClass *mesh, State &s)
             uvOffsetV = override_->customUVOffset.Y;
         }
     }
-    const unsigned *dcg = model->Get_DCG_Array(0);
-    const unsigned *dig = model->Get_DIG_Array(0);
-    const bool houseMesh = IsHouseColorMesh(mesh->Get_Name());
-    const bool twoSided = model->Get_Flag(MeshGeometryClass::TWO_SIDED) != 0;
-    if (model->Get_Pass_Count() > 1) ++s.stats.unsupportedState;
 
-    // --- group polygons by (shader, texture, material) ---
     const TriIndex *polys = model->Get_Polygon_Array();
-    std::vector<PendingBatch> pending;
-    for (int p = 0; p < polyCount; ++p) {
-        const TriIndex &tri = polys[p];
-        if (tri.I >= static_cast<unsigned>(vertexCount) || tri.J >= static_cast<unsigned>(vertexCount) ||
-            tri.K >= static_cast<unsigned>(vertexCount)) continue;
-        StateKey key;
-        key.shaderBits = model->Get_Shader(p, 0).Get_Bits();
-        key.texture = model->Peek_Texture(p, 0, 0);
-        key.material = model->Peek_Material(tri.I, 0);
-        PendingBatch *target = nullptr;
-        for (PendingBatch &b : pending)
-            if (b.key == key) { target = &b; break; }
-        if (!target) { pending.push_back(PendingBatch{key, {}}); target = &pending.back(); }
-        target->indices.push_back(static_cast<unsigned short>(tri.I));
-        target->indices.push_back(static_cast<unsigned short>(tri.J));
-        target->indices.push_back(static_cast<unsigned short>(tri.K));
-    }
-    if (pending.empty()) return;
-
-    // Distinct materials (each needs its own lit vertex block).
-    std::vector<VertexMaterialClass *> materials;
-    for (const PendingBatch &b : pending)
-        if (std::find(materials.begin(), materials.end(), b.key.material) == materials.end())
-            materials.push_back(b.key.material);
-
-    unsigned totalIndices = 0;
-    for (const PendingBatch &b : pending) totalIndices += static_cast<unsigned>(b.indices.size());
-    const unsigned totalVertices = static_cast<unsigned>(vertexCount) * static_cast<unsigned>(materials.size());
-    if (totalVertices > kChunkVertices || totalIndices > kChunkIndices) {
-        ++s.stats.chunkOverflow;
-        return;
-    }
-    Chunk &chunk = ChunkWithRoom(*f.backend, totalVertices, totalIndices);
-    const unsigned chunkIndex = static_cast<unsigned>(s.activeChunk);
-
     const LightSet &lights = f.infantry ? f.infantryLights : f.lights;
     const bool opacityOverride = f.opacity < 0.999f;
-
-    std::vector<unsigned> blockBase(materials.size());
-    std::vector<MaterialLook> looks(materials.size());
-    for (size_t m = 0; m < materials.size(); ++m) {
-        looks[m] = LookOf(materials[m], houseMesh, f.hexColor, s);
-        if (looks[m].hasMapper) ++s.stats.unsupportedState;
-        blockBase[m] = static_cast<unsigned>(chunk.vertices.size());
-        for (int v = 0; v < vertexCount; ++v) {
-            WorldVertexXYZDUV2 out;
-            out.x = position[v].X; out.y = position[v].Y; out.z = position[v].Z;
-            unsigned vertexColor = dcg ? dcg[v] : 0xffffffffu;
-            if (!dcg && dig && looks[m].emissiveFromVertex) vertexColor = dig[v];
-            out.diffuse = LitColor(looks[m], f, lights, normal[v], vertexColor, dcg != nullptr || (dig && looks[m].emissiveFromVertex),
-                                   1.0f);
-            out.u0 = (uv ? uv[v].X : 0.0f) + uvOffsetU;
-            out.v0 = (uv ? uv[v].Y : 0.0f) + uvOffsetV;
-            out.u1 = out.u0; out.v1 = out.v0;
-            chunk.vertices.push_back(out);
-        }
-    }
-    s.stats.vertices += totalVertices;
-
     bool drewAny = false;
-    for (const PendingBatch &b : pending) {
-        const size_t m = std::find(materials.begin(), materials.end(), b.key.material) - materials.begin();
-        const ShaderClass shader(b.key.shaderBits);
-        Batch out = {};
-        out.chunk = chunkIndex;
 
-        // blend equation
-        const ShaderClass::SrcBlendFuncType src = shader.Get_Src_Blend_Func();
-        const ShaderClass::DstBlendFuncType dst = shader.Get_Dst_Blend_Func();
-        bool additive = false;
-        if (src == ShaderClass::SRCBLEND_ONE && dst == ShaderClass::DSTBLEND_ZERO) out.blend = WorldBlend::Opaque;
-        else if (src == ShaderClass::SRCBLEND_SRC_ALPHA && dst == ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA) out.blend = WorldBlend::SrcAlpha;
-        else if (src == ShaderClass::SRCBLEND_ONE && dst == ShaderClass::DSTBLEND_ONE) { out.blend = WorldBlend::Additive; additive = true; }
-        else if (src == ShaderClass::SRCBLEND_SRC_ALPHA && dst == ShaderClass::DSTBLEND_ONE) out.blend = WorldBlend::AdditiveAlpha;
-        else if (src == ShaderClass::SRCBLEND_ZERO && dst == ShaderClass::DSTBLEND_SRC_COLOR) out.blend = WorldBlend::Multiply;
-        else if (src == ShaderClass::SRCBLEND_ZERO && dst == ShaderClass::DSTBLEND_ONE_MINUS_SRC_COLOR) out.blend = WorldBlend::InvMultiply;
-        else if (src == ShaderClass::SRCBLEND_ONE && dst == ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA) out.blend = WorldBlend::Premultiplied;
-        else { out.blend = WorldBlend::SrcAlpha; ++s.stats.unsupportedState; }
+    for (int pass = 0; pass < passCount; ++pass) {
+        const Vector2 *uv = model->Get_UV_Array(pass, 0);
+        const unsigned *dcg = model->Get_DCG_Array(pass);
+        const unsigned *dig = model->Get_DIG_Array(pass);
 
-        out.alphaTest = shader.Get_Alpha_Test() == ShaderClass::ALPHATEST_ENABLE ? kAlphaRef : 0.0f;
-        out.depthWrite = shader.Get_Depth_Mask() == ShaderClass::DEPTH_WRITE_ENABLE;
-        out.doubleSided = twoSided || shader.Get_Cull_Mode() == ShaderClass::CULL_MODE_DISABLE;
-        out.noDiffuse = shader.Get_Primary_Gradient() == ShaderClass::GRADIENT_DISABLE;
-        if (shader.Get_Primary_Gradient() == ShaderClass::GRADIENT_MODULATE2X ||
-            shader.Get_Secondary_Gradient() == ShaderClass::SECONDARY_GRADIENT_ENABLE ||
-            shader.Get_Post_Detail_Color_Func() != ShaderClass::DETAILCOLOR_DISABLE)
-            ++s.stats.unsupportedState;
+        // --- group this pass's polygons by (shader, texture, material) ---
+        std::vector<PendingBatch> pending;
+        for (int p = 0; p < polyCount; ++p) {
+            const TriIndex &tri = polys[p];
+            if (tri.I >= static_cast<unsigned>(vertexCount) || tri.J >= static_cast<unsigned>(vertexCount) ||
+                tri.K >= static_cast<unsigned>(vertexCount)) continue;
+            StateKey key;
+            key.shaderBits = model->Get_Shader(p, pass).Get_Bits();
+            key.texture = model->Peek_Texture(p, pass, 0);
+            key.material = model->Peek_Material(tri.I, pass);
+            PendingBatch *target = nullptr;
+            for (PendingBatch &b : pending)
+                if (b.key == key) { target = &b; break; }
+            if (!target) { pending.push_back(PendingBatch{key, {}}); target = &pending.back(); }
+            target->indices.push_back(static_cast<unsigned short>(tri.I));
+            target->indices.push_back(static_cast<unsigned short>(tri.J));
+            target->indices.push_back(static_cast<unsigned short>(tri.K));
+        }
+        if (pending.empty()) continue;
 
-        // alpha override (stealth/fade): legacy forced SRC_ALPHA/INV_SRC_ALPHA, additive dims diffuse
-        float alphaScale = 1.0f;
-        if (opacityOverride) {
-            if (additive) {
-                alphaScale = 1.0f;   // additive dims through the diffuse color below
-            } else {
-                out.blend = WorldBlend::SrcAlpha;
-                alphaScale = f.opacity;
-                if (out.alphaTest > 0.0f) out.alphaTest = kAlphaRef * f.opacity;
+        // Distinct materials (each needs its own lit vertex block).
+        std::vector<VertexMaterialClass *> materials;
+        for (const PendingBatch &b : pending)
+            if (std::find(materials.begin(), materials.end(), b.key.material) == materials.end())
+                materials.push_back(b.key.material);
+
+        unsigned totalIndices = 0;
+        for (const PendingBatch &b : pending) totalIndices += static_cast<unsigned>(b.indices.size());
+        const unsigned totalVertices = static_cast<unsigned>(vertexCount) * static_cast<unsigned>(materials.size());
+        if (totalVertices > kChunkVertices || totalIndices > kChunkIndices) {
+            ++s.stats.chunkOverflow;
+            continue;
+        }
+        Chunk &chunk = ChunkWithRoom(*f.backend, totalVertices, totalIndices);
+        const unsigned chunkIndex = static_cast<unsigned>(s.activeChunk);
+
+        std::vector<unsigned> blockBase(materials.size());
+        std::vector<MaterialLook> looks(materials.size());
+        for (size_t m = 0; m < materials.size(); ++m) {
+            looks[m] = LookOf(materials[m], houseMesh, f.hexColor, s);
+
+            // Texture mapper (environment / scroll / rotate ...): evaluated on the CPU per material block.
+            TextureMapperClass::NativeUV mapUV = {};
+            bool mapped = false;
+            if (looks[m].hasMapper) {
+                TextureMapperClass *mapper = materials[m]->Peek_Mapper(0);
+                const int id = mapper ? mapper->Mapper_ID() : 0;
+                if (mapper && StartupDiagnostics::nativeFeature("mappers") && mapper->Native_Evaluate(mapUV)) {
+                    mapped = true;
+                    ++s.stats.mapperApplied;
+                } else {
+                    ++s.stats.unsupportedState; ++s.stats.stateMapper;
+                    ++s.stats.mapperKinds[id >= 0 && id < 24 ? id : 0];
+                }
             }
-            // Rewrite this material's block colors with the override applied.
+
+            blockBase[m] = static_cast<unsigned>(chunk.vertices.size());
             for (int v = 0; v < vertexCount; ++v) {
-                WorldVertexXYZDUV2 &vtx = chunk.vertices[blockBase[m] + v];
+                WorldVertexXYZDUV2 out;
+                out.x = position[v].X; out.y = position[v].Y; out.z = position[v].Z;
                 unsigned vertexColor = dcg ? dcg[v] : 0xffffffffu;
                 if (!dcg && dig && looks[m].emissiveFromVertex) vertexColor = dig[v];
-                MaterialLook look = looks[m];
-                if (additive) { for (float &c : look.diffuse) c *= f.opacity; for (float &c : look.ambient) c *= f.opacity; }
-                vtx.diffuse = LitColor(look, f, lights, normal[v], vertexColor,
-                                       dcg != nullptr || (dig && looks[m].emissiveFromVertex), alphaScale);
+                out.diffuse = LitColor(looks[m], f, lights, normal[v], vertexColor,
+                                       dcg != nullptr || (dig && looks[m].emissiveFromVertex), 1.0f);
+                float u = uv ? uv[v].X : 0.0f;
+                float w = uv ? uv[v].Y : 0.0f;
+                if (mapped) {
+                    float sx = u, sy = w;
+                    if (mapUV.texgen != 0) {
+                        Vector3 pc, nc;
+                        Matrix3D::Transform_Vector(f.view, position[v], &pc);
+                        Matrix3D::Rotate_Vector(f.view, normal[v], &nc);
+                        if (mapUV.texgen == 1) {
+                            sx = nc.X; sy = nc.Y;                    // camera-space normal
+                        } else {
+                            // D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR: r = 2(n.u)n - u, u = unit eye->vertex
+                            const float len = std::sqrt(pc.X * pc.X + pc.Y * pc.Y + pc.Z * pc.Z);
+                            if (len > 1e-6f) {
+                                const float ux = pc.X / len, uy = pc.Y / len, uz = pc.Z / len;
+                                const float d = nc.X * ux + nc.Y * uy + nc.Z * uz;
+                                sx = 2.0f * d * nc.X - ux;
+                                sy = 2.0f * d * nc.Y - uy;
+                            } else { sx = 0.0f; sy = 0.0f; }
+                        }
+                    }
+                    u = mapUV.m[0] * sx + mapUV.m[1] * sy + mapUV.m[2];
+                    w = mapUV.m[3] * sx + mapUV.m[4] * sy + mapUV.m[5];
+                }
+                out.u0 = u + uvOffsetU;
+                out.v0 = w + uvOffsetV;
+                out.u1 = out.u0; out.v1 = out.v0;
+                chunk.vertices.push_back(out);
             }
         }
-        if (out.noDiffuse && opacityOverride && !additive) out.noDiffuse = false;
+        s.stats.vertices += totalVertices;
 
-        // texture
-        bool teamColored = false;
-        const bool overridden = f.textureOverride != nullptr && *f.textureOverride;
-        const bool texturing = overridden ||
-            (shader.Get_Texturing() == ShaderClass::TEXTURING_ENABLE && b.key.texture != nullptr);
-        if (texturing) {
-            const char *textureName = overridden ? f.textureOverride : b.key.texture->Get_Texture_Name().str();
-            out.texture = ObjectTexture(*f.backend, textureName, f.hexColor, teamColored, overridden);
-            if (teamColored) ++s.stats.teamColored;
-            if (b.key.texture) {
-                const TextureFilterClass &filter = b.key.texture->Get_Filter();
-                out.clamp = filter.Get_U_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP &&
-                            filter.Get_V_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP;
+        for (const PendingBatch &b : pending) {
+            const size_t m = std::find(materials.begin(), materials.end(), b.key.material) - materials.begin();
+            const ShaderClass shader(b.key.shaderBits);
+            Batch out = {};
+            out.chunk = chunkIndex;
+
+            const ShaderMapping mapping = MapShader(shader, twoSided);
+            out.blend = mapping.blend;
+            bool additive = mapping.additive;
+            if (!mapping.blendKnown) { ++s.stats.unsupportedState; ++s.stats.stateBlend; }
+            out.alphaTest = mapping.alphaTest;
+            out.depthWrite = mapping.depthWrite;
+            out.doubleSided = mapping.doubleSided;
+            out.noDiffuse = mapping.noDiffuse;
+            {
+                const bool m2x = shader.Get_Primary_Gradient() == ShaderClass::GRADIENT_MODULATE2X;
+                const bool sec = shader.Get_Secondary_Gradient() == ShaderClass::SECONDARY_GRADIENT_ENABLE;
+                const bool det = shader.Get_Post_Detail_Color_Func() != ShaderClass::DETAILCOLOR_DISABLE;
+                const bool dual = b.key.material != nullptr && (model->Has_Texture_Array(pass, 1) || model->Peek_Single_Texture(pass, 1) != nullptr);
+                if (m2x) ++s.stats.stateModulate2x;
+                if (sec) ++s.stats.stateSecondary;
+                if (det) ++s.stats.stateDetail;
+                if (dual) ++s.stats.stateDualTexture;
+                if (m2x || sec || det || dual) ++s.stats.unsupportedState;
             }
-        } else {
-            out.texture = WhiteTexture(*f.backend);
-        }
-        out.linear = true;
-        out.mipLinear = true;
 
-        if (f.foliage) {
-            // W3DTreeBuffer's SC_ALPHA_DETAIL: opaque, alpha tested, double sided, depth writing, modulate.
-            out.blend = WorldBlend::Opaque;
-            out.alphaTest = kAlphaRef;
-            out.doubleSided = true;
-            out.depthWrite = true;
-            out.noDiffuse = false;
-        }
+            // alpha override (stealth/fade): legacy forced SRC_ALPHA/INV_SRC_ALPHA, additive dims diffuse
+            float alphaScale = 1.0f;
+            if (opacityOverride) {
+                if (additive) {
+                    alphaScale = 1.0f;   // additive dims through the diffuse color below
+                } else {
+                    out.blend = WorldBlend::SrcAlpha;
+                    alphaScale = f.opacity;
+                    if (out.alphaTest > 0.0f) out.alphaTest = kAlphaRef * f.opacity;
+                }
+                // Rewrite this material's block colors with the override applied.
+                for (int v = 0; v < vertexCount; ++v) {
+                    WorldVertexXYZDUV2 &vtx = chunk.vertices[blockBase[m] + v];
+                    unsigned vertexColor = dcg ? dcg[v] : 0xffffffffu;
+                    if (!dcg && dig && looks[m].emissiveFromVertex) vertexColor = dig[v];
+                    MaterialLook look = looks[m];
+                    if (additive) { for (float &c : look.diffuse) c *= f.opacity; for (float &c : look.ambient) c *= f.opacity; }
+                    vtx.diffuse = LitColor(look, f, lights, normal[v], vertexColor,
+                                           dcg != nullptr || (dig && looks[m].emissiveFromVertex), alphaScale);
+                }
+            }
+            if (out.noDiffuse && opacityOverride && !additive) out.noDiffuse = false;
 
-        // emit indices into the shared chunk
-        out.firstIndex = static_cast<unsigned>(chunk.indices.size());
-        for (unsigned short idx : b.indices)
-            chunk.indices.push_back(static_cast<unsigned short>(blockBase[m] + idx));
-        out.indexCount = static_cast<unsigned>(b.indices.size());
-        out.distance = f.distance;
-        out.translucent = (out.blend != WorldBlend::Opaque && !f.foliage) || opacityOverride;
-        if (out.alphaTest > 0.0f && out.blend == WorldBlend::Opaque) out.translucent = opacityOverride;
-        s.batches.push_back(out);
-        s.stats.triangles += out.indexCount / 3;
-        drewAny = true;
+            // texture
+            bool teamColored = false;
+            const bool overridden = f.textureOverride != nullptr && *f.textureOverride;
+            const bool texturing = overridden ||
+                (shader.Get_Texturing() == ShaderClass::TEXTURING_ENABLE && b.key.texture != nullptr);
+            if (texturing) {
+                const char *textureName = overridden ? f.textureOverride : b.key.texture->Get_Texture_Name().str();
+                out.texture = ObjectTexture(*f.backend, textureName, f.hexColor, teamColored, overridden);
+                if (teamColored) ++s.stats.teamColored;
+                if (b.key.texture) {
+                    const TextureFilterClass &filter = b.key.texture->Get_Filter();
+                    out.clamp = filter.Get_U_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP &&
+                                filter.Get_V_Addr_Mode() == TextureFilterClass::TEXTURE_ADDRESS_CLAMP;
+                }
+            } else {
+                out.texture = WhiteTexture(*f.backend);
+            }
+            out.linear = true;
+            out.mipLinear = true;
+
+            if (f.foliage) {
+                // W3DTreeBuffer's SC_ALPHA_DETAIL: opaque, alpha tested, double sided, depth writing, modulate.
+                out.blend = WorldBlend::Opaque;
+                out.alphaTest = kAlphaRef;
+                out.doubleSided = true;
+                out.depthWrite = true;
+                out.noDiffuse = false;
+            }
+
+            // emit indices into the shared chunk
+            out.firstIndex = static_cast<unsigned>(chunk.indices.size());
+            for (unsigned short idx : b.indices)
+                chunk.indices.push_back(static_cast<unsigned short>(blockBase[m] + idx));
+            out.indexCount = static_cast<unsigned>(b.indices.size());
+            out.distance = f.distance;
+            out.translucent = (out.blend != WorldBlend::Opaque && !f.foliage) || opacityOverride;
+            if (out.alphaTest > 0.0f && out.blend == WorldBlend::Opaque) out.translucent = opacityOverride;
+            // Later passes of an opaque base pass (environment/gloss) draw after it even when additive.
+            out.layer = out.translucent ? LayerTranslucent : LayerOpaque;
+            s.batches.push_back(out);
+            s.stats.triangles += out.indexCount / 3;
+            drewAny = true;
+        }
     }
     if (drewAny) { ++s.stats.meshesDrawn; ++f.drawnMeshes; }
 }
-
 void ProcessObject(Frame &f, RenderObjClass *object, State &s, unsigned depth)
 {
     if (!object || depth > 8 || !object->Is_Not_Hidden_At_All()) return;
@@ -660,6 +744,13 @@ void ProcessObject(Frame &f, RenderObjClass *object, State &s, unsigned depth)
         for (int i = 0; i < extra; ++i) ProcessObject(f, hlod->Peek_Additional_Model(i), s, depth + 1);
         return;
     }
+    case RenderObjClass::CLASSID_LINE3D:
+        if (NativeWorldEffects::emitLine3D(*f.backend, *static_cast<Line3DClass *>(object), f.distance)) ++f.drawnMeshes;
+        return;
+    case RenderObjClass::CLASSID_SEGLINE:
+        if (NativeWorldEffects::emitSegLine(*f.backend, *static_cast<SegmentedLineClass *>(object), f.cameraPosition,
+                                            f.distance)) ++f.drawnMeshes;
+        return;
     case RenderObjClass::CLASSID_NULL:
     case RenderObjClass::CLASSID_OBBOX:
     case RenderObjClass::CLASSID_AABOX:
@@ -741,10 +832,30 @@ void setActiveForTests(bool on)
     g_forceActive = on;
 }
 
+int colorOf(const RenderObjClass *object)
+{
+    State &s = S();
+    auto found = s.index.find(const_cast<RenderObjClass *>(object));
+    if (found != s.index.end()) return s.entries[found->second].hexColor;
+    auto hint = s.colorHints.find(object);
+    return hint != s.colorHints.end() ? hint->second : 0;
+}
+
+void inheritColor(const RenderObjClass *to, const RenderObjClass *from)
+{
+    if (!to || !from || !active()) return;
+    const int color = colorOf(from);
+    if (color) S().colorHints[to] = color;
+}
+
 void add(RenderObjClass *object, int hexColor)
 {
     if (!object || !active()) return;
     State &s = S();
+    if (hexColor == 0) {
+        auto hint = s.colorHints.find(object);
+        if (hint != s.colorHints.end()) hexColor = hint->second;
+    }
     if (s.index.find(object) != s.index.end()) { s.entries[s.index[object]].hexColor = hexColor; return; }
     object->Add_Ref();
     s.index[object] = s.entries.size();
@@ -765,6 +876,7 @@ void remove(RenderObjClass *object)
         s.index[s.entries[at].object] = at;
     }
     s.entries.pop_back();
+    s.colorHints.erase(held);
     held->Release_Ref();
 }
 
@@ -810,13 +922,80 @@ bool castRay(RayCollisionTestClass &raytest, bool testAll, int collisionType)
     return hit;
 }
 
+EffectState EffectStateFromShader(unsigned shaderBits, bool twoSided)
+{
+    const ShaderMapping m = MapShader(ShaderClass(shaderBits), twoSided);
+    return EffectState{m.blend, m.depthWrite, m.doubleSided, m.noDiffuse, m.alphaTest, m.blendKnown};
+}
+
+Texture2DResidency *effectTexture(D3D11Backend &backend, const char *name, int hexColor)
+{
+    bool team = false;
+    // Texture names without a 3-letter extension (INI shadow/particle names) are TGA files.
+    std::string fixed = name ? name : "";
+    if (!fixed.empty() && (fixed.size() < 4 || fixed[fixed.size() - 4] != '.')) fixed += ".tga";
+    return ObjectTexture(backend, fixed.c_str(), hexColor, team);
+}
+
+bool effectImage(const char *name, std::vector<unsigned char> &rgba, unsigned &width, unsigned &height)
+{
+    if (!name || !*name) return false;
+    std::string fixed = Lower(name);
+    if (fixed.size() < 4 || fixed[fixed.size() - 4] != '.') fixed += ".tga";
+    WorldTextureResult base = Load_World_Texture_Base(fixed, ReadFile);
+    if (base.status != UITextureStatus::Ready || base.image.mips.empty() || !base.image.width || !base.image.height)
+        return false;
+    rgba = base.image.mips[0];
+    width = base.image.width;
+    height = base.image.height;
+    return true;
+}
+
+Texture2DResidency *effectWhiteTexture(D3D11Backend &backend)
+{
+    return WhiteTexture(backend);
+}
+
+bool emitEffect(D3D11Backend &backend, const EffectBatch &b)
+{
+    State &s = S();
+    if (!b.vertexCount || !b.indexCount || b.vertexCount > kChunkVertices || b.indexCount > kChunkIndices) return false;
+    Chunk &chunk = ChunkWithRoom(backend, b.vertexCount, b.indexCount);
+    const unsigned chunkIndex = static_cast<unsigned>(s.activeChunk);
+    const unsigned base = static_cast<unsigned>(chunk.vertices.size());
+    chunk.vertices.insert(chunk.vertices.end(), b.vertices, b.vertices + b.vertexCount);
+    Batch out = {};
+    out.chunk = chunkIndex;
+    out.firstIndex = static_cast<unsigned>(chunk.indices.size());
+    for (unsigned i = 0; i < b.indexCount; ++i)
+        chunk.indices.push_back(static_cast<unsigned short>(base + b.indices[i]));
+    out.indexCount = b.indexCount;
+    out.texture = b.texture ? b.texture : WhiteTexture(backend);
+    out.blend = b.blend;
+    out.linear = true;
+    out.mipLinear = true;
+    out.clamp = b.clamp;
+    out.depthWrite = b.depthWrite;
+    out.doubleSided = b.doubleSided;
+    out.noDiffuse = b.noDiffuse;
+    out.alphaTest = b.alphaTest;
+    out.distance = b.distance;
+    out.translucent = b.layer == EffectLayerTranslucent || b.layer == EffectLayerParticle;
+    out.layer = static_cast<unsigned char>(b.layer);
+    out.stencilOnce = b.stencilOnce;
+    s.batches.push_back(out);
+    s.stats.vertices += b.vertexCount;
+    s.stats.triangles += b.indexCount / 3;
+    ++s.stats.effectBatches;
+    return true;
+}
+
 int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLighting &lights,
                   const SceneLighting &infantryLights, const ObjectInput *objects, unsigned count)
 {
     State &s = S();
     if (s.backend && s.backend != &backend) releaseAll();
     s.backend = &backend;
-    if (!count) return 0;
 
     ++s.stats.frames;
     s.batches.clear();
@@ -827,6 +1006,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
     f.backend = &backend;
     f.camera = &camera;
     f.cameraPosition = camera.Get_Position();
+    f.view = camera.Get_View_Matrix();
     f.lights = lights;
     f.infantryLights = infantryLights;
 
@@ -852,6 +1032,9 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         if (f.drawnMeshes) ++drawnObjects;
     }
 
+    // Game-state-driven effects (particles, decals, shadows, water, shroud) join the same batch lists.
+    NativeWorldEffects::collect(backend, camera);
+
     // Upload each chunk once, then submit: opaque in order, translucent back to front.
     WorldSubmission base;
     FillBase(camera, base);
@@ -876,17 +1059,26 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         sub.double_sided = b.doubleSided;
         sub.no_diffuse = b.noDiffuse;
         sub.blend = b.blend;
+        sub.stencil_once = b.stencilOnce;
         backend.Submit_World(sub);
     };
     int submissions = 0;
     unsigned translucent = 0;
-    for (const Batch &b : s.batches)
-        if (!b.translucent) { submit(b); ++submissions; }
-    std::vector<const Batch *> sorted;
-    for (const Batch &b : s.batches)
-        if (b.translucent) sorted.push_back(&b);
-    std::stable_sort(sorted.begin(), sorted.end(), [](const Batch *a, const Batch *b) { return a->distance > b->distance; });
-    for (const Batch *b : sorted) { submit(*b); ++submissions; ++translucent; }
+    // Draw order: opaque objects (registration order), terrain decals (emission order), translucent
+    // objects/water back to front, particles back to front, screen-space-of-the-world overlays (shroud).
+    for (unsigned layer = LayerOpaque; layer <= LayerOverlay; ++layer) {
+        std::vector<const Batch *> list;
+        for (const Batch &b : s.batches) {
+            const unsigned bl = b.layer;
+            if (bl == layer) list.push_back(&b);
+        }
+        if (layer == LayerTranslucent || layer == LayerParticle)
+            std::stable_sort(list.begin(), list.end(), [](const Batch *a, const Batch *b) { return a->distance > b->distance; });
+        for (const Batch *b : list) {
+            submit(*b); ++submissions;
+            if (layer != LayerOpaque) ++translucent;
+        }
+    }
 
     s.stats.batches += static_cast<unsigned>(submissions);
     s.stats.translucentBatches += translucent;
@@ -928,11 +1120,9 @@ int render(D3D11Backend &backend, CameraClass &camera)
             if (const Vector3 *sel = draw->getSelectionColor()) {
                 input.tint[0] += sel->X; input.tint[1] += sel->Y; input.tint[2] += sel->Z;
             }
-        } else if (info) {
-            ++s.stats.hidden;   // ghost object (fogged remnant); not drawn until fog support lands
-            object->Set_Visible(0);
-            continue;
         }
+        // else: a ghost object (fogged remnant). It is drawn like the building it remembers; the shroud
+        // overlay dims it with the surrounding fog.
         inputs.push_back(input);
     }
     SceneLighting lights, infantry;
@@ -1068,6 +1258,7 @@ unsigned sceneryCount()
 
 void releaseAll()
 {
+    NativeWorldEffects::releaseAll();
     State &s = S();
     for (const Entry &e : s.entries) e.object->Release_Ref();
     s.entries.clear();

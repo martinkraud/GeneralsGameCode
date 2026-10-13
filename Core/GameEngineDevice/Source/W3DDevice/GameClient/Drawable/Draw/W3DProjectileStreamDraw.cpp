@@ -32,6 +32,7 @@
 #include "GameLogic/Object.h"
 #include "W3DDevice/GameClient/Module/W3DProjectileStreamDraw.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "WW3D2/assetmgr.h"
 #include "WW3D2/segline.h"
@@ -79,6 +80,8 @@ W3DProjectileStreamDraw::~W3DProjectileStreamDraw()
 		if (deadLine)
 		{	if (deadLine->Peek_Scene() && W3DDisplay::m_3DScene)
 				W3DDisplay::m_3DScene->Remove_Render_Object( deadLine );
+			else if (!W3DDisplay::m_3DScene)
+				NativeWorldObjects::remove( deadLine );
 			REF_PTR_RELEASE( deadLine );
 		}
 	}
@@ -107,6 +110,8 @@ void W3DProjectileStreamDraw::setFullyObscuredByShroud(Bool fullyObscured)
 			SegmentedLineClass *deadLine = m_allLines[lineIndex];
 			if (deadLine && deadLine->Peek_Scene())
 				deadLine->Remove();
+			else if (deadLine && !W3DDisplay::m_3DScene)
+				NativeWorldObjects::remove(deadLine);
 		}
 	}
 	else
@@ -117,6 +122,8 @@ void W3DProjectileStreamDraw::setFullyObscuredByShroud(Bool fullyObscured)
 			SegmentedLineClass *deadLine = m_allLines[lineIndex];
 			if (deadLine && !deadLine->Peek_Scene() && W3DDisplay::m_3DScene)
 				W3DDisplay::m_3DScene->Add_Render_Object(deadLine);
+			else if (deadLine && !W3DDisplay::m_3DScene)
+				NativeWorldObjects::add(deadLine);
 		}
 	}
 }
@@ -186,6 +193,8 @@ void W3DProjectileStreamDraw::doDrawModule(const Matrix3D* )
 		SegmentedLineClass *deadLine = m_allLines[lineIndex];
 		if (deadLine->Peek_Scene() && W3DDisplay::m_3DScene)
 			W3DDisplay::m_3DScene->Remove_Render_Object( deadLine );
+		else if (!W3DDisplay::m_3DScene)
+			NativeWorldObjects::remove( deadLine );
 		REF_PTR_RELEASE( deadLine );
 
 		m_allLines[lineIndex] = nullptr;
@@ -221,6 +230,8 @@ void W3DProjectileStreamDraw::makeOrUpdateLine( Vector3 *points, UnsignedInt poi
 		line->Set_UV_Offset_Rate(Vector2(0.0f,data->m_scrollRate));	//amount to scroll texture on each draw
 		if (W3DDisplay::m_3DScene)
 			W3DDisplay::m_3DScene->Add_Render_Object( line);	//add it to our scene so it gets rendered with other objects.
+		else
+			NativeWorldObjects::add( line );
 	}
 }
 

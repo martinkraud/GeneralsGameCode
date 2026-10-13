@@ -34,6 +34,7 @@
 #include "W3DDevice/GameClient/W3DView.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
 #include "W3DDevice/GameClient/BaseHeightMap.h"
 #include "WW3D2/camera.h"
 #include "GameClient/ControlBar.h"
@@ -843,6 +844,7 @@ int W3DDisplay::runOrdinaryGameHost()
     char detail[640];   // terrain_summary alone is ~270 characters (X64.27 run 20261013T0630289162651Z overflowed 256)
     try {
         TheShell->setPushGuard(GamePushGuard);
+        if (play) NativeWorldEffects::install();   // decal / planar shadow manager of the play profile
         StartupDiagnostics::checkpoint(phase, "begin",
             "Win32GameEngine::update + FramePacer (ordinary loop); shell map off; push allow-list MainMenu/SkirmishGameOptionsMenu");
         const ULONGLONG start = GetTickCount64();
@@ -988,6 +990,21 @@ int W3DDisplay::runOrdinaryGameHost()
                 os.meshesDrawn, os.skinned, os.batches, os.translucentBatches, os.vertices, os.triangles, os.textureLoads,
                 os.textureFailures, os.teamColored, os.unsupportedClass, os.unsupportedState, os.chunkOverflow);
             StartupDiagnostics::checkpoint("world_objects_summary", "complete", detail);
+            // Family breakdown of unsupported_state (X64.29); a separate receipt keeps the accepted summary format.
+            sprintf_s(detail, "multipass=%u mapper=%u blend=%u modulate2x=%u secondary=%u detail=%u mapper_kinds=%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
+                os.stateMultiPass, os.stateMapper, os.stateBlend, os.stateModulate2x, os.stateSecondary, os.stateDetail,
+                os.mapperKinds[1], os.mapperKinds[2], os.mapperKinds[3], os.mapperKinds[4], os.mapperKinds[5],
+                os.mapperKinds[8], os.mapperKinds[9], os.mapperKinds[10], os.mapperKinds[11], os.mapperKinds[12], os.mapperKinds[13]);
+            StartupDiagnostics::checkpoint("world_objects_families", "observed", detail);
+            const NativeWorldEffects::Stats fx = NativeWorldEffects::stats();
+            sprintf_s(detail, "lines=%u seglines=%u segquads=%u particle_systems=%u particles=%u particle_batches=%u streaks=%u"
+                " volume_layers=%u culled=%u smudge_skipped=%u decals=%u shadow_decals=%u volume_shadows=%u shadows_seen=%u"
+                " shadow_no_geometry=%u water=%u shroud_cells=%u scorches=%u dropped=%u effect_batches=%u",
+                fx.lineBoxes, fx.segLines, fx.segQuads, fx.particleSystems, fx.particlesDrawn, fx.particleBatches, fx.streaks,
+                fx.volumeLayers, fx.particlesCulled, fx.smudgeSystems, fx.decals, fx.shadowDecals, fx.volumeShadows,
+                fx.shadowsSeen, fx.shadowNoGeometry, fx.waterPatches, fx.shroudCells, fx.scorches, fx.dropped,
+                NativeWorldObjects::stats().effectBatches);
+            StartupDiagnostics::checkpoint("world_effects_summary", "observed", detail);
             for (unsigned i = 0; i < NativeWorldObjects::failedTextureCount() && i < 12; ++i) {
                 sprintf_s(detail, "texture=%.200s", NativeWorldObjects::failedTexture(i));
                 StartupDiagnostics::checkpoint("world_objects_texture_failure", "observed", detail);

@@ -583,6 +583,11 @@ TEST(NativeWorldObjectsTest, EveryRetailW3DPrototypeRendersWithoutFaults)
                     "texture_failures=%u unsupported_class=%u unsupported_state=%u chunk_overflow=%u team_colored=%u\n",
                     files, prototypes, rendered, empty, maxTriangles, stats.meshes, stats.skinned, stats.textureLoads,
                     stats.textureFailures, stats.unsupportedClass, stats.unsupportedState, stats.chunkOverflow, stats.teamColored);
+        std::printf("state families: multipass=%u mapper=%u blend=%u modulate2x=%u secondary=%u detail=%u\n",
+                    stats.stateMultiPass, stats.stateMapper, stats.stateBlend, stats.stateModulate2x,
+                    stats.stateSecondary, stats.stateDetail);
+        for (int i = 0; i < 24; ++i)
+            if (stats.mapperKinds[i]) std::printf("mapper kind %d: %u\n", i, stats.mapperKinds[i]);
         for (int i = 0; i < 64; ++i)
             if (classCounts[i]) std::printf("class %d: %zu\n", i, classCounts[i]);
         for (const std::string &n : emptyNames) std::printf("empty: %s\n", n.c_str());
@@ -593,6 +598,132 @@ TEST(NativeWorldObjectsTest, EveryRetailW3DPrototypeRendersWithoutFaults)
         EXPECT_GT(rendered, 100u);
         EXPECT_EQ(stats.chunkOverflow, 0u);
         EXPECT_EQ(failures, 0u);
+        // X64.29 coverage lock: every retail prototype's material state has a native form (multi-pass drawn,
+        // texture mappers evaluated); a regression that re-introduces unsupported families fails here.
+        EXPECT_EQ(stats.unsupportedState, 0u);
+        EXPECT_EQ(stats.unsupportedClass, 0u);
+        EXPECT_GT(stats.mapperApplied, 1000u);
+        EXPECT_GT(stats.stateMultiPass, 1000u);
+        NativeWorldObjects::releaseAll();
+        manager.Free_Assets();
+    }
+    NativeWorldObjects::setFileReaderForTests({});
+    NativeWorldObjects::setRenderTargetSizeForTests(0, 0);
+    _TheFileFactory = previous;
+}
+
+// Visual evidence gallery for the material families the sweep measures (environment-mapped and
+// multi-pass models): the first prototypes whose draw applied a mapper or more than one pass are rendered
+// into one tiled image. Opt-in (GENERALS_GAME_DIR + GENERALS_OFFLINE_OUT).
+TEST(NativeWorldObjectsTest, MaterialFamilyGalleryRendersMappedAndMultiPassModels)
+{
+    NativeWorldObjects::resetStatsForTests();
+    const char *game = std::getenv("GENERALS_GAME_DIR");
+    const char *outDir = std::getenv("GENERALS_OFFLINE_OUT");
+    if (!game || !*game || !outDir || !*outDir) GTEST_SKIP() << "GENERALS_GAME_DIR/GENERALS_OFFLINE_OUT not set (opt-in)";
+    std::string dir = game;
+    if (dir.back() != '\\' && dir.back() != '/') dir += '\\';
+    BigFiles big;
+    for (const char *archive : {"Textures.big", "Terrain.big", "W3D.big", "Patch.big"})
+        big.Add(dir + archive);
+    BigFileFactory factory(big);
+    FileFactoryClass *previous = _TheFileFactory;
+    _TheFileFactory = &factory;
+    NativeWorldObjects::setFileReaderForTests(
+        [&big](const std::string &path, std::vector<unsigned char> &bytes) { return big.Read(path, bytes); });
+    constexpr unsigned kTile = 192, kCols = 4, kRows = 3;
+    NativeWorldObjects::setRenderTargetSizeForTests(kTile, kTile);
+    {
+        WW3DAssetManager manager;
+        manager.Set_WW3D_Load_On_Demand(false);
+        D3D11Backend::Configuration c;
+        c.software = true; c.width = c.height = kTile; c.depth_buffer = true;
+        std::unique_ptr<D3D11Backend> backend = D3D11Backend::Create(c);
+        ASSERT_TRUE(backend);
+        NativeWorldObjects::SceneLighting lights = {};
+        lights.ambient[0] = lights.ambient[1] = lights.ambient[2] = 0.4f;
+        lights.count = 1;
+        lights.direction[0][0] = 0.4f; lights.direction[0][1] = -0.5f; lights.direction[0][2] = 0.77f;
+        lights.diffuse[0][0] = lights.diffuse[0][1] = lights.diffuse[0][2] = 0.8f;
+
+        std::vector<unsigned char> sheet(static_cast<size_t>(kTile) * kCols * kTile * kRows * 4, 0);
+        unsigned placed = 0, withMapper = 0, withPasses = 0;
+        const std::vector<std::string> names = big.Names(".w3d");
+        std::set<std::string> seen;
+        // GENERALS_GALLERY_MODELS="AVCRUSADER,AVCOMANCHE": render exactly these prototypes instead of scanning.
+        std::vector<std::string> explicitModels;
+        if (const char *list = std::getenv("GENERALS_GALLERY_MODELS")) {
+            std::string token;
+            for (const char *p = list;; ++p) {
+                if (*p == ',' || *p == 0) { if (!token.empty()) explicitModels.push_back(token); token.clear(); if (!*p) break; }
+                else token += *p;
+            }
+        }
+        if (!explicitModels.empty()) {
+            for (const std::string &file : names)
+                if (!EndsWith(file, "_skl.w3d")) manager.Load_3D_Assets(file.c_str());
+        }
+        for (const std::string &file : names) {
+            if (placed >= kCols * kRows) break;
+            if (!explicitModels.empty() && &file != &names[0]) break;
+            if (EndsWith(file, "_skl.w3d")) continue;
+            std::vector<std::string> fresh;
+            if (!explicitModels.empty()) {
+                fresh = explicitModels;
+            } else if (manager.Load_3D_Assets(file.c_str())) {
+                std::unique_ptr<RenderObjIterator> it(manager.Create_Render_Obj_Iterator());
+                for (it->First(); !it->Is_Done(); it->Next()) {
+                    const std::string name = it->Current_Item_Name();
+                    if (seen.insert(name).second) fresh.push_back(name);
+                }
+            }
+            for (const std::string &name : fresh) {
+                if (placed >= kCols * kRows) break;
+                RenderObjClass *object = manager.Create_Render_Obj(name.c_str());
+                if (!object) continue;
+                if (object->Class_ID() != RenderObjClass::CLASSID_HLOD) { object->Release_Ref(); continue; }
+                const SphereClass sphere = object->Get_Bounding_Sphere();
+                if (!std::isfinite(sphere.Radius) || sphere.Radius < 0.5f) { object->Release_Ref(); continue; }
+                CameraClass camera;
+                camera.Set_Aspect_Ratio(1.0f);
+                camera.Set_View_Plane(DEG_TO_RADF(40.0f), -1);
+                camera.Set_Clip_Planes(sphere.Radius * 0.05f, sphere.Radius * 20.0f);
+                camera.Set_Viewport(Vector2(0, 0), Vector2(1, 1));
+                Matrix3D cam(1);
+                cam.Look_At(sphere.Center + Vector3(sphere.Radius * 2.2f, -sphere.Radius * 2.2f, sphere.Radius * 1.4f),
+                            sphere.Center, 0.0f);
+                camera.Set_Transform(cam);
+                NativeWorldObjects::ObjectInput input = {};
+                input.object = object;
+                input.hexColor = 0xff3070ff;
+                input.opacity = 1.0f;
+                const NativeWorldObjects::Stats before = NativeWorldObjects::stats();
+                backend->Clear(true, true, Vector3(0.2f, 0.25f, 0.3f), 1.0f, 1.0f, 0);
+                backend->Begin_Scene();
+                NativeWorldObjects::renderObjects(*backend, camera, lights, lights, &input, 1);
+                backend->End_Scene(false);
+                const NativeWorldObjects::Stats after = NativeWorldObjects::stats();
+                const bool mapped = after.mapperApplied > before.mapperApplied;
+                const bool multi = after.stateMultiPass > before.stateMultiPass;
+                // Take mapped models first (environment maps are what the sweep found most often).
+                const bool want = !explicitModels.empty() || (mapped && withMapper < 8) || (multi && !mapped && withPasses < 4);
+                if (want) {
+                    if (mapped) ++withMapper; else ++withPasses;
+                    const std::vector<unsigned char> pixels = backend->Readback_RGBA8();
+                    const unsigned col = placed % kCols, row = placed / kCols;
+                    for (unsigned y = 0; y < kTile; ++y)
+                        std::memcpy(&sheet[((static_cast<size_t>(row) * kTile + y) * kTile * kCols + col * kTile) * 4],
+                                    &pixels[static_cast<size_t>(y) * kTile * 4], kTile * 4);
+                    std::printf("gallery[%u]: %s mapper=%d passes=%d\n", placed, name.c_str(), mapped ? 1 : 0, multi ? 1 : 0);
+                    ++placed;
+                }
+                object->Release_Ref();
+            }
+        }
+        EXPECT_GT(placed, 0u);
+        WriteBmp(std::string(outDir) + "\\native_gallery.bmp", sheet, kTile * kCols, kTile * kRows);
+        std::printf("mapper_applied=%u multipass=%u unsupported_state=%u\n", NativeWorldObjects::stats().mapperApplied,
+                    NativeWorldObjects::stats().stateMultiPass, NativeWorldObjects::stats().unsupportedState);
         NativeWorldObjects::releaseAll();
         manager.Free_Assets();
     }

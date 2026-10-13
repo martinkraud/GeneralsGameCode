@@ -512,3 +512,7 @@ int Line3DClass::Get_Num_Polys() const
 	return 12;
 }
 
+const unsigned short *Line3DClass::Native_Indices()
+{
+	return Indices;
+}

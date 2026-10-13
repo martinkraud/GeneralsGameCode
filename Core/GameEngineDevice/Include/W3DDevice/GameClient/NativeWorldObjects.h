@@ -14,6 +14,9 @@ class RenderObjClass;
 
 class CameraClass;
 class D3D11Backend;
+class Texture2DResidency;
+struct WorldVertexXYZDUV2;
+enum class WorldBlend : unsigned char;
 class RayCollisionTestClass;
 struct Coord3D;
 class GeometryInfo;
@@ -29,6 +32,9 @@ void setActiveForTests(bool active);
 // it to ZHC team-color textures and HOUSECOLOR vertex materials exactly as the legacy recolor did.
 void add(RenderObjClass *object, int hexColor = 0);
 void remove(RenderObjClass *object);
+// Team color of a registered (or inherited) object; `inheritColor` lets a snapshot clone keep it.
+int colorOf(const RenderObjClass *object);
+void inheritColor(const RenderObjClass *to, const RenderObjClass *from);
 bool contains(const RenderObjClass *object);
 unsigned registered();
 // Ray test against the registered objects, the native counterpart of RTS3DScene::castRay: only
@@ -53,8 +59,19 @@ struct Stats
     unsigned textureLoads;     // distinct decoded textures
     unsigned textureFailures;  // textures that could not be decoded (white fallback)
     unsigned teamColored;      // team-color recolors applied
+    unsigned effectBatches;    // batches emitted by the effect producers (particles, lines, decals, water, shroud)
     unsigned unsupportedClass; // render objects of classes not drawn by this pass
-    unsigned unsupportedState; // shader/material states approximated or ignored
+    unsigned unsupportedState; // shader/material states approximated or ignored (sum of the families below)
+    // Family breakdown of unsupportedState (X64.29): measured per drawn mesh/batch, never silently dropped.
+    unsigned stateMultiPass;       // informational: meshes with more than one material pass (all passes are drawn)
+    unsigned stateMapper;          // materials whose mapper kind has no native evaluation (unsupported)
+    unsigned mapperApplied;        // material blocks whose mapper was evaluated natively
+    unsigned stateDualTexture;     // passes with a second texture stage (not combined natively)
+    unsigned stateBlend;           // blend pairs outside the supported WorldBlend set
+    unsigned stateModulate2x;      // GRADIENT_MODULATE2X batches
+    unsigned stateSecondary;       // secondary (specular) gradient batches
+    unsigned stateDetail;          // post-detail color functions
+    unsigned mapperKinds[24];      // histogram by TextureMapperClass::Mapper_ID()
     unsigned chunkOverflow;    // meshes dropped because a chunk could not hold them
     unsigned lastObjectsDrawn; // objects drawn in the most recent frame
     unsigned lastBatches;      // batches in the most recent frame
@@ -94,6 +111,37 @@ void removeAllScenery(int kind);
 void removeSceneryForConstruction(const Coord3D *position, const GeometryInfo &geometry, float angle);
 unsigned sceneryCount();
 
+// ---- Services for the native effect producers (NativeWorldEffects: particles, lines, decals, water,
+// shroud). They emit already-lit world-space triangles into the same per-frame batch lists the object
+// renderer uses; layers fix the draw order (opaque objects, terrain decals, sorted translucents, particles,
+// overlays). Valid only inside the effect callbacks of a frame.
+enum EffectLayer { EffectLayerDecal = 1, EffectLayerTranslucent = 2, EffectLayerOverlay = 3, EffectLayerParticle = 4 };
+struct EffectBatch
+{
+    const WorldVertexXYZDUV2 *vertices;
+    unsigned vertexCount;
+    const unsigned short *indices;
+    unsigned indexCount;
+    Texture2DResidency *texture;   // null = the white texture
+    WorldBlend blend;
+    bool depthWrite;
+    bool doubleSided;
+    bool noDiffuse;
+    bool clamp;
+    bool stencilOnce;              // blend each covered pixel at most once (planar shadows)
+    float alphaTest;               // 0 = none, else 0..1 reference
+    float distance;                // squared camera distance for back-to-front sorting
+    int layer;                     // EffectLayer
+};
+// Shader presets/states of the legacy renderer reduced to the native batch fields.
+struct EffectState { WorldBlend blend; bool depthWrite, doubleSided, noDiffuse; float alphaTest; bool blendKnown; };
+EffectState EffectStateFromShader(unsigned shaderBits, bool twoSided);
+Texture2DResidency *effectTexture(D3D11Backend &backend, const char *name, int hexColor = 0);
+Texture2DResidency *effectWhiteTexture(D3D11Backend &backend);
+// Decodes a texture's top level to RGBA8 on the CPU (water edge profile, diagnostics).
+bool effectImage(const char *name, std::vector<unsigned char> &rgba, unsigned &width, unsigned &height);
+bool emitEffect(D3D11Backend &backend, const EffectBatch &batch);   // false when the chunk pool is full
+
 // Draws every registered object visible to the camera on top of the terrain pass (same camera,
 // viewport and depth buffer). Returns the number of draw submissions issued.
 int render(D3D11Backend &backend, CameraClass &camera);
@@ -119,5 +167,8 @@ namespace NativeWorldObjects
 inline bool active() { return false; }
 inline void add(RenderObjClass *, int = 0) {}
 inline void remove(RenderObjClass *) {}
+inline bool contains(const RenderObjClass *) { return false; }
+inline int colorOf(const RenderObjClass *) { return 0; }
+inline void inheritColor(const RenderObjClass *, const RenderObjClass *) {}
 }
 #endif

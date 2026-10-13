@@ -96,6 +96,15 @@ class TextureMapperClass : public RefCountClass
 		virtual void							Apply(int uv_array_index) = 0;
 		virtual void							Reset() { }
 		virtual bool							Needs_Normals() { return false; }
+
+		// Native (non-DX8) evaluation: the CPU form of what Apply() would program into the texture stage.
+		// m is a 2x3 affine transform applied to (u, v): u' = m[0]*u + m[1]*v + m[2], v' = m[3]*u + m[4]*v + m[5].
+		// texgen: 0 = use the vertex UV, 1 = camera-space normal x,y (classic environment), 2 = camera-space
+		// reflection vector x,y (environment); for 1 and 2 the affine is applied to that (x, y) pair instead.
+		// Time-variant mappers advance their state exactly as Apply() does. Returns false when this mapper
+		// kind has no native form (the caller then counts the state as unsupported).
+		struct NativeUV { float m[6]; int texgen; };
+		virtual bool							Native_Evaluate(NativeUV &out) { (void)out; return false; }
 		void										Set_Stage(int stage) { Stage = stage; }
 		int										Get_Stage() const { return Stage; }
 
@@ -122,6 +131,7 @@ public:
 	virtual int	Mapper_ID() const override { return MAPPER_ID_SCALE;}
 
 	virtual TextureMapperClass *Clone() const override { return NEW_REF( ScaleTextureMapperClass, (*this)); }
+	virtual bool Native_Evaluate(NativeUV &out) override;
 
 	virtual void Apply(int uv_array_index) override;
 	virtual void Calculate_Texture_Matrix(Matrix4x4 &tex_matrix) override;
@@ -146,6 +156,7 @@ public:
 	virtual int	Mapper_ID() const override { return MAPPER_ID_LINEAR_OFFSET;}
 
 	virtual TextureMapperClass *Clone() const override { return NEW_REF( LinearOffsetTextureMapperClass, (*this)); }
+	virtual bool Native_Evaluate(NativeUV &out) override;
 
 	virtual bool Is_Time_Variant() override { return true; }
 
@@ -344,6 +355,7 @@ public:
 	ClassicEnvironmentMapperClass(const ClassicEnvironmentMapperClass & src) : TextureMapperClass(src) { }
 	virtual int	Mapper_ID() const override { return MAPPER_ID_CLASSIC_ENVIRONMENT;}
 	virtual TextureMapperClass* Clone() const override { return NEW_REF( ClassicEnvironmentMapperClass, (*this)); }
+	virtual bool Native_Evaluate(NativeUV &out) override;
 	virtual void Apply(int uv_array_index) override;
 	virtual bool Needs_Normals() override { return true; }
 	virtual void Calculate_Texture_Matrix(Matrix4x4 &tex_matrix) override;
@@ -357,6 +369,7 @@ public:
 	EnvironmentMapperClass(const EnvironmentMapperClass & src) : TextureMapperClass(src) { }
 	virtual int	Mapper_ID() const override { return MAPPER_ID_ENVIRONMENT;}
 	virtual TextureMapperClass* Clone() const override { return NEW_REF( EnvironmentMapperClass, (*this)); }
+	virtual bool Native_Evaluate(NativeUV &out) override;
 	virtual void Apply(int uv_array_index) override;
 	virtual bool Needs_Normals() override { return true; }
 	virtual void Calculate_Texture_Matrix(Matrix4x4 &tex_matrix) override;
@@ -464,6 +477,7 @@ public:
 	ScreenMapperClass(const ScreenMapperClass & src) : LinearOffsetTextureMapperClass(src) { }
 	virtual int	Mapper_ID() const override { return MAPPER_ID_SCREEN;}
 	virtual TextureMapperClass* Clone() const override { return NEW_REF( ScreenMapperClass, (*this)); }
+	virtual bool Native_Evaluate(NativeUV &) override { return false; }   // screen-projected: no native form yet
 	virtual void Apply(int uv_array_index) override;
 	virtual void Calculate_Texture_Matrix(Matrix4x4 &tex_matrix) override;
 };
@@ -515,6 +529,7 @@ public:
 	virtual int	Mapper_ID() const override { return MAPPER_ID_BUMPENV;}
 
 	virtual TextureMapperClass *Clone() const override { return NEW_REF( BumpEnvTextureMapperClass, (*this)); }
+	virtual bool Native_Evaluate(NativeUV &) override { return false; }   // needs the bump-env stage: no native form
 
 	virtual void Apply(int uv_array_index) override;
 

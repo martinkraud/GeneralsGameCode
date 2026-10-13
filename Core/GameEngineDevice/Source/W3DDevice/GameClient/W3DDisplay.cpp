@@ -37,6 +37,9 @@ static void drawFramerateBar();
 #include "Common/PerformanceProfile.h"
 #if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
+#if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
+#endif
 #endif
 #include <numeric>
 #include <stdlib.h>
@@ -3112,6 +3115,12 @@ void W3DDisplay::setBorderShroudLevel(UnsignedByte level)
 	{
 		TheTerrainRenderObject->getShroud()->setBorderShroudLevel((W3DShroudLevel)level);
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay())
+	{
+		NativeWorldEffects::setBorderShroudLevel(level);
+	}
+#endif
 }
 
 //=============================================================================
@@ -3134,6 +3143,18 @@ void W3DDisplay::setShroudLevel( Int x, Int y, CellShroudStatus setting )
 		TheTerrainRenderObject->notifyShroudChanged();
 
 	}
+#if defined(_WIN64)
+	else if (StartupDiagnostics::ordinaryPlay())
+	{
+		// Native play profile: the CPU shroud behind the overlay (same level mapping as above).
+		UnsignedByte level = TheGlobalData->m_clearAlpha;
+		if (setting == CELLSHROUD_SHROUDED)
+			level = TheGlobalData->m_shroudAlpha;
+		else if (setting == CELLSHROUD_FOGGED)
+			level = TheGlobalData->m_fogAlpha;
+		NativeWorldEffects::setShroudLevel(x, y, level);
+	}
+#endif
 }
 
 /** Start/Stop capturing an AVI movie*/

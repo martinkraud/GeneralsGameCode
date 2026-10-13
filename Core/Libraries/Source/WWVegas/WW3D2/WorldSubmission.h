@@ -75,6 +75,8 @@ enum class WorldBlend : unsigned char
     Multiply,         // ZERO, SRC_COLOR
     InvMultiply,      // ZERO, ONE_MINUS_SRC_COLOR
     Premultiplied,    // ONE, ONE_MINUS_SRC_ALPHA
+    DestAlpha,        // DEST_ALPHA, INV_DEST_ALPHA (soft water edge from the destination alpha)
+    DestAlphaAdditive,// DEST_ALPHA, ONE
     Count
 };
 
@@ -105,6 +107,7 @@ struct WorldSubmission
     bool double_sided;              // cull mode none (bridges)
     bool alpha_only;                // write destination alpha only, no blending (shoreline)
     bool no_diffuse;                // ignore vertex diffuse (GRADIENT_DISABLE presets)
+    bool stencil_once;              // TerrainOverlay: depth test only, each pixel passes once per stencil clear
     WorldBlend blend;               // blend equation (ignored when alpha_only)
 };
 

@@ -99,6 +99,9 @@
 #endif
 
 #include "W3DDevice/GameClient/HeightMap.h"
+#if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
+#endif
 #include "W3DDevice/GameClient/FlatHeightMap.h"
 #include "W3DDevice/GameClient/W3DSmudge.h"
 #include "W3DDevice/GameClient/W3DSnow.h"
@@ -1919,6 +1922,9 @@ void BaseHeightMapRenderObjClass::clearAllScorches()
 {
 	m_scorches->clearAllScorches();
 	m_staticScorches->clearAllScorches();
+#if defined(_WIN64)
+	NativeWorldEffects::clearScorches();
+#endif
 }
 
 //=============================================================================
@@ -1929,6 +1935,10 @@ void BaseHeightMapRenderObjClass::clearAllScorches()
 void BaseHeightMapRenderObjClass::addScorch(Vector3 location, Real radius, Scorches type)
 {
 	m_scorches->addScorch(location, radius, type);
+#if defined(_WIN64)
+	if (StartupDiagnostics::ordinaryPlay())
+		NativeWorldEffects::addScorch(location.X, location.Y, location.Z, radius, static_cast<int>(type), false);
+#endif
 }
 
 //=============================================================================
@@ -1940,6 +1950,10 @@ void BaseHeightMapRenderObjClass::addScorch(Vector3 location, Real radius, Scorc
 void BaseHeightMapRenderObjClass::addStaticScorch(Vector3 location, Real radius, Scorches type)
 {
 	m_staticScorches->addScorch(location, radius, type);
+#if defined(_WIN64)
+	if (StartupDiagnostics::ordinaryPlay())
+		NativeWorldEffects::addScorch(location.X, location.Y, location.Z, radius, static_cast<int>(type), true);
+#endif
 }
 
 //=============================================================================

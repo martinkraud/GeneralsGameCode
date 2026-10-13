@@ -983,3 +983,122 @@ void Reset_All_Texture_Mappers(RenderObjClass *robj, bool make_unique)
 		}
 	}
 }
+
+// ------------------------------------------------------------------------------------------------
+// Native (non-DX8) evaluation, used by the AMD64/D3D11 world renderer. Each body mirrors the matrix
+// its Apply() would hand to the fixed-function texture stage, including the time-state update.
+// ------------------------------------------------------------------------------------------------
+bool ScaleTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	out.m[0] = Scale.U; out.m[1] = 0.0f; out.m[2] = 0.0f;
+	out.m[3] = 0.0f; out.m[4] = Scale.V; out.m[5] = 0.0f;
+	out.texgen = 0;
+	return true;
+}
+
+bool LinearOffsetTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	unsigned int delta = WW3D::Get_Sync_Time() - LastUsedSyncTime;
+	float del = (float)delta;
+	float offset_u = CurrentUVOffset.X + UVOffsetDeltaPerMS.X * del;
+	float offset_v = CurrentUVOffset.Y + UVOffsetDeltaPerMS.Y * del;
+	offset_u = offset_u - WWMath::Floor(offset_u);
+	offset_v = offset_v - WWMath::Floor(offset_v);
+	out.m[0] = Scale.X; out.m[1] = 0.0f; out.m[2] = offset_u;
+	out.m[3] = 0.0f; out.m[4] = Scale.Y; out.m[5] = offset_v;
+	out.texgen = 0;
+	CurrentUVOffset.X = offset_u;
+	CurrentUVOffset.Y = offset_v;
+	LastUsedSyncTime = WW3D::Get_Sync_Time();
+	return true;
+}
+
+bool RotateTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	unsigned int now = WW3D::Get_Sync_Time();
+	unsigned int delta = now - LastUsedSyncTime;
+	LastUsedSyncTime = now;
+	CurrentAngle += RadiansPerSec * delta / 1000.0f;
+	CurrentAngle = fmodf(CurrentAngle, 2 * WWMATH_PI);
+	if (CurrentAngle < 0.0f) CurrentAngle += 2 * WWMATH_PI;
+	const float c = WWMath::Cos(CurrentAngle);
+	const float s = WWMath::Sin(CurrentAngle);
+	out.m[0] = Scale.X * c;  out.m[1] = -Scale.X * s; out.m[2] = -Scale.X * (c * Center.U - s * Center.V - Center.U);
+	out.m[3] = Scale.Y * s;  out.m[4] = Scale.Y * c;  out.m[5] = -Scale.Y * (s * Center.U + c * Center.V - Center.V);
+	out.texgen = 0;
+	return true;
+}
+
+bool SineLinearOffsetTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	unsigned int now = WW3D::Get_Sync_Time();
+	unsigned int delta = now - LastUsedSyncTime;
+	LastUsedSyncTime = now;
+	CurrentAngle += (delta / 1000.0f) * WWMATH_PI * 2;
+	float offset_u = UAFP.X * sin(UAFP.Y * CurrentAngle + UAFP.Z * WWMATH_PI);
+	float offset_v = VAFP.X * sin(VAFP.Y * CurrentAngle + VAFP.Z * WWMATH_PI);
+	offset_u = offset_u - WWMath::Floor(offset_u);
+	offset_v = offset_v - WWMath::Floor(offset_v);
+	out.m[0] = 1.0f; out.m[1] = 0.0f; out.m[2] = offset_u;
+	out.m[3] = 0.0f; out.m[4] = 1.0f; out.m[5] = offset_v;
+	out.texgen = 0;
+	return true;
+}
+
+bool StepLinearOffsetTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	unsigned int now = WW3D::Get_Sync_Time();
+	unsigned int delta = now - LastUsedSyncTime;
+	float ms_per_step = 1000.0f / StepsPerSec;
+	if (delta > ms_per_step) {
+		LastUsedSyncTime = now;
+		CurrentStep += Step * StepsPerSec;
+	}
+	CurrentStep.U -= WWMath::Floor(CurrentStep.U);
+	CurrentStep.V -= WWMath::Floor(CurrentStep.V);
+	out.m[0] = 1.0f; out.m[1] = 0.0f; out.m[2] = CurrentStep.U;
+	out.m[3] = 0.0f; out.m[4] = 1.0f; out.m[5] = CurrentStep.V;
+	out.texgen = 0;
+	return true;
+}
+
+bool ZigZagLinearOffsetTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	unsigned int now = WW3D::Get_Sync_Time();
+	unsigned int delta = now - LastUsedSyncTime;
+	float time = delta / 1000.0f;
+	if (time > Period) LastUsedSyncTime = now;
+	float offset_u, offset_v;
+	float half_period = 0.5f * Period;
+	if (time < half_period) {
+		offset_u = Speed.U * time;
+		offset_v = Speed.V * time;
+	} else {
+		offset_u = Speed.U * (Period - time);
+		offset_v = Speed.V * (Period - time);
+	}
+	offset_u = offset_u - WWMath::Floor(offset_u);
+	offset_v = offset_v - WWMath::Floor(offset_v);
+	out.m[0] = 1.0f; out.m[1] = 0.0f; out.m[2] = offset_u;
+	out.m[3] = 0.0f; out.m[4] = 1.0f; out.m[5] = offset_v;
+	out.texgen = 0;
+	return true;
+}
+
+bool ClassicEnvironmentMapperClass::Native_Evaluate(NativeUV &out)
+{
+	// camera-space normal (x, y) scaled by 0.5 and moved to the 0..1 range
+	out.m[0] = 0.5f; out.m[1] = 0.0f; out.m[2] = 0.5f;
+	out.m[3] = 0.0f; out.m[4] = 0.5f; out.m[5] = 0.5f;
+	out.texgen = 1;
+	return true;
+}
+
+bool EnvironmentMapperClass::Native_Evaluate(NativeUV &out)
+{
+	// camera-space reflection vector (x, y) scaled by 0.25 (the extra half fudges the 1+z factor)
+	out.m[0] = 0.25f; out.m[1] = 0.0f; out.m[2] = 0.5f;
+	out.m[3] = 0.0f;  out.m[4] = 0.25f; out.m[5] = 0.5f;
+	out.texgen = 2;
+	return true;
+}

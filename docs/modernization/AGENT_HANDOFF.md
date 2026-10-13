@@ -249,6 +249,16 @@ run are the **First Playable reference baseline** (immutable; evidence copy in
 (`GAMEPLAY_RENDERING_COMPLETENESS.md`)** - large offline batches, one native candidate per batch, First
 Playable acceptance contracts and classifier unchanged.
 
+**X64.29 (CP2) Gameplay + Rendering Completeness - offline batch complete, candidate
+`x64-29-gameplay-render-completeness` staged and preflighted, NOT executed.** Details, dependency graph,
+validation and the review checklist: `GAMEPLAY_RENDERING_COMPLETENESS.md`. Implemented: multi-pass + texture
+mappers (retail sweep `unsupported_state` 7,648 -> 0), line objects, real particle manager + native particles,
+decal/planar-shadow manager, scorches, water, shroud overlay, ghost objects, layers/stencil-once/dest-alpha in the
+backend. Deferred: radar minimap, terrain tracks, smudge, snow, tree sway, bibs/waypoints, water sparkle/bump,
+soft projection shadows, dual-stage materials. Crash isolation: `GENERALS_NATIVE_DISABLE` (comma list of
+particles, ghosts, shadows, water, shroud, scorches, lines, mappers). The First Playable baseline
+(`x64-28-play-world-fix2`) stays the regression reference; do not rerun the earlier candidates.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a

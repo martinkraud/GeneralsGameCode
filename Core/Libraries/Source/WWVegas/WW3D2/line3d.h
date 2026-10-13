@@ -95,6 +95,12 @@ class Line3DClass : public RenderObjClass
 		// Reset the line opacity
 		void Set_Opacity(float opacity);
 
+		// Native (AMD64/D3D11) renderer access: the object-space box, its color and shader state.
+		const Vector3 *							Native_Vertices() const { return vert; }
+		const Vector4 &							Native_Color() const { return Color; }
+		const ShaderClass &					Native_Shader() const { return Shader; }
+		static const unsigned short *		Native_Indices();
+
 		// For non-opaque lines, allow them to render last.
 		virtual void							Set_Sort_Level(int level) override { SortLevel = level; }
 		virtual int							Get_Sort_Level() const override { return SortLevel; }

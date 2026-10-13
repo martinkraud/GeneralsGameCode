@@ -102,7 +102,7 @@ class OrdinaryPlayContract(unittest.TestCase):
         self.assertLess(guard, decal.index("TheProjectedShadowManager->addDecal"))
         self.assertLess(guard, decal.index("owningPlayer->getPlayerIndex()"))
         debris = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DDebrisDraw.cpp")
-        self.assertIn("if (t != SHADOW_NONE && TheW3DShadowManager != nullptr)", debris)
+        self.assertIn("if (t != SHADOW_NONE && (TheW3DShadowManager != nullptr || TheProjectedShadowManager != nullptr))", debris)
         # Every remaining dereference of the shadow managers in the shared draw modules is null-guarded.
         for path in ("Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DModelDraw.cpp",
                      "Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DDebrisDraw.cpp"):
@@ -111,6 +111,7 @@ class OrdinaryPlayContract(unittest.TestCase):
                 if "TheW3DShadowManager->addShadow" in line or "TheProjectedShadowManager->addDecal" in line:
                     context = " ".join(lines[max(0, number - 20):number + 1])
                     self.assertTrue("TheW3DShadowManager &&" in context or "TheW3DShadowManager != nullptr" in context
+                                    or "TheW3DShadowManager ?" in context or "(TheW3DShadowManager ||" in context
                                     or "if (TheProjectedShadowManager)" in context, f"{path}:{number + 1}")
 
     def test_world_objects_receipt_follows_terrain_first_frame(self):
@@ -133,6 +134,26 @@ class OrdinaryPlayContract(unittest.TestCase):
         self.assertLess(update, host.index('exitReason = "game_ended";'))
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         self.assertIn("-lt 150){$errors.Add('Fewer than 150 logic frames in game')}", common)  # contract unchanged
+
+    def test_x64_29_effects_are_play_only_and_have_a_disable_fallback(self):
+        effects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp")
+        # Every producer is behind its own feature switch (GENERALS_NATIVE_DISABLE) and runs only through collect().
+        for feature in ("scorches", "shadows", "water", "shroud", "particles", "lines"):
+            self.assertIn('nativeFeature("%s")' % feature, effects)
+        header = read("Core/GameEngine/Include/Common/StartupDiagnostics.h")
+        self.assertIn("GENERALS_NATIVE_DISABLE", header)
+        # The new native hooks in shared sources are play-gated.
+        display = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp")
+        self.assertIn("#if defined(_WIN64)\n\telse if (StartupDiagnostics::ordinaryPlay())", display)
+        engine = read("Generals/Code/GameEngine/Source/Common/GameEngine.cpp")
+        self.assertIn("!(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature(\"particles\"))", engine)
+        logic = read("Generals/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp")
+        self.assertIn("!(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature(\"ghosts\"))", logic)
+        ghosts = read("Generals/Code/GameEngineDevice/Source/W3DDevice/GameLogic/W3DGhostObject.cpp")
+        self.assertIn("TheGlobalData->m_headless && !StartupDiagnostics::ordinaryPlay()", ghosts)
+        # Layer order: opaque, decal, translucent (objects/water/lines), shroud overlay, particles.
+        objects = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp")
+        self.assertIn("LayerOpaque = 0, LayerDecal = 1, LayerTranslucent = 2, LayerOverlay = 3, LayerParticle = 4", objects)
 
     def test_zero_hour_sources_do_not_mention_play(self):
         zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")

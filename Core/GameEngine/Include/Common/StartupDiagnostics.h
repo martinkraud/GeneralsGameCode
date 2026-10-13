@@ -44,6 +44,22 @@ inline bool ordinaryMenu() { return enabled() && state().ordinaryMenu; }
 inline bool ordinaryGame() { return enabled() && state().ordinaryGame; }
 inline bool ordinaryTerrain() { return enabled() && state().ordinaryTerrain; }
 inline bool ordinaryPlay() { return enabled() && state().ordinaryPlay; }
+// Developer fallback for the native play profile: GENERALS_NATIVE_DISABLE="particles,shadows,water,shroud,
+// ghosts,lines,scorches,mappers" turns individual native presentation features off without a rebuild (a
+// crash isolation aid). Unset = every feature on. Consulted only by the play profile's own code paths.
+inline bool nativeFeature(const char *name) {
+    const char *list = std::getenv("GENERALS_NATIVE_DISABLE");
+    if (!list || !*list || !name) return true;
+    const size_t length = std::strlen(name);
+    for (const char *p = list; *p;) {
+        while (*p == ',' || *p == ' ') ++p;
+        const char *end = p;
+        while (*end && *end != ',' && *end != ' ') ++end;
+        if (static_cast<size_t>(end - p) == length && !_strnicmp(p, name, length)) return false;
+        p = end;
+    }
+    return true;
+}
 inline bool healthy() { return !enabled() || state().healthy; }
 // A verified-contract violation is recorded by the caller first; this only
 // forces the process exit classification to failure.

@@ -17,6 +17,15 @@ def show(path):
     return subprocess.check_output(["git", "show", f"{BASELINE}:{path}"], cwd=ROOT).decode("latin1").replace("\r\n", "\n")
 
 
+def expected_engine(baseline_source):
+    """The accepted engine source with the single X64.29 particle-manager selection change applied."""
+    old = "createParticleSystemManager(TheGlobalData->m_headless), nullptr);"
+    new = ('createParticleSystemManager(TheGlobalData->m_headless && '
+           '!(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("particles"))), nullptr);')
+    assert baseline_source.count(old) == 1
+    return baseline_source.replace(old, new)
+
+
 def body(source, signature):
     start = source.index(signature)
     brace = source.index("{", start)
@@ -59,8 +68,10 @@ class OrdinaryGameContract(unittest.TestCase):
             self.assertEqual(body(read(HOST), signature), body(show(HOST), signature), signature)
 
     def test_selection_and_world_factories_unchanged(self):
+        # X64.29: the only allowed change is the particle manager selection, which the play profile makes
+        # non-dummy (and which the GENERALS_NATIVE_DISABLE=particles fallback can switch back).
         self.assertEqual(read("Generals/Code/GameEngine/Source/Common/GameEngine.cpp"),
-                         show("Generals/Code/GameEngine/Source/Common/GameEngine.cpp"))
+                         expected_engine(show("Generals/Code/GameEngine/Source/Common/GameEngine.cpp")))
         s = read("Generals/Code/GameEngine/Source/GameClient/GameClient.cpp")
         self.assertEqual(s, show("Generals/Code/GameEngine/Source/GameClient/GameClient.cpp"))
         header = read("Core/GameEngine/Include/Common/StartupDiagnostics.h")

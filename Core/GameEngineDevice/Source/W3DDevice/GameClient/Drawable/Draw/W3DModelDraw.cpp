@@ -57,6 +57,7 @@
 #include "W3DDevice/GameClient/Module/W3DModelDraw.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DShadow.h"
@@ -1859,7 +1860,7 @@ void W3DModelDraw::allocateShadows()
 	const ThingTemplate *tmplate=getDrawable()->getTemplate();
 
 	//Check if we don't already have a shadow but need one for this type of model.
-	if (m_shadow == nullptr && m_renderObject && TheW3DShadowManager && tmplate->getShadowType() != SHADOW_NONE)
+	if (m_shadow == nullptr && m_renderObject && (TheW3DShadowManager || TheProjectedShadowManager) && tmplate->getShadowType() != SHADOW_NONE)
 	{
 		Shadow::ShadowTypeInfo shadowInfo;
 		strlcpy(shadowInfo.m_ShadowName, tmplate->getShadowTextureName().str(), ARRAY_SIZE(shadowInfo.m_ShadowName));
@@ -1871,7 +1872,9 @@ void W3DModelDraw::allocateShadows()
 		shadowInfo.m_sizeY					= tmplate->getShadowSizeY();
 		shadowInfo.m_offsetX				= tmplate->getShadowOffsetX();
 		shadowInfo.m_offsetY				= tmplate->getShadowOffsetY();
-  		m_shadow = TheW3DShadowManager->addShadow(m_renderObject, &shadowInfo);
+  		// The native play profile has no W3DShadowManager; its decal/planar shadow manager takes over.
+  		m_shadow = TheW3DShadowManager ? TheW3DShadowManager->addShadow(m_renderObject, &shadowInfo)
+  		                               : NativeWorldEffects::addShadow(m_renderObject, &shadowInfo);
 		if (m_shadow)
 		{	m_shadow->enableShadowInvisible(m_fullyObscuredByShroud);
 			if (m_renderObject->Is_Hidden() || !m_shadowEnabled)
@@ -3078,7 +3081,7 @@ void W3DModelDraw::setModelState(const ModelConditionInfo* newState)
 		}
 
 		// set up shadows
-		if (m_renderObject && TheW3DShadowManager && tmplate->getShadowType() != SHADOW_NONE)
+		if (m_renderObject && (TheW3DShadowManager || TheProjectedShadowManager) && tmplate->getShadowType() != SHADOW_NONE)
 		{
 			Shadow::ShadowTypeInfo shadowInfo;
 			strlcpy(shadowInfo.m_ShadowName, tmplate->getShadowTextureName().str(), ARRAY_SIZE(shadowInfo.m_ShadowName));
@@ -3092,7 +3095,8 @@ void W3DModelDraw::setModelState(const ModelConditionInfo* newState)
 			shadowInfo.m_offsetY				= tmplate->getShadowOffsetY();
 
 			DEBUG_ASSERTCRASH(m_shadow == nullptr, ("m_shadow is not null"));
-			m_shadow = TheW3DShadowManager->addShadow(m_renderObject, &shadowInfo, draw);
+			m_shadow = TheW3DShadowManager ? TheW3DShadowManager->addShadow(m_renderObject, &shadowInfo, draw)
+			                               : NativeWorldEffects::addShadow(m_renderObject, &shadowInfo);
 			if (m_shadow)
 			{	m_shadow->enableShadowInvisible(m_fullyObscuredByShroud);
 				m_shadow->enableShadowRender(m_shadowEnabled);

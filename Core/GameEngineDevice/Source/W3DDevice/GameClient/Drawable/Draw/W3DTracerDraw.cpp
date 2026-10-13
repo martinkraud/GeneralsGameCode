@@ -37,6 +37,7 @@
 #include "GameClient/GameClient.h"
 #include "GameLogic/GameLogic.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/Module/W3DTracerDraw.h"
 #include "WW3D2/line3d.h"
 #include "W3DDevice/GameClient/W3DScene.h"
@@ -93,6 +94,8 @@ W3DTracerDraw::~W3DTracerDraw()
 	{
 		if (W3DDisplay::m_3DScene)
 			W3DDisplay::m_3DScene->Remove_Render_Object( m_theTracer );
+		else
+			NativeWorldObjects::remove( m_theTracer );
 		REF_PTR_RELEASE( m_theTracer );
 	}
 }
@@ -127,9 +130,11 @@ void W3DTracerDraw::doDrawModule(const Matrix3D* transformMtx)
 																	 m_color.green,  // green
 																	 m_color.blue,  // blue
 																	 m_opacity );  // transparency
-		// The headless world selection (native play profile) has no legacy scene; tracers are not drawn there.
+		// The headless world selection (native play profile) has no legacy scene; the native registry draws them.
 		if (W3DDisplay::m_3DScene)
 			W3DDisplay::m_3DScene->Add_Render_Object( m_theTracer );
+		else
+			NativeWorldObjects::add( m_theTracer );
 
 		// set the transform for the tracer to that of the drawable
 		m_theTracer->Set_Transform( *transformMtx );

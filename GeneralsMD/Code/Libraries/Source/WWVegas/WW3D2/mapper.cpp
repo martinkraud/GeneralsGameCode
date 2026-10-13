@@ -1283,3 +1283,50 @@ void GridWSEnvironmentMapperClass::Apply(int uv_array_index)
 	// Tell rasterizer to expect 2D matrices
 	DX8Wrapper::Set_DX8_Texture_Stage_State(Stage,D3DTSS_TEXTURETRANSFORMFLAGS,D3DTTFF_COUNT2);
 }
+
+// ------------------------------------------------------------------------------------------------
+// Native (non-DX8) evaluation, used by the AMD64/D3D11 world renderer. Each body mirrors the matrix
+// its Apply() would hand to the fixed-function texture stage, including the time-state update.
+// ------------------------------------------------------------------------------------------------
+bool ScaleTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	out.m[0] = Scale.U; out.m[1] = 0.0f; out.m[2] = 0.0f;
+	out.m[3] = 0.0f; out.m[4] = Scale.V; out.m[5] = 0.0f;
+	out.texgen = 0;
+	return true;
+}
+
+bool LinearOffsetTextureMapperClass::Native_Evaluate(NativeUV &out)
+{
+	unsigned int delta = WW3D::Get_Sync_Time() - LastUsedSyncTime;
+	float del = (float)delta;
+	float offset_u = CurrentUVOffset.X + UVOffsetDeltaPerMS.X * del;
+	float offset_v = CurrentUVOffset.Y + UVOffsetDeltaPerMS.Y * del;
+	offset_u = offset_u - WWMath::Floor(offset_u);
+	offset_v = offset_v - WWMath::Floor(offset_v);
+	out.m[0] = Scale.X; out.m[1] = 0.0f; out.m[2] = offset_u;
+	out.m[3] = 0.0f; out.m[4] = Scale.Y; out.m[5] = offset_v;
+	out.texgen = 0;
+	CurrentUVOffset.X = offset_u;
+	CurrentUVOffset.Y = offset_v;
+	LastUsedSyncTime = WW3D::Get_Sync_Time();
+	return true;
+}
+
+bool ClassicEnvironmentMapperClass::Native_Evaluate(NativeUV &out)
+{
+	// camera-space normal (x, y) scaled by 0.5 and moved to the 0..1 range
+	out.m[0] = 0.5f; out.m[1] = 0.0f; out.m[2] = 0.5f;
+	out.m[3] = 0.0f; out.m[4] = 0.5f; out.m[5] = 0.5f;
+	out.texgen = 1;
+	return true;
+}
+
+bool EnvironmentMapperClass::Native_Evaluate(NativeUV &out)
+{
+	// camera-space reflection vector (x, y) scaled by 0.25 (the extra half fudges the 1+z factor)
+	out.m[0] = 0.25f; out.m[1] = 0.0f; out.m[2] = 0.5f;
+	out.m[3] = 0.0f;  out.m[4] = 0.25f; out.m[5] = 0.5f;
+	out.texgen = 2;
+	return true;
+}

@@ -44,6 +44,7 @@
 #include "GameLogic/Module/LaserUpdate.h"
 #include "W3DDevice/GameClient/Module/W3DLaserDraw.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "WW3D2/rinfo.h"
 #include "WW3D2/camera.h"
@@ -202,6 +203,8 @@ W3DLaserDraw::W3DLaserDraw( Thing *thing, const ModuleData* moduleData ) :
 				// add to scene
 				if (W3DDisplay::m_3DScene != nullptr)
 					W3DDisplay::m_3DScene->Add_Render_Object( line );	//add it to our scene so it gets rendered with other objects.
+				else
+					NativeWorldObjects::add( line );	// native play profile: same, through the native registry
 
 				// hide the render object until the first time we come to draw it and
 				// set the correct position
@@ -227,6 +230,8 @@ W3DLaserDraw::~W3DLaserDraw()
 		// remove line from scene
 		if (W3DDisplay::m_3DScene != nullptr)
 			W3DDisplay::m_3DScene->Remove_Render_Object( m_line3D[ i ] );
+		else
+			NativeWorldObjects::remove( m_line3D[ i ] );
 
 		// delete line
 		REF_PTR_RELEASE( m_line3D[ i ] );

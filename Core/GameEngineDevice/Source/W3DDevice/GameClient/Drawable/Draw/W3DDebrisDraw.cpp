@@ -45,6 +45,7 @@
 #include "W3DDevice/GameClient/Module/W3DDebrisDraw.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DShadow.h"
@@ -67,9 +68,12 @@ W3DDebrisDraw::W3DDebrisDraw(Thing *thing, const ModuleData* moduleData) : DrawM
 //-------------------------------------------------------------------------------------------------
 W3DDebrisDraw::~W3DDebrisDraw()
 {
-	if (TheW3DShadowManager && m_shadow)
+	if (m_shadow)
 	{
-		TheW3DShadowManager->removeShadow(m_shadow);
+		if (TheW3DShadowManager)
+			TheW3DShadowManager->removeShadow(m_shadow);
+		else
+			m_shadow->release();   // native decal/planar shadow
 		m_shadow = nullptr;
 	}
 	if (m_renderObject)
@@ -130,17 +134,21 @@ void W3DDebrisDraw::setModelName(AsciiString name, Color color, ShadowType t)
 			m_renderObject->Set_Transform(transform);
 		}
 
-		if (t != SHADOW_NONE && TheW3DShadowManager != nullptr)
+		if (t != SHADOW_NONE && (TheW3DShadowManager != nullptr || TheProjectedShadowManager != nullptr))
 		{
 			Shadow::ShadowTypeInfo shadowInfo;
 			shadowInfo.m_type = t;
-  		m_shadow = TheW3DShadowManager->addShadow(m_renderObject, &shadowInfo);
+  		m_shadow = TheW3DShadowManager ? TheW3DShadowManager->addShadow(m_renderObject, &shadowInfo)
+  		                               : NativeWorldEffects::addShadow(m_renderObject, &shadowInfo);
 		}
 		else
 		{
-			if (TheW3DShadowManager && m_shadow)
+			if (m_shadow)
 			{
-				TheW3DShadowManager->removeShadow(m_shadow);
+				if (TheW3DShadowManager)
+					TheW3DShadowManager->removeShadow(m_shadow);
+				else
+					m_shadow->release();
 				m_shadow = nullptr;
 			}
 		}

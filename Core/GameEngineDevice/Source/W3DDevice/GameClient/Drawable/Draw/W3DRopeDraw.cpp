@@ -39,6 +39,7 @@
 #include "GameClient/GameClient.h"
 #include "GameLogic/GameLogic.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/Module/W3DRopeDraw.h"
 #include "WW3D2/line3d.h"
 #include "W3DDevice/GameClient/W3DScene.h"
@@ -107,6 +108,11 @@ void W3DRopeDraw::buildSegments()
 			W3DDisplay::m_3DScene->Add_Render_Object( info.line );
 			W3DDisplay::m_3DScene->Add_Render_Object( info.softLine );
 		}
+		else
+		{
+			NativeWorldObjects::add( info.line );
+			NativeWorldObjects::add( info.softLine );
+		}
 		m_segments.push_back(info);
 	}
 }
@@ -122,12 +128,16 @@ void W3DRopeDraw::tossSegments()
 		{
 			if (W3DDisplay::m_3DScene)
 				W3DDisplay::m_3DScene->Remove_Render_Object(it->line);
+			else
+				NativeWorldObjects::remove(it->line);
 			REF_PTR_RELEASE((it->line));
 		}
 		if (it->softLine)
 		{
 			if (W3DDisplay::m_3DScene)
 				W3DDisplay::m_3DScene->Remove_Render_Object(it->softLine);
+			else
+				NativeWorldObjects::remove(it->softLine);
 			REF_PTR_RELEASE((it->softLine));
 		}
 	}

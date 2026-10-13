@@ -248,7 +248,7 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11InputLayout> worldLayout;
     ComPtr<ID3D11Buffer> worldCB;
     ComPtr<ID3D11RasterizerState> worldRaster;
-    ComPtr<ID3D11DepthStencilState> depthWrite, depthTestOnly;
+    ComPtr<ID3D11DepthStencilState> depthWrite, depthTestOnly, depthStencilOnce;
     std::map<unsigned, ComPtr<ID3D11SamplerState>> worldSamplers;
     bool worldReady = false;
     ComPtr<ID3D11ShaderResourceView> white, bound;
@@ -306,6 +306,8 @@ struct D3D11Backend::Impl {
                 {D3D11_BLEND_ZERO, D3D11_BLEND_SRC_COLOR, true},            // Multiply
                 {D3D11_BLEND_ZERO, D3D11_BLEND_INV_SRC_COLOR, true},        // InvMultiply
                 {D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, true},         // Premultiplied
+                {D3D11_BLEND_DEST_ALPHA, D3D11_BLEND_INV_DEST_ALPHA, true}, // DestAlpha
+                {D3D11_BLEND_DEST_ALPHA, D3D11_BLEND_ONE, true},            // DestAlphaAdditive
             };
             for (size_t i = 0; i < static_cast<size_t>(WorldBlend::Count); ++i) {
                 D3D11_BLEND_DESC d{};
@@ -357,6 +359,14 @@ struct D3D11Backend::Impl {
         Check(device->CreateDepthStencilState(&d, &depthWrite), "Create depth-write state");
         d.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
         Check(device->CreateDepthStencilState(&d, &depthTestOnly), "Create depth-test state");
+        // Planar shadows: depth test, no depth write, stencil EQUAL 0 with increment so a pixel is blended once.
+        d.StencilEnable = TRUE; d.StencilReadMask = 0xff; d.StencilWriteMask = 0xff;
+        d.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+        d.FrontFace.StencilPassOp = D3D11_STENCIL_OP_INCR_SAT;
+        d.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+        d.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+        d.BackFace = d.FrontFace;
+        Check(device->CreateDepthStencilState(&d, &depthStencilOnce), "Create stencil-once state");
         worldReady = true;
     }
     void Buffer(ComPtr<ID3D11Buffer> &buffer, unsigned &capacity, unsigned needed, unsigned bind)
@@ -847,7 +857,9 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     }
     impl->context->OMSetBlendState(blendState,
                                    nullptr, 0xffffffff);
-    impl->context->OMSetDepthStencilState(s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get(), 0);
+    ID3D11DepthStencilState *depthState = s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get();
+    if (s.material == WorldMaterial::TerrainOverlay && s.stencil_once && impl->dsv) depthState = impl->depthStencilOnce.Get();
+    impl->context->OMSetDepthStencilState(depthState, 0);
     impl->context->RSSetState((s.material == WorldMaterial::TerrainOverlay && s.double_sided) ? impl->worldRasterNoCull.Get()
                                                                                               : impl->worldRaster.Get());
     impl->context->IASetInputLayout(impl->worldLayout.Get());

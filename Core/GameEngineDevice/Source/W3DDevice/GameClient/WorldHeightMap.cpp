@@ -43,6 +43,9 @@
 #include "Common/WellKnownKeys.h"
 #if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
+#if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
+#endif
 #include "Common/Errors.h"
 #endif
 
@@ -812,6 +815,11 @@ Bool WorldHeightMap::ParseLightingDataChunk(DataChunkInput &file, DataChunkInfo 
 			if (TheW3DShadowManager) {
 				TheW3DShadowManager->setShadowColor(shadowColor);
 			}
+#if defined(_WIN64)
+			else {
+				NativeWorldEffects::setShadowColor(shadowColor);   // native play profile
+			}
+#endif
 		}
 	DEBUG_ASSERTCRASH(file.atEndOfChunk(), ("Unexpected data left over."));
 	return true;

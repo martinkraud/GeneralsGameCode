@@ -792,6 +792,59 @@ TEST(WorldTest, OverlayBlendModesMatchLegacyShaderBlendPairsOverAGrayTarget)
     EXPECT_NEAR(px[1], 100 + 128 * (1 - a), 2.0);
 }
 
+TEST(WorldTest, DestinationAlphaBlendsFeatherWaterOverTheShorelineAlpha)
+{
+    // Soft water edge: SRC = DEST_ALPHA, DST = INV_DEST_ALPHA (additive: DST = ONE). The destination alpha is
+    // what the shoreline pass wrote, so alpha 0 keeps the terrain and alpha 1 shows the water.
+    WorldFixture f;
+    auto water = SolidTexture(*f.backend, 200, 100, 50, 255);
+    std::unique_ptr<GeometryResidency> quad(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f)));
+    auto draw = [&](float destAlpha, WorldBlend blend) {
+        auto sub = f.Submission(quad.get(), WorldMaterial::TerrainOverlay, false);
+        sub.texture = water.get();
+        sub.blend = blend;
+        f.backend->Clear(true, true, Vector3(0.5f, 0.5f, 0.5f), destAlpha, 1.0f, 0);
+        f.backend->Begin_Scene();
+        f.backend->Submit_World(sub);
+        f.backend->End_Scene(false);
+        return f.backend->Readback_RGBA8();
+    };
+    auto px = draw(1.0f, WorldBlend::DestAlpha);
+    EXPECT_NEAR(px[0], 200, 2); EXPECT_NEAR(px[1], 100, 2); EXPECT_NEAR(px[2], 50, 2);   // water fully shown
+    px = draw(0.0f, WorldBlend::DestAlpha);
+    EXPECT_NEAR(px[0], 128, 2); EXPECT_NEAR(px[1], 128, 2); EXPECT_NEAR(px[2], 128, 2);  // terrain kept
+    px = draw(0.5f, WorldBlend::DestAlpha);
+    EXPECT_NEAR(px[0], 200 * 0.5f + 128 * 0.5f, 3); EXPECT_NEAR(px[2], 50 * 0.5f + 128 * 0.5f, 3);
+    px = draw(0.5f, WorldBlend::DestAlphaAdditive);                                      // DEST_ALPHA, ONE
+    EXPECT_NEAR(px[0], std::min(255.0f, 200 * 0.5f + 128), 3);
+    EXPECT_NEAR(px[2], 50 * 0.5f + 128, 3);
+}
+
+TEST(WorldTest, StencilOnceBlendsEachCoveredPixelOnlyOnce)
+{
+    // Planar shadows: two overlapping submissions with stencil_once darken the pixel as one.
+    WorldFixture f;
+    auto white = SolidTexture(*f.backend, 255, 255, 255, 255);
+    std::unique_ptr<GeometryResidency> quad(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(128, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f)));   // alpha 0.5 white
+    auto submission = [&](bool once) {
+        auto sub = f.Submission(quad.get(), WorldMaterial::TerrainOverlay, false);
+        sub.texture = white.get();
+        sub.blend = WorldBlend::SrcAlpha;
+        sub.stencil_once = once;
+        return sub;
+    };
+    // Black target: one blend gives ~128, two plain blends give ~192.
+    const auto twice = f.Frame({submission(false), submission(false)});
+    EXPECT_NEAR(twice[0], 192, 3);
+    const auto once = f.Frame({submission(true), submission(true)});
+    EXPECT_NEAR(once[0], 128, 3);
+    // The stencil is cleared by the next Clear.
+    const auto again = f.Frame({submission(true)});
+    EXPECT_NEAR(again[0], 128, 3);
+}
+
 TEST(WorldTest, DynamicGeometryUpdatesVerticesAndIndicesAndDrawsVaryingCounts)
 {
     WorldFixture f;

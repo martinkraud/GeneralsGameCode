@@ -16,6 +16,15 @@ def show(path):
     return subprocess.check_output(["git", "show", f"{BASELINE}:{path}"], cwd=ROOT).decode("latin1").replace("\r\n", "\n")
 
 
+def expected_engine(baseline_source):
+    """The accepted engine source with the single X64.29 particle-manager selection change applied."""
+    old = "createParticleSystemManager(TheGlobalData->m_headless), nullptr);"
+    new = ('createParticleSystemManager(TheGlobalData->m_headless && '
+           '!(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("particles"))), nullptr);')
+    assert baseline_source.count(old) == 1
+    return baseline_source.replace(old, new)
+
+
 def body(source, signature):
     start = source.index(signature)
     brace = source.index("{", start)
@@ -45,7 +54,7 @@ class OrdinaryMenuContract(unittest.TestCase):
         self.assertIn("(TheGlobalData->m_headless && !StartupDiagnostics::ordinaryMenu()) ? NEW GameWindowManagerDummy : createWindowManager()", s)
         # World/audio/radar/particle selection and m_headless are untouched.
         engine = read("Generals/Code/GameEngine/Source/Common/GameEngine.cpp")
-        self.assertEqual(engine, show("Generals/Code/GameEngine/Source/Common/GameEngine.cpp"))
+        self.assertEqual(engine, expected_engine(show("Generals/Code/GameEngine/Source/Common/GameEngine.cpp")))
         for path in ("Generals/Code/GameEngine/Source/GameClient/GameClient.cpp", HOST,
                      "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp"):
             self.assertNotIn("m_headless = FALSE", read(path))

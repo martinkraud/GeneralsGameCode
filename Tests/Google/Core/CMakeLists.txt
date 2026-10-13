@@ -22,6 +22,7 @@ set(COREI_GOOGLETEST_SRC
     Libraries/UIProducerTest.cpp
     Libraries/NativeTerrainTest.cpp
     Libraries/NativeWorldObjectsTest.cpp
+    Libraries/NativeWorldEffectsTest.cpp
 )
 
 add_library(corei_googletest INTERFACE)
