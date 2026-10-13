@@ -36,6 +36,7 @@
 #include "W3DDevice/GameClient/BaseHeightMap.h"
 #include "WW3D2/camera.h"
 #include "GameClient/ControlBar.h"
+#include "GameClient/Water.h"
 #include "GameClient/GameWindow.h"
 #include "Common/Radar.h"
 #include "Common/NameKeyGenerator.h"
@@ -363,6 +364,7 @@ void DrainMenuStream(WindowTranslator &translator, MenuCounters &c, bool route) 
 namespace {
 unsigned g_terrainFrames = 0, g_terrainDraws = 0;
 HeightMapRenderObjClass::NativeTerrainStats g_terrainStats = {};
+HeightMapRenderObjClass::NativeMapFeatures g_mapFeatures = {};
 // Camera exercise (X64.26): the game loop requests a probe after each scripted camera move; the
 // next terrain frame reads the target back before the UI is drawn and records the result.
 unsigned g_motionStepRequest = 0;
@@ -468,12 +470,16 @@ void W3DDisplay::drawOrdinaryMenuFrame()
         const int terrainDraws = drawNativeTerrainPass();
         if (terrainDraws) {
             if (g_terrainFrames == 0) {
-                char detail[200];
-                const HeightMapRenderObjClass::NativeTerrainStats stats =
-                    static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
-                sprintf_s(detail, "draws=%d atlas_uploads=%u tile_uploads=%u use_cloud=%d use_noise=%d (terrain combined single pass; UI follows)",
-                    terrainDraws, stats.atlasUploads, stats.tileUploads,
-                    HeightMapRenderObjClass::nativeUseCloud() ? 1 : 0, TheGlobalData->m_useLightMap ? 1 : 0);
+                char detail[320];
+                auto *terrainObject = static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject);
+                const HeightMapRenderObjClass::NativeTerrainStats stats = terrainObject->nativeStats();
+                g_mapFeatures = terrainObject->nativeMapFeatures();
+                const int softEdge = (TheGlobalData->m_showSoftWaterEdge &&
+                                      TheWaterTransparency->m_transparentWaterDepth != 0) ? 1 : 0;
+                sprintf_s(detail, "tiles=%u draws=%d atlas_uploads=%u use_cloud=%d use_noise=%d soft_edge=%d map_extra=%u map_shore=%u map_roads=%u map_bridges=%u (terrain combined single pass + overlays; UI follows)",
+                    stats.tileUploads, terrainDraws, stats.atlasUploads,
+                    HeightMapRenderObjClass::nativeUseCloud() ? 1 : 0, TheGlobalData->m_useLightMap ? 1 : 0, softEdge,
+                    g_mapFeatures.extraBlendTiles, g_mapFeatures.shorelineTiles, g_mapFeatures.roadSegments, g_mapFeatures.bridges);
                 StartupDiagnostics::checkpoint("terrain_first_frame", "complete", detail);
             }
             const bool firstProbe = (g_terrainFrames == 29);
@@ -515,7 +521,7 @@ void W3DDisplay::drawOrdinaryMenuFrame()
         }
         if (TheWindowManager) TheWindowManager->winRepaint();
         if (TheMouse) TheMouse->DRAW();
-        if (StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 60) {
+        if (StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 240) {
             // Bounded Control Bar review: composed frame after the UI (bottom 20% = outside the
             // 0.80 world viewport) with per-third non-black statistics and an evidence image.
             g_uiProbesDone = 1;
@@ -836,9 +842,13 @@ int W3DDisplay::runOrdinaryGameHost()
     sprintf_s(detail, "calls=%u (first receipts bounded; verified every call)", nativeFloatingPointModeCalls());
     StartupDiagnostics::checkpoint("FP_summary", "observed", detail);
     if (StartupDiagnostics::ordinaryTerrain()) {
-        sprintf_s(detail, "frames=%u draws=%u atlas_uploads=%u tile_uploads=%u tile_updates=%u cloud_frames=%u noise_frames=%u macro_loads=%u",
+        sprintf_s(detail, "frames=%u draws=%u atlas_uploads=%u tile_uploads=%u tile_updates=%u cloud_frames=%u noise_frames=%u macro_loads=%u"
+            " extra_frames=%u extra_tiles=%u road_frames=%u road_draws=%u bridge_frames=%u bridge_draws=%u shore_frames=%u shore_tiles=%u texture_loads=%u",
             g_terrainFrames, g_terrainDraws, g_terrainStats.atlasUploads, g_terrainStats.tileUploads,
-            g_terrainStats.tileUpdates, g_terrainStats.cloudFrames, g_terrainStats.noiseFrames, g_terrainStats.macroLoads);
+            g_terrainStats.tileUpdates, g_terrainStats.cloudFrames, g_terrainStats.noiseFrames, g_terrainStats.macroLoads,
+            g_terrainStats.extraFrames, g_terrainStats.extraTiles, g_terrainStats.roadFrames, g_terrainStats.roadDraws,
+            g_terrainStats.bridgeFrames, g_terrainStats.bridgeDraws, g_terrainStats.shoreFrames, g_terrainStats.shoreTiles,
+            g_terrainStats.worldTextureLoads);
         StartupDiagnostics::checkpoint("terrain_summary", g_terrainFrames ? "complete" : "fail", detail, g_terrainFrames ? 0 : 1);
         if (!g_terrainFrames) result = 1;
     }

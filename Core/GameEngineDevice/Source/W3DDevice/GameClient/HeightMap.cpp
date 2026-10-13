@@ -67,6 +67,9 @@
 #include <WW3D2/Backend/D3D11Backend.h>
 #include <WW3D2/WorldSubmission.h>
 #include <WW3D2/UITextureContent.h>
+#include <WW3D2/WorldTextureLoad.h>
+#include <map>
+#include <functional>
 #include <WWLib/ffactory.h>
 #include <WWLib/WWFILE.h>
 #include <string>
@@ -81,6 +84,12 @@
 
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/TerrainLogic.h"
+#if defined(_WIN64)
+#if RTS_GENERALS
+#include "W3DDevice/GameClient/W3DRoadBuffer.h"
+#include "W3DDevice/GameClient/W3DBridgeBuffer.h"
+#endif
+#endif
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/W3DDynamicLight.h"
 #include "W3DDevice/GameClient/W3DScene.h"
@@ -1929,8 +1938,39 @@ struct HeightMapRenderObjClass::NativeTerrain {
 	std::unique_ptr<Texture2DResidency> cloud, noise;
 	std::string noiseName;
 	float cloudX = 0.0f, cloudY = 0.0f;
+	// Overlay families: dynamic CPU->GPU geometry plus decoded world textures keyed by INI name.
+	std::unique_ptr<GeometryResidency> extraGeometry, shoreGeometry, bridgeGeometry;
+	unsigned shoreCapacity = 0;
+	std::map<int, std::unique_ptr<GeometryResidency>> roadGeometry;
+	std::map<std::string, std::unique_ptr<Texture2DResidency>> worldTextures;
+	std::unique_ptr<Texture2DResidency> destAlpha;
+	int destAlphaOpacity = -1;
 	NativeTerrainStats stats = {};
 };
+
+static UITextureBytes ReadWorldFile(const std::string &file)
+{
+	UITextureBytes bytes;
+	if (!_TheFileFactory) { bytes.status = UITextureStatus::Invalid; return bytes; }
+	file_auto_ptr stream(_TheFileFactory, file.c_str());
+	if (!stream || !stream->Is_Available()) return bytes;
+	bytes.status = UITextureStatus::Invalid;
+	if (!stream->Open()) return bytes;
+	const int size = stream->Size();
+	if (size <= 0 || size > 64 * 1024 * 1024) return bytes;
+	bytes.bytes.resize(size);
+	if (stream->Read(bytes.bytes.data(), size) == size) bytes.status = UITextureStatus::Ready;
+	return bytes;
+}
+
+// Road/bridge textures (legacy MIP_LEVELS_3): dds-first decode to RGBA8 with a 3-level box chain.
+static Texture2DResidency *LoadWorldTextureResidency(D3D11Backend &backend, const std::string &name)
+{
+	WorldTextureResult result = Load_World_Texture(name, ReadWorldFile, 3);
+	if (result.status != UITextureStatus::Ready)
+		throw std::runtime_error(std::string("World texture unavailable or unsupported: ") + name);
+	return backend.Create_Mipped_Rgba8_Residency(result.image.width, result.image.height, result.image.mips);
+}
 
 // Loads a terrain macro texture (TSCloudMed / macro noise) through the engine file factory with
 // the same dds-first rule as the legacy texture loader; single base level (legacy stages 2/3 sample
@@ -1970,6 +2010,18 @@ void HeightMapRenderObjClass::releaseNativeResources()
 HeightMapRenderObjClass::NativeTerrainStats HeightMapRenderObjClass::nativeStats() const
 {
 	return m_native ? m_native->stats : NativeTerrainStats{};
+}
+
+HeightMapRenderObjClass::NativeMapFeatures HeightMapRenderObjClass::nativeMapFeatures()
+{
+	NativeMapFeatures f = {};
+	f.extraBlendTiles = static_cast<unsigned>(m_numExtraBlendTiles);
+	f.shorelineTiles = static_cast<unsigned>(m_numShoreLineTiles);
+#if RTS_GENERALS
+	if (m_roadBuffer) f.roadSegments = static_cast<unsigned>(m_roadBuffer->getNumRoadSegments());
+	if (m_bridgeBuffer) f.bridges = static_cast<unsigned>(m_bridgeBuffer->getNumBridges());
+#endif
+	return f;
 }
 
 Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
@@ -2107,6 +2159,241 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 		backend->Submit_World(submission);
 		++draws;
 	}
+
+	// ---- X64.27 overlay families, in the legacy Render() order: shoreline destination alpha,
+	// extra-blend (3-way) tiles, roads, bridges. Each is one pass of the TerrainOverlay material.
+	{
+		WorldSubmission overlay = submission;   // same camera, world, viewport
+		overlay.material = WorldMaterial::TerrainOverlay;
+		overlay.depth_write = false;
+		overlay.index_count = 0;
+		overlay.first_index = 0;
+		overlay.alpha_test = 0.0f;
+		overlay.double_sided = false;
+		overlay.alpha_only = false;
+		overlay.no_diffuse = false;
+		overlay.cloud = doCloud ? n.cloud.get() : nullptr;
+		overlay.noise = doNoise ? n.noise.get() : nullptr;
+		const bool trilinear = TheGlobalData->m_trilinearTerrainTex;
+		const bool filtered = TheGlobalData->m_bilinearTerrainTex || trilinear;
+
+		auto worldTexture = [&](const std::string &name) -> Texture2DResidency * {
+			auto found = n.worldTextures.find(name);
+			if (found == n.worldTextures.end()) {
+				found = n.worldTextures.emplace(name, std::unique_ptr<Texture2DResidency>(
+					LoadWorldTextureResidency(*backend, name))).first;
+				++n.stats.worldTextureLoads;
+			}
+			return found->second.get();
+		};
+
+		const Int drawStartX = m_map->getDrawOrgX();
+		const Int drawStartY = m_map->getDrawOrgY();
+		Int drawEdgeX = m_map->getDrawOrgX() + m_map->getDrawWidth() - 1;
+		Int drawEdgeY = m_map->getDrawOrgY() + m_map->getDrawHeight() - 1;
+		if (drawEdgeX > (m_map->getXExtent() - 1)) drawEdgeX = m_map->getXExtent() - 1;
+		if (drawEdgeY > (m_map->getYExtent() - 1)) drawEdgeY = m_map->getYExtent() - 1;
+
+		// (1) Shoreline: destination-alpha-only water depth LUT (BaseHeightMap::renderShoreLinesSorted).
+		if (TheGlobalData->m_showSoftWaterEdge && TheWaterTransparency->m_transparentWaterDepth != 0 &&
+			m_numShoreLineTiles != 0 && m_shoreLineTilePositions) {
+			const int maxOpacity = static_cast<int>(TheWaterTransparency->m_minWaterOpacity * 255.0f);
+			if (!n.destAlpha || n.destAlphaOpacity != maxOpacity) {
+				std::vector<unsigned char> lut(256 * 4);
+				for (int x = 0; x < 256; ++x) {         // initDestAlphaLUT: (alpha<<24)|0x00ffffff
+					lut[x * 4] = lut[x * 4 + 1] = lut[x * 4 + 2] = 255;
+					lut[x * 4 + 3] = static_cast<unsigned char>(x > maxOpacity ? maxOpacity : x);
+				}
+				n.destAlpha.reset(backend->Create_Mipped_Rgba8_Residency(256, 1, {lut}));
+				n.destAlphaOpacity = maxOpacity;
+			}
+			const unsigned wanted = static_cast<unsigned>(m_numShoreLineTiles < 16000 ? m_numShoreLineTiles : 16000);
+			if (!n.shoreGeometry || n.shoreCapacity < wanted) {
+				n.shoreCapacity = wanted < 1024 ? 1024 : wanted;
+				n.shoreGeometry.reset(backend->Create_Dynamic_Geometry(n.shoreCapacity * 4, n.shoreCapacity * 6));
+			}
+			static std::vector<WorldVertexXYZDUV2> sv;
+			static std::vector<unsigned short> si;
+			sv.clear(); si.clear();
+			for (Int j = 0; j < m_numShoreLineTiles && sv.size() / 4 < n.shoreCapacity; ++j) {
+				const shoreLineTileInfo &info = m_shoreLineTilePositions[j];
+				const Int x = info.m_xy & 0xffff, y = info.m_xy >> 16;
+				if (!(x >= drawStartX && x < drawEdgeX && y >= drawStartY && y < drawEdgeY)) continue;
+				const unsigned short base = static_cast<unsigned short>(sv.size());
+				const float t[4] = {info.t0, info.t1, info.t2, info.t3};
+				for (int k = 0; k < 4; ++k)
+					sv.push_back({info.verts[k * 3], info.verts[k * 3 + 1], info.verts[k * 3 + 2], 0u, t[k], 0.0f, 0.0f, 0.0f});
+				static const unsigned short flipped[6] = {1, 3, 0, 1, 2, 3}, normal[6] = {0, 2, 3, 0, 1, 2};
+				const unsigned short *order = m_map->getQuickFlipState(x, y) ? flipped : normal;
+				for (int k = 0; k < 6; ++k) si.push_back(static_cast<unsigned short>(base + order[k]));
+			}
+			if (!si.empty()) {
+				backend->Update_Geometry_Vertices(*n.shoreGeometry, 0, sv.data(), static_cast<unsigned>(sv.size()));
+				backend->Update_Geometry_Indices(*n.shoreGeometry, 0, si.data(), static_cast<unsigned>(si.size()));
+				WorldSubmission shore = overlay;
+				World_Identity(shore.world);                 // legacy: Set_Transform(WORLD, identity)
+				shore.geometry = n.shoreGeometry.get();
+				shore.texture = n.destAlpha.get();
+				shore.cloud = nullptr; shore.noise = nullptr;
+				shore.alpha_only = true; shore.no_diffuse = true;
+				shore.linear = true; shore.mip_linear = false; shore.clamp = true;
+				shore.index_count = static_cast<unsigned>(si.size());
+				backend->Submit_World(shore);
+				++n.stats.shoreFrames; n.stats.shoreTiles += static_cast<unsigned>(si.size() / 6);
+				++draws;
+			}
+		}
+
+		// (2) Extra-blend (3-way) tiles: ST_ROAD_BASE* over the terrain with the second atlas sample.
+		if (TheGlobalData->m_use3WayTerrainBlends && m_numExtraBlendTiles && m_extraBlendTilePositions) {
+			static const unsigned kMaxTiles = 10000;       // "about 10000 tiles fit in a single VB"
+			if (!n.extraGeometry) n.extraGeometry.reset(backend->Create_Dynamic_Geometry(kMaxTiles * 4, kMaxTiles * 6));
+			static std::vector<WorldVertexXYZDUV2> ev;
+			static std::vector<unsigned short> ei;
+			ev.clear(); ei.clear();
+			const Int xExtent = m_map->getXExtent();
+			const Int border = m_map->getBorderSizeInline();
+			const UnsignedByte *data = m_map->getDataPtr();
+			for (Int j = 0; j < m_numExtraBlendTiles && ev.size() / 4 < kMaxTiles; ++j) {
+				Real U[4], V[4];
+				UnsignedByte alpha[4];
+				Bool flipState, cliffState;
+				const Int x = m_extraBlendTilePositions[j] & 0xffff;
+				const Int y = m_extraBlendTilePositions[j] >> 16;
+				if (!(x >= drawStartX && x < drawEdgeX && y >= drawStartY && y < drawEdgeY &&
+					m_map->getExtraAlphaUVData(x, y, U, V, alpha, &flipState, &cliffState)))
+					continue;
+				const Int idx = x + y * xExtent;
+				const Real p0 = data[idx] * MAP_HEIGHT_SCALE, p1 = data[idx + 1] * MAP_HEIGHT_SCALE;
+				const Real p2 = data[idx + 1 + xExtent] * MAP_HEIGHT_SCALE, p3 = data[idx + xExtent] * MAP_HEIGHT_SCALE;
+				if (cliffState && abs(p0 - p2) > abs(p1 - p3)) flipState = TRUE;   // cliffs sometimes force a flip
+				const unsigned short base = static_cast<unsigned short>(ev.size());
+				const Int cx[4] = {x, x + 1, x + 1, x}, cy[4] = {y, y, y + 1, y + 1};
+				const Real pz[4] = {p0, p1, p2, p3};
+				for (int k = 0; k < 4; ++k) {
+					const unsigned diffuse = (static_cast<unsigned>(alpha[k]) << 24) |
+						(static_cast<unsigned>(getStaticDiffuse(cx[k], cy[k])) & 0x00ffffffu);
+					ev.push_back({(cx[k] - border) * MAP_XY_FACTOR, (cy[k] - border) * MAP_XY_FACTOR, pz[k], diffuse,
+						U[k], V[k], 0.0f, 0.0f});
+				}
+				static const unsigned short flipped[6] = {1, 3, 0, 1, 2, 3}, normal[6] = {0, 2, 3, 0, 1, 2};
+				const unsigned short *order = flipState ? flipped : normal;
+				for (int k = 0; k < 6; ++k) ei.push_back(static_cast<unsigned short>(base + order[k]));
+			}
+			if (!ei.empty()) {
+				backend->Update_Geometry_Vertices(*n.extraGeometry, 0, ev.data(), static_cast<unsigned>(ev.size()));
+				backend->Update_Geometry_Indices(*n.extraGeometry, 0, ei.data(), static_cast<unsigned>(ei.size()));
+				WorldSubmission extra = overlay;
+				extra.geometry = n.extraGeometry.get();
+				extra.texture = n.atlas.get();               // m_stageOneTexture shares the base atlas
+				extra.linear = filtered; extra.mip_linear = trilinear; extra.clamp = true;
+				extra.index_count = static_cast<unsigned>(ei.size());
+				backend->Submit_World(extra);
+				++n.stats.extraFrames; n.stats.extraTiles += static_cast<unsigned>(ei.size() / 6);
+				++draws;
+			}
+		}
+
+#if RTS_GENERALS
+		// (3) Roads: per road type, in stacking order, same bounds as the legacy drawRoads call.
+		if (m_roadBuffer && m_roadBuffer->isNativeInitialized()) {
+			struct RoadCtx {
+				NativeTerrain *n; D3D11Backend *backend; WorldSubmission *overlay; Int *draws;
+				std::function<Texture2DResidency *(const std::string &)> *texture; bool trilinear;
+			} ctx = {&n, backend, &overlay, &draws, nullptr, trilinear};
+			std::function<Texture2DResidency *(const std::string &)> textureFn = worldTexture;
+			ctx.texture = &textureFn;
+			const Int minX = m_map->getDrawOrgX() - m_map->getBorderSizeInline();
+			const Int maxX = (m_x + m_map->getDrawOrgX() - 1) - m_map->getBorderSizeInline();
+			const Int minY = m_map->getDrawOrgY() - m_map->getBorderSizeInline();
+			const Int maxY = (m_y + m_map->getDrawOrgY() - 1) - m_map->getBorderSizeInline();
+			const Int batches = m_roadBuffer->forEachNativeBatch(minX, maxX, minY, maxY,
+				[](void *user, const W3DRoadBuffer::NativeRoadBatch &batch) {
+					RoadCtx &c = *static_cast<RoadCtx *>(user);
+					static std::vector<WorldVertexXYZDUV2> vertices;
+					static std::vector<unsigned short> indices;
+					vertices.resize(batch.vertexCount);
+					for (Int i = 0; i < batch.vertexCount; ++i) {
+						const VertexFormatXYZDUV1 &v = batch.vertices[i];
+						vertices[i] = {v.x, v.y, v.z, v.diffuse, v.u1, v.v1, v.u1, v.v1};
+					}
+					indices.assign(batch.indices, batch.indices + batch.indexCount);
+					auto &slot = c.n->roadGeometry[batch.roadType];
+					if (!slot) {
+						const unsigned maxV = static_cast<unsigned>(TheGlobalData->m_maxRoadVertex + 4);
+						unsigned maxI = static_cast<unsigned>(TheGlobalData->m_maxRoadIndex + 4);
+						maxI += (3 - maxI % 3) % 3;
+						slot.reset(c.backend->Create_Dynamic_Geometry(maxV, maxI));
+					}
+					if (slot->Vertex_Count() < static_cast<unsigned>(batch.vertexCount) ||
+						slot->Index_Count() < static_cast<unsigned>(batch.indexCount) || batch.indexCount % 3)
+						throw std::runtime_error("Road batch exceeds the configured road buffer capacity");
+					c.backend->Update_Geometry_Vertices(*slot, 0, vertices.data(), static_cast<unsigned>(vertices.size()));
+					c.backend->Update_Geometry_Indices(*slot, 0, indices.data(), static_cast<unsigned>(indices.size()));
+					WorldSubmission road = *c.overlay;
+					road.geometry = slot.get();
+					road.texture = (*c.texture)(batch.texture);
+					road.linear = true; road.mip_linear = c.trilinear; road.clamp = false;   // repeat, FILTER_TYPE_BEST
+					road.index_count = static_cast<unsigned>(indices.size());
+					c.backend->Submit_World(road);
+					++c.n->stats.roadDraws;
+					++*c.draws;
+				}, &ctx);
+			if (batches) ++n.stats.roadFrames;
+		}
+
+		// (4) Bridges: shared CPU buffers, one draw per enabled bridge (detailAlphaShader: alpha test
+		// 0x60, source-alpha blend, depth write, no culling; cloud only, no macro noise).
+		if (m_bridgeBuffer) {
+			struct BridgeCtx {
+				NativeTerrain *n; D3D11Backend *backend; WorldSubmission *overlay; Int *draws; bool uploaded;
+				std::function<Texture2DResidency *(const std::string &)> *texture;
+			} ctx = {&n, backend, &overlay, &draws, false, nullptr};
+			std::function<Texture2DResidency *(const std::string &)> textureFn = worldTexture;
+			ctx.texture = &textureFn;
+			const Int bridges = m_bridgeBuffer->forEachNativeBridge(
+				[](void *user, const W3DBridgeBuffer::NativeBridgeBatch &batch) {
+					BridgeCtx &c = *static_cast<BridgeCtx *>(user);
+					if (!c.n->bridgeGeometry) {
+						unsigned maxI = static_cast<unsigned>(W3DBridgeBuffer::MAX_BRIDGE_INDEX + 4);
+						maxI += (3 - maxI % 3) % 3;
+						c.n->bridgeGeometry.reset(c.backend->Create_Dynamic_Geometry(
+							static_cast<unsigned>(W3DBridgeBuffer::MAX_BRIDGE_VERTEX + 4), maxI));
+					}
+					GeometryResidency &geometry = *c.n->bridgeGeometry;
+					if (!c.uploaded) {
+						static std::vector<WorldVertexXYZDUV2> vertices;
+						vertices.resize(batch.vertexCount);
+						for (Int i = 0; i < batch.vertexCount; ++i) {
+							const VertexFormatXYZNDUV1 &v = batch.vertices[i];
+							vertices[i] = {v.x, v.y, v.z, v.diffuse, v.u1, v.v1, v.u1, v.v1};
+						}
+						if (geometry.Vertex_Count() < static_cast<unsigned>(batch.vertexCount) ||
+							geometry.Index_Count() < static_cast<unsigned>(batch.indexCount))
+							throw std::runtime_error("Bridge buffers exceed the native geometry capacity");
+						c.backend->Update_Geometry_Vertices(geometry, 0, vertices.data(), static_cast<unsigned>(vertices.size()));
+						c.backend->Update_Geometry_Indices(geometry, 0, batch.indices, static_cast<unsigned>(batch.indexCount));
+						c.uploaded = true;
+					}
+					WorldSubmission bridge = *c.overlay;
+					bridge.noise = nullptr;                       // ST_CLOUD_TEXTURE projects only the cloud map
+					bridge.geometry = &geometry;
+					bridge.texture = (*c.texture)(batch.texture);
+					bridge.linear = true; bridge.mip_linear = true; bridge.clamp = false;
+					bridge.alpha_test = 96.0f / 255.0f;            // 0x60 reference, GREATEREQUAL
+					bridge.double_sided = true;                    // CULL_MODE_DISABLE
+					bridge.depth_write = true;                     // DEPTH_WRITE_ENABLE
+					bridge.first_index = static_cast<unsigned>(batch.firstIndex);
+					bridge.index_count = static_cast<unsigned>(batch.polygonCount * 3);
+					c.backend->Submit_World(bridge);
+					++c.n->stats.bridgeDraws;
+					++*c.draws;
+				}, &ctx);
+			if (bridges) ++n.stats.bridgeFrames;
+		}
+#endif
+	}
+
 	if (doCloud) ++n.stats.cloudFrames;
 	if (doNoise) ++n.stats.noiseFrames;
 	++n.stats.frames;

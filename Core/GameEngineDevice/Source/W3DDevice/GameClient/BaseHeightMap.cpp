@@ -90,6 +90,9 @@
 
 #include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.
 #include "W3DDevice/GameClient/BaseHeightMap.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/FlatHeightMap.h"
@@ -283,6 +286,13 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass()
 	m_staticScorches = NEW W3DScorchDummy;
 #endif
 	m_bridgeBuffer = NEW W3DBridgeBuffer;
+
+#if defined(_WIN64) && defined(DO_ROADS)
+	// Native terrain profile: the road buffer (CPU-backed vertex/index data, textures decoded by the
+	// native path) is the only DX8-era world buffer this headless selection needs besides bridges.
+	if (StartupDiagnostics::ordinaryTerrain())
+		m_roadBuffer = NEW W3DRoadBuffer;
+#endif
 
 	if (TheGlobalData->m_headless)
 		return;

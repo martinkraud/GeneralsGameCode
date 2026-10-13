@@ -658,6 +658,12 @@ public:
 	virtual void init() override;					///< from subsystem interface
 	virtual void reset() override;					///< from subsystem interface
 	virtual void update() override;				///< from subsystem interface
+#if defined(_WIN64)
+	/// X64.27 native terrain profile only: the headless world selection skips update(); this runs
+	/// exactly the presentation-only part of it (scheme animations, window slide-in/out managers)
+	/// so the original Control Bar can slide into view. No context/selection/radar/video work.
+	void updateNativePresentation();
+#endif
 
 	/// mark the UI as dirty so the context of everything is re-evaluated
 	void markUIDirty();

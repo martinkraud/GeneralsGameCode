@@ -56,7 +56,13 @@ public:
 // inverse(view) == the vertex position transformed by the world matrix), scaled by
 // `texgen_scale`; cloud additionally scrolls by `cloud_offset`. Both wrap. Cloud samples
 // bilinear; noise samples min=point, mag=linear (the legacy stage states). Opaque.
-enum class WorldMaterial { TerrainBase, TerrainBlend, TerrainCombined };
+//
+// TerrainOverlay is the retail road/extra-blend/bridge/shoreline family (ST_ROAD_BASE*, roadnoise2.pso,
+// detailAlphaShader, the destination-alpha shoreline pass), always as one draw:
+//   rgba = tex(uv0) * [diffuse] * [cloud] * [noise]         (all four channels, as roadnoise2.pso)
+// then an optional alpha test (clip alpha < alpha_test), source-alpha blend over the target
+// (no blend in `alpha_only` mode, which writes only the destination alpha channel).
+enum class WorldMaterial { TerrainBase, TerrainBlend, TerrainCombined, TerrainOverlay };
 
 struct WorldSubmission
 {
@@ -80,6 +86,11 @@ struct WorldSubmission
     Texture2DResidency *noise;
     float cloud_offset[2];
     float texgen_scale;
+    // TerrainOverlay only (zero-initialized defaults reproduce the road/extra-blend state).
+    float alpha_test;               // > 0: discard when result alpha < alpha_test (0..1)
+    bool double_sided;              // cull mode none (bridges)
+    bool alpha_only;                // write destination alpha only, no blending (shoreline)
+    bool no_diffuse;                // ignore vertex diffuse (GRADIENT_DISABLE presets)
 };
 
 inline void World_Identity(float (&m)[16])

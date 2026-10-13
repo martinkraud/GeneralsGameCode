@@ -102,6 +102,98 @@ TEST(WorldTransformTest, LegacyColumnVectorChainEqualsRowVectorChain)
     EXPECT_EQ(w[3], 0.0f); EXPECT_EQ(w[7], 0.0f); EXPECT_EQ(w[11], 0.0f); EXPECT_EQ(w[15], 1.0f);
 }
 
+// X64.27: world texture decode (roads, bridges): dds-first DXT1/3/5 and TGA, RGBA8 + box mips.
+#include "WW3D2/WorldTextureLoad.h"
+
+namespace {
+std::vector<unsigned char> DdsFile(unsigned w, unsigned h, const char *fourcc, const std::vector<unsigned char> &payload)
+{
+    std::vector<unsigned char> b(128, 0);
+    auto put = [&](size_t at, unsigned v) { std::memcpy(&b[at], &v, 4); };
+    std::memcpy(b.data(), "DDS ", 4);
+    put(4, 124); put(12, h); put(16, w); put(28, 1); put(76, 32); put(80, 4);
+    std::memcpy(&b[84], fourcc, 4);
+    b.insert(b.end(), payload.begin(), payload.end());
+    return b;
+}
+}
+
+TEST(WorldTextureLoadTest, Dxt1FourAndThreeColourBlocks)
+{
+    // c0 = red (0xF800), c1 = blue (0x001F); first row indices 0,1,2,3.
+    std::vector<unsigned char> block = {0x00, 0xF8, 0x1F, 0x00, 0xE4, 0x00, 0x00, 0x00};
+    std::vector<unsigned char> rgba;
+    ASSERT_TRUE(WorldTexture::DecodeDXT(1, block.data(), block.size(), 4, 4, rgba));
+    auto px = [&](int x) { return &rgba[x * 4]; };
+    EXPECT_EQ(px(0)[0], 255); EXPECT_EQ(px(0)[1], 0); EXPECT_EQ(px(0)[2], 0); EXPECT_EQ(px(0)[3], 255);
+    EXPECT_EQ(px(1)[0], 0); EXPECT_EQ(px(1)[2], 255);
+    EXPECT_EQ(px(2)[0], 170); EXPECT_EQ(px(2)[2], 85);       // (2*c0 + c1) / 3
+    EXPECT_EQ(px(3)[0], 85); EXPECT_EQ(px(3)[2], 170);       // (c0 + 2*c1) / 3
+    // c0 <= c1: 3-colour mode, index 3 is transparent black, index 2 the midpoint.
+    block = {0x1F, 0x00, 0x00, 0xF8, 0xE4, 0x00, 0x00, 0x00};
+    ASSERT_TRUE(WorldTexture::DecodeDXT(1, block.data(), block.size(), 4, 4, rgba));
+    EXPECT_EQ(px(2)[0], 127); EXPECT_EQ(px(2)[2], 127); EXPECT_EQ(px(2)[3], 255);
+    EXPECT_EQ(px(3)[3], 0);
+    EXPECT_FALSE(WorldTexture::DecodeDXT(1, block.data(), 4, 4, 4, rgba));   // truncated
+}
+
+TEST(WorldTextureLoadTest, Dxt3NibbleAlphaAndDxt5InterpolatedAlpha)
+{
+    std::vector<unsigned char> dxt3(16, 0);
+    dxt3[0] = 0xF0;                                           // texel0 alpha 0, texel1 alpha 15 -> 255
+    dxt3[8] = 0x00; dxt3[9] = 0xF8; dxt3[10] = 0x00; dxt3[11] = 0xF8;   // both colours red
+    std::vector<unsigned char> rgba;
+    ASSERT_TRUE(WorldTexture::DecodeDXT(3, dxt3.data(), dxt3.size(), 4, 4, rgba));
+    EXPECT_EQ(rgba[3], 0); EXPECT_EQ(rgba[7], 255); EXPECT_EQ(rgba[0], 255);
+    std::vector<unsigned char> dxt5 = {255, 0, 0x88, 0, 0, 0, 0, 0, 0x00, 0xF8, 0x00, 0xF8, 0, 0, 0, 0};
+    ASSERT_TRUE(WorldTexture::DecodeDXT(5, dxt5.data(), dxt5.size(), 4, 4, rgba));
+    EXPECT_EQ(rgba[3], 255);          // index 0 -> a0
+    EXPECT_EQ(rgba[7], 0);            // index 1 -> a1
+    EXPECT_EQ(rgba[11], 218);         // index 2 -> (6*255 + 0)/7
+}
+
+TEST(WorldTextureLoadTest, DdsFirstThenTgaWithMipChainAndOrientation)
+{
+    std::vector<unsigned char> block = {0x00, 0xF8, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00};   // solid red 4x4
+    std::vector<std::string> requests;
+    UITextureReader reader = [&](const std::string &name) {
+        requests.push_back(name);
+        UITextureBytes bytes;
+        if (name == "road.dds") { bytes.status = UITextureStatus::Ready; bytes.bytes = DdsFile(4, 4, "DXT1", block); }
+        return bytes;
+    };
+    WorldTextureResult r = Load_World_Texture("road.tga", reader, 3);
+    ASSERT_EQ(r.status, UITextureStatus::Ready);
+    ASSERT_EQ(requests.size(), 1u);                  // dds found first, tga never requested
+    EXPECT_EQ(r.image.width, 4u);
+    ASSERT_EQ(r.image.mips.size(), 3u);              // 4x4, 2x2, 1x1
+    EXPECT_EQ(r.image.mips[1].size(), 2u * 2 * 4);
+    EXPECT_EQ(r.image.mips[2][0], 255);              // box filter of solid red stays red
+
+    // No dds: 2x2 bottom-up 24-bit TGA (origin bottom-left): rows stored bottom row first.
+    std::vector<unsigned char> tga(18, 0);
+    tga[2] = 2; tga[12] = 2; tga[14] = 2; tga[16] = 24;
+    const unsigned char pixels[12] = {0, 0, 255, 0, 255, 0,      // bottom row: red, green (BGR)
+                                      255, 0, 0, 255, 255, 255}; // top row: blue, white
+    tga.insert(tga.end(), pixels, pixels + 12);
+    UITextureReader tgaReader = [&](const std::string &name) {
+        UITextureBytes bytes;
+        if (name == "bridge.tga") { bytes.status = UITextureStatus::Ready; bytes.bytes = tga; }
+        return bytes;
+    };
+    r = Load_World_Texture("bridge.tga", tgaReader, 2);
+    ASSERT_EQ(r.status, UITextureStatus::Ready);
+    ASSERT_EQ(r.image.mips.size(), 2u);
+    const auto &base = r.image.mips[0];
+    EXPECT_EQ(base[2], 255); EXPECT_EQ(base[0], 0);          // top-left texel is blue (B=255 -> RGBA 0,0,255)
+    EXPECT_EQ(base[8 + 0], 255);                             // bottom-left is red
+    EXPECT_EQ(r.image.mips[1][3], 255);                      // alpha stays opaque through the box filter
+    // Missing files report absent; unsupported names are explicit.
+    UITextureReader none = [](const std::string &) { return UITextureBytes{}; };
+    EXPECT_EQ(Load_World_Texture("x.tga", none, 3).status, UITextureStatus::Absent);
+    EXPECT_EQ(Load_World_Texture("x", none, 3).status, UITextureStatus::Unsupported);
+}
+
 // X64.26: the legacy cloud/noise texgen (D3DTSS_TCI_CAMERASPACEPOSITION through
 // updateNoise1: inverse(view) * scale(STRETCH) * translate(offset)) must equal the world-space
 // XY scale+offset the native combiner computes, independent of the camera.

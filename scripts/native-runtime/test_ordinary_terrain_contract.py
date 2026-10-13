@@ -109,18 +109,45 @@ class OrdinaryTerrainContract(unittest.TestCase):
                      "requires CPU-backed legacy buffers", "requires the D3D11 backend with a depth buffer"):
             self.assertIn(term, body)
         # No silent fallback to legacy draws, DX8 state or other subsystems.
-        for term in ("DX8Wrapper", "Draw_Triangles", "m_roadBuffer", "m_bridgeBuffer", "m_propBuffer",
-                     "renderShoreLines", "drawScorches"):
+        for term in ("DX8Wrapper", "Draw_Triangles", "m_propBuffer", "renderShoreLines(", "drawScorches",
+                     "m_treeBuffer", "m_bibBuffer"):
             self.assertNotIn(term, body)
         display = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
         pass_fn = display.split("static int drawNativeTerrainPass()", 1)[1].split("void W3DDisplay::drawOrdinaryMenuFrame()", 1)[0]
         self.assertIn("Clear(false, true,", pass_fn)  # depth-only clear after the color-only Begin
         self.assertIn("isLoadingMap()", pass_fn)
 
+    def test_x64_27_overlay_and_control_bar_changes_are_profile_gated(self):
+        controlbar = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp")
+        update = controlbar.split("void ControlBar::update()", 1)[1].split("getStarImage();", 1)[0]
+        self.assertIn("if (StartupDiagnostics::ordinaryTerrain())", update)
+        self.assertIn("updateNativePresentation();", update)
+        presentation = controlbar.split("void ControlBar::updateNativePresentation()", 1)[1].split("void ControlBar::update()", 1)[0]
+        for forbidden in ("m_videoManager", "evaluateContextUI", "updateRadarAttackGlow", "TheGameLogic", "m_UIDirty"):
+            self.assertNotIn(forbidden, presentation)
+        self.assertIn("m_animateWindowManager->update()", presentation)
+        # Legacy road/bridge draw paths keep their code; only an accessor refactor was extracted.
+        bridge = read("Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DBridgeBuffer.cpp")
+        self.assertIn("if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryTerrain())", bridge)
+        self.assertIn("refreshBridgeStates();", bridge)
+        base = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/BaseHeightMap.cpp")
+        self.assertIn("m_roadBuffer = NEW W3DRoadBuffer;", base)
+        heightmap = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp")
+        for term in ("WorldMaterial::TerrainOverlay", "forEachNativeBatch", "forEachNativeBridge", "alpha_only = true",
+                     "bridge.alpha_test = 96.0f / 255.0f", "bridge.double_sided = true", "Load_World_Texture"):
+            self.assertIn(term, heightmap)
+        # Zero Hour must not see the Generals-only road/bridge headers from the shared source.
+        self.assertIn("W3DDevice/GameClient/W3DRoadBuffer.h", heightmap)
+        self.assertLess(heightmap.index("#if RTS_GENERALS"), heightmap.index("W3DDevice/GameClient/W3DRoadBuffer.h"))
+
     def test_launcher_requires_terrain_evidence(self):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         for term in ("-nativeOrdinaryTerrain", "Get-NativeOrdinaryTerrainMode", "Test-NativeOrdinaryTerrainEvidence",
-                     "Terrain draws are not exactly one combined draw per uploaded tile",
+                     "First terrain frame did not draw every uploaded tile",
+                     "Terrain draws differ from frames x tiles + overlay draws",
+                     "Map has road segments but no road draw was observed", "Map has bridges but no bridge draw was observed",
+                     "Map has extra-blend tiles but none were drawn", "Control Bar is not slid into the display",
+                     "Control Bar art did not paint into the bottom strip",
                      "No terrain geometry updates (tile_updates=0)", "Camera exercise did not issue exactly six moves",
                      "Terrain updates did not increase across the camera steps",
                      "Missing first terrain frame with one atlas upload",

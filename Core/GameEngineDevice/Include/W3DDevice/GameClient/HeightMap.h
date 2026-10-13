@@ -92,7 +92,16 @@ public:
 	Int renderNative(CameraClass &camera);
 	/// Releases native residencies (must precede backend release). Idempotent.
 	void releaseNativeResources();
-	struct NativeTerrainStats { unsigned frames, draws, tileUploads, tileUpdates, atlasUploads, cloudFrames, noiseFrames, macroLoads; };
+	struct NativeTerrainStats {
+		unsigned frames, draws, tileUploads, tileUpdates, atlasUploads, cloudFrames, noiseFrames, macroLoads;
+		// X64.27: overlay families (frames in which at least one draw was submitted, and the
+		// cumulative submissions) and the texture residencies loaded for them.
+		unsigned extraFrames, extraTiles, roadFrames, roadDraws, bridgeFrames, bridgeDraws, shoreFrames, shoreTiles,
+			worldTextureLoads;
+	};
+	/// What the loaded map contains for each overlay family (independent of what was drawn).
+	struct NativeMapFeatures { unsigned extraBlendTiles, shorelineTiles, roadSegments, bridges; };
+	NativeMapFeatures nativeMapFeatures();
 	NativeTerrainStats nativeStats() const;
 	/// Cloud-shadow pass selection used by the native pass (same predicate as Render()).
 	static bool nativeUseCloud() { return useCloud(); }

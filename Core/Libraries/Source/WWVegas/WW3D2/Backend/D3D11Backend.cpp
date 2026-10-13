@@ -149,6 +149,15 @@ PW VSWorld(VW v) {
     o.wxy = mul(float4(v.pos, 1), world).xy;
     return o;
 }
+// Road / extra-blend / bridge / shoreline family (roadnoise2.pso: mul r0,t0,t1; mul r0,r0,t2; mul r0,r0,v0).
+float4 PSOverlay(PW p) : SV_TARGET {
+    float4 c = image.Sample(imageSampler, p.uv);
+    if (useTex.z > 0.5) c *= p.col;
+    if (useTex.x > 0.5) c *= cloudTex.Sample(cloudSampler, p.wxy * combined.z + combined.xy);
+    if (useTex.y > 0.5) c *= noiseTex.Sample(noiseSampler, p.wxy * combined.z);
+    if (combined.w > 0.0 && c.a < combined.w) discard;
+    return c;
+}
 // Retail terrain pixel shaders (terrain.pso, terrainnoise.pso, terrainnoise2.pso):
 //   r0 = lrp(v0.a, t1, t0); r0 *= v0; [r0 *= cloud;] [r0 *= noise;]
 float4 PSTerrainCombined(PW p) : SV_TARGET {
@@ -231,7 +240,9 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11Texture2D> depthTexture;
     ComPtr<ID3D11DepthStencilView> dsv;
     ComPtr<ID3D11VertexShader> worldVS;
-    ComPtr<ID3D11PixelShader> terrainPS, terrainCombinedPS;
+    ComPtr<ID3D11PixelShader> terrainPS, terrainCombinedPS, overlayPS;
+    ComPtr<ID3D11RasterizerState> worldRasterNoCull;
+    ComPtr<ID3D11BlendState> blendAlphaOnly;
     ComPtr<ID3D11SamplerState> cloudSampler, noiseSampler;
     ComPtr<ID3D11InputLayout> worldLayout;
     ComPtr<ID3D11Buffer> worldCB;
@@ -278,6 +289,15 @@ struct D3D11Backend::Impl {
         Check(device->CreatePixelShader(combinedCode->GetBufferPointer(), combinedCode->GetBufferSize(), nullptr, &terrainCombinedPS),
               "Create combined terrain PS");
         {
+            auto overlayCode = CompileWorld("PSOverlay", "ps_4_0");
+            Check(device->CreatePixelShader(overlayCode->GetBufferPointer(), overlayCode->GetBufferSize(), nullptr, &overlayPS),
+                  "Create overlay PS");
+            D3D11_BLEND_DESC bd{};
+            bd.RenderTarget[0].BlendEnable = FALSE;
+            bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;   // D3DCOLORWRITEENABLE_ALPHA
+            Check(device->CreateBlendState(&bd, &blendAlphaOnly), "Create alpha-only blend state");
+        }
+        {
             // Legacy stage states: cloud = bilinear, noise = min point / mag linear; both wrap,
             // no mip filtering (D3DTEXF_NONE default on stages 2/3).
             D3D11_SAMPLER_DESC s{};
@@ -302,6 +322,8 @@ struct D3D11Backend::Impl {
         D3D11_RASTERIZER_DESC r{}; r.FillMode = D3D11_FILL_SOLID; r.CullMode = D3D11_CULL_BACK;
         r.FrontCounterClockwise = TRUE; r.DepthClipEnable = TRUE;
         Check(device->CreateRasterizerState(&r, &worldRaster), "Create world raster state");
+        r.CullMode = D3D11_CULL_NONE;     // ShaderClass::CULL_MODE_DISABLE (bridges)
+        Check(device->CreateRasterizerState(&r, &worldRasterNoCull), "Create no-cull raster state");
         D3D11_DEPTH_STENCIL_DESC d{}; d.DepthEnable = TRUE; d.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
         d.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
         Check(device->CreateDepthStencilState(&d, &depthWrite), "Create depth-write state");
@@ -704,6 +726,31 @@ void D3D11Backend::Update_Geometry_Vertices(GeometryResidency &geometry, unsigne
                   (first + count) * static_cast<UINT>(sizeof(WorldVertexXYZDUV2)), 1, 1};
     impl->context->UpdateSubresource(g->vertices.Get(), 0, &box, vertices, 0, 0);
 }
+GeometryResidency *D3D11Backend::Create_Dynamic_Geometry(unsigned max_vertices, unsigned max_indices)
+{
+    if (!max_vertices || !max_indices || max_vertices > 65535 || max_indices > 0x7ffff || max_indices % 3) Unsupported();
+    auto result = std::make_unique<GeoResidency>();
+    result->device = impl->device;
+    result->vertexCount = max_vertices;
+    result->indexCount = max_indices;
+    D3D11_BUFFER_DESC vb{}; vb.ByteWidth = max_vertices * sizeof(WorldVertexXYZDUV2);
+    vb.Usage = D3D11_USAGE_DEFAULT; vb.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    Check(impl->device->CreateBuffer(&vb, nullptr, &result->vertices), "Create dynamic geometry vertices");
+    D3D11_BUFFER_DESC ib{}; ib.ByteWidth = max_indices * sizeof(unsigned short);
+    ib.Usage = D3D11_USAGE_DEFAULT; ib.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    Check(impl->device->CreateBuffer(&ib, nullptr, &result->indices), "Create dynamic geometry indices");
+    impl->buffers += 2;
+    return result.release();
+}
+void D3D11Backend::Update_Geometry_Indices(GeometryResidency &geometry, unsigned first, const unsigned short *indices, unsigned count)
+{
+    auto *g = dynamic_cast<GeoResidency *>(&geometry);
+    if (!g || g->device.Get() != impl->device.Get() || !indices || !count || first > g->indexCount ||
+        count > g->indexCount - first) Unsupported();
+    D3D11_BOX box{first * static_cast<UINT>(sizeof(unsigned short)), 0, 0,
+                  (first + count) * static_cast<UINT>(sizeof(unsigned short)), 1, 1};
+    impl->context->UpdateSubresource(g->indices.Get(), 0, &box, indices, 0, 0);
+}
 void D3D11Backend::Submit_World(const WorldSubmission &s)
 {
     if (!s.index_count) return;
@@ -711,12 +758,12 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     if (!impl->scene || !impl->dsv || !g || g->device.Get() != impl->device.Get() || s.index_count % 3 ||
         s.first_index > g->indexCount || s.index_count > g->indexCount - s.first_index) Unsupported();
     if (s.material != WorldMaterial::TerrainBase && s.material != WorldMaterial::TerrainBlend &&
-        s.material != WorldMaterial::TerrainCombined) Unsupported();
+        s.material != WorldMaterial::TerrainCombined && s.material != WorldMaterial::TerrainOverlay) Unsupported();
     if (!s.texture) Unsupported();
     auto *texture = dynamic_cast<Residency *>(s.texture);
     if (!texture || texture->device.Get() != impl->device.Get()) Unsupported();
     Residency *cloud = nullptr, *noise = nullptr;
-    if (s.material == WorldMaterial::TerrainCombined) {
+    if (s.material == WorldMaterial::TerrainCombined || s.material == WorldMaterial::TerrainOverlay) {
         if (s.cloud) {
             cloud = dynamic_cast<Residency *>(s.cloud);
             if (!cloud || cloud->device.Get() != impl->device.Get()) Unsupported();
@@ -740,9 +787,14 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     constants[16] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // UV set
     constants[17] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // use texture/diffuse alpha
     std::memcpy(constants + 20, s.world, sizeof(s.world));
-    if (s.material == WorldMaterial::TerrainCombined) {
+    if (s.material == WorldMaterial::TerrainCombined || s.material == WorldMaterial::TerrainOverlay) {
         constants[36] = s.cloud_offset[0]; constants[37] = s.cloud_offset[1]; constants[38] = s.texgen_scale;
         constants[40] = cloud ? 1.0f : 0.0f; constants[41] = noise ? 1.0f : 0.0f;
+    }
+    if (s.material == WorldMaterial::TerrainOverlay) {
+        if (!std::isfinite(s.alpha_test) || s.alpha_test < 0.0f || s.alpha_test > 1.0f) Unsupported();
+        constants[39] = s.alpha_test;
+        constants[42] = s.no_diffuse ? 0.0f : 1.0f;
     }
     impl->context->UpdateSubresource(impl->worldCB.Get(), 0, nullptr, constants, 0, 0);
 
@@ -760,18 +812,24 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     auto *vb = g->vertices.Get(); auto *cb = impl->worldCB.Get(); auto *rtv = impl->rtv.Get();
     auto *srv = texture->view.Get(); auto *smp = sampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, impl->dsv.Get());
-    impl->context->OMSetBlendState(s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get(), // Base/Combined opaque
+    ID3D11BlendState *blendState = s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get();
+    if (s.material == WorldMaterial::TerrainOverlay)
+        blendState = s.alpha_only ? impl->blendAlphaOnly.Get() : impl->blend.Get();
+    impl->context->OMSetBlendState(blendState,
                                    nullptr, 0xffffffff);
     impl->context->OMSetDepthStencilState(s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get(), 0);
-    impl->context->RSSetState(impl->worldRaster.Get());
+    impl->context->RSSetState((s.material == WorldMaterial::TerrainOverlay && s.double_sided) ? impl->worldRasterNoCull.Get()
+                                                                                              : impl->worldRaster.Get());
     impl->context->IASetInputLayout(impl->worldLayout.Get());
     impl->context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
     impl->context->IASetIndexBuffer(g->indices.Get(), DXGI_FORMAT_R16_UINT, 0);
     impl->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     impl->context->VSSetShader(impl->worldVS.Get(), nullptr, 0);
     impl->context->VSSetConstantBuffers(0, 1, &cb);
-    impl->context->PSSetShader(s.material == WorldMaterial::TerrainCombined ? impl->terrainCombinedPS.Get()
-                                                                           : impl->terrainPS.Get(), nullptr, 0);
+    ID3D11PixelShader *pixelShader = impl->terrainPS.Get();
+    if (s.material == WorldMaterial::TerrainCombined) pixelShader = impl->terrainCombinedPS.Get();
+    else if (s.material == WorldMaterial::TerrainOverlay) pixelShader = impl->overlayPS.Get();
+    impl->context->PSSetShader(pixelShader, nullptr, 0);
     impl->context->PSSetConstantBuffers(0, 1, &cb);
     ID3D11ShaderResourceView *views[3] = {srv, cloud ? cloud->view.Get() : nullptr, noise ? noise->view.Get() : nullptr};
     ID3D11SamplerState *samplers[3] = {smp, impl->cloudSampler.Get(), impl->noiseSampler.Get()};

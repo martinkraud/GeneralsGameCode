@@ -173,6 +173,9 @@ void RoadType::loadTexture(AsciiString path, Int ID)
 	WW3DAssetManager *pMgr = W3DAssetManager::Get_Instance();
 
 	m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3);
+#if defined(_WIN64)
+	m_nativeTexturePath = path;
+#endif
 
 	m_roadTexture->Get_Filter().Set_Mip_Mapping( TextureFilterClass::FILTER_TYPE_BEST );
 
@@ -3209,6 +3212,57 @@ void W3DRoadBuffer::updateCenter()
 {
 	m_updateBuffers = true;
 }
+
+#if defined(_WIN64)
+//=============================================================================
+// W3DRoadBuffer::forEachNativeBatch
+//=============================================================================
+/** Mirrors the traversal of drawRoads (bounds, stacking order, per-type reload) for the native
+D3D11 path, which draws from the CPU-backed buffers instead of DX8 state. */
+//=============================================================================
+Int W3DRoadBuffer::forEachNativeBatch(Int minX, Int maxX, Int minY, Int maxY, NativeRoadBatchFn fn, void *user)
+{
+	if (!m_initialized || !m_roadTypes) return 0;
+	m_minX = minX*MAP_XY_FACTOR;
+	m_maxX = maxX*MAP_XY_FACTOR;
+	m_minY = minY*MAP_XY_FACTOR;
+	m_maxY = maxY*MAP_XY_FACTOR;
+
+	Int maxStacking = 0;
+	for (Int i=0; i<m_maxRoadTypes; i++) {
+		if (m_roadTypes[i].getStacking() > maxStacking) {
+			maxStacking = m_roadTypes[i].getStacking();
+		}
+	}
+	Int batches = 0;
+	for (Int stacking=0; stacking <= maxStacking; stacking++) {
+		for (Int i=0; i<m_maxRoadTypes; i++) {
+			if (stacking != m_roadTypes[i].getStacking()) {
+				continue;
+			}
+			m_curUniqueID = m_roadTypes[i].getUniqueID();
+			m_curRoadType = i;
+			loadRoadsInVertexAndIndexBuffers();
+			if (m_roadTypes[i].getNumIndices() == 0) continue;
+			DX8VertexBufferClass *vb = m_roadTypes[i].getVB();
+			DX8IndexBufferClass *ib = m_roadTypes[i].getIB();
+			if (!vb || !ib || !vb->Is_CPU_Backed() || !ib->Is_CPU_Backed()) continue;
+			NativeRoadBatch batch;
+			batch.vertices = reinterpret_cast<const VertexFormatXYZDUV1 *>(vb->Get_CPU_Data());
+			batch.vertexCount = m_roadTypes[i].getNumVertices();
+			batch.indices = ib->Get_CPU_Data();
+			batch.indexCount = m_roadTypes[i].getNumIndices();
+			batch.texture = m_roadTypes[i].getNativeTexturePath().str();
+			batch.roadType = i;
+			batch.stacking = stacking;
+			fn(user, batch);
+			++batches;
+		}
+	}
+	m_curRoadType = 0;
+	return batches;
+}
+#endif
 
 //=============================================================================
 // W3DRoadBuffer::drawRoads

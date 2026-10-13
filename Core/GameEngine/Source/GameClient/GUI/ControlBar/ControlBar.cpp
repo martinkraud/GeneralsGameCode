@@ -36,6 +36,9 @@
 #define DEFINE_RADIUSCURSOR_NAMES
 
 #include "Common/ActionManager.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include "Common/FramePacer.h"
 #include "Common/GameType.h"
 #include "Common/MultiplayerSettings.h"
@@ -1397,10 +1400,50 @@ void ControlBar::reset()
 /** Update phase, we can track if our selected object is destroyed, update button
 	* percentages, status, enabled status etc */
 //-------------------------------------------------------------------------------------------------
+#if defined(_WIN64)
+void ControlBar::updateNativePresentation()
+{
+	// Same statements, same order and same conditions as the corresponding part of update().
+	if (m_controlBarSchemeManager)
+		m_controlBarSchemeManager->update();
+
+	if (m_animateWindowManager)
+		m_animateWindowManager->update();
+
+	if (m_animateWindowManager)
+		{
+			if (m_animateWindowManager->isFinished() && m_animateWindowManager->isReversed())
+			{
+				Int id = (Int)TheNameKeyGenerator->nameToKey("ControlBar.wnd:ControlBarParent");
+				GameWindow *window = TheWindowManager->winGetWindowFromId(nullptr, id);
+				if (window && !window->winIsHidden())
+					window->winHide(TRUE);
+			}
+		}
+
+	if(m_animateWindowManagerForGenShortcuts)
+		m_animateWindowManagerForGenShortcuts->update();
+	if (m_animateWindowManagerForGenShortcuts && m_specialPowerShortcutParent)
+		{
+			if (m_animateWindowManagerForGenShortcuts->isFinished() && m_animateWindowManagerForGenShortcuts->isReversed())
+			{
+				if (m_specialPowerShortcutParent && !m_specialPowerShortcutParent->winIsHidden())
+					m_specialPowerShortcutParent->winHide(TRUE);
+			}
+		}
+}
+#endif
+
 void ControlBar::update()
 {
 	if (TheGlobalData->m_headless)
+	{
+#if defined(_WIN64)
+		if (StartupDiagnostics::ordinaryTerrain())
+			updateNativePresentation();
+#endif
 		return;
+	}
 	getStarImage();
 	updateRadarAttackGlow();
 	if(m_controlBarSchemeManager)

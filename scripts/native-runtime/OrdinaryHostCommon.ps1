@@ -341,33 +341,49 @@ function Test-NativeOrdinaryTerrainEvidence([string]$Log,[int]$ProcessId,$Receip
         }
     }
     if($completed['terrain_optin'].Detail -notmatch '^cpu_backed_geometry=1 depth_buffer=1 '){$errors.Add('Terrain opt-ins not recorded')}
-    $tileCount=0;$useCloud=0;$useNoise=0
-    if($completed['terrain_first_frame'].Detail -notmatch '^draws=(\d+) atlas_uploads=1 tile_uploads=(\d+) use_cloud=([01]) use_noise=([01]) \(terrain combined single pass; UI follows\)$'){$errors.Add('Missing first terrain frame with one atlas upload')}
+    $tileCount=0;$useCloud=0;$useNoise=0;$softEdge=0;$mapExtra=0;$mapShore=0;$mapRoads=0;$mapBridges=0
+    if($completed['terrain_first_frame'].Detail -notmatch '^tiles=(\d+) draws=(\d+) atlas_uploads=1 use_cloud=([01]) use_noise=([01]) soft_edge=([01]) map_extra=(\d+) map_shore=(\d+) map_roads=(\d+) map_bridges=(\d+) \(terrain combined single pass \+ overlays; UI follows\)$'){$errors.Add('Missing first terrain frame with one atlas upload')}
     else{
         $m=$Matches
-        if($m[1].Length -gt 6 -or $m[2].Length -gt 6){$errors.Add('Terrain numeric overflow')}
-        elseif([int]$m[2] -lt 1 -or [int]$m[1] -ne [int]$m[2]){$errors.Add('Terrain draws are not exactly one combined draw per uploaded tile')}
-        else{$tileCount=[int]$m[2];$useCloud=[int]$m[3];$useNoise=[int]$m[4]}
+        $over=$false;foreach($i in 1..9){if($m[$i].Length -gt 6){$over=$true}}
+        if($over){$errors.Add('Terrain numeric overflow')}
+        elseif([int]$m[1] -lt 1 -or [int]$m[2] -lt [int]$m[1]){$errors.Add('First terrain frame did not draw every uploaded tile')}
+        else{$tileCount=[int]$m[1];$useCloud=[int]$m[3];$useNoise=[int]$m[4];$softEdge=[int]$m[5]
+             $mapExtra=[int]$m[6];$mapShore=[int]$m[7];$mapRoads=[int]$m[8];$mapBridges=[int]$m[9]}
     }
     $probe=@($rows|Where-Object{$_.Stage -eq 'terrain_probe' -and $_.Status -eq 'observed'})
     if($probe.Count -ne 1 -or $probe[0].Detail -notmatch '^nonblack_pct=(\d{1,3}) center_rgb='){$errors.Add('Missing terrain pixel probe')}
     elseif([int]$Matches[1] -lt 5){$errors.Add('Terrain pass left the frame black (probe)')}
-    if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+) cloud_frames=(\d+) noise_frames=(\d+) macro_loads=(\d+)$'){$errors.Add('Invalid terrain summary')}
+    if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+) cloud_frames=(\d+) noise_frames=(\d+) macro_loads=(\d+) extra_frames=(\d+) extra_tiles=(\d+) road_frames=(\d+) road_draws=(\d+) bridge_frames=(\d+) bridge_draws=(\d+) shore_frames=(\d+) shore_tiles=(\d+) texture_loads=(\d+)$'){$errors.Add('Invalid terrain summary')}
     else{
         $m=$Matches
-        $over=$false;foreach($i in 1..8){if($m[$i].Length -gt 9){$over=$true}}
+        $over=$false;foreach($i in 1..17){if($m[$i].Length -gt 9){$over=$true}}
         if($over){$errors.Add('Terrain summary numeric overflow')}
         else{
             $frames=[int]$m[1]
             if($frames -lt 30 -or [int]$m[3] -lt 1 -or [int]$m[4] -lt 1){$errors.Add('Too few terrain frames or no residency uploads')}
-            if($tileCount -gt 0 -and [int]$m[2] -ne $frames*$tileCount){$errors.Add('Terrain draws differ from frames x tiles')}
-            # X64.26: dynamic terrain must actually have been rewritten, and the macro passes must have run.
+            # Every draw is accounted for: one combined draw per tile per frame plus each overlay family.
+            $expected=$frames*$tileCount+[int]$m[9]+[int]$m[12]+[int]$m[14]+[int]$m[15]
+            if($tileCount -gt 0 -and [int]$m[2] -ne $expected){$errors.Add('Terrain draws differ from frames x tiles + overlay draws')}
+            # X64.26 contracts (retained): dynamic terrain really rewritten, macro passes ran.
             if([int]$m[5] -lt 1){$errors.Add('No terrain geometry updates (tile_updates=0)')}
             if($useCloud -eq 1 -and [int]$m[6] -ne $frames){$errors.Add('Cloud pass did not run every terrain frame')}
             if($useCloud -eq 0 -and [int]$m[6] -ne 0){$errors.Add('Cloud pass ran while disabled')}
             if($useNoise -eq 1 -and [int]$m[7] -ne $frames){$errors.Add('Noise pass did not run every terrain frame')}
             if($useNoise -eq 0 -and [int]$m[7] -ne 0){$errors.Add('Noise pass ran while disabled')}
             if([int]$m[8] -ne ($useCloud+$useNoise)){$errors.Add('Unexpected macro texture load count')}
+            # X64.27: overlay families must appear exactly when the loaded map contains them.
+            if($mapExtra -gt 0 -and [int]$m[9] -lt 1){$errors.Add('Map has extra-blend tiles but none were drawn')}
+            if($mapExtra -eq 0 -and [int]$m[9] -ne 0){$errors.Add('Extra-blend draws on a map without extra-blend tiles')}
+            if($mapRoads -gt 0 -and [int]$m[11] -lt 1){$errors.Add('Map has road segments but no road draw was observed')}
+            if($mapRoads -eq 0 -and [int]$m[12] -ne 0){$errors.Add('Road draws on a map without roads')}
+            if($mapBridges -gt 0 -and [int]$m[13] -lt 1){$errors.Add('Map has bridges but no bridge draw was observed')}
+            if($mapBridges -eq 0 -and [int]$m[14] -ne 0){$errors.Add('Bridge draws on a map without bridges')}
+            if($mapShore -gt 0 -and $softEdge -eq 1 -and [int]$m[15] -lt 1){$errors.Add('Map has shoreline tiles and soft water edge is enabled but no shoreline pass ran')}
+            if(($mapShore -eq 0 -or $softEdge -eq 0) -and [int]$m[15] -ne 0){$errors.Add('Shoreline pass ran without shoreline tiles or soft water edge')}
+            # Decoded road/bridge textures: at least one per drawn family, none when no family drew.
+            if(([int]$m[12]+[int]$m[14]) -gt 0 -and [int]$m[17] -lt 1){$errors.Add('Road/bridge draws without a loaded world texture')}
+            if(([int]$m[12]+[int]$m[14]) -eq 0 -and [int]$m[17] -ne 0){$errors.Add('World textures loaded without road/bridge draws')}
         }
     }
     # Scripted camera exercise: six moves, six probes, all frames non-black, geometry updated, pivot moved.
@@ -386,9 +402,17 @@ function Test-NativeOrdinaryTerrainEvidence([string]$Log,[int]$ProcessId,$Receip
         if($updates.Count -eq 6 -and ($increases -lt 3 -or $updates[0] -lt 1)){$errors.Add('Terrain updates did not increase across the camera steps')}
         if($pivots.Count -lt 4){$errors.Add('Camera pivot did not move to enough distinct positions')}
     }
-    # Bounded Control Bar review receipts (informational; never fail the terrain gate on UI content).
+    # Control Bar visibility/state (X64.27): the bar must have slid into the 600-pixel display and
+    # painted opaque art into the bottom strip (radar bezel may stay empty: RadarDummy).
     $ui=@($rows|Where-Object{$_.Stage -eq 'ui_probe' -and $_.Status -eq 'observed'})
-    if($ui.Count -ne 1 -or $ui[0].Detail -notmatch '^whole_nonblack_pct=\d+ strip_nonblack_pct=\d+ strip_left=\d+ strip_mid=\d+ strip_right=\d+$'){$errors.Add('Missing Control Bar/UI probe receipt')}
+    if($ui.Count -ne 1 -or $ui[0].Detail -notmatch '^whole_nonblack_pct=(\d+) strip_nonblack_pct=(\d+) strip_left=(\d+) strip_mid=(\d+) strip_right=(\d+)$'){$errors.Add('Missing Control Bar/UI probe receipt')}
+    else{
+        if([int]$Matches[2] -lt 25){$errors.Add('Control Bar art did not paint into the bottom strip')}
+        if([int]$Matches[1] -lt 80){$errors.Add('Composed frame lost world pixels after the UI')}
+    }
+    $barRows=@($rows|Where-Object{$_.Stage -eq 'ui_probe_window' -and $_.Detail -like 'ControlBar.wnd:ControlBarParent *'})
+    if($barRows.Count -ne 1 -or $barRows[0].Detail -notmatch 'hidden=0 pos=(-?\d+),(-?\d+) size=(\d+)x(\d+)$'){$errors.Add('Missing Control Bar window state')}
+    elseif([int]$Matches[2] -lt 400 -or [int]$Matches[2] -ge 600){$errors.Add('Control Bar is not slid into the display')}
     $armed=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq 'native_shutdown' -and $rows[$i].Status -eq 'armed' -and $rows[$i].Code -eq 0){$i}})
     $mini=@(Completions 'minidumper_shutdown')
     if($armed.Count -ne 1 -or $mini.Count -ne 1 -or $armed[0] -le $mini[0] -or $armed[0] -ge $rows.Count-1){$errors.Add('Missing/incorrect late observer boundary')}

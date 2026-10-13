@@ -110,6 +110,9 @@ protected:
 	AsciiString m_templateName;					///< Name of the bridge type.
 	BodyDamageType m_curDamageState;
 	Bool			m_enabled;
+#if defined(_WIN64)
+	AsciiString		m_nativeTexturePath;	///< INI texture name of the current damage state.
+#endif
 
 protected:
 	Int getModelVerticesFixed(VertexFormatXYZNDUV1 *destination_vb, Int curVertex, const Matrix3D &mtx, MeshClass *pMesh, RefRenderObjListIterator *pLightsIterator);
@@ -138,6 +141,12 @@ public:
 	void setEnabled(Bool enable) {m_enabled = enable;};
 	void renderBridge(Bool wireframe);
 	void getBridgeInfo(BridgeInfo *pInfo);
+#if defined(_WIN64)
+	const AsciiString &getNativeTexturePath() const {return m_nativeTexturePath;}
+	Int getFirstIndex() const {return m_firstIndex;}
+	Int getNumPolygons() const {return m_numPolygons;}
+	Int getNumVertex() const {return m_numVertex;}
+#endif
 };
 
 //
@@ -155,6 +164,20 @@ public:
 	void clearAllBridges();
 	/// Draws the bridges.  Uses camera for culling.
 	void drawBridges(CameraClass * camera, Bool wireframe, TextureClass *cloudTexture);
+#if defined(_WIN64)
+	/// One enabled+visible bridge's draw range in the shared CPU vertex/index buffers.
+	struct NativeBridgeBatch {
+		const VertexFormatXYZNDUV1 *vertices; Int vertexCount;
+		const UnsignedShort *indices; Int indexCount;      ///< whole shared buffers
+		Int firstIndex; Int polygonCount;
+		const char *texture;
+	};
+	typedef void (*NativeBridgeBatchFn)(void *user, const NativeBridgeBatch &batch);
+	/// Same state refresh as drawBridges (enabled flags, damage-state reloads), then the CPU
+	/// buffers' content per drawable bridge. Returns the number of bridges drawn.
+	Int forEachNativeBridge(NativeBridgeBatchFn fn, void *user);
+	Int getNumBridges() const {return m_numBridges;}
+#endif
 	/// Called when the view changes, and sort key needs to be recalculated.
 	/// Normally sortKey gets calculated when a bridge becomes visible.
 	void doFullUpdate() {m_updateVis = true;};
@@ -180,6 +203,7 @@ protected:
 	void addBridge(Vector3 fromLoc, Vector3 toLoc, AsciiString name, W3DTerrainLogic *pTerrainLogic, Dict *props);
 	void loadBridgesInVertexAndIndexBuffers(RefRenderObjListIterator *pLightsIterator); ///< Fills the index and vertex buffers for drawing.
 	void allocateBridgeBuffers();							 ///< Allocates the buffers.
+	void refreshBridgeStates();								 ///< Applies terrain-logic enabled/damage state to the bridges.
 	void cull(CameraClass * camera);						 ///< Culls the bridges.
 	void freeBridgeBuffers();									 ///< Frees the index and vertex buffers.
 };

@@ -70,6 +70,10 @@ public:
                                                       const std::vector<std::vector<unsigned char>> &mips);
     // Replace vertices [first, first+count) in place (dynamic terrain).
     void Update_Geometry_Vertices(GeometryResidency &, unsigned first, const WorldVertexXYZDUV2 *vertices, unsigned count);
+    // Fixed-capacity geometry whose vertices and indices are rewritten as content changes (roads,
+    // bridges, extra-blend tile lists). Capacities are in vertices/indices; contents start empty.
+    GeometryResidency *Create_Dynamic_Geometry(unsigned max_vertices, unsigned max_indices);
+    void Update_Geometry_Indices(GeometryResidency &, unsigned first, const unsigned short *indices, unsigned count);
     void Submit_World(const WorldSubmission &);
     bool Has_Depth_Buffer() const;
     // Process-wide count of live logical GPU residencies (textures and geometry, all backends).

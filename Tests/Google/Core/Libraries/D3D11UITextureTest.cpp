@@ -659,6 +659,130 @@ TEST(WorldTest, CombinedTerrainTexgenUsesWorldXYScaleAndCloudOffsetWraps)
     EXPECT_GT(swapped[7 * 4], swapped[0 * 4] + 150);
 }
 
+// X64.27: road / extra-blend / bridge / shoreline family (TerrainOverlay) and dynamic geometry.
+namespace {
+// 2x1 texture: left texel colour (r,g,b,a), right texel the same.
+std::unique_ptr<Texture2DResidency> SolidTexture(D3D11Backend &backend, unsigned r, unsigned g, unsigned b, unsigned a)
+{
+    UITextureContent content(new Texture2DCPUContent(2, 1, WW3D_FORMAT_A8R8G8B8, 8));
+    int pitch; auto *p = static_cast<unsigned char *>(content->Lock(&pitch));
+    const unsigned char texels[8] = {static_cast<unsigned char>(b), static_cast<unsigned char>(g), static_cast<unsigned char>(r), static_cast<unsigned char>(a),
+                                     static_cast<unsigned char>(b), static_cast<unsigned char>(g), static_cast<unsigned char>(r), static_cast<unsigned char>(a)};
+    std::memcpy(p, texels, 8); content->Unlock();
+    return std::unique_ptr<Texture2DResidency>(backend.Create_Content_Residency(*content));
+}
+}
+
+TEST(WorldTest, OverlayBlendsSourceAlphaOverTargetAndMultipliesAllChannelsLikeRoadNoise2)
+{
+    WorldFixture f;
+    auto tex = SolidTexture(*f.backend, 200, 100, 50, 255);
+    auto cloud = SolidTexture(*f.backend, 128, 255, 255, 128);   // alpha participates (roadnoise2: mul r0,r0,t1)
+    auto noise = SolidTexture(*f.backend, 255, 128, 255, 255);
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f)));
+    auto sub = f.Submission(g.get(), WorldMaterial::TerrainOverlay, false);
+    sub.texture = tex.get();
+    sub.texgen_scale = 1.0f / 315.0f;
+    sub.cloud = cloud.get(); sub.noise = noise.get();
+    // rgb = tex*cloud*noise; alpha = 1*0.5*1 = 0.502; blended over black: rgb * alpha.
+    auto px = f.Frame({sub});
+    const float a = 128.0f / 255.0f;
+    EXPECT_NEAR(px[0], 200.0f * (128.0f / 255.0f) * 1.0f * a, 2.5f);
+    EXPECT_NEAR(px[1], 100.0f * 1.0f * (128.0f / 255.0f) * a, 2.5f);
+    EXPECT_NEAR(px[2], 50.0f * 1.0f * 1.0f * a, 2.5f);
+    // Target is cleared black: depth was only tested (depth_write false) so a second draw adds on top.
+    auto twice = f.Frame({sub, sub});
+    EXPECT_GT(twice[0], px[0] + 5);
+    // Diffuse participates unless explicitly disabled.
+    auto half = WorldFixture::Quad(0.5f, Argb(128, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f);
+    std::unique_ptr<GeometryResidency> gh(f.backend->Create_Geometry_Residency(half));
+    auto solid = f.Submission(gh.get(), WorldMaterial::TerrainOverlay, false);
+    solid.texture = tex.get();
+    auto d = f.Frame({solid});
+    EXPECT_NEAR(d[0], 200.0f * a, 2.5f);                 // alpha = 1 * 0.5 -> 50 % over black
+    solid.no_diffuse = true;
+    auto nd = f.Frame({solid});
+    EXPECT_NEAR(nd[0], 200.0f, 1.5f);                   // diffuse ignored: opaque
+}
+
+TEST(WorldTest, OverlayAlphaTestAndDoubleSidedMatchBridgeShader)
+{
+    WorldFixture f;
+    auto tex = SolidTexture(*f.backend, 255, 255, 255, 255);
+    // Bridge shader: alpha reference 0x60 (>=), CULL_MODE_DISABLE, depth write enabled.
+    auto lowAlpha = WorldFixture::Quad(0.5f, Argb(80, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f);   // 80 < 96
+    auto highAlpha = WorldFixture::Quad(0.5f, Argb(120, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f);  // 120 >= 96
+    std::unique_ptr<GeometryResidency> lo(f.backend->Create_Geometry_Residency(lowAlpha));
+    std::unique_ptr<GeometryResidency> hi(f.backend->Create_Geometry_Residency(highAlpha));
+    auto sub = f.Submission(lo.get(), WorldMaterial::TerrainOverlay, true);
+    sub.texture = tex.get(); sub.alpha_test = 96.0f / 255.0f;
+    auto px = f.Frame({sub});
+    EXPECT_EQ(px[0], 0);                                   // rejected by the alpha test
+    sub = f.Submission(hi.get(), WorldMaterial::TerrainOverlay, true);
+    sub.texture = tex.get(); sub.alpha_test = 96.0f / 255.0f;
+    px = f.Frame({sub});
+    EXPECT_NEAR(px[0], 255.0f * 120.0f / 255.0f, 2.0f);   // drawn, blended over black
+    // Clockwise (back-facing) geometry: culled by default, drawn when double sided.
+    auto back = WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f);
+    std::swap(back.indices[1], back.indices[2]); std::swap(back.indices[4], back.indices[5]);
+    std::unique_ptr<GeometryResidency> bk(f.backend->Create_Geometry_Residency(back));
+    sub = f.Submission(bk.get(), WorldMaterial::TerrainOverlay, true);
+    sub.texture = tex.get();
+    EXPECT_EQ(f.Frame({sub})[0], 0);
+    sub.double_sided = true;
+    EXPECT_EQ(f.Frame({sub})[0], 255);
+}
+
+TEST(WorldTest, OverlayAlphaOnlyWritesDestinationAlphaAndLeavesColor)
+{
+    WorldFixture f;
+    auto lut = SolidTexture(*f.backend, 255, 255, 255, 77);      // the shoreline depth LUT texel (alpha gradient)
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(
+        WorldFixture::Quad(0.5f, 0u, 0.25f, 0.0f, 0.25f, 0.0f)));  // PRELIT diffuse 0: ignored (no gradient)
+    auto sub = f.Submission(g.get(), WorldMaterial::TerrainOverlay, false);
+    sub.texture = lut.get(); sub.alpha_only = true; sub.no_diffuse = true;
+    f.backend->Clear(true, true, Vector3(0.25f, 0.5f, 0.75f), 0.0f, 1.0f, 0);
+    f.backend->Begin_Scene();
+    f.backend->Submit_World(sub);
+    f.backend->End_Scene(false);
+    auto px = f.backend->Readback_RGBA8();
+    EXPECT_NEAR(px[0], 64, 1);   // colour untouched (0.25*255)
+    EXPECT_NEAR(px[1], 128, 1);
+    EXPECT_NEAR(px[2], 191, 1);
+    EXPECT_EQ(px[3], 77);        // destination alpha = LUT alpha
+}
+
+TEST(WorldTest, DynamicGeometryUpdatesVerticesAndIndicesAndDrawsVaryingCounts)
+{
+    WorldFixture f;
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Dynamic_Geometry(8, 12));
+    EXPECT_EQ(g->Vertex_Count(), 8u);
+    EXPECT_EQ(g->Index_Count(), 12u);
+    auto quad = WorldFixture::Quad(0.5f, Argb(255, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f);
+    f.backend->Update_Geometry_Vertices(*g, 0, quad.vertices.data(), 4);
+    f.backend->Update_Geometry_Indices(*g, 0, quad.indices.data(), 6);
+    auto sub = f.Submission(g.get(), WorldMaterial::TerrainBase, true);
+    sub.index_count = 6;
+    auto px = f.Frame({sub});
+    EXPECT_EQ(px[0], 255);                       // red texel
+    // Shrink to one triangle (3 indices): the covered area is smaller than the full quad.
+    sub.index_count = 3;
+    auto tri = f.Frame({sub});
+    unsigned full = 0, part = 0;
+    for (unsigned i = 0; i < 64; ++i) { full += px[i * 4] ? 1u : 0u; part += tri[i * 4] ? 1u : 0u; }
+    EXPECT_EQ(full, 64u);
+    EXPECT_LT(part, 64u);
+    EXPECT_GT(part, 0u);
+    // Out-of-range draws and updates are explicit errors.
+    sub.index_count = 15;
+    f.backend->Begin_Scene();
+    EXPECT_THROW(f.backend->Submit_World(sub), std::runtime_error);
+    f.backend->End_Scene(false);
+    EXPECT_THROW(f.backend->Update_Geometry_Indices(*g, 10, quad.indices.data(), 6), std::runtime_error);
+    EXPECT_THROW(f.backend->Create_Dynamic_Geometry(0, 6), std::runtime_error);
+}
+
 TEST(WorldTest, ResidencyCountingAndExplicitUnsupportedCases)
 {
     const unsigned baseline = D3D11Backend::Live_Residencies();
