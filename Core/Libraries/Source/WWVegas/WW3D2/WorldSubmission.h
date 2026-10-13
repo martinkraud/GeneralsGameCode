@@ -49,7 +49,14 @@ public:
 //   TerrainBlend pass 1: rgb = tex(uv1).rgb * diffuse.rgb, a = tex.a * diffuse.a,
 //                        SRCALPHA / INVSRCALPHA blend
 // Diffuse: lighting is baked into the vertex colour (prelit material).
-enum class WorldMaterial { TerrainBase, TerrainBlend };
+// TerrainCombined is the single-pass retail form (shaders\terrain.pso / terrainnoise.pso /
+// terrainnoise2.pso, ps_1_1):
+//   rgb = lerp(tex(uv0), tex(uv1), diffuse.a) * diffuse.rgb [* cloud] [* noise]
+// cloud/noise are world-space XY texture-generated (legacy D3DTSS_TCI_CAMERASPACEPOSITION through
+// inverse(view) == the vertex position transformed by the world matrix), scaled by
+// `texgen_scale`; cloud additionally scrolls by `cloud_offset`. Both wrap. Cloud samples
+// bilinear; noise samples min=point, mag=linear (the legacy stage states). Opaque.
+enum class WorldMaterial { TerrainBase, TerrainBlend, TerrainCombined };
 
 struct WorldSubmission
 {
@@ -68,6 +75,11 @@ struct WorldSubmission
     WorldMaterial material;
     bool depth_write;               // depth test is LESS_EQUAL; write optional
     RenderBackendViewport viewport;
+    // TerrainCombined only (ignored by the other materials; null = factor 1).
+    Texture2DResidency *cloud;
+    Texture2DResidency *noise;
+    float cloud_offset[2];
+    float texgen_scale;
 };
 
 inline void World_Identity(float (&m)[16])

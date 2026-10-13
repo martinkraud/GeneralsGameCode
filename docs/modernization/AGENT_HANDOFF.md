@@ -193,6 +193,8 @@ world rendering, cross-arch determinism, performance.
 
 **X64.25 first native D3D11 terrain frame FORMALLY ACCEPTED (2026-10-13).** Machine PASS and developer visual PASS recorded separately from fix2 run `build/dev-runtimes/native/Generals/x64-25-ordinary-terrain-fix2/runs/20261013T0503179685543Z` (exit 0, 237 records, 1800 logic frames, 16 terrain tiles, 3600 terrain frames, pixel probe nonblack 80%, `live_residencies=0`; EXE `F373137C...6696C9`). Terrain visible and correct. History: run 1 failed on a partial-mip-chain check; fix1 machine PASS but visually black (world rasterizer culled the legacy front face: legacy default is D3DCULL_CW); fix2 corrected it and added the probe. Bottom black strip = outside the 0.80 ViewportHeightScale world viewport (original Control Bar contract), not a terrain defect. Doc: `X64_25_TERRAIN_FRAME.md`. Not yet rendered: clouds/noise, dynamic lights, shoreline/extra-blend, roads/bridges/props, shroud, meshes, water, shadows, particles.
 
+**X64.26 terrain fidelity + dynamic terrain exercise (2026-10-13): candidate staged, NOT executed.** Single-pass retail combiner decoded from `terrain*.pso` (`lerp(t0,t1,a)*diffuse*cloud*noise`), world-XY texgen verified against the legacy matrix chain, bounded six-move scripted camera exercise requiring `tile_updates>0`, terrain pixel probes retained, bounded Control Bar review receipts + evidence BMPs. Doc: `X64_26_TERRAIN_FIDELITY.md`. Next after acceptance: shoreline/extra-blend, roads/bridges, R3 meshes.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a

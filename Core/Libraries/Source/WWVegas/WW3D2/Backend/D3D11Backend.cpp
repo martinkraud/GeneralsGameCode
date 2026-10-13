@@ -130,16 +130,34 @@ float4 PSGray(P p) : SV_TARGET {
 }
 )";
 const char worldShaderSource[] = R"(
-cbuffer World : register(b0) { row_major float4x4 wvp; float4 flags; };
+cbuffer World : register(b0) {
+    row_major float4x4 wvp; float4 flags; row_major float4x4 world;
+    float4 combined; // x,y = cloud offset, z = texgen scale, w = 0
+    float4 useTex;   // x = cloud, y = noise
+};
 Texture2D image : register(t0); SamplerState imageSampler : register(s0);
+Texture2D cloudTex : register(t1); SamplerState cloudSampler : register(s1);
+Texture2D noiseTex : register(t2); SamplerState noiseSampler : register(s2);
 struct VW { float3 pos : POSITION; float4 col : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; };
-struct PW { float4 pos : SV_POSITION; float4 col : COLOR; float2 uv : TEXCOORD0; };
+struct PW { float4 pos : SV_POSITION; float4 col : COLOR; float2 uv : TEXCOORD0; float2 uvb : TEXCOORD1; float2 wxy : TEXCOORD2; };
 PW VSWorld(VW v) {
     PW o;
     o.pos = mul(float4(v.pos, 1), wvp);
     o.col = v.col.bgra;               // packed ARGB (D3DCOLOR) bytes are B,G,R,A
     o.uv = flags.x > 0.5 ? v.uv1 : v.uv0;
+    o.uvb = v.uv1;
+    o.wxy = mul(float4(v.pos, 1), world).xy;
     return o;
+}
+// Retail terrain pixel shaders (terrain.pso, terrainnoise.pso, terrainnoise2.pso):
+//   r0 = lrp(v0.a, t1, t0); r0 *= v0; [r0 *= cloud;] [r0 *= noise;]
+float4 PSTerrainCombined(PW p) : SV_TARGET {
+    float4 t0 = image.Sample(imageSampler, p.uv);
+    float4 t1 = image.Sample(imageSampler, p.uvb);
+    float3 c = lerp(t0.rgb, t1.rgb, p.col.a) * p.col.rgb;
+    if (useTex.x > 0.5) c *= cloudTex.Sample(cloudSampler, p.wxy * combined.z + combined.xy).rgb;
+    if (useTex.y > 0.5) c *= noiseTex.Sample(noiseSampler, p.wxy * combined.z).rgb;
+    return float4(c, 1.0);
 }
 // Terrain combiner: rgb = tex * diffuse; alpha only participates in the blend pass.
 float4 PSTerrain(PW p) : SV_TARGET {
@@ -213,7 +231,8 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11Texture2D> depthTexture;
     ComPtr<ID3D11DepthStencilView> dsv;
     ComPtr<ID3D11VertexShader> worldVS;
-    ComPtr<ID3D11PixelShader> terrainPS;
+    ComPtr<ID3D11PixelShader> terrainPS, terrainCombinedPS;
+    ComPtr<ID3D11SamplerState> cloudSampler, noiseSampler;
     ComPtr<ID3D11InputLayout> worldLayout;
     ComPtr<ID3D11Buffer> worldCB;
     ComPtr<ID3D11RasterizerState> worldRaster;
@@ -255,13 +274,27 @@ struct D3D11Backend::Impl {
         Check(device->CreateVertexShader(vsCode->GetBufferPointer(), vsCode->GetBufferSize(), nullptr, &worldVS), "Create world VS");
         auto psCode = CompileWorld("PSTerrain", "ps_4_0");
         Check(device->CreatePixelShader(psCode->GetBufferPointer(), psCode->GetBufferSize(), nullptr, &terrainPS), "Create terrain PS");
+        auto combinedCode = CompileWorld("PSTerrainCombined", "ps_4_0");
+        Check(device->CreatePixelShader(combinedCode->GetBufferPointer(), combinedCode->GetBufferSize(), nullptr, &terrainCombinedPS),
+              "Create combined terrain PS");
+        {
+            // Legacy stage states: cloud = bilinear, noise = min point / mag linear; both wrap,
+            // no mip filtering (D3DTEXF_NONE default on stages 2/3).
+            D3D11_SAMPLER_DESC s{};
+            s.AddressU = s.AddressV = s.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+            s.ComparisonFunc = D3D11_COMPARISON_NEVER; s.MaxAnisotropy = 1; s.MinLOD = 0; s.MaxLOD = 0;
+            s.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+            Check(device->CreateSamplerState(&s, &cloudSampler), "Create cloud sampler");
+            s.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+            Check(device->CreateSamplerState(&s, &noiseSampler), "Create noise sampler");
+        }
         const D3D11_INPUT_ELEMENT_DESC e[] = {
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0}};
         Check(device->CreateInputLayout(e, 4, vsCode->GetBufferPointer(), vsCode->GetBufferSize(), &worldLayout), "Create world layout");
-        D3D11_BUFFER_DESC cb{}; cb.ByteWidth = 80; cb.Usage = D3D11_USAGE_DEFAULT; cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_BUFFER_DESC cb{}; cb.ByteWidth = 176; cb.Usage = D3D11_USAGE_DEFAULT; cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         Check(device->CreateBuffer(&cb, nullptr, &worldCB), "Create world constants");
         // Legacy default D3DCULL_CW (shader.cpp _PolygonCullMode): clockwise triangles are
         // culled, counter-clockwise (on screen) triangles are front faces. X64.25 run
@@ -677,10 +710,23 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     auto *g = dynamic_cast<GeoResidency *>(s.geometry);
     if (!impl->scene || !impl->dsv || !g || g->device.Get() != impl->device.Get() || s.index_count % 3 ||
         s.first_index > g->indexCount || s.index_count > g->indexCount - s.first_index) Unsupported();
-    if (s.material != WorldMaterial::TerrainBase && s.material != WorldMaterial::TerrainBlend) Unsupported();
+    if (s.material != WorldMaterial::TerrainBase && s.material != WorldMaterial::TerrainBlend &&
+        s.material != WorldMaterial::TerrainCombined) Unsupported();
     if (!s.texture) Unsupported();
     auto *texture = dynamic_cast<Residency *>(s.texture);
     if (!texture || texture->device.Get() != impl->device.Get()) Unsupported();
+    Residency *cloud = nullptr, *noise = nullptr;
+    if (s.material == WorldMaterial::TerrainCombined) {
+        if (s.cloud) {
+            cloud = dynamic_cast<Residency *>(s.cloud);
+            if (!cloud || cloud->device.Get() != impl->device.Get()) Unsupported();
+        }
+        if (s.noise) {
+            noise = dynamic_cast<Residency *>(s.noise);
+            if (!noise || noise->device.Get() != impl->device.Get()) Unsupported();
+        }
+        if (!std::isfinite(s.texgen_scale) || !std::isfinite(s.cloud_offset[0]) || !std::isfinite(s.cloud_offset[1])) Unsupported();
+    }
     for (int i = 0; i < 16; ++i)
         if (!std::isfinite(s.world[i]) || !std::isfinite(s.view[i]) || !std::isfinite(s.projection[i])) Unsupported();
     impl->EnsureWorld();
@@ -689,11 +735,15 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     float wvp[16];
     Multiply(s.world, s.view, wvp);
     Multiply(wvp, s.projection, wvp);
-    float constants[20];
+    float constants[44] = {};
     std::memcpy(constants, wvp, sizeof(wvp));
     constants[16] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // UV set
     constants[17] = s.material == WorldMaterial::TerrainBlend ? 1.0f : 0.0f; // use texture/diffuse alpha
-    constants[18] = constants[19] = 0.0f;
+    std::memcpy(constants + 20, s.world, sizeof(s.world));
+    if (s.material == WorldMaterial::TerrainCombined) {
+        constants[36] = s.cloud_offset[0]; constants[37] = s.cloud_offset[1]; constants[38] = s.texgen_scale;
+        constants[40] = cloud ? 1.0f : 0.0f; constants[41] = noise ? 1.0f : 0.0f;
+    }
     impl->context->UpdateSubresource(impl->worldCB.Get(), 0, nullptr, constants, 0, 0);
 
     const unsigned samplerKey = (s.linear ? 1u : 0u) | (s.mip_linear ? 2u : 0u) | (s.clamp ? 4u : 0u);
@@ -710,7 +760,7 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     auto *vb = g->vertices.Get(); auto *cb = impl->worldCB.Get(); auto *rtv = impl->rtv.Get();
     auto *srv = texture->view.Get(); auto *smp = sampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, impl->dsv.Get());
-    impl->context->OMSetBlendState(s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get(),
+    impl->context->OMSetBlendState(s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get(), // Base/Combined opaque
                                    nullptr, 0xffffffff);
     impl->context->OMSetDepthStencilState(s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get(), 0);
     impl->context->RSSetState(impl->worldRaster.Get());
@@ -720,10 +770,13 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     impl->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     impl->context->VSSetShader(impl->worldVS.Get(), nullptr, 0);
     impl->context->VSSetConstantBuffers(0, 1, &cb);
-    impl->context->PSSetShader(impl->terrainPS.Get(), nullptr, 0);
+    impl->context->PSSetShader(s.material == WorldMaterial::TerrainCombined ? impl->terrainCombinedPS.Get()
+                                                                           : impl->terrainPS.Get(), nullptr, 0);
     impl->context->PSSetConstantBuffers(0, 1, &cb);
-    impl->context->PSSetShaderResources(0, 1, &srv);
-    impl->context->PSSetSamplers(0, 1, &smp);
+    ID3D11ShaderResourceView *views[3] = {srv, cloud ? cloud->view.Get() : nullptr, noise ? noise->view.Get() : nullptr};
+    ID3D11SamplerState *samplers[3] = {smp, impl->cloudSampler.Get(), impl->noiseSampler.Get()};
+    impl->context->PSSetShaderResources(0, 3, views);
+    impl->context->PSSetSamplers(0, 3, samplers);
     impl->context->DrawIndexed(s.index_count, s.first_index, 0);
     ++impl->draws;
     // The Render2D path binds its own pipeline per draw; leave no stale depth state.

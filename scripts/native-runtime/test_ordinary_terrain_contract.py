@@ -103,7 +103,8 @@ class OrdinaryTerrainContract(unittest.TestCase):
         heightmap = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp")
         body = heightmap.split("Int HeightMapRenderObjClass::renderNative(CameraClass &camera)", 1)[1].split(
             "// HeightMapRenderObjClass::Render", 1)[0]
-        for term in ("WorldMaterial::TerrainBase", "WorldMaterial::TerrainBlend", "Create_Mipped_Rgba8_Residency",
+        for term in ("WorldMaterial::TerrainCombined", "TSCloudMed.tga", "TSNoiseUrb.tga", "m_useLightMap", "useCloud()",
+                     "63.0f * MAP_XY_FACTOR / 2.0f", "-0.02f", "Create_Mipped_Rgba8_Residency",
                      "Create_Geometry_Residency", "Update_Geometry_Vertices", "Submit_World",
                      "requires CPU-backed legacy buffers", "requires the D3D11 backend with a depth buffer"):
             self.assertIn(term, body)
@@ -119,9 +120,11 @@ class OrdinaryTerrainContract(unittest.TestCase):
     def test_launcher_requires_terrain_evidence(self):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         for term in ("-nativeOrdinaryTerrain", "Get-NativeOrdinaryTerrainMode", "Test-NativeOrdinaryTerrainEvidence",
-                     "Terrain draws are not exactly base+blend per uploaded tile",
+                     "Terrain draws are not exactly one combined draw per uploaded tile",
+                     "No terrain geometry updates (tile_updates=0)", "Camera exercise did not issue exactly six moves",
+                     "Terrain updates did not increase across the camera steps",
                      "Missing first terrain frame with one atlas upload",
-                     "Too few terrain frames/draws or no residency uploads"):
+                     "Too few terrain frames or no residency uploads"):
             self.assertIn(term, common)
         launch = read("scripts/native-runtime/Invoke-NativeOrdinaryTerrain.ps1")
         for term in ("-RunReviewedOrdinaryTerrain", "$exit -eq 0", "$shutdownBytes -eq 0", "$dumps.Count -eq 0",

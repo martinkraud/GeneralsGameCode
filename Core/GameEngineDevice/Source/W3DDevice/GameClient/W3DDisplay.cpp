@@ -1814,6 +1814,8 @@ void W3DDisplay::update()
 		TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap() &&
 		TheTerrainRenderObject)
 	{
+		// Cloud scrolling reads the logic frame time exactly like the non-headless update.
+		WW3D::Update_Logic_Frame_Time(TheFramePacer->getLogicTimeStepMilliseconds());
 		updateViews();
 		return;
 	}

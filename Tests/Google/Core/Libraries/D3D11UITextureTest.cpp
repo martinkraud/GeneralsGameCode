@@ -582,6 +582,83 @@ TEST(WorldTest, TerrainTileThroughLegacyCameraAndProjectionIsVisible)
     EXPECT_GT(px[center] | px[center + 1] | px[center + 2], 0);
 }
 
+// X64.26: single-pass retail terrain combiner (terrain.pso / terrainnoise.pso / terrainnoise2.pso).
+namespace {
+std::unique_ptr<Texture2DResidency> GrayTexture(D3D11Backend &backend, unsigned left, unsigned right)
+{
+    UITextureContent content(new Texture2DCPUContent(2, 1, WW3D_FORMAT_A8R8G8B8, 8));
+    int pitch; auto *p = static_cast<unsigned char *>(content->Lock(&pitch));
+    const unsigned char texels[8] = {static_cast<unsigned char>(left), static_cast<unsigned char>(left), static_cast<unsigned char>(left), 255,
+                                     static_cast<unsigned char>(right), static_cast<unsigned char>(right), static_cast<unsigned char>(right), 255};
+    std::memcpy(p, texels, 8); content->Unlock();
+    return std::unique_ptr<Texture2DResidency>(backend.Create_Content_Residency(*content));
+}
+}
+
+TEST(WorldTest, CombinedTerrainMatchesRetailPixelShaderMath)
+{
+    WorldFixture f;
+    // uv0 -> left texel (red), uv1 -> right texel (blue); diffuse (200,100,50) alpha 128.
+    auto content = WorldFixture::Quad(0.5f, Argb(128, 200, 100, 50), 0.25f, 0.5f, 0.75f, 0.5f);
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(content));
+    auto sub = f.Submission(g.get(), WorldMaterial::TerrainCombined, true);
+    auto px = f.Frame({sub});
+    const float a = 128.0f / 255.0f;
+    // lrp(a, blue, red) = red*(1-a) + blue*a, then * diffuse.
+    EXPECT_NEAR(px[0], 255.0f * (1 - a) * 200.0f / 255.0f, 2.0f);   // R
+    EXPECT_NEAR(px[1], 0.0f, 1.5f);                                   // G
+    EXPECT_NEAR(px[2], 255.0f * a * 50.0f / 255.0f, 2.0f);          // B
+    // Equals the two-pass fixed-function path (pass 0 opaque + pass 1 alpha-blend).
+    auto two = f.Frame({f.Submission(g.get(), WorldMaterial::TerrainBase, true),
+                        f.Submission(g.get(), WorldMaterial::TerrainBlend, false)});
+    for (int i = 0; i < 3; ++i) EXPECT_NEAR(px[i], two[i], 2.0f) << i;
+}
+
+TEST(WorldTest, CombinedTerrainCloudAndNoiseMultiplyAndAbsentFactorsAreOne)
+{
+    WorldFixture f;
+    auto content = WorldFixture::Quad(0.5f, Argb(0, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f); // a=0 -> uv0 red
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(content));
+    auto cloud = GrayTexture(*f.backend, 128, 128);
+    auto noise = GrayTexture(*f.backend, 64, 64);
+    auto sub = f.Submission(g.get(), WorldMaterial::TerrainCombined, true);
+    sub.texgen_scale = 1.0f / 315.0f;
+    auto base = f.Frame({sub});
+    EXPECT_EQ(base[0], 255);
+    sub.cloud = cloud.get();
+    auto withCloud = f.Frame({sub});
+    EXPECT_NEAR(withCloud[0], 255.0f * 128.0f / 255.0f, 2.0f);
+    sub.noise = noise.get();
+    auto both = f.Frame({sub});
+    EXPECT_NEAR(both[0], 255.0f * (128.0f / 255.0f) * (64.0f / 255.0f), 2.0f);
+    sub.cloud = nullptr;
+    auto noiseOnly = f.Frame({sub});
+    EXPECT_NEAR(noiseOnly[0], 255.0f * 64.0f / 255.0f, 2.0f);
+}
+
+TEST(WorldTest, CombinedTerrainTexgenUsesWorldXYScaleAndCloudOffsetWraps)
+{
+    WorldFixture f;
+    auto content = WorldFixture::Quad(0.5f, Argb(0, 255, 255, 255), 0.25f, 0.5f, 0.25f, 0.5f);
+    std::unique_ptr<GeometryResidency> g(f.backend->Create_Geometry_Residency(content));
+    auto cloud = GrayTexture(*f.backend, 255, 0);   // left texel white, right texel black
+    auto sub = f.Submission(g.get(), WorldMaterial::TerrainCombined, true);
+    sub.cloud = cloud.get();
+    sub.texgen_scale = 0.25f;                      // u = worldX * 0.25 + offset
+    sub.cloud_offset[0] = 0.5f; sub.cloud_offset[1] = 0.0f;
+    auto px = f.Frame({sub});
+    // World x in [-1,1] -> u in [0.25,0.75]: left screen half samples the white texel.
+    EXPECT_GT(px[0 * 4], px[7 * 4] + 150);
+    // A whole-texture scroll (offset 1.0) wraps to the identical image.
+    sub.cloud_offset[0] = 1.5f;
+    auto wrapped = f.Frame({sub});
+    for (unsigned i = 0; i < 64 * 4; ++i) EXPECT_EQ(px[i], wrapped[i]) << i;
+    // Scrolling by half a texture swaps the halves.
+    sub.cloud_offset[0] = 1.0f;
+    auto swapped = f.Frame({sub});
+    EXPECT_GT(swapped[7 * 4], swapped[0 * 4] + 150);
+}
+
 TEST(WorldTest, ResidencyCountingAndExplicitUnsupportedCases)
 {
     const unsigned baseline = D3D11Backend::Live_Residencies();

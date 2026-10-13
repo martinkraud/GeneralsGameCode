@@ -92,8 +92,10 @@ public:
 	Int renderNative(CameraClass &camera);
 	/// Releases native residencies (must precede backend release). Idempotent.
 	void releaseNativeResources();
-	struct NativeTerrainStats { unsigned frames, draws, tileUploads, tileUpdates, atlasUploads; };
+	struct NativeTerrainStats { unsigned frames, draws, tileUploads, tileUpdates, atlasUploads, cloudFrames, noiseFrames, macroLoads; };
 	NativeTerrainStats nativeStats() const;
+	/// Cloud-shadow pass selection used by the native pass (same predicate as Render()).
+	static bool nativeUseCloud() { return useCloud(); }
 #endif
 
 protected:

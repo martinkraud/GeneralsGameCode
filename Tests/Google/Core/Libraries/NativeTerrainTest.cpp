@@ -102,6 +102,47 @@ TEST(WorldTransformTest, LegacyColumnVectorChainEqualsRowVectorChain)
     EXPECT_EQ(w[3], 0.0f); EXPECT_EQ(w[7], 0.0f); EXPECT_EQ(w[11], 0.0f); EXPECT_EQ(w[15], 1.0f);
 }
 
+// X64.26: the legacy cloud/noise texgen (D3DTSS_TCI_CAMERASPACEPOSITION through
+// updateNoise1: inverse(view) * scale(STRETCH) * translate(offset)) must equal the world-space
+// XY scale+offset the native combiner computes, independent of the camera.
+TEST(WorldTransformTest, LegacyCameraSpaceTexgenEqualsWorldXYScaleAndOffset)
+{
+    auto mul = [](const float *a, const float *b, float *out) {   // row-vector 4x4 product
+        float r[16];
+        for (int i = 0; i < 4; ++i) for (int j = 0; j < 4; ++j) {
+            float v = 0; for (int k = 0; k < 4; ++k) v += a[i * 4 + k] * b[k * 4 + j]; r[i * 4 + j] = v;
+        }
+        std::memcpy(out, r, sizeof(r));
+    };
+    // An arbitrary rigid view (rotation about x then z, translation) and its exact inverse.
+    const float cz = 0.8f, sz = 0.6f, cx = 0.6f, sx = 0.8f;
+    float rz[16] = {cz, sz, 0, 0, -sz, cz, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    float rx[16] = {1, 0, 0, 0, 0, cx, sx, 0, 0, -sx, cx, 0, 0, 0, 0, 1};
+    float tr[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -300, 120, -900, 1};
+    float view[16], inv[16], tmp[16];
+    mul(rz, rx, tmp); mul(tmp, tr, view);
+    // inverse = (T^-1 * Rx^T * Rz^T) in row-vector order: v * T * Rx * Rz -> inverse = Rz^T * Rx^T * T^-1
+    float rzt[16] = {cz, -sz, 0, 0, sz, cz, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    float rxt[16] = {1, 0, 0, 0, 0, cx, -sx, 0, 0, sx, cx, 0, 0, 0, 0, 1};
+    float tri[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 300, -120, 900, 1};
+    mul(tri, rxt, tmp); mul(tmp, rzt, inv);
+    float check[16]; mul(view, inv, check);
+    for (int i = 0; i < 16; ++i) EXPECT_NEAR(check[i], (i % 5 == 0) ? 1.0f : 0.0f, 1e-4f);
+
+    const float stretch = 1.0f / (63.0f * 10.0f / 2.0f), xo = 0.37f, yo = -0.21f;
+    float scale[16] = {stretch, 0, 0, 0, 0, stretch, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    float offset[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, xo, yo, 0, 1};
+    float texture[16];
+    mul(inv, scale, tmp); mul(tmp, offset, texture);       // legacy updateNoise1
+    const float world[4] = {1234.0f, 567.0f, 89.0f, 1.0f}; // vertex * World (terrain Transform)
+    float camera[4];                                        // D3DTSS_TCI_CAMERASPACEPOSITION: vertex*World*View
+    for (int c = 0; c < 4; ++c) camera[c] = world[0] * view[c] + world[1] * view[4 + c] + world[2] * view[8 + c] + world[3] * view[12 + c];
+    float uv[2];
+    for (int c = 0; c < 2; ++c) uv[c] = camera[0] * texture[c] + camera[1] * texture[4 + c] + camera[2] * texture[8 + c] + camera[3] * texture[12 + c];
+    EXPECT_NEAR(uv[0], world[0] * stretch + xo, 1e-4f);
+    EXPECT_NEAR(uv[1], world[1] * stretch + yo, 1e-4f);
+}
+
 namespace {
 // Native presentation needs a real window and a hardware device; skipped otherwise.
 struct NativeScope {

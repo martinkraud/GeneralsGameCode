@@ -35,6 +35,12 @@
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/BaseHeightMap.h"
 #include "WW3D2/camera.h"
+#include "GameClient/ControlBar.h"
+#include "GameClient/GameWindow.h"
+#include "Common/Radar.h"
+#include "Common/NameKeyGenerator.h"
+#include "GameLogic/TerrainLogic.h"
+#include <vector>
 #include <memory>
 #include <stdexcept>
 
@@ -357,6 +363,80 @@ void DrainMenuStream(WindowTranslator &translator, MenuCounters &c, bool route) 
 namespace {
 unsigned g_terrainFrames = 0, g_terrainDraws = 0;
 HeightMapRenderObjClass::NativeTerrainStats g_terrainStats = {};
+// Camera exercise (X64.26): the game loop requests a probe after each scripted camera move; the
+// next terrain frame reads the target back before the UI is drawn and records the result.
+unsigned g_motionStepRequest = 0;
+unsigned g_uiProbesDone = 0;
+
+struct PixelStats { unsigned nonblack_pct = 0; unsigned char center[3] = {}; };
+
+PixelStats MeasurePixels(const std::vector<unsigned char> &pixels)
+{
+    PixelStats stats;
+    size_t lit = 0;
+    for (size_t i = 0; i + 3 < pixels.size(); i += 4)
+        if (pixels[i] | pixels[i + 1] | pixels[i + 2]) ++lit;
+    const size_t total = pixels.size() / 4;
+    stats.nonblack_pct = total ? static_cast<unsigned>(lit * 100 / total) : 0u;
+    const size_t c = (total / 2 + 400) * 4 < pixels.size() ? (total / 2 + 400) * 4 : 0;
+    if (pixels.size() >= 4) { stats.center[0] = pixels[c]; stats.center[1] = pixels[c + 1]; stats.center[2] = pixels[c + 2]; }
+    return stats;
+}
+
+// Evidence image next to the startup log (the isolated run directory). 32-bit BGRA top-down BMP
+// from the backend's RGBA readback; failures are reported, never fatal.
+bool WriteBmp(const char *name, const std::vector<unsigned char> &rgba, unsigned width, unsigned height)
+{
+    if (rgba.size() != static_cast<size_t>(width) * height * 4) return false;
+    char path[MAX_PATH];
+    sprintf_s(path, "%s\\%s", StartupDiagnostics::state().root, name);
+    HANDLE file = CreateFileA(path, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    unsigned char header[54] = {'B', 'M'};
+    const unsigned dataSize = width * height * 4, fileSize = 54 + dataSize;
+    std::memcpy(header + 2, &fileSize, 4);
+    const unsigned offset = 54, dib = 40, planes = 1, bits = 32;
+    std::memcpy(header + 10, &offset, 4); std::memcpy(header + 14, &dib, 4);
+    std::memcpy(header + 18, &width, 4);
+    const int topDown = -static_cast<int>(height);
+    std::memcpy(header + 22, &topDown, 4);
+    std::memcpy(header + 26, &planes, 2); std::memcpy(header + 28, &bits, 2);
+    std::memcpy(header + 34, &dataSize, 4);
+    std::vector<unsigned char> bgra(rgba.size());
+    for (size_t i = 0; i + 3 < rgba.size(); i += 4) {
+        bgra[i] = rgba[i + 2]; bgra[i + 1] = rgba[i + 1]; bgra[i + 2] = rgba[i]; bgra[i + 3] = 255;
+    }
+    DWORD written = 0;
+    const bool ok = WriteFile(file, header, 54, &written, nullptr) && written == 54 &&
+        WriteFile(file, bgra.data(), static_cast<DWORD>(bgra.size()), &written, nullptr) && written == bgra.size();
+    CloseHandle(file);
+    return ok;
+}
+
+// Bounded Control Bar / HUD review facts (UI investigation, not a world feature).
+void LogControlBarFacts()
+{
+    char detail[320];
+    static const char *const names[] = {"ControlBar.wnd:ControlBarParent", "ControlBar.wnd:BackgroundMarker",
+                                        "ControlBar.wnd:LeftHUD", "ControlBar.wnd:RightHUD"};
+    for (const char *name : names) {
+        GameWindow *window = TheWindowManager ?
+            TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey(name)) : nullptr;
+        if (!window) { sprintf_s(detail, "%s absent", name); }
+        else {
+            ICoord2D pos = {0, 0}, size = {0, 0};
+            window->winGetScreenPosition(&pos.x, &pos.y);
+            window->winGetSize(&size.x, &size.y);
+            sprintf_s(detail, "%s hidden=%d pos=%d,%d size=%dx%d", name, window->winIsHidden() ? 1 : 0, pos.x, pos.y, size.x, size.y);
+        }
+        StartupDiagnostics::checkpoint("ui_probe_window", "observed", detail);
+    }
+    sprintf_s(detail, "radar=%s control_bar=%d viewport_scale=%.2f view_height=%d display_height=%d",
+        dynamic_cast<RadarDummy *>(TheRadar) ? "dummy" : (TheRadar ? "real" : "none"), TheControlBar ? 1 : 0,
+        TheGlobalData->m_viewportHeightScale, TheTacticalView ? TheTacticalView->getHeight() : -1,
+        TheDisplay ? static_cast<int>(TheDisplay->getHeight()) : -1);
+    StartupDiagnostics::checkpoint("ui_probe_facts", "observed", detail);
+}
 }
 
 // Terrain-only native world pass (profile ordinaryTerrain, in game, map loaded). Returns the
@@ -391,30 +471,42 @@ void W3DDisplay::drawOrdinaryMenuFrame()
                 char detail[200];
                 const HeightMapRenderObjClass::NativeTerrainStats stats =
                     static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
-                sprintf_s(detail, "draws=%d atlas_uploads=%u tile_uploads=%u (terrain base+blend; UI follows)",
-                    terrainDraws, stats.atlasUploads, stats.tileUploads);
+                sprintf_s(detail, "draws=%d atlas_uploads=%u tile_uploads=%u use_cloud=%d use_noise=%d (terrain combined single pass; UI follows)",
+                    terrainDraws, stats.atlasUploads, stats.tileUploads,
+                    HeightMapRenderObjClass::nativeUseCloud() ? 1 : 0, TheGlobalData->m_useLightMap ? 1 : 0);
                 StartupDiagnostics::checkpoint("terrain_first_frame", "complete", detail);
             }
-            if (g_terrainFrames == 29) {
-                // One-time evidence: what the terrain pass actually left in the target before the
-                // UI is drawn (separates "nothing submitted/visible" from "covered by the UI").
-                char detail[256];
+            const bool firstProbe = (g_terrainFrames == 29);
+            if (firstProbe || g_motionStepRequest) {
+                // One-time / per-camera-step evidence: what the terrain pass left in the target
+                // before the UI is drawn (separates "not visible" from "covered by the UI").
+                char detail[320];
                 if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
                     const std::vector<unsigned char> pixels = backend->Readback_RGBA8();
-                    size_t lit = 0;
-                    for (size_t i = 0; i + 3 < pixels.size(); i += 4)
-                        if (pixels[i] | pixels[i + 1] | pixels[i + 2]) ++lit;
-                    const size_t total = pixels.size() / 4;
-                    const size_t c = (total / 2 + 400) * 4 < pixels.size() ? (total / 2 + 400) * 4 : 0;
+                    const PixelStats stats = MeasurePixels(pixels);
+                    const HeightMapRenderObjClass::NativeTerrainStats ts =
+                        static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
                     Vector3 cam(0, 0, 0), fwd(0, 0, 0);
                     if (auto *view = dynamic_cast<W3DView *>(TheTacticalView)) {
                         cam = view->get3DCamera()->Get_Position();
                         fwd = view->get3DCamera()->Get_Forward_Dir();
                     }
-                    sprintf_s(detail, "nonblack_pct=%u center_rgb=%02X%02X%02X cam=(%.0f,%.0f,%.0f) fwd=(%.2f,%.2f,%.2f)",
-                        total ? static_cast<unsigned>(lit * 100 / total) : 0u, pixels[c], pixels[c + 1], pixels[c + 2],
-                        cam.X, cam.Y, cam.Z, fwd.X, fwd.Y, fwd.Z);
-                    StartupDiagnostics::checkpoint("terrain_probe", "observed", detail);
+                    if (firstProbe) {
+                        sprintf_s(detail, "nonblack_pct=%u center_rgb=%02X%02X%02X cam=(%.0f,%.0f,%.0f) fwd=(%.2f,%.2f,%.2f)",
+                            stats.nonblack_pct, stats.center[0], stats.center[1], stats.center[2],
+                            cam.X, cam.Y, cam.Z, fwd.X, fwd.Y, fwd.Z);
+                        StartupDiagnostics::checkpoint("terrain_probe", "observed", detail);
+                        if (!WriteBmp("terrain_world_frame.bmp", pixels, 800, 600))
+                            StartupDiagnostics::checkpoint("terrain_image", "observed", "world frame image not written");
+                    }
+                    if (g_motionStepRequest) {
+                        const Coord3D pivot = TheTacticalView ? TheTacticalView->getPosition() : Coord3D{0, 0, 0};
+                        sprintf_s(detail, "step=%u pivot=(%.0f,%.0f) nonblack_pct=%u tile_updates=%u tile_uploads=%u cloud_frames=%u noise_frames=%u cam=(%.0f,%.0f,%.0f)",
+                            g_motionStepRequest, pivot.x, pivot.y, stats.nonblack_pct, ts.tileUpdates, ts.tileUploads,
+                            ts.cloudFrames, ts.noiseFrames, cam.X, cam.Y, cam.Z);
+                        StartupDiagnostics::checkpoint("terrain_motion", "observed", detail);
+                        g_motionStepRequest = 0;
+                    }
                 }
             }
             ++g_terrainFrames;
@@ -423,6 +515,31 @@ void W3DDisplay::drawOrdinaryMenuFrame()
         }
         if (TheWindowManager) TheWindowManager->winRepaint();
         if (TheMouse) TheMouse->DRAW();
+        if (StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 60) {
+            // Bounded Control Bar review: composed frame after the UI (bottom 20% = outside the
+            // 0.80 world viewport) with per-third non-black statistics and an evidence image.
+            g_uiProbesDone = 1;
+            if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+                const std::vector<unsigned char> pixels = backend->Readback_RGBA8();
+                unsigned lit[3] = {0, 0, 0}, total[3] = {0, 0, 0}, all = 0;
+                for (unsigned y = 480; y < 600; ++y)
+                    for (unsigned x = 0; x < 800; ++x) {
+                        const size_t i = (static_cast<size_t>(y) * 800 + x) * 4;
+                        const unsigned part = x < 267 ? 0 : (x < 534 ? 1 : 2);
+                        ++total[part];
+                        if (pixels[i] | pixels[i + 1] | pixels[i + 2]) { ++lit[part]; ++all; }
+                    }
+                const PixelStats whole = MeasurePixels(pixels);
+                char detail[256];
+                sprintf_s(detail, "whole_nonblack_pct=%u strip_nonblack_pct=%u strip_left=%u strip_mid=%u strip_right=%u",
+                    whole.nonblack_pct, all * 100 / (total[0] + total[1] + total[2]),
+                    lit[0] * 100 / total[0], lit[1] * 100 / total[1], lit[2] * 100 / total[2]);
+                StartupDiagnostics::checkpoint("ui_probe", "observed", detail);
+                if (!WriteBmp("terrain_ui_frame.bmp", pixels, 800, 600))
+                    StartupDiagnostics::checkpoint("terrain_image", "observed", "ui frame image not written");
+                LogControlBarFacts();
+            }
+        }
     } catch (...) {
         try { WW3D::End_Render(false); } catch (...) {}
         throw;
@@ -576,6 +693,40 @@ Bool GamePushGuard(const AsciiString &filename) {
     RecordBoundary("shell_push", filename.str());
     return FALSE;
 }
+
+// Bounded scripted camera exercise (X64.26): six deterministic look-at moves relative to the
+// start pivot, each large enough (700 world units, > half the 129-cell draw window of 1290) to
+// re-center the terrain draw window and rewrite vertex-buffer tiles through the ordinary
+// updateCenter/updateBlock path; a probe is requested 90 logic frames after every move.
+void DriveTerrainExercise(unsigned relativeFrame)
+{
+    static const unsigned kMoveAt[] = {120, 330, 540, 750, 960, 1170};
+    static const float kDx[] = {700, 700, 0, -700, -700, 0};
+    static const float kDy[] = {0, 700, 700, 700, 0, -700};
+    static Coord3D origin = {0, 0, 0};
+    static unsigned nextMove = 0, nextProbe = 0;
+    for (; nextMove < 6 && relativeFrame >= kMoveAt[nextMove]; ++nextMove) {
+        if (nextMove == 0) origin = TheTacticalView->getPosition();
+        Region3D extent = {};
+        TheTerrainLogic->getExtent(&extent);
+        Coord3D target = origin;
+        target.x += kDx[nextMove]; target.y += kDy[nextMove];
+        const float margin = 300.0f;
+        if (target.x < extent.lo.x + margin) target.x = extent.lo.x + margin;
+        if (target.y < extent.lo.y + margin) target.y = extent.lo.y + margin;
+        if (target.x > extent.hi.x - margin) target.x = extent.hi.x - margin;
+        if (target.y > extent.hi.y - margin) target.y = extent.hi.y - margin;
+        char detail[160];
+        sprintf_s(detail, "step=%u logic_frame=%u target=(%.0f,%.0f) origin=(%.0f,%.0f)", nextMove + 1, relativeFrame,
+            target.x, target.y, origin.x, origin.y);
+        StartupDiagnostics::checkpoint("terrain_move", "observed", detail);
+        TheTacticalView->lookAt(&target);
+    }
+    if (nextProbe < nextMove && relativeFrame >= kMoveAt[nextProbe] + 90 && g_motionStepRequest == 0) {
+        g_motionStepRequest = nextProbe + 1;
+        ++nextProbe;
+    }
+}
 } // namespace
 #endif
 
@@ -653,6 +804,8 @@ int W3DDisplay::runOrdinaryGameHost()
                     exitReason = "frame_bound";
                 }
             }
+            if (StartupDiagnostics::ordinaryTerrain() && inGame && !exiting && TheTacticalView && TheTerrainLogic)
+                DriveTerrainExercise(TheGameLogic->getFrame() - startFrame);
             if (exiting && ++exitingUpdates > 600)
                 throw std::runtime_error("Game did not exit after exitGame()");
             if (exiting && !TheGameLogic->isInGame()) {
@@ -683,9 +836,9 @@ int W3DDisplay::runOrdinaryGameHost()
     sprintf_s(detail, "calls=%u (first receipts bounded; verified every call)", nativeFloatingPointModeCalls());
     StartupDiagnostics::checkpoint("FP_summary", "observed", detail);
     if (StartupDiagnostics::ordinaryTerrain()) {
-        sprintf_s(detail, "frames=%u draws=%u atlas_uploads=%u tile_uploads=%u tile_updates=%u",
+        sprintf_s(detail, "frames=%u draws=%u atlas_uploads=%u tile_uploads=%u tile_updates=%u cloud_frames=%u noise_frames=%u macro_loads=%u",
             g_terrainFrames, g_terrainDraws, g_terrainStats.atlasUploads, g_terrainStats.tileUploads,
-            g_terrainStats.tileUpdates);
+            g_terrainStats.tileUpdates, g_terrainStats.cloudFrames, g_terrainStats.noiseFrames, g_terrainStats.macroLoads);
         StartupDiagnostics::checkpoint("terrain_summary", g_terrainFrames ? "complete" : "fail", detail, g_terrainFrames ? 0 : 1);
         if (!g_terrainFrames) result = 1;
     }

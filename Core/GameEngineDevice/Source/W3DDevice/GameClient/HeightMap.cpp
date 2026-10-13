@@ -66,6 +66,10 @@
 #include <WW3D2/ww3d.h>
 #include <WW3D2/Backend/D3D11Backend.h>
 #include <WW3D2/WorldSubmission.h>
+#include <WW3D2/UITextureContent.h>
+#include <WWLib/ffactory.h>
+#include <WWLib/WWFILE.h>
+#include <string>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -1901,7 +1905,7 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 
 #if defined(_WIN64)
 //=============================================================================
-// Native terrain world pass (X64.25 profile). Purpose-built replacement for the two
+// Native terrain world pass (X64.25/X64.26 profile). Purpose-built replacement for the two
 // ST_TERRAIN_BASE fixed-function passes of Render(): pass 0 opaque base atlas sample
 // modulated by the prelit vertex diffuse, pass 1 the alpha-blended second atlas sample
 // (uv set 1). The vertex content is the legacy updateVB output (CPU-backed buffers);
@@ -1921,8 +1925,38 @@ struct HeightMapRenderObjClass::NativeTerrain {
 		unsigned version = 0;
 	};
 	std::vector<Tile> tiles;
+	// Retail terrain pixel-shader factors: cloud shadows (scrolling) and the macro noise/lightmap.
+	std::unique_ptr<Texture2DResidency> cloud, noise;
+	std::string noiseName;
+	float cloudX = 0.0f, cloudY = 0.0f;
 	NativeTerrainStats stats = {};
 };
+
+// Loads a terrain macro texture (TSCloudMed / macro noise) through the engine file factory with
+// the same dds-first rule as the legacy texture loader; single base level (legacy stages 2/3 sample
+// with no mip filter). Missing or unsupported content is an explicit failure, never a silent skip.
+static Texture2DResidency *LoadTerrainMacroTexture(D3D11Backend &backend, const char *name)
+{
+	UITexturePolicy policy;
+	policy.allow_compression = true;
+	policy.texture_bits = 32;
+	UITextureResult result = Load_UI_Texture_Content(name, policy, [](const std::string &file) {
+		UITextureBytes bytes;
+		if (!_TheFileFactory) { bytes.status = UITextureStatus::Invalid; return bytes; }
+		file_auto_ptr stream(_TheFileFactory, file.c_str());
+		if (!stream || !stream->Is_Available()) return bytes;
+		bytes.status = UITextureStatus::Invalid;
+		if (!stream->Open()) return bytes;
+		const int size = stream->Size();
+		if (size <= 0 || size > 64 * 1024 * 1024) return bytes;
+		bytes.bytes.resize(size);
+		if (stream->Read(bytes.bytes.data(), size) == size) bytes.status = UITextureStatus::Ready;
+		return bytes;
+	});
+	if (result.status != UITextureStatus::Ready || !result.content)
+		throw std::runtime_error(std::string("Terrain macro texture unavailable or unsupported: ") + name);
+	return backend.Create_Content_Residency(*result.content);
+}
 
 void HeightMapRenderObjClass::releaseNativeResources()
 {
@@ -2035,16 +2069,46 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 	submission.first_index = 0;
 	submission.index_count = indexCount;
 
-	Int draws = 0;
-	for (int pass = 0; pass < 2; ++pass) {
-		submission.material = pass == 0 ? WorldMaterial::TerrainBase : WorldMaterial::TerrainBlend;
-		submission.depth_write = (pass == 0);
-		for (Int i = 0; i < m_numVertexBufferTiles; ++i) {
-			submission.geometry = n.tiles[i].geometry.get();
-			backend->Submit_World(submission);
-			++draws;
+	// Same selection as Render(): cloud shadows (not at night) and the macro noise/lightmap are
+	// multiplied onto the base+blend result. The retail pixel shaders do this in one pass.
+	const bool doCloud = useCloud();
+	const bool doNoise = TheGlobalData->m_useLightMap;
+	if (doCloud) {
+		if (!n.cloud) {
+			n.cloud.reset(LoadTerrainMacroTexture(*backend, "TSCloudMed.tga"));
+			++n.stats.macroLoads;
+		}
+		// TerrainShader2Stage::init / updateCloud: slide -0.02 (x) and 1.5x that (y) per second.
+		const float seconds = WW3D::Get_Logic_Frame_Time_Seconds();
+		n.cloudX += -0.02f * seconds;
+		n.cloudY += 1.5f * -0.02f * seconds;
+		n.cloudX -= static_cast<float>(static_cast<Int>(n.cloudX));
+		n.cloudY -= static_cast<float>(static_cast<Int>(n.cloudY));
+	}
+	if (doNoise) {
+		const std::string wanted = m_macroTextureName.isEmpty() ? "TSNoiseUrb.tga" : m_macroTextureName.str();
+		if (!n.noise || n.noiseName != wanted) {
+			n.noise.reset(LoadTerrainMacroTexture(*backend, wanted.c_str()));
+			n.noiseName = wanted;
+			++n.stats.macroLoads;
 		}
 	}
+	submission.material = WorldMaterial::TerrainCombined;
+	submission.depth_write = true;
+	submission.cloud = doCloud ? n.cloud.get() : nullptr;
+	submission.noise = doNoise ? n.noise.get() : nullptr;
+	submission.cloud_offset[0] = n.cloudX;
+	submission.cloud_offset[1] = n.cloudY;
+	submission.texgen_scale = 1.0f / (63.0f * MAP_XY_FACTOR / 2.0f);	// STRETCH_FACTOR: 63/2 tiles
+
+	Int draws = 0;
+	for (Int i = 0; i < m_numVertexBufferTiles; ++i) {
+		submission.geometry = n.tiles[i].geometry.get();
+		backend->Submit_World(submission);
+		++draws;
+	}
+	if (doCloud) ++n.stats.cloudFrames;
+	if (doNoise) ++n.stats.noiseFrames;
 	++n.stats.frames;
 	n.stats.draws += draws;
 	return draws;

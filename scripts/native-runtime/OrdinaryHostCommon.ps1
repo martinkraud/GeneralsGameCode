@@ -341,22 +341,54 @@ function Test-NativeOrdinaryTerrainEvidence([string]$Log,[int]$ProcessId,$Receip
         }
     }
     if($completed['terrain_optin'].Detail -notmatch '^cpu_backed_geometry=1 depth_buffer=1 '){$errors.Add('Terrain opt-ins not recorded')}
-    if($completed['terrain_first_frame'].Detail -notmatch '^draws=(\d+) atlas_uploads=1 tile_uploads=(\d+) \(terrain base\+blend; UI follows\)$'){$errors.Add('Missing first terrain frame with one atlas upload')}
+    $tileCount=0;$useCloud=0;$useNoise=0
+    if($completed['terrain_first_frame'].Detail -notmatch '^draws=(\d+) atlas_uploads=1 tile_uploads=(\d+) use_cloud=([01]) use_noise=([01]) \(terrain combined single pass; UI follows\)$'){$errors.Add('Missing first terrain frame with one atlas upload')}
     else{
         $m=$Matches
         if($m[1].Length -gt 6 -or $m[2].Length -gt 6){$errors.Add('Terrain numeric overflow')}
-        elseif([int]$m[2] -lt 1 -or [int]$m[1] -ne 2*[int]$m[2]){$errors.Add('Terrain draws are not exactly base+blend per uploaded tile')}
+        elseif([int]$m[2] -lt 1 -or [int]$m[1] -ne [int]$m[2]){$errors.Add('Terrain draws are not exactly one combined draw per uploaded tile')}
+        else{$tileCount=[int]$m[2];$useCloud=[int]$m[3];$useNoise=[int]$m[4]}
     }
     $probe=@($rows|Where-Object{$_.Stage -eq 'terrain_probe' -and $_.Status -eq 'observed'})
     if($probe.Count -ne 1 -or $probe[0].Detail -notmatch '^nonblack_pct=(\d{1,3}) center_rgb='){$errors.Add('Missing terrain pixel probe')}
     elseif([int]$Matches[1] -lt 5){$errors.Add('Terrain pass left the frame black (probe)')}
-    if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+)$'){$errors.Add('Invalid terrain summary')}
+    if($completed['terrain_summary'].Detail -notmatch '^frames=(\d+) draws=(\d+) atlas_uploads=(\d+) tile_uploads=(\d+) tile_updates=(\d+) cloud_frames=(\d+) noise_frames=(\d+) macro_loads=(\d+)$'){$errors.Add('Invalid terrain summary')}
     else{
         $m=$Matches
-        $over=$false;foreach($i in 1..5){if($m[$i].Length -gt 9){$over=$true}}
+        $over=$false;foreach($i in 1..8){if($m[$i].Length -gt 9){$over=$true}}
         if($over){$errors.Add('Terrain summary numeric overflow')}
-        elseif([int]$m[1] -lt 30 -or [int]$m[2] -lt 2*[int]$m[1] -or [int]$m[3] -lt 1 -or [int]$m[4] -lt 1){$errors.Add('Too few terrain frames/draws or no residency uploads')}
+        else{
+            $frames=[int]$m[1]
+            if($frames -lt 30 -or [int]$m[3] -lt 1 -or [int]$m[4] -lt 1){$errors.Add('Too few terrain frames or no residency uploads')}
+            if($tileCount -gt 0 -and [int]$m[2] -ne $frames*$tileCount){$errors.Add('Terrain draws differ from frames x tiles')}
+            # X64.26: dynamic terrain must actually have been rewritten, and the macro passes must have run.
+            if([int]$m[5] -lt 1){$errors.Add('No terrain geometry updates (tile_updates=0)')}
+            if($useCloud -eq 1 -and [int]$m[6] -ne $frames){$errors.Add('Cloud pass did not run every terrain frame')}
+            if($useCloud -eq 0 -and [int]$m[6] -ne 0){$errors.Add('Cloud pass ran while disabled')}
+            if($useNoise -eq 1 -and [int]$m[7] -ne $frames){$errors.Add('Noise pass did not run every terrain frame')}
+            if($useNoise -eq 0 -and [int]$m[7] -ne 0){$errors.Add('Noise pass ran while disabled')}
+            if([int]$m[8] -ne ($useCloud+$useNoise)){$errors.Add('Unexpected macro texture load count')}
+        }
     }
+    # Scripted camera exercise: six moves, six probes, all frames non-black, geometry updated, pivot moved.
+    $moves=@($rows|Where-Object{$_.Stage -eq 'terrain_move' -and $_.Status -eq 'observed'})
+    $motions=@($rows|Where-Object{$_.Stage -eq 'terrain_motion' -and $_.Status -eq 'observed'})
+    if($moves.Count -ne 6){$errors.Add('Camera exercise did not issue exactly six moves')}
+    if($motions.Count -ne 6){$errors.Add('Camera exercise did not record exactly six motion probes')}
+    else{
+        $updates=@();$pivots=@{}
+        foreach($row in $motions){
+            if($row.Detail -notmatch '^step=(\d+) pivot=\((-?\d+),(-?\d+)\) nonblack_pct=(\d{1,3}) tile_updates=(\d+) tile_uploads=(\d+) cloud_frames=(\d+) noise_frames=(\d+) cam='){$errors.Add('Malformed motion probe');continue}
+            if([int]$Matches[4] -lt 5){$errors.Add("Motion step $($Matches[1]) left the frame black")}
+            $updates+=[int]$Matches[5];$pivots["$($Matches[2]),$($Matches[3])"]=1
+        }
+        $increases=0;for($i=1;$i -lt $updates.Count;$i++){if($updates[$i] -gt $updates[$i-1]){$increases++}}
+        if($updates.Count -eq 6 -and ($increases -lt 3 -or $updates[0] -lt 1)){$errors.Add('Terrain updates did not increase across the camera steps')}
+        if($pivots.Count -lt 4){$errors.Add('Camera pivot did not move to enough distinct positions')}
+    }
+    # Bounded Control Bar review receipts (informational; never fail the terrain gate on UI content).
+    $ui=@($rows|Where-Object{$_.Stage -eq 'ui_probe' -and $_.Status -eq 'observed'})
+    if($ui.Count -ne 1 -or $ui[0].Detail -notmatch '^whole_nonblack_pct=\d+ strip_nonblack_pct=\d+ strip_left=\d+ strip_mid=\d+ strip_right=\d+$'){$errors.Add('Missing Control Bar/UI probe receipt')}
     $armed=@(for($i=0;$i -lt $rows.Count;$i++){if($rows[$i].Stage -eq 'native_shutdown' -and $rows[$i].Status -eq 'armed' -and $rows[$i].Code -eq 0){$i}})
     $mini=@(Completions 'minidumper_shutdown')
     if($armed.Count -ne 1 -or $mini.Count -ne 1 -or $armed[0] -le $mini[0] -or $armed[0] -ge $rows.Count-1){$errors.Add('Missing/incorrect late observer boundary')}
