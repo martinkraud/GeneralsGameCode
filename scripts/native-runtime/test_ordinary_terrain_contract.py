@@ -140,6 +140,18 @@ class OrdinaryTerrainContract(unittest.TestCase):
         self.assertIn("W3DDevice/GameClient/W3DRoadBuffer.h", heightmap)
         self.assertLess(heightmap.index("#if RTS_GENERALS"), heightmap.index("W3DDevice/GameClient/W3DRoadBuffer.h"))
 
+    def test_every_summary_format_fits_its_destination_buffer(self):
+        # Regression: X64.27 fix1 run 20261013T0630289162651Z died with 0xC0000409 (sprintf_s invalid
+        # parameter) writing the 267-character terrain_summary into a char[256].
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        function = host.split("int W3DDisplay::runOrdinaryGameHost()", 1)[1]
+        size = int(re.search(r"char detail\[(\d+)\]", function).group(1))
+        call = function.split('sprintf_s(detail, "frames=%u draws=%u', 1)[1].split(');', 1)[0]
+        head = 'frames=%u draws=%u' + call.split('g_terrainFrames', 1)[0]
+        literal = ''.join(re.findall(r'"([^"]*)"', '"' + head))
+        worst = len(literal.replace('%u', '4294967295'))   # every counter at 10 digits
+        self.assertLess(worst, size, f"terrain_summary worst case {worst} >= buffer {size}")
+
     def test_launcher_requires_terrain_evidence(self):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")
         for term in ("-nativeOrdinaryTerrain", "Get-NativeOrdinaryTerrainMode", "Test-NativeOrdinaryTerrainEvidence",

@@ -144,3 +144,35 @@ are no longer created in the profile (the native path decodes the files itself),
 loader request is made either. New receipts `terrain_bridge_buffer_init`, `terrain_road_buffer_init`,
 `terrain_roads_load`, `terrain_bridges_load` bracket the new engine integration so any further fault
 is localized to the exact phase. Candidate: `x64-27-terrain-completion-fix1`.
+
+## fix1 run: runtime failure at the final summary (20261013T0630289162651Z) and fix2
+
+Classification: **process/runtime failure caused by diagnostics code, not a gate or rendering failure.**
+Exit `0xC0000409` (fail-fast, `STATUS_STACK_BUFFER_OVERRUN`; the CRT invalid-parameter handler of
+`sprintf_s`), no timeout, no dump, 249 records. Everything up to and including `FP_summary` completed:
+the 1800-frame game ran, then the process died while formatting `terrain_summary` (the next row).
+
+Root cause: `runOrdinaryGameHost` formatted the new 17-field `terrain_summary` (up to ~390 characters
+worst case, 267 with real values) into `char detail[256]`; `sprintf_s` aborts on overflow. A format-length
+scan of every `sprintf_s(detail, ...)` in the file shows this was the only overflow (buffer now 640).
+Regression test: `test_every_summary_format_fits_its_destination_buffer`.
+
+Evidence of what executed (the run was Alpine Assault, not the recommended Lone Eagle; the map is chosen
+in the UI): `terrain_first_frame tiles=16 draws=20 ... soft_edge=1 map_extra=350 map_shore=0
+map_roads=588 map_bridges=0`, i.e. 4 overlay draws in the first frame (extra-blend + road batches).
+
+- **Control Bar: executed, correct.** `ControlBarParent hidden=0 pos=0,416 size=800x184`,
+  `strip_nonblack_pct=66 (left 63, mid 62, right 72)`, `whole_nonblack_pct=91`. The decoded
+  `terrain_ui_frame.bmp` shows the original Generals control bar frame, money readout, power meter,
+  general buttons and the empty radar bezel (RadarDummy) and empty command area (no selection).
+- **Roads: executed, correct.** Both BMPs show textured dirt roads following the terrain with soft
+  edges, cloud shadows passing over them, and correct depth against rocks.
+- **Extra-blend: executed** (350 tiles on the map, overlay draws in the first frame); not visually
+  separable from the base blend in these images; the summary counter (`extra_frames`) will state it.
+- **Bridges / shoreline: not exercised** - Alpine Assault has none (`map_bridges=0 map_shore=0`);
+  coverage must come from Lone Eagle, which the classifier requires only when the map reports them.
+- Camera exercise intact: six moves, `tile_updates` 16/28/44/60/68/84, every probe 80 % non-black.
+
+Gate: no change. The classifier correctly reported the missing summary/teardown rows as failures.
+Candidate: `x64-27-terrain-completion-fix2`. **Select Lone Eagle explicitly in Skirmish setup** (the UI
+remembers the last map).

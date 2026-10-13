@@ -756,7 +756,7 @@ int W3DDisplay::runOrdinaryGameHost()
     const char *phase = "game_loop";
     bool inGame = false, exiting = false;
     unsigned exitingUpdates = 0;
-    char detail[256];
+    char detail[640];   // terrain_summary alone is ~270 characters (X64.27 run 20261013T0630289162651Z overflowed 256)
     try {
         TheShell->setPushGuard(GamePushGuard);
         StartupDiagnostics::checkpoint(phase, "begin",
