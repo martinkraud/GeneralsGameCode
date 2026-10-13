@@ -240,6 +240,15 @@ Valid once `logic_frames` carries the last in-game frame). Fix + candidate `x64-
 observation), 13 move + 1 attack orders, 28 queued units, 5 constructions, 36 selections, 6291 logic frames.
 Do not claim AI base construction: neither receipts nor the replay show it.
 
+**X64.28 / FIRST PLAYABLE - ACCEPTED (2026-10-13).** Candidate `x64-28-play-world-fix2`, native run
+`20261013T1227301326226Z`: wrapper PASS, exit 0, 7248 logic frames, AI active and constructing (developer),
+combat/orders/production/Control Bar/special powers/helicopters exercised, clean Exit Game. This candidate and
+run are the **First Playable reference baseline** (immutable; evidence copy in
+`evidence/x64-28-first-playable/`; closeout `X64_28_PLAY_WORLD.md` section 15). Measured remaining fallback:
+`unsupported_state=65589` over the run. **Current phase: Gameplay + Rendering Completeness
+(`GAMEPLAY_RENDERING_COMPLETENESS.md`)** - large offline batches, one native candidate per batch, First
+Playable acceptance contracts and classifier unchanged.
+
 **Renderer (fidelity decision from the developer: equivalent modern shaders,
 tolerance-based golden images vs CPU references of the legacy stage math, developer
 visual review; purpose-built D3D11 subsystem paths, no generic emulator).** R0/R1a

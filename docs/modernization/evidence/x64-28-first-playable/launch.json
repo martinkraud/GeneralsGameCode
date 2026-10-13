@@ -1,0 +1,196 @@
+{
+  "Title": "Generals",
+  "Executable": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\game\\generalsv.exe",
+  "Build": {
+    "Preset": "win64",
+    "Executable": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\win64\\Generals\\Release\\generalsv.exe",
+    "Pdb": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\win64\\Generals\\Release\\generalsv.pdb",
+    "DebugGuid": "c7323867-d82e-41f3-b190-20a5da4eae06",
+    "DebugAge": 95,
+    "ExecutableSHA256": "5A9FA5BC6AB782FDA6F6463513528616D8393968312094FDEC860467379C19A1",
+    "PdbSHA256": "4E1093BF887C1260479A033FACFFC207292233C868C11CC7DDD4D18AC84D5D4D",
+    "Cache": [
+      "CMAKE_CXX_COMPILER:FILEPATH=C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "CMAKE_MSVC_RUNTIME_LIBRARY:UNINITIALIZED=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
+      "RTS_BUILD_OPTION_ASAN:BOOL=OFF",
+      "RTS_BUILD_OPTION_BENCHMARKS:BOOL=OFF",
+      "RTS_BUILD_OPTION_DEBUG:BOOL=OFF",
+      "RTS_BUILD_OPTION_FFMPEG:BOOL=OFF",
+      "RTS_BUILD_OPTION_PROFILE:BOOL=OFF",
+      "RTS_BUILD_OPTION_PROFILE_TRACY:BOOL=OFF",
+      "RTS_BUILD_OPTION_RETAIL_COMPATIBLE_GAME:STRING=DEFAULT",
+      "RTS_BUILD_OPTION_TESTS:BOOL=ON",
+      "RTS_BUILD_OPTION_VC6_FULL_DEBUG:BOOL=OFF",
+      "CMAKE_CXX_COMPILER-ADVANCED:INTERNAL=1",
+      "CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config",
+      "CMAKE_GENERATOR_INSTANCE:INTERNAL=",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL=",
+      "CMAKE_GENERATOR_TOOLSET:INTERNAL=",
+      "RTS_BUILD_OPTION_RETAIL_COMPATIBLE_GAME-STRINGS:INTERNAL=DEFAULT;ON;OFF"
+    ]
+  },
+  "WorkingDirectory": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\game",
+  "Arguments": [
+    "-win",
+    "-xres",
+    "800",
+    "-yres",
+    "600",
+    "-nologo",
+    "-noshellmap",
+    "-winCursors",
+    "-nativeOrdinaryPlay",
+    "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z"
+  ],
+  "UserData": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\userdata\\",
+  "DumpPath": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\userdata\\CrashDumps",
+  "LogPath": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\startup.log",
+  "ShutdownEvidencePath": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\shutdown-exception.bin",
+  "Dependencies": [
+    {
+      "Name": "WINMM.dll",
+      "Route": "C:\\WINDOWS\\System32\\WINMM.dll",
+      "SHA256": "B9035DA2EE058FE565ECB3C0064F46F2D09BDE01F29E423FFE6B33E15C773F04"
+    },
+    {
+      "Name": "WS2_32.dll",
+      "Route": "C:\\WINDOWS\\System32\\WS2_32.dll",
+      "SHA256": "D82732CF85C19E632CCAF08BD6BE0C70142EAFBFCD515C24495261D12AAEC570"
+    },
+    {
+      "Name": "d3d11.dll",
+      "Route": "C:\\WINDOWS\\System32\\d3d11.dll",
+      "SHA256": "3E6C8932026FFB0DBA16207A4BB6793E56B9483FA2E19F36E68EF308ED027E25"
+    },
+    {
+      "Name": "D3DCOMPILER_47.dll",
+      "Route": "C:\\WINDOWS\\System32\\D3DCOMPILER_47.dll",
+      "SHA256": "37C4ABE91D6D888F4C7A85FE48D8088BB5CAC0842F283D89871B677E10901C41"
+    },
+    {
+      "Name": "DINPUT8.dll",
+      "Route": "C:\\WINDOWS\\System32\\DINPUT8.dll",
+      "SHA256": "B0F10001FCCD05E9863D84588BE9B9F8389656D95177287DD4C6CF3BE4BF1DFE"
+    },
+    {
+      "Name": "KERNEL32.dll",
+      "Route": "C:\\WINDOWS\\System32\\KERNEL32.dll",
+      "SHA256": "4F7E85E01B521AA002692B1E868BEE9A3A9BA19B815CE5D16D2E959FB0289FEB"
+    },
+    {
+      "Name": "USER32.dll",
+      "Route": "C:\\WINDOWS\\System32\\USER32.dll",
+      "SHA256": "F285937030BCB325CAD39EE5BE4818F6666241229ADEADEA4FF1AE469DFD7EF3"
+    },
+    {
+      "Name": "GDI32.dll",
+      "Route": "C:\\WINDOWS\\System32\\GDI32.dll",
+      "SHA256": "772C73E294A4C5F5E0D4146288AF95287A85C074D3AEE3FA9F320DC010D7DBFE"
+    },
+    {
+      "Name": "SHELL32.dll",
+      "Route": "C:\\WINDOWS\\System32\\SHELL32.dll",
+      "SHA256": "BE4D90CDB64B98BE38083576F872015615AC6930E6C7C462D125A2E50767B887"
+    },
+    {
+      "Name": "ole32.dll",
+      "Route": "C:\\WINDOWS\\System32\\ole32.dll",
+      "SHA256": "1053FFB858CDDBE29EAAA6A5B0836B88C7CD11FBD58605288600E507C06DB443"
+    },
+    {
+      "Name": "OLEAUT32.dll",
+      "Route": "C:\\WINDOWS\\System32\\OLEAUT32.dll",
+      "SHA256": "92F48FB8A5F59A507037B55FCFCC4980904AD38443469E289842B3E35E74C234"
+    },
+    {
+      "Name": "ADVAPI32.dll",
+      "Route": "C:\\WINDOWS\\System32\\ADVAPI32.dll",
+      "SHA256": "74FEFADE3065DE4BF2B870777369222FBC2908DDCAD2AA4CB63A33F1EEF9979D"
+    },
+    {
+      "Name": "MSVCP140.dll",
+      "Route": "C:\\WINDOWS\\System32\\MSVCP140.dll",
+      "SHA256": "7C26614E1D733892C2DEAC7E245CE115504B1D80592DD0A01B08E3E5A55F89CA"
+    },
+    {
+      "Name": "MSVCP140_ATOMIC_WAIT.dll",
+      "Route": "C:\\WINDOWS\\System32\\MSVCP140_ATOMIC_WAIT.dll",
+      "SHA256": "3D0CBFAA1BF3EECF5A3F4491D2960EE803CB994F30292C6ADC4A07C498F60E2B"
+    },
+    {
+      "Name": "VCRUNTIME140.dll",
+      "Route": "C:\\WINDOWS\\System32\\VCRUNTIME140.dll",
+      "SHA256": "D1F4225DF2CD877DBF130D5668A021DCE3F94118455FF5EC952061C30AFC9CE7"
+    },
+    {
+      "Name": "VCRUNTIME140_1.dll",
+      "Route": "C:\\WINDOWS\\System32\\VCRUNTIME140_1.dll",
+      "SHA256": "A7146C08F89FE5B04541AB507CDB59FF7B44534D4BA3C668A426C6450A03434E"
+    },
+    {
+      "Name": "api-ms-win-crt-string-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-stdio-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-heap-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-runtime-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-math-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-filesystem-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-convert-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-time-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-utility-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-multibyte-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-process-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "api-ms-win-crt-locale-l1-1-0.dll",
+      "Route": "Windows UCRT API set"
+    },
+    {
+      "Name": "IMM32.dll",
+      "Route": "C:\\WINDOWS\\System32\\IMM32.dll",
+      "SHA256": "7E45F12C1C555E2407C5CA082BD925B34655278FDE4DBFAC53A0468CC1E77411"
+    },
+    {
+      "Name": "AVIFIL32.dll",
+      "Route": "C:\\WINDOWS\\System32\\AVIFIL32.dll",
+      "SHA256": "4944D79009A8FBE4E737655FEE92AE61E3564B1EE3CA40037D76BE6A335BCEDF"
+    },
+    {
+      "Name": "dxgi.dll",
+      "Route": "C:\\WINDOWS\\System32\\dxgi.dll",
+      "SHA256": "023542BB41AFCF0BA5EE02CB63CCBAEAB4765A5DD859A1B0A6E05FA9B739E89F"
+    }
+  ],
+  "StartedUtc": "2026-10-13T12:27:30.1619577Z",
+  "TimeoutSeconds": 4200
+}

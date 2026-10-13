@@ -1,6 +1,6 @@
 # X64.28 - play world (CP1 of FIRST PLAYABLE)
 
-Status: candidate `x64-28-play-world` was executed natively twice (section 9): playable, with two
+Status: **CLOSED - FIRST PLAYABLE ACCEPTED (section 15, `x64-28-play-world-fix2`).** History: candidate `x64-28-play-world` was executed natively twice (section 9): playable, with two
 crashes and a receipt-order defect. Fix candidate `x64-28-play-world-fix1` is staged and preflighted,
 **not executed**. Original status: offline batch complete, candidate staged and preflighted,
 **not executed**. Awaiting the developer's
@@ -271,3 +271,50 @@ vars, 7 Python contract files, 5 PowerShell workflow tests, stage + preflight PA
 Please test in fix2: play at least a minute, then Exit Game (expect wrapper PASS with `logic_frames` equal to the
 match length). If you can, also use a radius-cursor power (reconnaissance drone) once, since fix1's guard has
 not been exercised natively. Do not rerun fix1 or the original candidate.
+
+## 15. FIRST PLAYABLE - formally ACCEPTED (candidate `x64-28-play-world-fix2`, run `20261013T1227301326226Z`)
+
+Wrapper result: `PASS: ordinary-play machine gate and cleanup. Original MainMenu -> Skirmish -> map -> native D3D11
+terrain and world objects under the original UI and Control Bar, with live input`. Exit code 0, no crash dump,
+no shutdown exception, 261 records (log capacity 2048), `Valid=true`, no classifier errors.
+
+Exact evidence (copies of `startup.log`, `exit.json`, `launch.json` are preserved in
+`docs/modernization/evidence/x64-28-first-playable/`; the run directory and the staged candidate stay
+immutable under `build/dev-runtimes/native/Generals/x64-28-play-world-fix2/` as the **First Playable reference
+baseline**):
+
+| Item | Value |
+| --- | --- |
+| Candidate | `x64-28-play-world-fix2`, source commit `737e61ddd` |
+| `generalsv.exe` SHA-256 | `5A9FA5BC6AB782FDA6F6463513528616D8393968312094FDEC860467379C19A1` (verified against the run) |
+| `generalsv.pdb` SHA-256 | `4E1093BF887C1260479A033FACFFC207292233C868C11CC7DDD4D18AC84D5D4D` |
+| Summary | `presents=15380 updates=15301 elapsed_ms=256469 game=1 logic_frames=7248 exit=game_ended driver=hardware` |
+| Map / players | `maps\lone eagle\lone eagle.map`, 5 players, skirmish |
+| Terrain | 14,599 frames, 343,296 draws, roads 27,098, bridges 58,396, shoreline 800,589 tiles |
+| World objects | 694 registered, 254,771 objects drawn, 1.40 M meshes, 43.4 M triangles, 191 texture loads, **0 texture failures**, 0 unsupported classes, **`unsupported_state=65589`** (counted, fallback), 0 chunk overflow, 171,916 team-colored meshes, 34,636 skinned |
+| Player input (play_summary) | left 56, right 11, keys 1791, wheel 9, select 19, move 31, attack 5, build 5, produce 11, rally 0 |
+| Replay (7248 frames, 14,654 records) | 31 `DO_MOVETO`, 5 `DO_ATTACK_OBJECT`, 5 `DOZER_CONSTRUCT`, 11 `QUEUE_UNIT_CREATE`, 19 selection groups, 3 `DO_SPECIAL_POWER_AT_LOCATION`, 1 `PURCHASE_SCIENCE` |
+| Teardown | `game_exit` -> `play_summary` ... `WinMain` all complete, `ui_residency_release live_residencies=0` |
+
+Developer visual/gameplay observations (accepted as authoritative): interactive skirmish play worked; enemy AI
+active; the enemy base was found and the AI was seen constructing; enemy infantry pathed to and attacked the
+player's base (fix1 run); helicopter gameplay worked; Exit Game completed with cleanup PASS; buildings,
+production, selection, movement, attack orders and the original Control Bar were exercised across the accepted
+X64.28 runs.
+
+Contract closure:
+
+| Contract | Status |
+| --- | --- |
+| Main Menu -> Skirmish -> map -> Start | PASS |
+| Base / buildings / units visible, team color | PASS |
+| Select (click, box), move, attack | PASS |
+| Original Control Bar, build, produce | PASS |
+| AI plays (combat, pathing, base construction) | PASS (developer observation) |
+| Special power with radius cursor (3 special-power-at-location orders, no crash) | PASS - the fix1 null-manager guard is now natively exercised |
+| Aircraft / helicopters | PASS (developer observation) |
+| Leave cleanly | PASS |
+
+Defects found and closed during the checkpoint: PlayTap static ownership (Exit Game crash), null
+`TheProjectedShadowManager` in `createRadiusDecal`, receipt order, last-in-game-frame overwrite. Known and
+accepted omissions remain exactly section 7; they are the work of the next phase (`GAMEPLAY_RENDERING_COMPLETENESS.md`).

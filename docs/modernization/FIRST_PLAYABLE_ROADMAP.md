@@ -1,6 +1,6 @@
 # FIRST PLAYABLE GENERALS - roadmap, dependency graph and batch strategy
 
-Status: written 2026-10-14 after formal acceptance of X64.27 fix2 and the X64.28 offline batch.
+Status: written 2026-10-14; CP1/First Playable closed 2026-10-13 (native run `20261013T1227301326226Z`); CP2 in progress.
 This file is the planning source for the native AMD64/D3D11 path from the accepted terrain frame to a
 first playable skirmish. `AGENT_HANDOFF.md` holds the current state; this file holds the plan.
 
@@ -30,8 +30,8 @@ visual acceptance by the agent, no weakened gates, immutable failed-run evidence
 | Checkpoint | Content | Status |
 | --- | --- | --- |
 | X64.27 | terrain completion | ACCEPTED (fix2 run `20261013T0638444013011Z`); bridges/shoreline unexercised |
-| **CP1 = X64.28** | world objects + interactive world + play host | offline batch complete, candidate staged by this batch |
-| CP2 | stabilization from CP1 evidence, fogged/shroud, radar, selection/placement polish, effects subset | planned |
+| **CP1 = X64.28** | world objects + interactive world + play host | **ACCEPTED 2026-10-13 (fix2 run `20261013T1227301326226Z`) - FIRST PLAYABLE baseline** |
+| CP2 | Gameplay + Rendering Completeness (see `GAMEPLAY_RENDERING_COMPLETENESS.md`): water, shroud/fog, effects, shadows, decals, material families | in progress (offline batch) |
 | CP3 | First Playable acceptance (full skirmish loop, AI, clean end) | planned (may merge with CP2) |
 
 ## 3. Dependency graph from accepted terrain to First Playable

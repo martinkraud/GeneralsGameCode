@@ -1,0 +1,28 @@
+{
+  "FinishedUtc": "2026-10-13T12:31:49.0160818Z",
+  "ProcessId": 10716,
+  "Started": true,
+  "TimedOut": false,
+  "ExitCode": 0,
+  "Error": null,
+  "Success": true,
+  "HasStartupLog": true,
+  "ActualPaths": {
+    "module": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\game\\generalsv.exe",
+    "dump_path": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\userdata\\CrashDumps\\",
+    "userdata": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\userdata\\",
+    "startup_parse": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\game"
+  },
+  "PathsMatch": true,
+  "ShutdownEvidencePath": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-28-play-world-fix2\\runs\\20261013T1227301326226Z\\shutdown-exception.bin",
+  "ShutdownEvidenceBytes": 0,
+  "OrdinaryPlayEvidence": {
+    "Valid": true,
+    "Errors": [],
+    "Records": 261,
+    "Summary": "presents=15380 updates=15301 elapsed_ms=256469 game=1 logic_frames=7248 exit=game_ended driver=hardware"
+  },
+  "CrashDumpCount": 0,
+  "ManualVisibilityRequired": true,
+  "Interpretation": "Inspect last completed/begun checkpoint"
+}
