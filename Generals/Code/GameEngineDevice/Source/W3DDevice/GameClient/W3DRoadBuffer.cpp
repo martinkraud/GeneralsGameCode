@@ -58,6 +58,9 @@
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include "W3DDevice/GameClient/W3DDynamicLight.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
 #include "W3DDevice/GameClient/W3DShaderManager.h"
@@ -172,15 +175,19 @@ void RoadType::loadTexture(AsciiString path, Int ID)
 	/// @todo - delay loading textures and only load textures referenced by map.
 	WW3DAssetManager *pMgr = W3DAssetManager::Get_Instance();
 
-	m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3);
 #if defined(_WIN64)
 	m_nativeTexturePath = path;
+	// The native path decodes the file itself; no legacy TextureClass (and no loader request) is created.
+	if (!(TheGlobalData->m_headless && StartupDiagnostics::ordinaryTerrain()))
 #endif
+	{
+	m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3);
 
 	m_roadTexture->Get_Filter().Set_Mip_Mapping( TextureFilterClass::FILTER_TYPE_BEST );
 
 	m_roadTexture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
 	m_roadTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
+	}
 
 	m_vertexRoad=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZDUV1,TheGlobalData->m_maxRoadVertex+4,DX8VertexBufferClass::USAGE_DYNAMIC));
 	m_indexRoad=NEW_REF(DX8IndexBufferClass,(TheGlobalData->m_maxRoadIndex+4, DX8IndexBufferClass::USAGE_DYNAMIC));

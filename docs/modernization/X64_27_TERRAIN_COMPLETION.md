@@ -124,3 +124,23 @@ flicker when scrolling (dynamic geometry), and any crash/hang at map start (brid
 
 R3 meshes (buildings, units), water, shadows, particles, shroud/fog, props/scorches, radar rendering,
 extended camera/zoom (recorded for the later Modern Experience phase).
+
+## First run: FAIL (20261013T0626246230411Z) and fix1
+
+Machine evidence: exit `0xC0000005` (access violation) 4 seconds after start, 159 records, last row
+`TheTerrainVisual.init begin` with no completion; no graphics/game rows reached. The failure is inside
+the terrain render object constructor, i.e. before any map is loaded, so none of the X64.27 rendering
+code ran.
+
+Root cause (source-confirmed): the bridge buffer constructor now allocates under the profile and
+`W3DBridgeBuffer::allocateBridgeBuffers` called `VertexMaterialClass::Get_Preset(PRELIT_DIFFUSE)`.
+The vertex-material presets are created by `DX8Wrapper::Init` (`VertexMaterialClass::Init`), which the
+native presentation never runs, so `Presets[type]->Add_Ref()` dereferenced null. (Roads allocate no
+material; the bridge allocation was previously skipped entirely for headless.)
+
+Fix: the vertex material is not requested in the terrain profile (the native path has no use for it).
+Defensive hardening in the same place: the legacy `TextureClass` objects for road and bridge textures
+are no longer created in the profile (the native path decodes the files itself), so no legacy texture
+loader request is made either. New receipts `terrain_bridge_buffer_init`, `terrain_road_buffer_init`,
+`terrain_roads_load`, `terrain_bridges_load` bracket the new engine integration so any further fault
+is localized to the exact phase. Candidate: `x64-27-terrain-completion-fix1`.

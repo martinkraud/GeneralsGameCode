@@ -248,10 +248,14 @@ Bool W3DBridge::load(BodyDamageType curDamageState)
 	strcpy(right, modelName);
 	strlcat(right, ".BRIDGE_RIGHT", ARRAY_SIZE(right));
 
-	m_bridgeTexture = pMgr->Get_Texture(textureFile,  MIP_LEVELS_3);
 #if defined(_WIN64)
 	m_nativeTexturePath = textureFile;
+	// The native path decodes the file itself; no legacy TextureClass (and no loader request) is created.
+	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryTerrain())
+		m_bridgeTexture = nullptr;
+	else
 #endif
+	m_bridgeTexture = pMgr->Get_Texture(textureFile,  MIP_LEVELS_3);
 	m_leftMtx.Make_Identity();
 	m_rightMtx.Make_Identity();
 	m_sectionMtx.Make_Identity();
@@ -786,6 +790,11 @@ void W3DBridgeBuffer::allocateBridgeBuffers()
 #endif
 	m_vertexBridge=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZNDUV1,MAX_BRIDGE_VERTEX+4,DX8VertexBufferClass::USAGE_DYNAMIC));
 	m_indexBridge=NEW_REF(DX8IndexBufferClass,(MAX_BRIDGE_INDEX+4, DX8IndexBufferClass::USAGE_DYNAMIC));
+#if defined(_WIN64)
+	// Native terrain profile: WW3D/DX8Wrapper::Init never ran, so the vertex material presets do not
+	// exist (Get_Preset would dereference null) and the native path does not use a vertex material.
+	if (!TheGlobalData->m_headless)
+#endif
 	m_vertexMaterial=VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);
 #ifdef USE_BRIDGE_NORMALS
 	m_vertexMaterial= NEW VertexMaterialClass();

@@ -285,13 +285,21 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass()
 	m_scorches = NEW W3DScorchDummy;
 	m_staticScorches = NEW W3DScorchDummy;
 #endif
+#if defined(_WIN64)
+	if (StartupDiagnostics::ordinaryTerrain()) {
+		StartupDiagnostics::Phase phase("terrain_bridge_buffer_init");
+		m_bridgeBuffer = NEW W3DBridgeBuffer;
+	} else
+#endif
 	m_bridgeBuffer = NEW W3DBridgeBuffer;
 
 #if defined(_WIN64) && defined(DO_ROADS)
 	// Native terrain profile: the road buffer (CPU-backed vertex/index data, textures decoded by the
 	// native path) is the only DX8-era world buffer this headless selection needs besides bridges.
-	if (StartupDiagnostics::ordinaryTerrain())
+	if (StartupDiagnostics::ordinaryTerrain()) {
+		StartupDiagnostics::Phase phase("terrain_road_buffer_init");
 		m_roadBuffer = NEW W3DRoadBuffer;
+	}
 #endif
 
 	if (TheGlobalData->m_headless)
@@ -1466,10 +1474,22 @@ void BaseHeightMapRenderObjClass::loadRoadsAndBridges(W3DTerrainLogic *pTerrainL
 
 #ifdef DO_ROADS
 	if (m_roadBuffer) {
+#if defined(_WIN64)
+		if (StartupDiagnostics::ordinaryTerrain()) {
+			StartupDiagnostics::Phase phase("terrain_roads_load");
+			m_roadBuffer->loadRoads();
+		} else
+#endif
 		m_roadBuffer->loadRoads();
 	}
 #endif
 	if (m_bridgeBuffer) {
+#if defined(_WIN64)
+		if (StartupDiagnostics::ordinaryTerrain()) {
+			StartupDiagnostics::Phase phase("terrain_bridges_load");
+			m_bridgeBuffer->loadBridges(pTerrainLogic, saveGame);
+		} else
+#endif
 		m_bridgeBuffer->loadBridges(pTerrainLogic, saveGame);
 	}
 }
