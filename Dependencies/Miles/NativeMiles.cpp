@@ -17,7 +17,9 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <condition_variable>
 #include <cstring>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -109,6 +111,7 @@ Voice *Allocate(Kind kind)
 {
     EnsureLock();
     Lock lock;
+    ++g_stats.handlesAllocated;
     auto voice = std::make_unique<Voice>();
     voice->kind = kind;
     Voice *raw = voice.get();
@@ -138,6 +141,7 @@ void ReleaseVoice(Voice *voice)
     for (auto it = g_voices.begin(); it != g_voices.end(); ++it)
         if (it->get() == voice) {
             if (g_listenerVoice == voice) g_listenerVoice = nullptr;
+            ++g_stats.handlesReleased;
             g_voices.erase(it);
             return;
         }
@@ -467,6 +471,76 @@ bool ReadWholeFile(const char *name, std::vector<uint8_t> &out)
 // ------------------------------------------------------------------------------------------------
 struct PendingEos { void *callback; void *handle; Kind kind; };
 
+void InvokeEos(const PendingEos &e)
+{
+    switch (e.kind) {
+    case Kind::Sample2D: reinterpret_cast<AIL_sample_callback>(e.callback)(reinterpret_cast<HSAMPLE>(e.handle)); break;
+    case Kind::Sample3D: reinterpret_cast<AIL_3dsample_callback>(e.callback)(reinterpret_cast<H3DPOBJECT>(e.handle)); break;
+    case Kind::Stream: reinterpret_cast<AIL_stream_callback>(e.callback)(reinterpret_cast<HSTREAM>(e.handle)); break;
+    default: break;
+    }
+    ++g_stats.callbacksDelivered;
+}
+
+// The engine's completion handler loads the next portion of a sound (file I/O, decode) synchronously. Running it on
+// the mixer thread starved the output device (millisecond dropouts). A dedicated thread delivers completions
+// instead; deviceless/test mode delivers inline so tests stay deterministic.
+struct EosQueue
+{
+    std::mutex mutex;
+    std::condition_variable wake;
+    std::deque<PendingEos> jobs;
+    std::thread thread;
+    bool running = false;
+} g_eosQueue;
+
+void EosWorker()
+{
+    for (;;) {
+        PendingEos job;
+        {
+            std::unique_lock<std::mutex> lock(g_eosQueue.mutex);
+            g_eosQueue.wake.wait(lock, [] { return !g_eosQueue.jobs.empty() || !g_eosQueue.running; });
+            if (g_eosQueue.jobs.empty()) return;   // stopped and drained
+            job = g_eosQueue.jobs.front();
+            g_eosQueue.jobs.pop_front();
+        }
+        InvokeEos(job);
+    }
+}
+
+void StartEosWorker()
+{
+    std::lock_guard<std::mutex> lock(g_eosQueue.mutex);
+    if (g_eosQueue.running) return;
+    g_eosQueue.running = true;
+    g_eosQueue.thread = std::thread(EosWorker);
+}
+
+void StopEosWorker()
+{
+    {
+        std::lock_guard<std::mutex> lock(g_eosQueue.mutex);
+        if (!g_eosQueue.running) return;
+        g_eosQueue.running = false;
+        g_eosQueue.jobs.clear();   // handles die with the driver
+    }
+    g_eosQueue.wake.notify_all();
+    if (g_eosQueue.thread.joinable()) g_eosQueue.thread.join();
+}
+
+void DeliverEos(const PendingEos &e)
+{
+    ++g_stats.eosCallbacks;
+    bool async = false;
+    {
+        std::lock_guard<std::mutex> lock(g_eosQueue.mutex);
+        if (g_eosQueue.running) { g_eosQueue.jobs.push_back(e); async = true; }
+    }
+    if (async) { ++g_stats.callbacksQueued; g_eosQueue.wake.notify_one(); }
+    else InvokeEos(e);
+}
+
 inline float Clamp(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 void Gains(const Voice &v, float &left, float &right)
@@ -477,10 +551,12 @@ void Gains(const Voice &v, float &left, float &right)
         const Listener &l = g_listenerVoice->listener;
         float d[3] = {v.pos[0] - l.position[0], v.pos[1] - l.position[1], v.pos[2] - l.position[2]};
         const float dist = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-        // Miles: full volume inside min distance, inverse-distance roll-off beyond, silent past max distance.
+        // Miles: full volume inside the minimum distance, inverse-distance roll-off beyond it, and no further
+        // attenuation past the maximum distance (the application culls what should be inaudible; the engine's
+        // own audibility rules do that). Treating max distance as a hard cutoff silenced off-screen combat.
         float attenuation = 1.0f;
-        if (dist > v.minDist) attenuation = v.minDist > 0.0f ? v.minDist / dist : 0.0f;
-        if (dist > v.maxDist) attenuation = 0.0f;
+        const float effective = (dist > v.maxDist && v.maxDist > v.minDist) ? v.maxDist : dist;
+        if (effective > v.minDist) attenuation = v.minDist > 0.0f ? v.minDist / effective : 0.0f;
         volume *= attenuation * (1.0f - Clamp(v.occlusion, 0.0f, 1.0f));
         // Pan from the listener's right vector (face x up).
         const float f[3] = {l.face[0], l.face[1], l.face[2]};
@@ -547,23 +623,20 @@ unsigned RenderInternal(int16_t *out, unsigned frames)
     std::vector<PendingEos> eos;
     {
         Lock lock;
+        unsigned active = 0;
         for (auto &v : g_voices)
-            if (v->kind == Kind::Sample2D || v->kind == Kind::Sample3D || v->kind == Kind::Stream || v->kind == Kind::Quick)
+            if (v->kind == Kind::Sample2D || v->kind == Kind::Sample3D || v->kind == Kind::Stream || v->kind == Kind::Quick) {
+                if (v->state == State::Playing) ++active;
                 MixVoice(*v, accum.data(), frames, eos);
+            }
+        g_stats.active = active;
+        if (active > g_stats.peakActive) g_stats.peakActive = active;
     }
     for (size_t i = 0; i < accum.size(); ++i) {
         const float s = Clamp(accum[i], -1.0f, 1.0f);
         out[i] = static_cast<int16_t>(s * 32767.0f);
     }
-    for (const PendingEos &e : eos) {
-        ++g_stats.eosCallbacks;
-        switch (e.kind) {
-        case Kind::Sample2D: reinterpret_cast<AIL_sample_callback>(e.callback)(reinterpret_cast<HSAMPLE>(e.handle)); break;
-        case Kind::Sample3D: reinterpret_cast<AIL_3dsample_callback>(e.callback)(reinterpret_cast<H3DPOBJECT>(e.handle)); break;
-        case Kind::Stream: reinterpret_cast<AIL_stream_callback>(e.callback)(reinterpret_cast<HSTREAM>(e.handle)); break;
-        default: break;
-        }
-    }
+    for (const PendingEos &e : eos) DeliverEos(e);
     return frames;
 }
 
@@ -581,6 +654,7 @@ Device *g_device = nullptr;
 
 void DeviceThread(Device *d)
 {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
     LARGE_INTEGER freq, last;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&last);
@@ -589,6 +663,10 @@ void DeviceThread(Device *d)
     while (d->running.load()) {
         if (d->out) {
             WaitForSingleObject(d->event, 50);
+            unsigned drained = 0;
+            for (unsigned i = 0; i < kBufferCount; ++i)
+                if ((d->headers[i].dwFlags & WHDR_PREPARED) && (d->headers[i].dwFlags & WHDR_DONE)) ++drained;
+            if (drained == kBufferCount) ++g_stats.starved;   // the device ran out of queued audio: an audible dropout
             for (unsigned i = 0; i < kBufferCount; ++i) {
                 WAVEHDR &h = d->headers[i];
                 if (h.dwFlags & WHDR_DONE || !(h.dwFlags & WHDR_PREPARED)) {
@@ -634,6 +712,7 @@ void StartDevice()
     } else {
         g_device->out = nullptr;
     }
+    StartEosWorker();
     g_device->running = true;
     g_device->thread = std::thread(DeviceThread, g_device);
 }
@@ -644,6 +723,7 @@ void StopDevice()
     g_device->running = false;
     SetEvent(g_device->event);
     if (g_device->thread.joinable()) g_device->thread.join();
+    StopEosWorker();
     if (g_device->out) {
         waveOutReset(g_device->out);
         for (unsigned i = 0; i < kBufferCount; ++i)
@@ -655,16 +735,18 @@ void StopDevice()
     g_device = nullptr;
 }
 
-bool LoadSampleData(Voice *v, const void *image)
+bool LoadSampleData(const void *handle, const void *image)
 {
-    if (!v || !image) return false;
+    if (!handle || !image) return false;
     // The image is a complete WAV file; its size is not passed, so measure it from the RIFF header.
     const uint8_t *p = static_cast<const uint8_t *>(image);
     if (std::memcmp(p, "RIFF", 4)) return false;
     const uint32_t size = Le32(p + 4) + 8;
     auto pcm = std::make_shared<PcmData>();
-    if (!DecodeWavToPcm(image, size, *pcm)) return false;
+    if (!DecodeWavToPcm(image, size, *pcm)) return false;   // decoded before taking the mixer lock
     Lock lock;
+    Voice *v = Find(handle);
+    if (!v) return false;
     v->pcm = pcm;
     v->position = 0.0;
     v->loopsDone = 0;
@@ -856,8 +938,7 @@ AIL_sample_callback __stdcall AIL_register_EOS_callback(HSAMPLE s, AIL_sample_ca
 }
 S32 __stdcall AIL_set_sample_file(HSAMPLE s, const void *image, S32)
 {
-    Lock lock;
-    return LoadSampleData(Find(s), image) ? 1 : 0;
+    return LoadSampleData(s, image) ? 1 : 0;
 }
 S32 __stdcall AIL_set_named_sample_file(HSAMPLE s, const char *, const void *image, S32, S32 block) { return NativeMiles::AIL_set_sample_file(s, image, block); }
 void __stdcall AIL_start_sample(HSAMPLE s)
@@ -942,11 +1023,10 @@ AIL_3dsample_callback __stdcall AIL_register_3D_EOS_callback(H3DSAMPLE s, AIL_3d
 }
 S32 __stdcall AIL_set_3D_sample_file(H3DSAMPLE s, const void *image)
 {
+    if (!LoadSampleData(s, image)) return 0;
     Lock lock;
-    Voice *v = Find(s);
-    if (!v) return 0;
-    v->state = State::Stopped;
-    return LoadSampleData(v, image) ? 1 : 0;
+    if (Voice *v = Find(s)) v->state = State::Stopped;
+    return 1;
 }
 void __stdcall AIL_start_3D_sample(H3DSAMPLE s)
 {

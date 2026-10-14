@@ -93,7 +93,7 @@ class NormalLaunchContract(unittest.TestCase):
     def test_skirmish_game_speed_label_is_hidden_with_its_slider_by_name(self):
         c = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp")
         self.assertIn("StaticTextBattleHonors1", c)
-        self.assertIn("if (speedLabel)", c)
+        self.assertIn("if (speedLabel && !comboBoxStartingCash)", c)  # label hidden by name unless Starting Cash took the slot
 
     def test_crash_dumps_are_preserved_and_still_fail_the_run(self):
         inv = read("scripts/native-runtime/Invoke-NativeNormalLaunch.ps1")
@@ -103,6 +103,67 @@ class NormalLaunchContract(unittest.TestCase):
         # only exact MiniDumper names qualify; the strict stage check is never relaxed globally
         self.assertIn("Crash(FG|MG)-", common)
         self.assertIn("[switch]$AllowCrashDumps", common)
+
+
+    # ---- X64.31 fix3 ----
+    def test_audio_completion_handles_are_pointer_sized(self):
+        # Root cause of SFX/voices dying over a long session: completion callbacks truncated the 64 bit sample
+        # handle to 32 bits, findPlayingAudioFrom never matched, and the pooled handles were never recycled.
+        m = read("Core/GameEngineDevice/Source/MilesAudioDevice/MilesAudioManager.cpp")
+        for cast in ("(UnsignedInt) sampleCompleted", "(UnsignedInt) sample3DCompleted", "(UnsignedInt) streamCompleted"):
+            self.assertNotIn(cast, m)
+        self.assertIn("notifyOfAudioCompletion((UnsignedPtr) sampleCompleted, PAT_Sample)", m)
+        self.assertIn("PlayingAudio *MilesAudioManager::findPlayingAudioFrom( UnsignedPtr handle", m)
+        self.assertIn("notifyOfAudioCompletion( UnsignedPtr audioCompleted", read("Core/GameEngine/Include/Common/GameAudio.h"))
+        self.assertIn("typedef uintptr_t UnsignedPtr;", read("Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h"))
+
+    def test_native_audio_completion_is_off_the_mixer_thread_and_counted(self):
+        n = read("Dependencies/Miles/NativeMiles.cpp")
+        self.assertIn("EosWorker", n)
+        self.assertIn("++g_stats.starved", n)
+        self.assertIn("THREAD_PRIORITY_HIGHEST", n)
+        # sample decode happens before the mixer lock is taken
+        body = n[n.index("bool LoadSampleData"):n.index("bool LoadSampleData") + 900]
+        self.assertLess(body.index("DecodeWavToPcm"), body.index("Lock lock;"))
+        # past the maximum distance a sound is clamped, never silenced
+        self.assertNotIn("if (dist > v.maxDist) attenuation = 0.0f;", n)
+        self.assertIn("audio_stats", read("Core/GameEngineDevice/Source/MilesAudioDevice/MilesAudioManager.cpp"))
+
+    def test_starting_cash_extension_wiring(self):
+        c = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp")
+        self.assertIn("static Bool startingCashExtensionEnabled()", c)
+        self.assertIn("{ 5000, 10000, 20000, 50000 }", c)                   # Zero Hour choices
+        self.assertIn("TheGlobalData->m_defaultStartingCash", c)            # retail amount is the default
+        # every menu entry resets to the retail amount before a stored (validated) choice is applied
+        self.assertLess(c.index("TheSkirmishGameInfo->setStartingCash(TheGlobalData->m_defaultStartingCash);"),
+                        c.index("isStartingCashChoice((Int)stored.countMoney())"))
+        self.assertIn("setStartingCash( TheSkirmishGameInfo->getStartingCash() );", c)  # persisted
+        self.assertIn("handleStartingCashSelection();", c)
+        # the retail multiplayer-settings default is zero for Generals: never used as the default
+        self.assertNotIn("return TheMultiplayerSettings->getDefaultStartingMoney();", c)
+        # campaign: only a skirmish game binds TheGameInfo to the skirmish info that carries the amount
+        g = read("Generals/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp")
+        self.assertIn("else if(m_gameMode == GAME_SKIRMISH)", g)
+        p = read("Generals/Code/GameEngine/Source/Common/RTS/Player.cpp")
+        self.assertIn("TheGameInfo->getStartingCash().countMoney()", p)
+        # GameData.ini is never rewritten by the selection
+        self.assertNotIn("m_defaultStartingCash =", c)
+
+
+    def test_proven_review_paths_stay_wired(self):
+        # Proven by the x64-31-fix2 native review: load/score screens, return to the shell, movie entry points and
+        # busy state key on normal launch rather than m_headless alone.
+        nh = "TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch()"
+        for path in ("Generals/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp",
+                     "Core/GameEngine/Source/GameLogic/System/GameLogicDispatch.cpp",
+                     "Generals/Code/GameEngine/Source/GameClient/InGameUI.cpp",
+                     "Core/GameEngine/Source/GameClient/Display.cpp"):
+            self.assertIn(nh, read(path), path)
+        # texture bridge: placeholder instead of exceptions (laser/mip-chain crash)
+        self.assertIn("MissingTextureContent()", read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp"))
+        # real audio manager on normal launch
+        self.assertIn("dummy && !StartupDiagnostics::normalLaunch()",
+                      read("Core/GameEngineDevice/Include/Win32Device/Common/Win32GameEngine.h"))
 
 
 if __name__ == "__main__":

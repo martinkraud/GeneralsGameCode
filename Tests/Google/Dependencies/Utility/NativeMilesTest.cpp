@@ -168,7 +168,9 @@ TEST_F(Fixture, PositionalAttenuationAndPan)
     NativeMiles::AIL_set_3D_position(reinterpret_cast<H3DPOBJECT>(s), 5000.0f, 0, 0);   // beyond max distance
     NativeMiles::AIL_start_3D_sample(s);
     NativeMiles::Render(out.data(), 256);
-    EXPECT_EQ(out[100], 0);
+    // Past the maximum distance attenuation stops (Miles semantics); the engine decides what is inaudible.
+    EXPECT_GT(std::abs(static_cast<int>(out[100])) + std::abs(static_cast<int>(out[101])), 0);
+    EXPECT_LT(std::abs(static_cast<int>(out[100])) + std::abs(static_cast<int>(out[101])), 20000 / 10);
     NativeMiles::AIL_release_3D_sample_handle(s);
 }
 
@@ -368,4 +370,223 @@ TEST_F(Fixture, ImaAdpcmDurationUsesTheHeaderRate)
     NativeMiles::AIL_sample_ms_position(s, &total, &cur);
     EXPECT_NEAR(total, 1000.0 * blocks * spb / rate, 2.0);
     NativeMiles::AIL_release_sample_handle(s);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// X64.31 fix3: handle lifetime. The engine keeps fixed pools of sample handles and only returns a handle to its
+// pool from the end-of-sample callback. A callback that does not arrive (or arrives with a different handle value)
+// leaks that handle for the rest of the session until nothing but music can play.
+// ---------------------------------------------------------------------------------------------------------------
+#include <set>
+
+namespace
+{
+struct Pool3D
+{
+    std::vector<H3DSAMPLE> free;
+    std::set<uintptr_t> inUse;
+    unsigned rejected = 0, completed = 0, wrongHandle = 0;
+} g_pool3d;
+
+struct Pool2D
+{
+    std::vector<HSAMPLE> free;
+    std::set<uintptr_t> inUse;
+    unsigned rejected = 0, completed = 0, wrongHandle = 0;
+} g_pool2d;
+
+// Mirrors MilesAudioManager: the handle value must arrive intact (no 32 bit truncation) and returns to the pool.
+void __stdcall Complete3D(H3DPOBJECT h)
+{
+    const uintptr_t value = reinterpret_cast<uintptr_t>(h);
+    if (!g_pool3d.inUse.erase(value)) { ++g_pool3d.wrongHandle; return; }
+    g_pool3d.free.push_back(reinterpret_cast<H3DSAMPLE>(h));
+    ++g_pool3d.completed;
+}
+void __stdcall Complete2D(HSAMPLE h)
+{
+    const uintptr_t value = reinterpret_cast<uintptr_t>(h);
+    if (!g_pool2d.inUse.erase(value)) { ++g_pool2d.wrongHandle; return; }
+    g_pool2d.free.push_back(h);
+    ++g_pool2d.completed;
+}
+uintptr_t g_seenHandle = 0;
+void __stdcall RememberHandle(HSAMPLE h) { g_seenHandle = reinterpret_cast<uintptr_t>(h); }
+}
+
+TEST_F(Fixture, ThousandsOfShortSamplesNeverExhaustThePool)
+{
+    g_pool3d = Pool3D();
+    g_pool2d = Pool2D();
+    const unsigned kPool = 8;
+    for (unsigned i = 0; i < kPool; ++i) {
+        g_pool3d.free.push_back(NativeMiles::AIL_allocate_3D_sample_handle(nullptr));
+        g_pool2d.free.push_back(NativeMiles::AIL_allocate_sample_handle(nullptr));
+    }
+    NativeMiles::resetStats();
+    auto wav = MakeWav(Square(441, 4000), 44100);           // 10 ms
+    std::vector<int16_t> out(256 * 2);
+    unsigned requests = 0;
+    for (unsigned round = 0; round < 3000; ++round) {
+        // Overlapping: try to start up to 3 voices per round from each pool, like a busy battle.
+        for (int k = 0; k < 3; ++k) {
+            ++requests;
+            if (g_pool3d.free.empty()) { ++g_pool3d.rejected; }
+            else {
+                H3DSAMPLE s = g_pool3d.free.back();
+                g_pool3d.free.pop_back();
+                ASSERT_EQ(NativeMiles::AIL_set_3D_sample_file(s, wav.data()), 1);
+                NativeMiles::AIL_register_3D_EOS_callback(s, Complete3D);
+                NativeMiles::AIL_set_3D_position(reinterpret_cast<H3DPOBJECT>(s), float(k * 10), 0, 0);
+                g_pool3d.inUse.insert(reinterpret_cast<uintptr_t>(s));
+                NativeMiles::AIL_start_3D_sample(s);
+            }
+            if (g_pool2d.free.empty()) { ++g_pool2d.rejected; }
+            else {
+                HSAMPLE s = g_pool2d.free.back();
+                g_pool2d.free.pop_back();
+                NativeMiles::AIL_init_sample(s);
+                NativeMiles::AIL_register_EOS_callback(s, Complete2D);
+                ASSERT_EQ(NativeMiles::AIL_set_sample_file(s, wav.data(), 0), 1);
+                g_pool2d.inUse.insert(reinterpret_cast<uintptr_t>(s));
+                NativeMiles::AIL_start_sample(s);
+            }
+        }
+        NativeMiles::Render(out.data(), 256);               // ~5.8 ms, so every sample overlaps the next round
+    }
+    // Drain: everything started must complete and come home.
+    for (int i = 0; i < 64 && (!g_pool3d.inUse.empty() || !g_pool2d.inUse.empty()); ++i) NativeMiles::Render(out.data(), 256);
+    EXPECT_EQ(g_pool3d.wrongHandle, 0u) << "completion delivered a handle value the pool does not know (truncation?)";
+    EXPECT_EQ(g_pool2d.wrongHandle, 0u);
+    EXPECT_TRUE(g_pool3d.inUse.empty());
+    EXPECT_TRUE(g_pool2d.inUse.empty());
+    EXPECT_EQ(g_pool3d.free.size(), kPool);
+    EXPECT_EQ(g_pool2d.free.size(), kPool);
+    EXPECT_EQ(g_pool3d.completed + g_pool3d.rejected, requests);
+    // A pool of 8 with 10 ms clips served well over half of the requests: it never degraded.
+    EXPECT_GT(g_pool3d.completed, requests / 2);
+    EXPECT_GT(g_pool2d.completed, requests / 2);
+    const NativeMiles::Stats st = NativeMiles::stats();
+    EXPECT_EQ(st.eosCallbacks, g_pool3d.completed + g_pool2d.completed);
+    EXPECT_EQ(NativeMiles::ActiveVoiceCount(), 0u);
+}
+
+TEST_F(Fixture, HandleValuesSurviveAs64BitPointersInCallbacks)
+{
+    // The engine bug behind the silent-SFX-after-a-while report: completion handles were cast to 32 bits.
+    HSAMPLE s = NativeMiles::AIL_allocate_sample_handle(nullptr);
+    g_seenHandle = 0;
+    NativeMiles::AIL_register_EOS_callback(s, RememberHandle);
+    auto wav = MakeWav(Square(100, 1000), 44100);
+    ASSERT_EQ(NativeMiles::AIL_set_sample_file(s, wav.data(), 0), 1);
+    NativeMiles::AIL_start_sample(s);
+    FramesUntilDone();
+    EXPECT_EQ(g_seenHandle, reinterpret_cast<uintptr_t>(s));
+    NativeMiles::AIL_release_sample_handle(s);
+}
+
+TEST_F(Fixture, LoopedSampleRunsItsLoopsAndThenCompletesOnce)
+{
+    g_pool2d = Pool2D();
+    HSAMPLE s = NativeMiles::AIL_allocate_sample_handle(nullptr);
+    NativeMiles::AIL_init_sample(s);
+    NativeMiles::AIL_register_EOS_callback(s, Complete2D);
+    g_pool2d.inUse.insert(reinterpret_cast<uintptr_t>(s));
+    auto wav = MakeWav(Square(441, 4000), 44100);
+    ASSERT_EQ(NativeMiles::AIL_set_sample_file(s, wav.data(), 0), 1);
+    NativeMiles::AIL_set_sample_loop_count(s, 3);
+    NativeMiles::AIL_start_sample(s);
+    FramesUntilDone();
+    EXPECT_EQ(g_pool2d.completed, 1u);                       // three loops, one completion
+    EXPECT_EQ(NativeMiles::ActiveVoiceCount(), 0u);
+    NativeMiles::AIL_release_sample_handle(s);
+}
+
+TEST_F(Fixture, StoppedSamplesAreReusableWithoutACompletionCallback)
+{
+    // MilesAudioManager stops a sample, unregisters the callback and puts the handle straight back in its pool.
+    H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
+    auto wav = MakeWav(Square(44100, 3000), 44100);          // 1 s
+    std::vector<int16_t> out(128 * 2);
+    for (int i = 0; i < 200; ++i) {
+        ASSERT_EQ(NativeMiles::AIL_set_3D_sample_file(s, wav.data()), 1);
+        NativeMiles::AIL_register_3D_EOS_callback(s, nullptr);
+        NativeMiles::AIL_start_3D_sample(s);
+        NativeMiles::Render(out.data(), 128);
+        NativeMiles::AIL_stop_3D_sample(s);
+    }
+    NativeMiles::AIL_set_3D_sample_file(s, wav.data());
+    NativeMiles::AIL_start_3D_sample(s);
+    EXPECT_EQ(NativeMiles::ActiveVoiceCount(), 1u);
+    NativeMiles::AIL_release_3D_sample_handle(s);
+}
+
+TEST_F(Fixture, HandleCountsBalanceAfterRelease)
+{
+    NativeMiles::resetStats();
+    std::vector<H3DSAMPLE> v;
+    for (int i = 0; i < 100; ++i) v.push_back(NativeMiles::AIL_allocate_3D_sample_handle(nullptr));
+    for (H3DSAMPLE s : v) NativeMiles::AIL_release_3D_sample_handle(s);
+    const NativeMiles::Stats st = NativeMiles::stats();
+    EXPECT_EQ(st.handlesAllocated, 100u);
+    EXPECT_EQ(st.handlesReleased, 100u);
+}
+
+// ---- 3D distance semantics -------------------------------------------------------------------------------------
+namespace
+{
+// Mixes a constant 20000 sample at the given position and returns the peak channel amplitude.
+int PeakAt(float x, float y, float minDist, float maxDist, H3DPOBJECT listener, float listenerX = 0.0f)
+{
+    NativeMiles::AIL_set_3D_position(listener, listenerX, 0, 0);
+    H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
+    auto wav = MakeWav(Square(8820, 20000), 44100);
+    NativeMiles::AIL_set_3D_sample_file(s, wav.data());
+    NativeMiles::AIL_set_3D_sample_distances(s, maxDist, minDist);
+    NativeMiles::AIL_set_3D_sample_volume(s, 1.0f);
+    NativeMiles::AIL_set_3D_position(reinterpret_cast<H3DPOBJECT>(s), x, y, 0);
+    NativeMiles::AIL_start_3D_sample(s);
+    std::vector<int16_t> out(64 * 2);
+    NativeMiles::Render(out.data(), 64);
+    int peak = 0;
+    for (int16_t v : out) peak = (std::abs(static_cast<int>(v)) > peak) ? std::abs(static_cast<int>(v)) : peak;
+    NativeMiles::AIL_release_3D_sample_handle(s);
+    return peak;
+}
+}
+
+TEST_F(Fixture, AttenuationFollowsMinDistanceAndNeverSilencesPastMax)
+{
+    H3DPOBJECT listener = NativeMiles::AIL_open_3D_listener(nullptr);
+    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, 1);
+    const int inside = PeakAt(0, 5, 10, 200, listener);      // inside the minimum distance: full
+    const int mid = PeakAt(0, 40, 10, 200, listener);        // 10/40 = quarter
+    const int atMax = PeakAt(0, 200, 10, 200, listener);     // 10/200
+    const int beyond = PeakAt(0, 2000, 10, 200, listener);   // clamped to the maximum distance, not zero
+    EXPECT_NEAR(inside, 20000, 300);
+    EXPECT_NEAR(mid, 20000 / 4, 300);
+    EXPECT_NEAR(atMax, 20000 / 20, 100);
+    EXPECT_GT(beyond, 0) << "off-screen sounds must stay audible (quietly), not be cut off";
+    EXPECT_EQ(beyond, atMax);
+}
+
+TEST_F(Fixture, ListenerMovementChangesGainAndPan)
+{
+    H3DPOBJECT listener = NativeMiles::AIL_open_3D_listener(nullptr);
+    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, 1);
+    const int farAway = PeakAt(100, 0, 10, 1000, listener, 0.0f);
+    const int close = PeakAt(100, 0, 10, 1000, listener, 80.0f);   // listener moved 80 units toward the source
+    EXPECT_GT(close, farAway * 3);
+    // A source to the left of a listener at the origin is louder in the left channel.
+    NativeMiles::AIL_set_3D_position(listener, 0, 0, 0);
+    H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
+    auto wav = MakeWav(Square(8820, 20000), 44100);
+    NativeMiles::AIL_set_3D_sample_file(s, wav.data());
+    NativeMiles::AIL_set_3D_sample_distances(s, 1000, 10);
+    NativeMiles::AIL_set_3D_position(reinterpret_cast<H3DPOBJECT>(s), -30, 0, 0);
+    NativeMiles::AIL_start_3D_sample(s);
+    std::vector<int16_t> out(64 * 2);
+    NativeMiles::Render(out.data(), 64);
+    EXPECT_GT(out[20], out[21]);
+    NativeMiles::AIL_release_3D_sample_handle(s);
 }

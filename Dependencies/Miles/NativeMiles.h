@@ -27,7 +27,13 @@ void SetDevicelessForTests(bool deviceless);    // no waveOut / no mixer thread;
 unsigned Render(int16_t *interleavedStereo, unsigned frames);  // mixes and delivers EOS callbacks
 unsigned ActiveVoiceCount();
 unsigned OutputRate();
-struct Stats { unsigned samplesStarted, streamsOpened, mp3Decoded, eosCallbacks, underruns, deviceOpened; };
+struct Stats {
+    unsigned samplesStarted, streamsOpened, mp3Decoded, eosCallbacks, underruns, deviceOpened;
+    unsigned handlesAllocated, handlesReleased;     // voice handles over the driver's lifetime
+    unsigned active, peakActive;                    // voices currently / at most mixing
+    unsigned callbacksQueued, callbacksDelivered;   // completion callbacks handed to the delivery thread / run
+    unsigned starved;                               // output device ran dry (audible dropout)
+};
 Stats stats();
 void resetStats();
 

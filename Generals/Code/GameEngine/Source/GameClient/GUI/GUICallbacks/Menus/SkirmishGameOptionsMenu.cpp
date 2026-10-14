@@ -60,6 +60,7 @@
 
 #include "Common/MultiplayerSettings.h"
 #include "GameClient/GameText.h"
+#include "GameClient/GadgetCheckBox.h"
 #include "GameClient/ExtendedMessageBox.h"
 #include "GameClient/MessageBox.h"
 #include "GameNetwork/GameInfo.h"
@@ -110,6 +111,154 @@ static NameKeyType buttonSelectMapID = NAMEKEY_INVALID;
 static NameKeyType buttonResetID = NAMEKEY_INVALID;
 static NameKeyType windowMapID = NAMEKEY_INVALID;
 static NameKeyType sliderGameSpeedID = NAMEKEY_INVALID;
+
+// ---------------------------------------------------------------------------------------------------------------
+// Starting Cash (project extension; retail Generals has no such control).
+//
+// Zero Hour exposes a Starting Cash combo box fed by MultiplayerStartingMoneyChoice entries (5000 / 10000 default /
+// 20000 / 50000). Base Generals has the same GameInfo/Player plumbing (GameInfo::m_startingCash feeds
+// Player::init for players whose template money is 0, human and AI alike) but no control and no choice list.
+// The control is created natively next to the Game Speed slot, like the Options frame-rate selector, with the
+// Zero Hour choices; DefaultStartingCash from GameData.ini stays the default and the retail amount.
+// Everything is gated by startingCashExtensionEnabled() so a Classic/Modern experience switch can turn the whole
+// feature off in one place; when off, the game behaves exactly like retail (no control, no preference read).
+// ---------------------------------------------------------------------------------------------------------------
+static NameKeyType comboBoxStartingCashID = NAMEKEY_INVALID;
+static GameWindow *comboBoxStartingCash = nullptr;
+
+static Bool startingCashExtensionEnabled()
+{
+	return TRUE;
+}
+
+static void startingCashChoices(std::vector<Int> &values)
+{
+	static const Int kZeroHourChoices[] = { 5000, 10000, 20000, 50000 };
+	values.assign(kZeroHourChoices, kZeroHourChoices + ARRAY_SIZE(kZeroHourChoices));
+	const Int retail = (Int)TheGlobalData->m_defaultStartingCash.countMoney();
+	if (std::find(values.begin(), values.end(), retail) == values.end())
+	{
+		values.push_back(retail);
+		std::sort(values.begin(), values.end());
+	}
+}
+
+static Bool isStartingCashChoice(Int amount)
+{
+	std::vector<Int> values;
+	startingCashChoices(values);
+	return std::find(values.begin(), values.end(), amount) != values.end();
+}
+
+static void copyStartingCashAppearance(GameWindow *target, GameWindow *source)
+{
+	WinInstanceData *to = target->winGetInstanceData();
+	const WinInstanceData *from = source->winGetInstanceData();
+	memcpy(to->m_enabledDrawData, from->m_enabledDrawData, sizeof(to->m_enabledDrawData));
+	memcpy(to->m_disabledDrawData, from->m_disabledDrawData, sizeof(to->m_disabledDrawData));
+	memcpy(to->m_hiliteDrawData, from->m_hiliteDrawData, sizeof(to->m_hiliteDrawData));
+	to->m_enabledText = from->m_enabledText;
+	to->m_disabledText = from->m_disabledText;
+	to->m_hiliteText = from->m_hiliteText;
+	target->winSetStatus(source->winGetStatus() & WIN_STATUS_IMAGE);
+	target->winSetDrawFunc(source->winGetDrawFunc());
+	target->winSetFont(source->winGetFont());
+}
+
+// Builds the combo box in the slot the (intentionally hidden) Game Speed slider occupies and reuses that row's
+// caption window for its label. Returns the combo or nullptr when the layout cannot host it.
+static GameWindow *createStartingCashControl(GameWindow *parent, GameWindow *slot, GameWindow *caption, GameWindow *appearance)
+{
+	if (!startingCashExtensionEnabled() || !parent || !slot || !appearance)
+		return nullptr;
+	GameWindow *combo = TheWindowManager->winGetWindowFromId(parent, comboBoxStartingCashID);
+	if (!combo)
+	{
+		Int x, y, width, height;
+		slot->winGetPosition(&x, &y);
+		slot->winGetSize(&width, &height);
+		Int ax, ay, aw, ah;
+		appearance->winGetSize(&aw, &ah);
+		height = max(height, ah);
+		width = max(width, 96);
+
+		WinInstanceData instance;
+		instance.m_font = appearance->winGetFont();
+		instance.m_enabledText = appearance->winGetInstanceData()->m_enabledText;
+		instance.m_disabledText = appearance->winGetInstanceData()->m_disabledText;
+		instance.m_hiliteText = appearance->winGetInstanceData()->m_hiliteText;
+		instance.m_id = comboBoxStartingCashID;
+		instance.m_style = GWS_COMBO_BOX | GWS_MOUSE_TRACK;
+		std::vector<Int> values;
+		startingCashChoices(values);
+		ComboBoxData data = {};
+		data.maxDisplay = (Int)values.size();
+		data.maxChars = 24;
+		data.entryData = NEW EntryData;
+		memset(data.entryData, 0, sizeof(EntryData));
+		data.entryData->maxTextLen = data.maxChars;
+		data.listboxData = NEW ListboxData;
+		memset(data.listboxData, 0, sizeof(ListboxData));
+		data.listboxData->listLength = (Int)values.size();
+		data.listboxData->forceSelect = TRUE;
+		data.listboxData->columns = 1;
+		combo = TheWindowManager->gogoGadgetComboBox(parent, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
+			x, y, width, height, &instance, &data, instance.m_font, FALSE);
+		if (!combo)
+			return nullptr;
+		copyStartingCashAppearance(combo, appearance);
+		copyStartingCashAppearance(GadgetComboBoxGetEditBox(combo), GadgetComboBoxGetEditBox(appearance));
+		copyStartingCashAppearance(GadgetComboBoxGetDropDownButton(combo), GadgetComboBoxGetDropDownButton(appearance));
+		copyStartingCashAppearance(GadgetComboBoxGetListBox(combo), GadgetComboBoxGetListBox(appearance));
+		(void)ax; (void)ay;
+	}
+	GadgetComboBoxReset(combo);
+	std::vector<Int> values;
+	startingCashChoices(values);
+	const Int retail = (Int)TheGlobalData->m_defaultStartingCash.countMoney();
+	for (size_t i = 0; i < values.size(); ++i)
+	{
+		UnicodeString text;
+		if (values[i] == retail)
+			text.format(L"$%d (%s)", values[i], TheGameText->FETCH_OR_SUBSTITUTE("GUI:Default", L"Default").str());
+		else
+			text.format(L"$%d", values[i]);
+		const Int index = GadgetComboBoxAddEntry(combo, text, combo->winGetEnabledTextColor());
+		GadgetComboBoxSetItemData(combo, index, (void *)(intptr_t)values[i]);
+	}
+	if (caption)
+		GadgetStaticTextSetText(caption, TheGameText->FETCH_OR_SUBSTITUTE("GUI:StartingCash", L"Starting Cash"));
+	return combo;
+}
+
+static void selectStartingCashInCombo()
+{
+	if (!comboBoxStartingCash || !TheSkirmishGameInfo)
+		return;
+	const Int wanted = (Int)TheSkirmishGameInfo->getStartingCash().countMoney();
+	const Int count = GadgetComboBoxGetLength(comboBoxStartingCash);
+	for (Int i = 0; i < count; ++i)
+	{
+		if ((Int)(intptr_t)GadgetComboBoxGetItemData(comboBoxStartingCash, i) == wanted)
+		{
+			GadgetComboBoxSetSelectedPos(comboBoxStartingCash, i, TRUE);
+			return;
+		}
+	}
+}
+
+static void handleStartingCashSelection()
+{
+	if (!comboBoxStartingCash || !TheSkirmishGameInfo)
+		return;
+	Int selIndex = -1;
+	GadgetComboBoxGetSelectedPos(comboBoxStartingCash, &selIndex);
+	if (selIndex < 0)
+		return;
+	Money startingCash;
+	startingCash.deposit((UnsignedInt)(intptr_t)GadgetComboBoxGetItemData(comboBoxStartingCash, selIndex), FALSE, FALSE);
+	TheSkirmishGameInfo->setStartingCash(startingCash);
+}
 static NameKeyType staticTextGameSpeedID = NAMEKEY_INVALID;
 // Window Pointers ------------------------------------------------------------------------
 static GameWindow *staticTextGameSpeed = nullptr;
@@ -311,7 +460,8 @@ Money SkirmishPreferences::getStartingCash() const
   const_iterator it = find(startingCashKey);
   if (it == end())
   {
-    return TheMultiplayerSettings->getDefaultStartingMoney();
+    // Retail Generals defines no MultiplayerStartingMoneyChoice list; its value is DefaultStartingCash.
+    return TheGlobalData->m_defaultStartingCash;
   }
 
   Money money;
@@ -347,6 +497,8 @@ Bool SkirmishPreferences::write()
 	(*this)["Map"] = TheSkirmishGameInfo->getMap();
 
 	(*this)["UserName"] = UnicodeStringToQuotedPrintable(TheSkirmishGameInfo->getConstSlot(0)->getName());
+
+	setStartingCash( TheSkirmishGameInfo->getStartingCash() );
 
 	setSlotList();
 
@@ -1224,6 +1376,16 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	ParseAsciiStringToGameInfo(TheSkirmishGameInfo, prefs.getSlotList());
 	TheSkirmishGameInfo->setSeed(GetTickCount());
 
+	// Starting Cash: every menu entry starts from the retail amount; a stored choice is applied only when the
+	// extension is on and the value is one of the offered choices (a stale or hand-edited entry falls back).
+	TheSkirmishGameInfo->setStartingCash(TheGlobalData->m_defaultStartingCash);
+	if (startingCashExtensionEnabled())
+	{
+		const Money stored = prefs.getStartingCash();
+		if (isStartingCashChoice((Int)stored.countMoney()))
+			TheSkirmishGameInfo->setStartingCash(stored);
+	}
+
 	UnsignedInt isPreorder = 0;
 	GetUnsignedIntFromRegistry("", "Preorder", isPreorder);
 	if (isPreorder != 0)
@@ -1266,10 +1428,13 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	staticTextGameSpeed->winHide(TRUE);
 	GameWindow *speedLabel = TheWindowManager->winGetWindowFromId(parentSkirmishGameOptions,
 		NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1"));
+	comboBoxStartingCashID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash");
+	comboBoxStartingCash = createStartingCashControl(parentSkirmishGameOptions, sliderGameSpeed, speedLabel, comboBoxTeam[0]);
+	selectStartingCashInCombo();
 	// The retail WND names this label StaticTextBattleHonors1 and gives it the GUI:GameSpeed text; it goes
 	// away with the slider it labels. Matching the text alone left the label visible without its slider when the
 	// localized text did not compare equal, so the control is identified by name and, as a fallback, by text.
-	if (speedLabel)
+	if (speedLabel && !comboBoxStartingCash)
 		speedLabel->winHide(TRUE);
 	setFPSTextBox(sliderPos);
 	buttonStart->winSetText(TheGameText->fetch("GUI:Start"));
@@ -1460,6 +1625,11 @@ WindowMsgHandledType SkirmishGameOptionsMenuSystem( GameWindow *window, Unsigned
 			{
 				GameWindow *control = (GameWindow *)mData1;
 				Int controlID = control->winGetWindowId();
+				if (comboBoxStartingCash && controlID == comboBoxStartingCashID)
+				{
+					handleStartingCashSelection();
+					break;
+				}
 				for (Int i = 0; i < MAX_SLOTS; i++)
 				{
 					if (controlID == comboBoxColorID[i])

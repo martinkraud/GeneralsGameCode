@@ -27,6 +27,9 @@ typedef uint64_t UnsignedInt64;
 typedef int32_t Int;
 typedef uint32_t UnsignedInt;
 
+// Pointer-sized unsigned integer: handles that cross the 32/64 bit boundary (audio completion callbacks).
+typedef uintptr_t UnsignedPtr;
+
 typedef int16_t Short;
 typedef uint16_t UnsignedShort;
 

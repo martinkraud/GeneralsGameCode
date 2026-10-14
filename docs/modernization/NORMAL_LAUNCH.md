@@ -134,3 +134,64 @@ and **fails the run** whenever any dump exists. Only that exact MiniDumper name 
 Covered by `Test-NativeNormalLaunchWorkflow.ps1` (22 checks).
 
 Fix candidate `x64-31-fix2` (generalsv.exe SHA256 `001733DD04034A08E0B04C47730D2B9EA0D1ADF9A962CB4AE931AE79F2A0A8A8`).
+
+## 11. fix3: native audio lifetime, Starting Cash extension (x64-31-fix3)
+
+What the fix2 review proved: normal launch, Skirmish to victory, a second Skirmish in the same process, the USA
+campaign intro/mission, D3D11 world rendering close to retail, no laser/mip crash, and (initially) correct
+voice pitch. The remaining blocker was audio degrading over a long session.
+
+### Confirmed root cause: 32 bit completion handles
+
+`MilesAudioManager`'s end-of-sample callbacks (`setSampleCompleted`, `set3DSampleCompleted`, `setStreamCompleted`)
+cast the Miles handle to `UnsignedInt` and `findPlayingAudioFrom` cast it back. On AMD64 the handle is a heap
+pointer above 4 GB, so the lookup never matched: "Audio has completed playing, but we can't seem to find it"
+(a debug-only assert) and the completion was dropped. A finished sound therefore stayed in the manager's
+playing list, its pooled 2D/3D handle never returned to the free list, and its priority slot was never
+released. Over a long match the pool filled with finished sounds: new voices/SFX were rejected or evicted by
+priority (Tomahawk, promotion, Bulldozer, campaign explosions) while music (a dedicated stream with its own
+slot) kept playing. The completion path is a pure engine bug, not a NativeMiles allocation leak.
+
+### Further findings and fixes (NativeMiles)
+
+| Finding | Evidence | Fix |
+|---|---|---|
+| Max distance silenced sounds | `Gains()` zeroed the voice beyond `maxDist`; Miles stops attenuating there and leaves culling to the app | Clamp the distance to the maximum; inverse-distance roll-off from the minimum is unchanged |
+| Completion callbacks ran on the mixer thread | the engine's handler loads the next sound portion (file I/O) synchronously; it stalled the mixer and starved waveOut (millisecond crackle) | A dedicated callback thread; deviceless/test mode stays inline |
+| WAV decode under the global lock | `AIL_set_sample_file` decoded while holding the mixer lock | Decode first, lock only to attach |
+| No visibility | | `NativeMiles::Stats` (handles allocated/released, active/peak voices, completions queued/delivered, starved buffers) reported by `MilesAudioManager::update` as `audio_stats` checkpoints every 30 s in `generals64.log` together with free/playing 2D/3D counts |
+| Mixer scheduling | | Mixer thread at `THREAD_PRIORITY_HIGHEST` |
+
+Not changed on purpose: channel counts, buffer size, audible radius (the engine's own limits are the contract).
+
+Tests (`native_miles_test`, 20): 3000 rounds x 6 overlapping plays against pools of 8 handles with the
+engine's return-on-callback behavior (no leak, no rejection drift, every completion has the exact handle value),
+64 bit handle round trip, looped samples complete once, stop/reuse without callback 200x, handle accounting,
+min/max attenuation, listener movement and pan. Engine side is pinned by the contract (pointer-sized handle
+types, no `(UnsignedInt)` casts).
+
+### Starting Cash (intentional Generals extension)
+
+Retail Generals Skirmish has no such control; Zero Hour does. The shared plumbing already existed
+(`GameInfo::m_startingCash` -> `Player::init` for every player whose template money is 0, human and AI alike).
+Added to the Generals Skirmish screen:
+
+* control: a native combo box (same technique as the Options frame-rate selector, appearance cloned from the
+  team combo) in the hidden Game Speed slider's slot, captioned by reusing that row's label
+* values: Zero Hour's 5000 / 10000 / 20000 / 50000, always including the retail `DefaultStartingCash` (10000),
+  marked "(Default)"
+* default: every menu entry resets to `DefaultStartingCash` and applies a stored choice only if it is one of the
+  offered values; the choice persists in `Skirmish.ini` (`StartingCash`) like Zero Hour; `GameData.ini` is never
+  touched; Campaign never reads it (`TheGameInfo` is bound to the skirmish info only for `GAME_SKIRMISH`)
+* note: the Generals `getStartingCash()` fallback used the multiplayer-settings default, which is 0 for retail
+  Generals (no `MultiplayerStartingMoneyChoice`); it now falls back to `DefaultStartingCash`
+* switch: `startingCashExtensionEnabled()` is the single gate for a future Classic/Modern experience selection
+
+### Selection indicator (not changed)
+
+The earlier hypothesis (missing mips) was wrong: effect textures are already built with a mip chain and sampled
+trilinearly (`ObjectTexture`, `emitEffect`). The terrain-conforming decal is a 2.5-unit grid; the retail
+projection and its blend are not identifiable without an in-game reference comparison. Left for the renderer
+fidelity backlog with this correction.
+
+Fix candidate `x64-31-fix3` (generalsv.exe SHA256 `E4E33FBBE67DFCFD60F27FBA1B2E38391CA5ACD49804A9A9E78536E5D2456067`).

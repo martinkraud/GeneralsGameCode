@@ -67,6 +67,10 @@
 
 #include <Utility/interlocked_adapter.h>
 #include "MilesLoader.h"
+#if defined(_WIN64)
+#include "NativeMiles.h"
+#include "Common/StartupDiagnostics.h"
+#endif
 
 #include <dsound.h>
 
@@ -464,6 +468,31 @@ void MilesAudioManager::reset()
 void MilesAudioManager::update()
 {
 	AudioManager::update();
+#if defined(_WIN64)
+	// Normal launch: a bounded audio health line every 30 s (at most 120 per run) so that handle exhaustion or
+	// device starvation is visible in generals64.log instead of being inferred from what a listener missed.
+	if (StartupDiagnostics::normalLaunch())
+	{
+		static ULONGLONG lastReport = 0;
+		static unsigned reports = 0;
+		const ULONGLONG now = GetTickCount64();
+		if (now - lastReport >= 30000 && reports < 120)
+		{
+			lastReport = now;
+			++reports;
+			const NativeMiles::Stats st = NativeMiles::stats();
+			char detail[320];
+			sprintf(detail,
+				"free2d=%u free3d=%u playing2d=%u playing3d=%u streams=%u voices_active=%u peak=%u alloc=%u released=%u "
+				"completions=%u delivered=%u starved=%u underruns=%u",
+				(unsigned)m_availableSamples.size(), (unsigned)m_available3DSamples.size(),
+				(unsigned)m_playingSounds.size(), (unsigned)m_playing3DSounds.size(), (unsigned)m_playingStreams.size(),
+				st.active, st.peakActive, st.handlesAllocated, st.handlesReleased, st.eosCallbacks,
+				st.callbacksDelivered, st.starved, st.underruns);
+			StartupDiagnostics::checkpoint("audio_stats", "sample", detail);
+		}
+	}
+#endif
 	setDeviceListenerPosition();
 	processRequestList();
 	processPlayingList();
@@ -1527,7 +1556,7 @@ Bool MilesAudioManager::isCurrentlyPlaying( AudioHandle handle )
 }
 
 //-------------------------------------------------------------------------------------------------
-void MilesAudioManager::notifyOfAudioCompletion( UnsignedInt handle, UnsignedInt flags )
+void MilesAudioManager::notifyOfAudioCompletion( UnsignedPtr handle, UnsignedInt flags )
 {
 	PlayingAudio *playing = findPlayingAudioFrom(handle, flags);
 	if (!playing) {
@@ -1601,7 +1630,7 @@ void MilesAudioManager::notifyOfAudioCompletion( UnsignedInt handle, UnsignedInt
 }
 
 //-------------------------------------------------------------------------------------------------
-PlayingAudio *MilesAudioManager::findPlayingAudioFrom( UnsignedInt handle, UnsignedInt flags )
+PlayingAudio *MilesAudioManager::findPlayingAudioFrom( UnsignedPtr handle, UnsignedInt flags )
 {
 	std::list<PlayingAudio *>::iterator it;
 	PlayingAudio *playing;
@@ -3027,19 +3056,19 @@ void MilesAudioManager::friend_forcePlayAudioEventRTS(const AudioEventRTS* event
 //-------------------------------------------------------------------------------------------------
 void AILCALLBACK setSampleCompleted( HSAMPLE sampleCompleted )
 {
-	TheAudio->notifyOfAudioCompletion((UnsignedInt) sampleCompleted, PAT_Sample);
+	TheAudio->notifyOfAudioCompletion((UnsignedPtr) sampleCompleted, PAT_Sample);
 }
 
 //-------------------------------------------------------------------------------------------------
 void AILCALLBACK set3DSampleCompleted( H3DSAMPLE sample3DCompleted )
 {
-	TheAudio->notifyOfAudioCompletion((UnsignedInt) sample3DCompleted, PAT_3DSample);
+	TheAudio->notifyOfAudioCompletion((UnsignedPtr) sample3DCompleted, PAT_3DSample);
 }
 
 //-------------------------------------------------------------------------------------------------
 void AILCALLBACK setStreamCompleted( HSTREAM streamCompleted )
 {
-	TheAudio->notifyOfAudioCompletion((UnsignedInt) streamCompleted, PAT_Stream);
+	TheAudio->notifyOfAudioCompletion((UnsignedPtr) streamCompleted, PAT_Stream);
 }
 
 //-------------------------------------------------------------------------------------------------

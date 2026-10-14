@@ -135,6 +135,8 @@ return-to-shell and movie entry points no longer gated by headless; edge scrolli
 AMD64; video (Bink) is genuinely unavailable on AMD64 and is not faked. Launch with
 `scripts/native-runtime/Invoke-NativeNormalLaunch.ps1 -Title Generals -Name <stage> -RunNormalLaunch`.
 Do not run it automatically; frontend/audio/Skirmish/return-to-frontend review is the developer's.
+**fix2 native review (2026-10-14): normal launch, full Skirmish win, second Skirmish in-process, USA campaign intro/mission all worked.** fix3 (`NORMAL_LAUNCH.md` section 11): root cause of long-session audio loss was 64 bit completion handles truncated to 32 bits in `MilesAudioManager` (`UnsignedPtr` now); NativeMiles max-distance/callback-thread/lock fixes and `audio_stats` diagnostics; Starting Cash extension for Generals Skirmish (Zero Hour choices, retail default, `startingCashExtensionEnabled()` gate). Selection indicator still open (hypothesis corrected: effect textures are already mipped).
+
 The sections below describe the earlier reviewed-profile history.
 
 **NORMAL GENERALS AMD64/D3D11 STARTUP -> ORIGINAL INTERACTIVE MAIN MENU.**
