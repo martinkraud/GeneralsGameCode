@@ -1,0 +1,13 @@
+{
+  "Executable": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-31-fix1\\game\\generalsv.exe",
+  "ProcessId": 24800,
+  "Started": true,
+  "TimedOut": false,
+  "ExitCode": 1,
+  "Error": null,
+  "HasLog": true,
+  "PreservedLog": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-31-fix1\\normal-launch\\20261014T0706407673524Z.generals64.log",
+  "StageRestored": false,
+  "CleanupError": "Runtime changed: Added: CrashDumps\\CrashFG-20261014-091403-bb98b8c01-pid24800.dmp; Added: CrashDumps\\CrashMG-20261014-091403-bb98b8c01-pid24800.dmp",
+  "FinishedUtc": "2026-10-14T07:14:11.2809180Z"
+}

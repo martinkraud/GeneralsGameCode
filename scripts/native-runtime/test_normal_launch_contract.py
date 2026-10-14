@@ -76,5 +76,34 @@ class NormalLaunchContract(unittest.TestCase):
         self.assertIn("[string[]]$AllowAdded=@()", common)
 
 
+    # ---- X64.31 fix2 (first native review crash) ----
+    def test_file_texture_bridge_accepts_mip_chains_and_never_throws_for_missing_files(self):
+        b = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp")
+        self.assertNotIn("texture.MipLevelCount != MIP_LEVELS_1", b)
+        self.assertNotIn("legacy MissingTexture GPU fallback is not migrated", b)
+        self.assertIn("Note_Missing_Texture", b)
+        self.assertIn("0x7FFF00FF", b)  # legacy MissingTexture pixels
+        t = read("Core/Libraries/Source/WWVegas/WW3D2/texture.cpp")
+        self.assertIn("level == 0 && Render2DCPUContent && !Peek_D3D_Texture()", t)
+
+    def test_pooled_sample_handles_do_not_keep_the_previous_clips_playback_rate(self):
+        m = read("Dependencies/Miles/NativeMiles.cpp")
+        self.assertIn("v->playbackRate = 0;", m[m.index("bool LoadSampleData"):])
+
+    def test_skirmish_game_speed_label_is_hidden_with_its_slider_by_name(self):
+        c = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp")
+        self.assertIn("StaticTextBattleHonors1", c)
+        self.assertIn("if (speedLabel)", c)
+
+    def test_crash_dumps_are_preserved_and_still_fail_the_run(self):
+        inv = read("scripts/native-runtime/Invoke-NativeNormalLaunch.ps1")
+        self.assertIn("Restore-NativeRuntimeCrashDumps", inv)
+        self.assertIn("if ($crashDumps.Count) { throw", inv)
+        common = read("scripts/native-runtime/Common.ps1")
+        # only exact MiniDumper names qualify; the strict stage check is never relaxed globally
+        self.assertIn("Crash(FG|MG)-", common)
+        self.assertIn("[switch]$AllowCrashDumps", common)
+
+
 if __name__ == "__main__":
     unittest.main()

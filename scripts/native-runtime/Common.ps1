@@ -69,9 +69,30 @@ function Assert-NativeDependencies([string]$Executable, [string]$GamePath) {
 # one of these root-level names is tolerated; any other added/changed/removed file still fails.
 $script:NativeNormalLaunchGenerated=@('generals64.log')
 
-function Get-NativeRuntimeDifferences($Expected,$Actual,[string[]]$AllowAdded=@()) {
+# Crash dumps written by the engine's MiniDumper (CrashFG/CrashMG-<date>-<build>-pid<N>.dmp). They are evidence of
+# a failed run, never an accepted outcome: the launcher moves them out of the stage and still fails the run.
+$script:NativeCrashDumpPattern='^Added: CrashDumps\\Crash(FG|MG)-\d{8}-\d{6}-[0-9a-f]+-pid\d+\.dmp$'
+
+function Get-NativeRuntimeDifferences($Expected,$Actual,[string[]]$AllowAdded=@(),[switch]$AllowCrashDumps) {
     $allowed=@($AllowAdded | ForEach-Object { "Added: $_" })
-    @(Get-ZHInventoryDifferences $Expected $Actual | Where-Object { $_ -notin $allowed })
+    @(Get-ZHInventoryDifferences $Expected $Actual | Where-Object {
+        $_ -notin $allowed -and !($AllowCrashDumps -and $_ -match $script:NativeCrashDumpPattern) })
+}
+
+# Moves crash dumps out of the stage into the evidence directory. Returns the preserved paths (empty: no crash).
+function Restore-NativeRuntimeCrashDumps([string]$GamePath,[string]$EvidenceDirectory,[string]$Stamp) {
+    $dumps=Join-Path $GamePath 'CrashDumps'
+    $kept=@()
+    if (!(Test-Path -LiteralPath $dumps -PathType Container)) { return $kept }
+    foreach ($file in @(Get-ChildItem -LiteralPath $dumps -File -Filter 'Crash*.dmp')) {
+        if ("Added: CrashDumps\$($file.Name)" -notmatch $script:NativeCrashDumpPattern) { continue }
+        $target=Join-Path $EvidenceDirectory "crash-$Stamp"
+        New-Item -ItemType Directory -Force -Path $target | Out-Null
+        $destination=Join-Path $target $file.Name
+        Move-Item -LiteralPath $file.FullName -Destination $destination
+        $kept+=$destination
+    }
+    return $kept
 }
 
 # Preserves expected runtime-generated files into the evidence directory, then removes them from the stage so
@@ -92,12 +113,12 @@ function Restore-NativeRuntimeGeneratedFiles([string]$GamePath,[string[]]$Names,
     return $kept
 }
 
-function Read-NativeStage([string]$Title,[string]$Name,[string[]]$AllowAdded=@()) {
+function Read-NativeStage([string]$Title,[string]$Name,[string[]]$AllowAdded=@(),[switch]$AllowCrashDumps) {
     $stage=Get-NativeStage $Title $Name
     $manifest=Get-Content -LiteralPath (Join-Path $stage 'manifest.json') -Raw | ConvertFrom-Json
     if ($manifest.Schema -ne 1 -or $manifest.Title -ne $Title -or $manifest.StagePath -ne $stage -or
         $manifest.GamePath -ne (Join-Path $stage 'game')) { throw 'Stage identity mismatch' }
-    $diff=@(Get-NativeRuntimeDifferences $manifest.Inventory @(Get-ZHInventory $manifest.GamePath) $AllowAdded)
+    $diff=@(Get-NativeRuntimeDifferences $manifest.Inventory @(Get-ZHInventory $manifest.GamePath) $AllowAdded -AllowCrashDumps:$AllowCrashDumps)
     if ($diff.Count) { throw "Runtime changed: $($diff -join '; ')" }
     $current=Get-NativeBuild $Title
     if ($current.ExecutableSHA256 -ne $manifest.Build.ExecutableSHA256 -or $current.PdbSHA256 -ne $manifest.Build.PdbSHA256) {

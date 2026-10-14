@@ -11,13 +11,14 @@ param([Parameter(Mandatory)][ValidateSet('Generals')][string]$Title,
 if (!$RunNormalLaunch) { throw 'Normal launch requires explicit developer review and -RunNormalLaunch' }
 if (@(Get-Process -Name generals,generalsv,generalszh -ErrorAction SilentlyContinue).Count) { throw 'Exit all existing games first' }
 # A log left by an earlier normal launch is the one tolerated difference; it is archived before the run.
-$manifest=Read-NativeOrdinaryPlayStage $Title $Name $script:NativeNormalLaunchGenerated
+$manifest=Read-NativeOrdinaryPlayStage $Title $Name $script:NativeNormalLaunchGenerated -AllowCrashDumps
 $exe=Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable))
 if (!(Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Staged executable missing: $exe" }
 $runs=Join-Path $manifest.StagePath 'normal-launch'
 New-Item -ItemType Directory -Force -Path $runs | Out-Null
 $stamp=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ')
 $null=Restore-NativeRuntimeGeneratedFiles $manifest.GamePath $script:NativeNormalLaunchGenerated $runs "$stamp.previous"
+$null=Restore-NativeRuntimeCrashDumps $manifest.GamePath $runs "$stamp.previous"
 
 $info=[Diagnostics.ProcessStartInfo]::new($exe)
 $info.WorkingDirectory=$manifest.GamePath; $info.UseShellExecute=$false
@@ -38,12 +39,14 @@ $logPath=Join-Path $manifest.GamePath 'generals64.log'
 $log=if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
 # Preserve the runtime-generated log as evidence and restore the stage; then require the strict check to pass.
 $kept=@(Restore-NativeRuntimeGeneratedFiles $manifest.GamePath $script:NativeNormalLaunchGenerated $runs $stamp)
+$crashDumps=@(Restore-NativeRuntimeCrashDumps $manifest.GamePath $runs $stamp)
 $cleanupError=$null
 try { $null=Read-NativeOrdinaryPlayStage $Title $Name } catch { $cleanupError=$_.Exception.Message }
 $result=[pscustomobject]@{Executable=$exe;ProcessId=$pidValue;Started=$started;TimedOut=$timeout;ExitCode=$exit
-    Error=$errorText;HasLog=($log.Length -gt 0);PreservedLog=($kept -join ';');StageRestored=($null -eq $cleanupError);CleanupError=$cleanupError;FinishedUtc=[DateTime]::UtcNow.ToString('o')}
+    Error=$errorText;HasLog=($log.Length -gt 0);PreservedLog=($kept -join ';');CrashDumps=($crashDumps -join ';');CrashDumpCount=$crashDumps.Count;StageRestored=($null -eq $cleanupError);CleanupError=$cleanupError;FinishedUtc=[DateTime]::UtcNow.ToString('o')}
 Write-ZHJson (Join-Path $runs "$stamp.exit.json") $result
 Write-Host "Normal launch finished: exit=$exit timedOut=$timeout log=$logPath"
 if ($cleanupError) { throw "Stage was changed by something other than generals64.log: $cleanupError" }
+if ($crashDumps.Count) { throw "Game crashed: $($crashDumps.Count) crash dump(s) preserved under $runs" }
 if (!$started -or $timeout -or $errorText -or $exit -ne 0) { throw 'Normal launch did not exit cleanly; preserve generals64.log' }
 Write-Host 'PASS: process exited with code 0. Frontend, audio and gameplay review is a separate developer judgement.'

@@ -1001,6 +1001,11 @@ SurfaceClass *TextureClass::Get_Surface_Level(unsigned int level)
 		WWASSERT(level == 0);
 		return new SurfaceClass(Render2DCPUContent);
 	}
+	if (level == 0 && Render2DCPUContent && !Peek_D3D_Texture())
+	{
+		// Native file content (no legacy texture exists): level 0 is the CPU content itself.
+		return new SurfaceClass(Render2DCPUContent);
+	}
 	if (Get_Render2D_CPU_Content() && !Peek_D3D_Base_Texture()) Get_Render2D_Residency();
 	if (!Peek_D3D_Texture())
 	{

@@ -8,14 +8,33 @@
 #include "WWLib/WWFILE.h"
 #include <stdexcept>
 
+namespace
+{
+// Same pixels as the legacy MissingTexture (translucent magenta), at the minimum size.
+Texture2DCPUContent *MissingTextureContent()
+{
+    auto *content = new Texture2DCPUContent(4, 4, WW3D_FORMAT_A8R8G8B8, 0);
+    int pitch = 0;
+    unsigned char *rows = static_cast<unsigned char *>(content->Lock(&pitch));
+    for (unsigned y = 0; y < 4; ++y) {
+        unsigned *row = reinterpret_cast<unsigned *>(rows + static_cast<size_t>(y) * pitch);
+        for (unsigned x = 0; x < 4; ++x) row[x] = 0x7FFF00FF;
+    }
+    content->Unlock();
+    return content;
+}
+}
+
 std::unique_ptr<D3D11Backend> D3D11Backend::Create_For_W3D(const Configuration &config)
 {
     TextureBridge bridge;
     bridge.prepare = [](D3D11Backend &backend, TextureClass &texture) {
+        // Any requested mip count is accepted: the native residency is single-level (top mip), the same content
+        // the legacy chain was generated from. Gameplay code asks for full chains (laser/particle/decal textures).
         if (WW3D::Get_Render_Backend() != &backend ||
             texture.Get_Asset_Type() != TextureBaseClass::TEX_REGULAR || texture.Is_Procedural() ||
-            texture.MipLevelCount != MIP_LEVELS_1 || texture.Peek_D3D_Base_Texture())
-            throw std::runtime_error("D3D11.2 requires an ordinary single-mip file texture without native storage");
+            texture.Peek_D3D_Base_Texture())
+            throw std::runtime_error("D3D11.2 requires an ordinary file texture without native storage");
         if (texture.Get_Texture_Format() != WW3D_FORMAT_UNKNOWN && !texture.Get_Render2D_CPU_Content())
             throw std::runtime_error("D3D11.2 explicit legacy format conversion is unsupported");
         UITexturePolicy policy;
@@ -36,9 +55,12 @@ std::unique_ptr<D3D11Backend> D3D11Backend::Create_For_W3D(const Configuration &
             if (file->Read(result.bytes.data(), size) == size) result.status = UITextureStatus::Ready;
             return result;
         });
-        if (result.status != UITextureStatus::Ready)
-            throw std::runtime_error("D3D11.2 file content status=" + std::to_string(static_cast<unsigned>(result.status)) +
-                " (absent/invalid/unsupported; legacy MissingTexture GPU fallback is not migrated)");
+        if (result.status != UITextureStatus::Ready) {
+            // Legacy behavior (MissingTexture): an absent/unsupported file never aborts the frame; it draws the
+            // 0x7FFF00FF placeholder. The first occurrences are reported through the backend diagnostic sink.
+            backend.Note_Missing_Texture(texture.Get_Full_Path().str(), static_cast<unsigned>(result.status));
+            result.content.reset(MissingTextureContent());
+        }
         texture.Install_Render2D_File_Content(*result.content);
         return true;
     };

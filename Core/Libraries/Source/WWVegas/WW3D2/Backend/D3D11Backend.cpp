@@ -238,6 +238,7 @@ ComPtr<ID3DBlob> Compile(const char *entry, const char *profile)
 }
 
 struct D3D11Backend::Impl {
+    unsigned missingTextures = 0;
     Configuration config;
     TextureBridge bridge;
     ComPtr<ID3D11Device> device;
@@ -976,6 +977,15 @@ void D3D11Backend::Apply_Render2D_Texture(TextureClass &texture, unsigned stage)
 { if (!impl->bridge.apply) Unsupported(); impl->bridge.apply(*this, texture, stage); }
 bool D3D11Backend::Prepare_File_Texture(TextureClass &texture)
 { if (!impl->bridge.prepare) Unsupported(); return impl->bridge.prepare(*this, texture); }
+void D3D11Backend::Note_Missing_Texture(const std::string &name, unsigned status)
+{
+    const unsigned index = impl->missingTextures++;
+    if (index >= 16 || !impl->config.diagnostic) return;
+    char detail[200];
+    snprintf(detail, sizeof(detail), "status=%u %s", status, name.c_str());
+    impl->config.diagnostic(impl->config.diagnostic_context, "missing_texture", "placeholder", detail, 0);
+}
+unsigned D3D11Backend::Missing_Texture_Count() const { return impl->missingTextures; }
 void D3D11Backend::Set_UI_Filter_Policy(TextureFilterClass::TextureFilterMode filter, unsigned anisotropy)
 {
     if (filter < TextureFilterClass::TEXTURE_FILTER_NONE || filter >= TextureFilterClass::TEXTURE_FILTER_COUNT ||

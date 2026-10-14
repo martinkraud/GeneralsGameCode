@@ -60,6 +60,26 @@ try {
     Set-Content -LiteralPath (Join-Path $game 'generals64.log') -Value 'y' -NoNewline
     Check (@(Get-NativeRuntimeDifferences $withLog @(Get-ZHInventory $game) $allow).Count -eq 1) 'a changed log that was staged is still a mutation'
 
+    # Crash dumps: preserved as evidence (moved out of the stage), reported, and never silently tolerated.
+    Remove-Item -LiteralPath (Join-Path $game 'generals64.log') -Force
+    $base=@(Get-ZHInventory $game)
+    $dumpDir=Join-Path $game 'CrashDumps'
+    New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
+    foreach ($n in 'CrashFG-20261014-091403-bb98b8c01-pid24800.dmp','CrashMG-20261014-091403-bb98b8c01-pid24800.dmp') {
+        Set-Content -LiteralPath (Join-Path $dumpDir $n) -Value 'dump' -NoNewline
+    }
+    Check (@(Get-NativeRuntimeDifferences $base @(Get-ZHInventory $game) @()).Count -eq 2) 'crash dumps are mutations by default'
+    Check (@(Get-NativeRuntimeDifferences $base @(Get-ZHInventory $game) @() -AllowCrashDumps).Count -eq 0) 'crash dumps tolerated only with the explicit switch'
+    Set-Content -LiteralPath (Join-Path $dumpDir 'other.dat') -Value 'x' -NoNewline
+    Set-Content -LiteralPath (Join-Path $dumpDir 'CrashFG-evil.dmp') -Value 'x' -NoNewline
+    Check (@(Get-NativeRuntimeDifferences $base @(Get-ZHInventory $game) @() -AllowCrashDumps).Count -eq 2) 'unrelated/odd files in CrashDumps still fail'
+    Remove-Item -LiteralPath (Join-Path $dumpDir 'other.dat'),(Join-Path $dumpDir 'CrashFG-evil.dmp')
+    $moved=@(Restore-NativeRuntimeCrashDumps $game $evidence 'crash')
+    Check ($moved.Count -eq 2 -and (Test-Path -LiteralPath $moved[0]) -and (Test-Path -LiteralPath $moved[1])) 'dumps preserved into evidence'
+    Check (@(Get-ChildItem -LiteralPath $dumpDir -File).Count -eq 0) 'dumps removed from the stage'
+    Check (@(Get-NativeRuntimeDifferences $base @(Get-ZHInventory $game) @()).Count -eq 0) 'stage equals manifest after crash cleanup'
+    Check (@(Restore-NativeRuntimeCrashDumps $game $evidence 'none').Count -eq 0) 'no dumps: nothing moved (crash flag false)'
+
     # Name validation: the allowlist can never smuggle a path.
     $threw=$false
     try { Restore-NativeRuntimeGeneratedFiles $game @('..\x') $evidence 's' | Out-Null } catch { $threw=$true }

@@ -5,6 +5,7 @@
 #include "WW3D2/Texture2D.h"
 #include "WW3D2/WorldSubmission.h"
 #include <memory>
+#include <string>
 #include <vector>
 
 class Texture2DCPUContent;
@@ -81,6 +82,9 @@ public:
     unsigned Feature_Level() const;
     Presentation Last_Presentation() const;
     void Set_UI_Filter_Policy(TextureFilterClass::TextureFilterMode, unsigned anisotropy);
+    // Reports a file texture that was replaced by the missing-texture placeholder (first 16, then silent).
+    void Note_Missing_Texture(const std::string &name, unsigned status);
+    unsigned Missing_Texture_Count() const;
 
     void Set_Gamma(float, float, float, bool, bool) override;
     void Begin_Scene() override;

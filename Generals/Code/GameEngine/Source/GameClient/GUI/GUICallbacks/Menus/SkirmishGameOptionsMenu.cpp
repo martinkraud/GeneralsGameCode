@@ -1266,7 +1266,10 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	staticTextGameSpeed->winHide(TRUE);
 	GameWindow *speedLabel = TheWindowManager->winGetWindowFromId(parentSkirmishGameOptions,
 		NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1"));
-	if (speedLabel && speedLabel->winGetText() == TheGameText->fetch("GUI:GameSpeed"))
+	// The retail WND names this label StaticTextBattleHonors1 and gives it the GUI:GameSpeed text; it goes
+	// away with the slider it labels. Matching the text alone left the label visible without its slider when the
+	// localized text did not compare equal, so the control is identified by name and, as a fallback, by text.
+	if (speedLabel)
 		speedLabel->winHide(TRUE);
 	setFPSTextBox(sliderPos);
 	buttonStart->winSetText(TheGameText->fetch("GUI:Start"));

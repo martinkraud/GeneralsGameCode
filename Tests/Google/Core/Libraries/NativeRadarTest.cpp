@@ -501,4 +501,29 @@ TEST(NativeRadarTest, RealW3DRadarBuildsTheTerrainTextureAndMapsLogicShroudCells
     TheWritableGlobalData = previousData;
 }
 
+
+// X64.31 review crash: gameplay code (W3DLaserDraw) asks for file textures with a full mip chain, and a file that is
+// absent or unsupported must not abort the frame. The legacy answer is the translucent-magenta MissingTexture.
+TEST(NativeFileTextureTest, MippedFileTexturesPrepareAndMissingFilesUseThePlaceholder)
+{
+    Rig rig;
+    TextureClass texture("x64_31_missing_file.tga", nullptr, MIP_LEVELS_ALL);
+    ASSERT_FALSE(texture.Is_Initialized());
+    EXPECT_NO_THROW(texture.Init());
+    EXPECT_TRUE(texture.Is_Initialized() || texture.Get_Render2D_CPU_Content() != nullptr);
+    ASSERT_NE(texture.Get_Render2D_CPU_Content(), nullptr);
+    EXPECT_EQ(rig.backend->Missing_Texture_Count(), 1u);
+
+    // W3DLaserDraw reads the aspect ratio from level 0 right after Init: it must be a real description.
+    SurfaceClass::SurfaceDescription desc = {};
+    texture.Get_Level_Description(desc);
+    EXPECT_EQ(desc.Width, 4u);
+    EXPECT_EQ(desc.Height, 4u);
+
+    // Same for a half-size request: any mip count prepares the top level.
+    TextureClass texture2("x64_31_missing_two.tga", nullptr, MIP_LEVELS_3);
+    EXPECT_NO_THROW(texture2.Init());
+    EXPECT_EQ(rig.backend->Missing_Texture_Count(), 2u);
+}
+
 #endif

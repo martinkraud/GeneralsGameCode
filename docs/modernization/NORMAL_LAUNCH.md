@@ -111,3 +111,26 @@ radar navigation use unchanged code. Verified offline (contract + mapping test);
 ## 9. First native run and workflow fix
 
 The developer's first normal launch (evidence: `evidence/x64-31-first-normal-launch/`) exited 0 after about 35 s with a clean shutdown; the wrapper then failed on `Runtime changed: Added: generals64.log`. `Invoke-NativeNormalLaunch.ps1` now archives any stale log, preserves the new one into `<stage>/normal-launch/`, removes it from the stage and re-verifies the stage strictly. Only an added root-level `generals64.log` is tolerated; `Test-NativeNormalLaunchWorkflow.ps1` proves added/changed/removed other files, subdirectory copies and path-like names still fail. Fix candidate: `x64-31-fix1`.
+
+## 10. First review crash and fixes (x64-31-fix1 -> x64-31-fix2)
+
+Evidence: `evidence/x64-31-fix1-crash/` (log, receipt, CrashMG, symbolized analysis; the 780 MB CrashFG stays in the
+stage). MG and FG are the same exception (the dumper fires inside `GameEngine::execute`'s `catch(...)`).
+
+| # | Finding | Root cause | Fix / status |
+|---|---|---|---|
+| 1 | Crash after ~7 min of play | `std::runtime_error` from the D3D11 file-texture bridge: `W3DLaserDraw` (feedback laser from `AssistedTargetingUpdate`) loads its texture with the default full mip chain; the bridge accepted `MIP_LEVELS_1` only, and also threw for any absent/unsupported file | Bridge accepts any requested mip count (top level, same CPU content the legacy chain derived from); absent/invalid/unsupported files use the legacy translucent-magenta placeholder and are reported (`missing_texture` checkpoints, first 16); `TextureClass::Get_Surface_Level(0)` is backed by the CPU content so the laser's aspect-ratio read is real. Test: `NativeFileTextureTest` |
+| 2 | Unit voices too slow / deep | Pooled 3D sample handles kept the previous clip's playback rate (Hz). The engine multiplies `AIL_3D_sample_playback_rate` by the event's pitch shift after loading the file, so the stale rate compounded across reuses. Miles resets the rate to the file's native rate whenever a file is set | `NativeMiles` resets the rate on every file set. Source files audited: 22050 Hz mono PCM (speech, 99.9%), 22050 IMA ADPCM (SFX), 44100 music; the mixer maths (`rate/44100`) was verified by duration tests. Tests: `PlaybackDurationFollowsSourceSampleRate`, `PitchShiftScalesTheFilesOwnRate`, `RecycledHandleDoesNotKeepThePreviousClipsRate`, `ImaAdpcmDurationUsesTheHeaderRate` |
+| 3 | Skirmish: "Game Speed" label without a control | The retail Generals WND has `SliderGameSpeed`; this fork intentionally hides it (render rate lives in Options) and tried to hide its label `StaticTextBattleHonors1` by comparing text, which did not match | Label hidden by control name. The slider itself stays hidden by design |
+| 4 | Skirmish: no Starting Cash | **Not an original base-Generals control.** `ZH_Generals/Window.big` `SkirmishGameOptionsMenu.wnd` has no cash control (72 named windows: map, per-slot player/faction/color/team/start-position, honors, game-speed slider); only Zero Hour's `WindowZH.big` has `ComboBoxStartingCash`. Starting cash for Generals Skirmish is `DefaultStartingCash` from GameData.ini. | Nothing to restore; no custom control added |
+| 5 | Selection ring coarse / strong green | Not fixed (renderer fidelity backlog). The ring is a terrain-conforming decal (`EmitDecal`, 2.5-unit steps, capped at 33x33) of a high-resolution texture sampled without mip filtering; large footprints are minified without mips (aliasing, "angular" look) and the decal uses the per-object diffuse at full strength | Next step: give effect textures a generated mip chain + trilinear sampling, then compare blend/alpha against `W3DProjectedShadow`/`W3DShadow` decal semantics |
+
+### Crash evidence handling in the workflow
+
+`Invoke-NativeNormalLaunch.ps1` moves `CrashDumps\Crash(FG|MG)-<date>-<build>-pid<N>.dmp` out of the stage into
+`<stage>/normal-launch/crash-<stamp>/`, records them in the exit receipt, still re-verifies the stage strictly,
+and **fails the run** whenever any dump exists. Only that exact MiniDumper name pattern is moved; the global
+`Read-NativeStage` check is unchanged (`-AllowCrashDumps` is opt-in for the launcher's pre-run read).
+Covered by `Test-NativeNormalLaunchWorkflow.ps1` (22 checks).
+
+Fix candidate `x64-31-fix2` (generalsv.exe SHA256 `001733DD04034A08E0B04C47730D2B9EA0D1ADF9A962CB4AE931AE79F2A0A8A8`).

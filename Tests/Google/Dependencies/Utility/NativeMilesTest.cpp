@@ -276,3 +276,96 @@ TEST_F(Fixture, RetailMusicMp3DecodesProgressively)
     NativeMiles::AIL_close_stream(st);
     DeleteFileA(path);
 }
+
+namespace
+{
+// Renders until the voice completes; returns the number of output frames it took.
+unsigned FramesUntilDone()
+{
+    std::vector<int16_t> out(256 * 2);
+    unsigned total = 0;
+    while (NativeMiles::ActiveVoiceCount() && total < 44100 * 10) {
+        NativeMiles::Render(out.data(), 256);
+        total += 256;
+    }
+    return total;
+}
+}
+
+// Duration semantics: N source frames at R Hz last N/R seconds regardless of the 44.1 kHz mixer rate.
+TEST_F(Fixture, PlaybackDurationFollowsSourceSampleRate)
+{
+    for (unsigned rate : {11025u, 22050u, 44100u}) {
+        HSAMPLE s = NativeMiles::AIL_allocate_sample_handle(nullptr);
+        auto wav = MakeWav(Square(rate / 2, 5000), rate);    // exactly 0.5 s
+        ASSERT_EQ(NativeMiles::AIL_set_sample_file(s, wav.data(), 0), 1);
+        NativeMiles::AIL_start_sample(s);
+        const unsigned frames = FramesUntilDone();
+        EXPECT_NEAR(static_cast<double>(frames), 22050.0, 512.0) << "rate " << rate;
+        NativeMiles::AIL_release_sample_handle(s);
+    }
+}
+
+// The engine multiplies AIL_*_playback_rate (the file's rate in Hz) by the pitch shift; 2.0 halves the duration.
+TEST_F(Fixture, PitchShiftScalesTheFilesOwnRate)
+{
+    H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
+    auto wav = MakeWav(Square(22050, 5000), 22050);          // 1.0 s
+    ASSERT_EQ(NativeMiles::AIL_set_3D_sample_file(s, wav.data()), 1);
+    EXPECT_EQ(NativeMiles::AIL_3D_sample_playback_rate(s), 22050);
+    NativeMiles::AIL_set_3D_sample_playback_rate(s, static_cast<S32>(NativeMiles::AIL_3D_sample_playback_rate(s) * 2.0f));
+    NativeMiles::AIL_start_3D_sample(s);
+    EXPECT_NEAR(static_cast<double>(FramesUntilDone()), 22050.0, 512.0);
+    NativeMiles::AIL_release_3D_sample_handle(s);
+}
+
+// Regression for the X64.31 review: unit voices were too slow because a recycled handle kept the previous clip's
+// playback rate. Setting a file must restore that file's native rate.
+TEST_F(Fixture, RecycledHandleDoesNotKeepThePreviousClipsRate)
+{
+    H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
+    auto slow = MakeWav(Square(11025, 5000), 11025);         // 1.0 s at 11025 Hz
+    ASSERT_EQ(NativeMiles::AIL_set_3D_sample_file(s, slow.data()), 1);
+    NativeMiles::AIL_set_3D_sample_playback_rate(s, 11025);
+    NativeMiles::AIL_start_3D_sample(s);
+    FramesUntilDone();
+    NativeMiles::AIL_end_3D_sample(s);
+
+    auto voice = MakeWav(Square(22050, 5000), 22050);        // 1.0 s at 22050 Hz
+    ASSERT_EQ(NativeMiles::AIL_set_3D_sample_file(s, voice.data()), 1);
+    EXPECT_EQ(NativeMiles::AIL_3D_sample_playback_rate(s), 22050);
+    NativeMiles::AIL_start_3D_sample(s);
+    EXPECT_NEAR(static_cast<double>(FramesUntilDone()), 44100.0, 512.0);
+    NativeMiles::AIL_release_3D_sample_handle(s);
+
+    // Same for 2D samples through AIL_init_sample and AIL_set_sample_file without init.
+    HSAMPLE s2 = NativeMiles::AIL_allocate_sample_handle(nullptr);
+    ASSERT_EQ(NativeMiles::AIL_set_sample_file(s2, slow.data(), 0), 1);
+    NativeMiles::AIL_set_sample_playback_rate(s2, 5512);
+    ASSERT_EQ(NativeMiles::AIL_set_sample_file(s2, voice.data(), 0), 1);
+    EXPECT_EQ(NativeMiles::AIL_sample_playback_rate(s2), 22050);
+    NativeMiles::AIL_release_sample_handle(s2);
+}
+
+// IMA ADPCM at a known rate: duration derived from block count, not from the 16 bit expansion.
+TEST_F(Fixture, ImaAdpcmDurationUsesTheHeaderRate)
+{
+    const unsigned blockAlign = 256, blocks = 20, rate = 22050;
+    const unsigned spb = (blockAlign - 4) * 8 / 4 + 1;       // mono
+    std::vector<uint8_t> w(44 + blocks * blockAlign, 0);
+    auto p32 = [&](size_t at, uint32_t v) { std::memcpy(&w[at], &v, 4); };
+    auto p16 = [&](size_t at, uint16_t v) { std::memcpy(&w[at], &v, 2); };
+    std::memcpy(&w[0], "RIFF", 4); p32(4, static_cast<uint32_t>(w.size() - 8));
+    std::memcpy(&w[8], "WAVEfmt ", 8); p32(16, 16); p16(20, 0x11); p16(22, 1); p32(24, rate); p32(28, rate * blockAlign / spb);
+    p16(32, blockAlign); p16(34, 4);
+    std::memcpy(&w[36], "data", 4); p32(40, blocks * blockAlign);
+    AILSOUNDINFO info;
+    ASSERT_EQ(NativeMiles::AIL_WAV_info(w.data(), &info), 1);
+    EXPECT_EQ(info.samples, blocks * spb);
+    HSAMPLE s = NativeMiles::AIL_allocate_sample_handle(nullptr);
+    ASSERT_EQ(NativeMiles::AIL_set_sample_file(s, w.data(), 0), 1);
+    S32 total = 0, cur = 0;
+    NativeMiles::AIL_sample_ms_position(s, &total, &cur);
+    EXPECT_NEAR(total, 1000.0 * blocks * spb / rate, 2.0);
+    NativeMiles::AIL_release_sample_handle(s);
+}

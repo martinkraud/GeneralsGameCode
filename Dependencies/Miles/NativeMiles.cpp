@@ -668,6 +668,9 @@ bool LoadSampleData(Voice *v, const void *image)
     v->pcm = pcm;
     v->position = 0.0;
     v->loopsDone = 0;
+    // Miles: a newly set file plays at its own native rate. A pooled handle must not keep the pitch-shifted
+    // rate (in Hz, of the previous clip) - that made every following clip play too slow or too fast.
+    v->playbackRate = 0;
     return true;
 }
 } // namespace

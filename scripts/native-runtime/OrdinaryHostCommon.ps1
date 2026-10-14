@@ -434,9 +434,9 @@ function Get-NativeOrdinaryPlayMode {
 function Get-NativeOrdinaryPlayArguments([string]$Root) {
     return @('-win','-xres','800','-yres','600','-nologo','-noshellmap','-winCursors','-nativeOrdinaryPlay',$Root)
 }
-function Read-NativeOrdinaryPlayStage([string]$Title,[string]$Name,[string[]]$AllowAdded=@()) {
+function Read-NativeOrdinaryPlayStage([string]$Title,[string]$Name,[string[]]$AllowAdded=@(),[switch]$AllowCrashDumps) {
     if($Title -ne 'Generals'){throw 'The ordinary play profile validates Generals only'}
-    $manifest=Read-NativeStage $Title $Name $AllowAdded
+    $manifest=Read-NativeStage $Title $Name $AllowAdded -AllowCrashDumps:$AllowCrashDumps
     $path=Join-Path $manifest.StagePath 'ordinaryplay.json'
     if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw 'Not an ordinary-play stage'}
     $play=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
