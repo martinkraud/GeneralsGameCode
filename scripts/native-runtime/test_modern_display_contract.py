@@ -120,7 +120,7 @@ class ModernDisplayContracts(unittest.TestCase):
         for token in ("gogoGadgetComboBox", "gogoGadgetStaticText", "copyAppearance"):
             self.assertIn(token, display)
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
-        for token in ("gogoGadgetPushButton", "GadgetButtonEnableCheckLike", "copyAppearance"):
+        for token in ("gogoGadgetPushButton", "tab->winSetDrawFunc(tabDraw);", "GadgetButtonSetText"):
             self.assertIn(token, tabs)
         cmake = read("Core/GameEngine/CMakeLists.txt")
         self.assertIn("ModernDisplayOptions.cpp", cmake)
@@ -146,8 +146,8 @@ class FixOneContracts(unittest.TestCase):
         self.assertIn("GadgetLayering::placeBehind(combo, detail);", rate)       # retail split (Classic, Zero Hour)
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
         # pages: upper rows are brought to the front last, so a dropdown opens over the rows below it
-        self.assertIn("for (int i = page.count - 1; i >= 0; --i)", tabs)
-        self.assertIn("control->winBringToTop();", tabs)
+        self.assertIn("for (size_t i = frontToBack.size(); i-- > 0;)", tabs)
+        self.assertIn("frontToBack[i]->winBringToTop();", tabs)
 
     def test_options_pages_geometry_is_scale_derived(self):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
@@ -189,14 +189,62 @@ class FixOneContracts(unittest.TestCase):
         self.assertIn("OptionsTabs::onButton(controlID)", menu)
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
         self.assertIn("if (!DisplayRuntime::modern() || ModernExperience::classic())", tabs)
-        for category in ("kDisplay", "kGraphics", "kAudio", "kControls", "kGameplay", "NetworkParent"):
-            self.assertIn(category, tabs)
+        pages = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        for category in ("kDisplayItems", "kGraphicsItems", "kAudioItems", "kControlsItems", "kGameplayItems"):
+            self.assertIn(category, pages)
+        self.assertIn("NetworkParent", tabs)
         # no fake controls: every listed control is a retail control or a gadget ModernDisplayOptions/FrameRateOptions creates
         known = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp") +             read("Core/GameEngine/Source/GameClient/GUI/FrameRateOptions.cpp")
         for control in ("ModernMode", "ModernMonitor", "ModernUiScale", "ModernVsync", "ModernMotion", "ComboBoxFrameRateLimit"):
             self.assertIn(control, known)
         for fake in ("RefreshRate", "Exclusive", "RenderScale", "DLSS", "RayTrac"):
             self.assertNotIn(fake, tabs)
+
+
+class FixThreeContracts(unittest.TestCase):
+    """x64-33-fix3-ui-polish: correctness of the accepted FIX2 design."""
+
+    def test_page_visibility_is_decided_for_the_whole_layout_tree(self):
+        tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
+        self.assertIn("bool apply(GameWindow *w, const Visibility &v, bool inNetwork)", tabs)
+        self.assertIn("apply(s_root, v, false);", tabs)
+        self.assertIn("while (s_root->winGetParent())", tabs)        # the root of the layout, not a known panel list
+        # gadgets are never recursed into (their combo/slider children are not page items)
+        self.assertIn("if (isContainer(w) || w == s_root)", tabs)
+        # the retail Advanced Display panel manages itself
+        self.assertIn("if (w == s_popup)", tabs)
+        # the FIX2 per-panel child loop (the cause of the stale slider art) is gone
+        self.assertNotIn("not an item of this page", tabs)
+
+    def test_page_ownership_table_is_pure_and_exclusive(self):
+        layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        self.assertIn("inline int ownerOf(const char *name)", layout)
+        self.assertIn("enum class ControlKind", layout)
+        for slider in ("SliderGamma", "SliderSFXVolume", "SliderMusicVolume", "SliderVoiceVolume", "SliderScrollSpeed"):
+            self.assertEqual(layout.count('"%s"' % slider), 1)         # each slider listed on exactly one page
+
+    def test_tab_strip_is_measured_and_drawn_from_primitives(self):
+        layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        self.assertIn("inline TabStrip computeTabStrip(", layout)
+        tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
+        self.assertIn("computeTabStrip(measured,", tabs)
+        self.assertIn("tab->winSetDrawFunc(tabDraw);", tabs)
+        self.assertIn("drawFillRect(x, y, w, h, fill)", tabs)          # opaque dark fill: nothing shows through a tab
+        self.assertNotIn("copyAppearance(tab, donor)", tabs)           # no more large retail button art
+
+    def test_options_pages_are_built_after_every_retail_show_hide_decision(self):
+        menu = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp")
+        create = menu.index("OptionsTabs::create();")
+        self.assertGreater(create, menu.index("textEntryHTTPProxy->winHide(TRUE);"))
+        self.assertLess(create, menu.index("layout->hide( FALSE );", create - 200))
+
+    def test_hud_backing_is_derived_from_the_band(self):
+        layout = read("Core/GameEngine/Include/Common/HudComposition.h")
+        self.assertIn("const int backTop = bandY + bandH - backH;", layout)
+        self.assertIn("inline bool backingVisible(", layout)
+        self.assertNotIn("surfaceH - backH", layout)                   # FIX2 anchored it to the surface (black flash)
+        scheme = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp")
+        self.assertIn("composition.backing", scheme)
 
 
 if __name__ == "__main__":

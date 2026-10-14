@@ -55,8 +55,21 @@ inline Composition compute(int bandX, int bandY, int bandW, int bandH, int surfa
 	c.qualifies = refCanvasW > 0 && refBandW * 10 >= refCanvasW * 9 && refBandBottom >= refCanvasH - 8 && bandW > 0 && bandH > 0;
 	if (!c.qualifies)
 		return c;
+	// The backing is part of the band: it is the lower `backingHeight` of the band wherever the band currently is.
+	// FIX2 anchored it to the surface bottom, so while the bar slid in (offset > 0) the black backing sat at its final
+	// place before the art arrived: the black flash seen on native review. Derived from the band it can never be
+	// visible without the art it backs, and it is clipped to the surface.
 	const int backH = std::min(std::max(backingHeight, 0), bandH);
-	c.backing = {bandX, surfaceH - backH, bandW, backH};
+	const int backTop = bandY + bandH - backH;
+	const int clippedTop = std::max(backTop, 0);
+	// The art band ends a reference pixel above the surface edge (y 599 of 600): when the band rests on the edge the
+	// backing continues to it so no sliver of world shows under the bar; while it slides, it follows the band.
+	const int edgeSlack = std::max(bandH / 64, 2);
+	const int bandBottom = bandY + bandH;
+	const int backBottom = (surfaceH - bandBottom >= 0 && surfaceH - bandBottom <= edgeSlack) ? surfaceH : bandBottom;
+	const int clippedBottom = std::min(backBottom, surfaceH);
+	const int topInSurface = std::min(clippedTop, surfaceH);
+	c.backing = {bandX, topInSurface, bandW, std::max(clippedBottom - topInSurface, 0)};
 	if (bandX > 0)
 		c.worldLeft = {0, bandY, bandX, bandH};
 	if (bandX + bandW < surfaceW)
@@ -67,6 +80,13 @@ inline Composition compute(int bandX, int bandY, int bandW, int bandH, int surfa
 	c.timerBlock = {bandX, bandY - blockH, bandW, blockH};
 	c.noticeBlock = {bandX, bandY - 2 * blockH, bandW, blockH};
 	return c;
+}
+
+// The lifecycle rule as a function: the backing is visible only when the control bar parent is visible AND the
+// scheme's band art exists (the same two facts that make the HUD itself visible). Nothing else may show it.
+inline bool backingVisible(bool controlBarParentVisible, bool bandArtAvailable)
+{
+	return controlBarParentVisible && bandArtAvailable;
 }
 
 }  // namespace HudComposition

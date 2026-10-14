@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// X64.33 FIX2 Options categories. See OptionsTabs.h and Common/OptionsPageLayout.h.
+// X64.33 FIX3 Options categories. See OptionsTabs.h and Common/OptionsPageLayout.h.
+//
+// Ownership model (FIX3). FIX2 hid only the children of the panels it knew about. Several retail controls (the
+// volume/scroll sliders, the unnamed section headers) are not children of those panels, so after a page switch they
+// kept drawing at the rows of the page they had been placed on: segmented slider art through the Resolution, Detail
+// and Unit Motion combos, and the "VIDEO"/"AUDIO" headers under the tab strip. Visibility is now decided for the
+// WHOLE Options layout tree on every page switch, by exclusion: a window is visible only if it is shared chrome, an
+// item of the active page (or the retail Network block while it is active), or an ancestor of one of those.
 #include "PreRTS.h"
 
 #include "GameClient/OptionsTabs.h"
@@ -9,12 +16,17 @@
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionsPageLayout.h"
 #include "Common/StartupDiagnostics.h"
+#include "GameClient/Display.h"
+#include "GameClient/DisplayString.h"
+#include "GameClient/DisplayStringManager.h"
 #include "GameClient/GadgetPushButton.h"
 #include "GameClient/GadgetStaticText.h"
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/ModernDisplayOptions.h"
 
+#include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <vector>
 
@@ -22,70 +34,26 @@ namespace
 {
 using namespace OptionsPageLayout;
 
-enum Kind { KIND_COMBO, KIND_SLIDER, KIND_CHECK };
-
-struct Item
-{
-	const char *label;     // window name without the layout prefix (nullptr: the control carries its own text)
-	const char *control;
-	Kind kind;
-};
-
-const Item kDisplay[] = {
-	{"ResolutionLabel", "ComboBoxResolution", KIND_COMBO},
-	{"ModernModeLabel", "ModernMode", KIND_COMBO},
-	{"ModernMonitorLabel", "ModernMonitor", KIND_COMBO},
-	{"ModernUiScaleLabel", "ModernUiScale", KIND_COMBO},
-	{"ModernVsyncLabel", "ModernVsync", KIND_COMBO},
-	{"FrameRateLimitLabel", "ComboBoxFrameRateLimit", KIND_COMBO},
-};
-const Item kGraphics[] = {
-	{"DetailLabel", "ComboBoxDetail", KIND_COMBO},
-	{"GammaLabel", "SliderGamma", KIND_SLIDER},
-};
-const Item kAudio[] = {
-	{"SFXVolumeLabel", "SliderSFXVolume", KIND_SLIDER},
-	{"MusicVolumeLabel", "SliderMusicVolume", KIND_SLIDER},
-	{"VoiceVolumeLabel", "SliderVoiceVolume", KIND_SLIDER},
-};
-const Item kControls[] = {
-	{nullptr, "CheckAlternateMouse", KIND_CHECK},
-	{"ScrollSpeedLabel", "SliderScrollSpeed", KIND_SLIDER},
-};
-const Item kGameplay[] = {
-	{"ModernMotionLabel", "ModernMotion", KIND_COMBO},
-};
-
-struct Page
-{
-	const Item *items;
-	int count;
-	const char *panel;      // retail panel that hosts the page's controls
-};
-
-// Network keeps its retail panel (rows already spaced for a 485 unit wide area) and is only moved.
-const Page kPages[kCategoryCount] = {
-	{kDisplay, 6, "VideoParent"},
-	{kGraphics, 2, "VideoParent"},
-	{kAudio, 3, "AudioParent"},
-	{kControls, 2, "ScrollParent"},
-	{kGameplay, 1, "VideoParent"},
-	{nullptr, 0, "NetworkParent"},
-};
-
-const wchar_t *const kFallbackWide[kCategoryCount] = {L"DISPLAY", L"GRAPHICS", L"AUDIO", L"CONTROLS", L"GAMEPLAY", L"NETWORK"};
 const char *const kTabIds[kCategoryCount] = {
 	"OptionsMenu.wnd:TabDisplay", "OptionsMenu.wnd:TabGraphics", "OptionsMenu.wnd:TabAudio",
 	"OptionsMenu.wnd:TabControls", "OptionsMenu.wnd:TabGameplay", "OptionsMenu.wnd:TabNetwork",
 };
-const char *const kRetiredLines[] = {"Line1", "Line2", "Line3", "Line4"};
+const wchar_t *const kFallbackWide[kCategoryCount] = {L"DISPLAY", L"GRAPHICS", L"AUDIO", L"CONTROLS", L"GAMEPLAY", L"NETWORK"};
+// retail windows that stay on every page
+const char *const kChrome[] = {"OptionsMenuParent", "OptionsMenuParentOld", "ButtonBack", "ButtonAccept", "ButtonDefaults",
+                               "LabelVersion", "Line"};
+// panels that host the pages' retail controls (moved/resized to the content rectangle; they are containers)
+const char *const kPanels[] = {"VideoParent", "AudioParent", "ScrollParent"};
 
 GameWindow *s_tabs[kCategoryCount] = {};
 NameKeyType s_tabKeys[kCategoryCount] = {};
 int s_active = -1;
 double s_scale = 1.0;
-int s_originX = 0, s_originY = 0;           // physical position of reference (0,0) of the Options canvas
-std::vector<GameWindow *> s_panels;         // every panel that hosts a page
+int s_originX = 0, s_originY = 0;      // physical position of reference (0,0) of the Options canvas
+GameWindow *s_canvas = nullptr;
+GameWindow *s_root = nullptr;
+GameWindow *s_popup = nullptr;          // retail Advanced Display panel: its subtree is never touched
+GameWindow *s_network = nullptr;
 std::vector<GameWindow *> s_initiallyHidden;
 
 GameWindow *byName(const char *name)
@@ -97,6 +65,13 @@ GameWindow *byName(const char *name)
 	return TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey(full));
 }
 
+NameKeyType keyOf(const char *name)
+{
+	char full[128];
+	snprintf(full, sizeof(full), "OptionsMenu.wnd:%s", name);
+	return TheNameKeyGenerator->nameToKey(full);
+}
+
 bool wasHidden(GameWindow *w)
 {
 	for (size_t i = 0; i < s_initiallyHidden.size(); ++i)
@@ -105,11 +80,83 @@ bool wasHidden(GameWindow *w)
 	return false;
 }
 
-void rememberHidden(GameWindow *panel)
+void recordHidden(GameWindow *w)
 {
-	for (GameWindow *c = panel->winGetChild(); c; c = c->winGetNext())
-		if (c->winIsHidden() && !wasHidden(c))
+	for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext())
+	{
+		if (c->winIsHidden())
 			s_initiallyHidden.push_back(c);
+		recordHidden(c);
+	}
+}
+
+bool isContainer(GameWindow *w)
+{
+	return BitIsSet(w->winGetStyle(), GWS_USER_WINDOW) != FALSE;
+}
+
+struct Visibility
+{
+	std::vector<NameKeyType> active;     // ids of the active page's controls and labels
+	NameKeyType chrome[sizeof(kChrome) / sizeof(kChrome[0])];
+	int activeCategory = -1;
+};
+
+bool isOneOf(NameKeyType id, const std::vector<NameKeyType> &v)
+{
+	for (size_t i = 0; i < v.size(); ++i)
+		if (v[i] == id)
+			return true;
+	return false;
+}
+
+bool isTab(GameWindow *w)
+{
+	const NameKeyType id = static_cast<NameKeyType>(w->winGetWindowId());
+	for (int i = 0; i < kCategoryCount; ++i)
+		if (s_tabs[i] && id == s_tabKeys[i])
+			return true;
+	return false;
+}
+
+// The OPTIONS title: the unnamed retail static text above the tab strip.
+bool isTitle(GameWindow *w)
+{
+	if (!BitIsSet(w->winGetStyle(), GWS_STATIC_TEXT))
+		return false;
+	Int x, y;
+	w->winGetScreenPosition(&x, &y);
+	return (y - s_originY) < scaled(kTabStrip.y, s_scale);
+}
+
+// returns true when `w` (or a descendant) stays visible
+bool apply(GameWindow *w, const Visibility &v, bool inNetwork)
+{
+	if (w == s_popup)
+		return true;                      // the Advanced Display panel manages itself
+	if (isTab(w))
+		return true;
+	const NameKeyType id = static_cast<NameKeyType>(w->winGetWindowId());
+	bool self = isOneOf(id, v.active);
+	for (size_t i = 0; i < sizeof(v.chrome) / sizeof(v.chrome[0]) && !self; ++i)
+		self = id == v.chrome[i];
+	if (!self && isTitle(w))
+		self = true;               // the retail OPTIONS title: any static text above the tab strip
+	if (inNetwork && !wasHidden(w))
+		self = true;                      // the retail Network block is kept whole (as it was shown)
+	if (self && wasHidden(w) && !isOneOf(id, v.active))
+		self = false;                     // retail hid it deliberately (e.g. the obsolete send-delay switch)
+
+	bool any = false;
+	if (isContainer(w) || w == s_root)
+	{
+		const bool childNetwork = inNetwork || (w == s_network && v.activeCategory == static_cast<int>(Category::Network));
+		for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext())
+			any |= apply(c, v, childNetwork);
+	}
+	const bool show = self || any;
+	w->winHide(show ? FALSE : TRUE);
+	return show;
 }
 
 void leftAlign(GameWindow *w)
@@ -124,7 +171,6 @@ void leftAlign(GameWindow *w)
 	}
 }
 
-// panel-relative placement of `w` at the absolute physical rectangle `r`
 void place(GameWindow *w, const Rect &r)
 {
 	GameWindow *parent = w->winGetParent();
@@ -146,7 +192,7 @@ void placePanel(GameWindow *panel, const Rect &content, bool resize)
 		panel->winSetSize(content.w, content.h);
 }
 
-bool itemShown(const Item &item)
+bool itemShown(const PageItem &item)
 {
 	if (item.control && std::strcmp(item.control, "ModernMonitor") == 0)
 		return ModernDisplayOptions::hasMultipleMonitors();
@@ -158,102 +204,121 @@ void showCategory(int category)
 	if (category < 0 || category >= kCategoryCount)
 		return;
 	s_active = category;
-	const Page &page = kPages[category];
+	const PageTable table = pageItems(static_cast<Category>(category));
 
-	// hide every page panel first, then show/arrange the ones this category uses
-	for (size_t i = 0; i < s_panels.size(); ++i)
-		s_panels[i]->winHide(TRUE);
-	GameWindow *panel = byName(page.panel);
-	if (!panel)
-		return;
-
-	// count the rows that are visible for this category (the Monitor row only exists with several monitors)
 	int rows = 0;
-	for (int i = 0; i < page.count; ++i)
-		if (itemShown(page.items[i]))
+	for (int i = 0; i < table.count; ++i)
+		if (itemShown(table.items[i]))
 			++rows;
 	const OptionsPageLayout::Page layout = computePage(s_scale, rows, s_originX, s_originY);
 
-	if (!page.items)
+	// 1. geometry: the hosting panels cover the content rectangle; every item goes to its row (relative to its own
+	//    parent, whichever panel that is)
+	for (const char *name : kPanels)
+		if (GameWindow *panel = byName(name))
+			placePanel(panel, layout.content, true);
+	if (s_network)
+		placePanel(s_network, layout.content, false);
+	std::vector<GameWindow *> frontToBack;
+	int row = 0;
+	for (int i = 0; i < table.count; ++i)
 	{
-		// Network: keep the retail rows, move the panel to the content origin
-		placePanel(panel, layout.content, false);
-		panel->winHide(FALSE);
-	}
-	else
-	{
-		placePanel(panel, layout.content, true);
-		panel->winHide(FALSE);
-		// hide every child that is not an item of this page (and was not hidden by the layout in the first place)
-		for (GameWindow *c = panel->winGetChild(); c; c = c->winGetNext())
+		const PageItem &it = table.items[i];
+		if (!itemShown(it))
+			continue;
+		GameWindow *control = byName(it.control);
+		GameWindow *label = it.label ? byName(it.label) : nullptr;
+		if (!control)
+			continue;
+		const Row &r = layout.rows[row++];
+		if (it.kind == ControlKind::Check)
 		{
-			bool listed = false;
-			for (int i = 0; i < page.count && !listed; ++i)
-			{
-				const Item &it = page.items[i];
-				listed = c == byName(it.control) || (it.label && c == byName(it.label));
-			}
-			if (!listed)
-				c->winHide(TRUE);
+			place(control, Rect{r.label.x, r.label.y, r.control.right() - r.label.x, r.control.h});
 		}
-		int row = 0;
-		for (int i = 0; i < page.count; ++i)
+		else
 		{
-			const Item &it = page.items[i];
-			GameWindow *control = byName(it.control);
-			GameWindow *label = it.label ? byName(it.label) : nullptr;
-			if (!itemShown(it))
+			if (label)
 			{
-				if (control) control->winHide(TRUE);
-				if (label) label->winHide(TRUE);
-				continue;
+				place(label, r.label);
+				leftAlign(label);
 			}
-			if (!control)
-				continue;
-			const Row &r = layout.rows[row++];
-			if (it.kind == KIND_CHECK)
-			{
-				Rect span = {r.label.x, r.label.y, r.control.right() - r.label.x, r.control.h};
-				place(control, span);
-			}
-			else
-			{
-				if (label)
-				{
-					place(label, r.label);
-					leftAlign(label);
-					label->winHide(FALSE);
-				}
-				place(control, r.control);
-			}
-			control->winHide(FALSE);
+			place(control, r.control);
 		}
-		// z-order: upper rows in front of lower rows so a dropdown opens over what is below it
-		for (int i = page.count - 1; i >= 0; --i)
-			if (GameWindow *control = byName(page.items[i].control))
-				if (!control->winIsHidden() && control->winGetParent() == panel)
-					control->winBringToTop();
+		frontToBack.push_back(control);
 	}
 
-	// tab selection look
-	for (int i = 0; i < kCategoryCount; ++i)
+	// 2. visibility for the whole layout tree
+	Visibility v;
+	v.activeCategory = category;
+	for (int i = 0; i < table.count; ++i)
+	{
+		const PageItem &it = table.items[i];
+		if (!itemShown(it))
+			continue;
+		if (it.control) v.active.push_back(keyOf(it.control));
+		if (it.label) v.active.push_back(keyOf(it.label));
+	}
+	for (size_t i = 0; i < sizeof(kChrome) / sizeof(kChrome[0]); ++i)
+		v.chrome[i] = keyOf(kChrome[i]);
+	apply(s_root, v, false);
+
+	// 3. z-order: upper rows are brought to the front last, so a dropdown opens over the rows below it
+	for (size_t i = frontToBack.size(); i-- > 0;)
+		frontToBack[i]->winBringToTop();
+	for (int i = kCategoryCount - 1; i >= 0; --i)
 		if (s_tabs[i])
-			GadgetCheckLikeButtonSetVisualCheck(s_tabs[i], i == category);
+			s_tabs[i]->winBringToTop();
+
+	// 4. selection look is drawn from s_active (tabDraw)
 }
 
-void copyAppearance(GameWindow *target, GameWindow *source)
+// ---- tab drawing: dark Generals-style tab with orange line work; the selected tab is gold ---------------------
+void tabDraw(GameWindow *window, WinInstanceData *instData)
 {
-	WinInstanceData *to = target->winGetInstanceData();
-	const WinInstanceData *from = source->winGetInstanceData();
-	memcpy(to->m_enabledDrawData, from->m_enabledDrawData, sizeof(to->m_enabledDrawData));
-	memcpy(to->m_disabledDrawData, from->m_disabledDrawData, sizeof(to->m_disabledDrawData));
-	memcpy(to->m_hiliteDrawData, from->m_hiliteDrawData, sizeof(to->m_hiliteDrawData));
-	to->m_enabledText = from->m_enabledText;
-	to->m_disabledText = from->m_disabledText;
-	to->m_hiliteText = from->m_hiliteText;
-	target->winSetStatus(source->winGetStatus() & WIN_STATUS_IMAGE);
-	target->winSetDrawFunc(source->winGetDrawFunc());
-	target->winSetFont(source->winGetFont());
+	Int x, y, w, h;
+	window->winGetScreenPosition(&x, &y);
+	window->winGetSize(&w, &h);
+	const int index = static_cast<int>(reinterpret_cast<intptr_t>(GadgetButtonGetData(window)));
+	const bool selected = index == s_active;
+	const bool hilited = BitIsSet(instData->getState(), WIN_STATE_HILITED) != FALSE;
+	const bool enabled = BitIsSet(window->winGetStatus(), WIN_STATUS_ENABLED) != FALSE;
+
+	const Color fill = selected ? GameMakeColor(34, 24, 0, 245) : GameMakeColor(0, 0, 0, 230);
+	const Color line = selected ? GameMakeColor(255, 214, 0, 255) : (hilited ? GameMakeColor(255, 170, 40, 255) : GameMakeColor(190, 105, 0, 255));
+	const Color text = selected ? GameMakeColor(255, 230, 90, 255) : (hilited ? GameMakeColor(255, 255, 255, 255) : GameMakeColor(236, 170, 70, 255));
+	const Int border = std::max<Int>(1, static_cast<Int>(DisplayRuntime::uiScale() + 0.5));
+
+	TheDisplay->drawFillRect(x, y, w, h, fill);
+	TheDisplay->drawOpenRect(x, y, w, h, selected ? border * 2 : border, line);
+
+	DisplayString *label = instData->getTextDisplayString();
+	if (!label || label->getTextLength() == 0)
+		return;
+	if (label->getFont() != window->winGetFont())
+		label->setFont(window->winGetFont());
+	label->setWordWrap(w);
+	Int tw, th;
+	label->getSize(&tw, &th);
+	label->draw(x + (w - tw) / 2, y + (h - th) / 2, enabled ? text : GameMakeColor(120, 120, 120, 255), GameMakeColor(0, 0, 0, 255));
+}
+
+int measure(GameWindow *donor, const UnicodeString &text, double fallbackPerChar)
+{
+	int width = static_cast<int>(text.getLength() * fallbackPerChar);
+	if (TheDisplayStringManager)
+	{
+		if (DisplayString *ds = TheDisplayStringManager->newDisplayString())
+		{
+			ds->setFont(donor->winGetFont());
+			ds->setText(text);
+			Int w = 0, h = 0;
+			ds->getSize(&w, &h);
+			if (w > 0)
+				width = w;
+			TheDisplayStringManager->freeDisplayString(ds);
+		}
+	}
+	return width;
 }
 }  // namespace
 
@@ -265,43 +330,40 @@ bool create()
 	forget();
 	if (!DisplayRuntime::modern() || ModernExperience::classic())
 		return false;
-	GameWindow *canvas = byName("OptionsMenuParent");
+	s_canvas = byName("OptionsMenuParent");
 	GameWindow *donor = byName("ButtonDefaults");
 	GameWindow *video = byName("VideoParent");
-	if (!canvas || !donor || !video || !byName("ComboBoxResolution"))
+	if (!s_canvas || !donor || !video || !byName("ComboBoxResolution"))
 		return false;
+	s_popup = byName("WinAdvancedDisplayOptions");
+	s_network = byName("NetworkParent");
+	s_root = s_canvas;
+	while (s_root->winGetParent())
+		s_root = s_root->winGetParent();
 
-	// reference (0,0) of the Options canvas, and the live scale, from the retail parent's own geometry (120,12 541x585)
 	Int cx, cy, cw, ch;
-	canvas->winGetScreenPosition(&cx, &cy);
-	canvas->winGetSize(&cw, &ch);
+	s_canvas->winGetScreenPosition(&cx, &cy);
+	s_canvas->winGetSize(&cw, &ch);
 	s_scale = cw > 0 ? cw / 541.0 : 1.0;
 	s_originX = cx - scaled(120, s_scale);
 	s_originY = cy - scaled(12, s_scale);
 
+	recordHidden(s_root);
+
+	// tab strip: measured caption widths (retail Arial at the live scale), padding, slack shared so the strip
+	// aligns with the page content on both edges
+	UnicodeString captions[kCategoryCount];
+	int measured[kCategoryCount];
 	for (int i = 0; i < kCategoryCount; ++i)
 	{
-		GameWindow *panel = byName(kPages[i].panel);
-		if (!panel)
-			continue;
-		bool known = false;
-		for (size_t j = 0; j < s_panels.size(); ++j)
-			known |= s_panels[j] == panel;
-		if (!known)
-		{
-			s_panels.push_back(panel);
-			rememberHidden(panel);
-		}
+		captions[i] = TheGameText->FETCH_OR_SUBSTITUTE(categoryTextKey(static_cast<Category>(i)), kFallbackWide[i]);
+		measured[i] = measure(donor, captions[i], 7.0 * s_scale);
 	}
-	// the retail section separators belong to the single-page layout
-	for (const char *name : kRetiredLines)
-		if (GameWindow *line = byName(name))
-			line->winHide(TRUE);
+	const TabStrip strip = computeTabStrip(measured, s_scale, s_originX + scaled(kTabStrip.x, s_scale),
+		s_originY + scaled(kTabStrip.y, s_scale), scaled(kTabStrip.w, s_scale), scaled(kTabStrip.h, s_scale));
 
-	const Tabs tabs = computeTabs(s_scale, s_originX, s_originY);
-	GameWindow *tabParent = canvas;
 	Int tx, ty;
-	tabParent->winGetScreenPosition(&tx, &ty);
+	s_canvas->winGetScreenPosition(&tx, &ty);
 	for (int i = 0; i < kCategoryCount; ++i)
 	{
 		WinInstanceData instance;
@@ -309,24 +371,21 @@ bool create()
 		instance.m_style = GWS_PUSH_BUTTON | GWS_MOUSE_TRACK;
 		s_tabKeys[i] = TheNameKeyGenerator->nameToKey(kTabIds[i]);
 		instance.m_id = s_tabKeys[i];
-		GameWindow *tab = TheWindowManager->gogoGadgetPushButton(tabParent, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
-			tabs.tab[i].x - tx, tabs.tab[i].y - ty, tabs.tab[i].w, tabs.tab[i].h, &instance, instance.m_font, FALSE);
+		GameWindow *tab = TheWindowManager->gogoGadgetPushButton(s_canvas, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
+			strip.tab[i].x - tx, strip.tab[i].y - ty, strip.tab[i].w, strip.tab[i].h, &instance, instance.m_font, FALSE);
 		if (!tab)
 			continue;
-		copyAppearance(tab, donor);
-		GadgetButtonEnableCheckLike(tab, TRUE, FALSE);
-		GadgetButtonSetText(tab, TheGameText->FETCH_OR_SUBSTITUTE(categoryTextKey(static_cast<Category>(i)), kFallbackWide[i]));
+		tab->winSetFont(donor->winGetFont());
+		tab->winSetDrawFunc(tabDraw);
+		GadgetButtonSetText(tab, captions[i]);
+		GadgetButtonSetData(tab, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
 		s_tabs[i] = tab;
 	}
-	// tab buttons are in front of the page panels
-	for (int i = kCategoryCount - 1; i >= 0; --i)
-		if (s_tabs[i])
-			s_tabs[i]->winBringToTop();
 
 	showCategory(static_cast<int>(Category::Display));
-	char detail[160];
-	snprintf(detail, sizeof(detail), "tabs=%d scale=%.2f content=%dx%d", kCategoryCount, s_scale,
-		scaled(kContent.w, s_scale), scaled(kContent.h, s_scale));
+	char detail[200];
+	snprintf(detail, sizeof(detail), "tabs=%d scale=%.2f content=%dx%d strip=%dx%d padded=%d", kCategoryCount, s_scale,
+		scaled(kContent.w, s_scale), scaled(kContent.h, s_scale), strip.strip.w, strip.strip.h, strip.padded ? 1 : 0);
 	StartupDiagnostics::checkpoint("options_tabs", "complete", detail);
 	return true;
 }
@@ -340,8 +399,6 @@ bool onButton(int controlId)
 		{
 			if (i != s_active)
 				showCategory(i);
-			else
-				GadgetCheckLikeButtonSetVisualCheck(s_tabs[i], TRUE);
 			return true;
 		}
 	return false;
@@ -354,8 +411,8 @@ void forget()
 		s_tabs[i] = nullptr;
 		s_tabKeys[i] = NAMEKEY_INVALID;
 	}
-	s_panels.clear();
 	s_initiallyHidden.clear();
+	s_canvas = s_root = s_popup = s_network = nullptr;
 	s_active = -1;
 }
 

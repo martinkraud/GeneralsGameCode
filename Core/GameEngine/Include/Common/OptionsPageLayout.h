@@ -53,6 +53,140 @@ struct Tabs
 	Rect tab[kCategoryCount];
 };
 
+// ---- page ownership (names are window names without the "OptionsMenu.wnd:" prefix) ----------------------------
+// Exactly one category's items are visible/hit-testable; the retail controls that are not listed anywhere are
+// hidden in Modern Options. Kind lets tests assert "no slider on DISPLAY/GAMEPLAY".
+enum class ControlKind { Combo, Slider, Check, Block };
+
+struct PageItem
+{
+	const char *label;     // may be null (a checkbox carries its own text)
+	const char *control;
+	ControlKind kind;
+};
+
+constexpr PageItem kDisplayItems[] = {
+	{"ResolutionLabel", "ComboBoxResolution", ControlKind::Combo},
+	{"ModernModeLabel", "ModernMode", ControlKind::Combo},
+	{"ModernMonitorLabel", "ModernMonitor", ControlKind::Combo},
+	{"ModernUiScaleLabel", "ModernUiScale", ControlKind::Combo},
+	{"ModernVsyncLabel", "ModernVsync", ControlKind::Combo},
+	{"FrameRateLimitLabel", "ComboBoxFrameRateLimit", ControlKind::Combo},
+};
+constexpr PageItem kGraphicsItems[] = {
+	{"DetailLabel", "ComboBoxDetail", ControlKind::Combo},
+	{"GammaLabel", "SliderGamma", ControlKind::Slider},
+};
+constexpr PageItem kAudioItems[] = {
+	{"SFXVolumeLabel", "SliderSFXVolume", ControlKind::Slider},
+	{"MusicVolumeLabel", "SliderMusicVolume", ControlKind::Slider},
+	{"VoiceVolumeLabel", "SliderVoiceVolume", ControlKind::Slider},
+};
+constexpr PageItem kControlsItems[] = {
+	{nullptr, "CheckAlternateMouse", ControlKind::Check},
+	{"ScrollSpeedLabel", "SliderScrollSpeed", ControlKind::Slider},
+};
+constexpr PageItem kGameplayItems[] = {
+	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
+};
+
+struct PageTable
+{
+	const PageItem *items;
+	int count;
+};
+
+inline PageTable pageItems(Category c)
+{
+	switch (c)
+	{
+	case Category::Display: return {kDisplayItems, static_cast<int>(sizeof(kDisplayItems) / sizeof(kDisplayItems[0]))};
+	case Category::Graphics: return {kGraphicsItems, static_cast<int>(sizeof(kGraphicsItems) / sizeof(kGraphicsItems[0]))};
+	case Category::Audio: return {kAudioItems, static_cast<int>(sizeof(kAudioItems) / sizeof(kAudioItems[0]))};
+	case Category::Controls: return {kControlsItems, static_cast<int>(sizeof(kControlsItems) / sizeof(kControlsItems[0]))};
+	case Category::Gameplay: return {kGameplayItems, static_cast<int>(sizeof(kGameplayItems) / sizeof(kGameplayItems[0]))};
+	default: return {nullptr, 0};    // Network: the retail block, kept whole
+	}
+}
+
+inline bool nameEquals(const char *a, const char *b)
+{
+	if (!a || !b) return false;
+	while (*a && *a == *b) { ++a; ++b; }
+	return *a == *b;
+}
+
+// Which category (or -1) owns a control/label name.
+inline int ownerOf(const char *name)
+{
+	for (int c = 0; c < kCategoryCount; ++c)
+	{
+		const PageTable t = pageItems(static_cast<Category>(c));
+		for (int i = 0; i < t.count; ++i)
+			if (nameEquals(name, t.items[i].control) || nameEquals(name, t.items[i].label))
+				return c;
+	}
+	return -1;
+}
+
+// ---- tab strip: measured widths ---------------------------------------------------------------------------------
+// Every tab is as wide as its caption plus padding (minimum width), the slack is shared so the strip aligns with the
+// content on both edges; if the captions cannot fit, widths shrink proportionally. Pure: the caller measures text.
+struct TabStrip
+{
+	Rect strip;
+	Rect tab[kCategoryCount];
+	bool padded = false;        // every tab kept its full horizontal padding
+};
+
+inline TabStrip computeTabStrip(const int measured[kCategoryCount], double scale, int stripX, int stripY, int stripW, int stripH)
+{
+	TabStrip t;
+	t.strip = {stripX, stripY, stripW, stripH};
+	const int pad = scaled(10, scale), minW = scaled(56, scale), gap = std::max(scaled(4, scale), 1);
+	int want[kCategoryCount];
+	int total = gap * (kCategoryCount - 1);
+	for (int i = 0; i < kCategoryCount; ++i)
+	{
+		want[i] = std::max(measured[i] + 2 * pad, minW);
+		total += want[i];
+	}
+	const int available = stripW - gap * (kCategoryCount - 1);
+	int widths[kCategoryCount];
+	if (total <= stripW)
+	{
+		const int slack = stripW - total;
+		int given = 0;
+		for (int i = 0; i < kCategoryCount; ++i)
+		{
+			const int share = slack / kCategoryCount;
+			widths[i] = want[i] + share;
+			given += share;
+		}
+		widths[kCategoryCount - 1] += slack - given;
+		t.padded = true;
+	}
+	else
+	{
+		int sum = 0;
+		for (int i = 0; i < kCategoryCount; ++i) sum += want[i];
+		int used = 0;
+		for (int i = 0; i < kCategoryCount; ++i)
+		{
+			widths[i] = std::max(want[i] * available / std::max(sum, 1), 1);
+			used += widths[i];
+		}
+		widths[kCategoryCount - 1] += available - used;
+	}
+	int x = stripX;
+	for (int i = 0; i < kCategoryCount; ++i)
+	{
+		t.tab[i] = {x, stripY, widths[i], stripH};
+		x += widths[i] + gap;
+	}
+	return t;
+}
+
 // Rows are 24 reference units tall on a 44 unit pitch: 8 rows fit with room for the dropdown of the last row to
 // open inside the content area. Label column 200, control column 225, 20 unit margins.
 inline Page computePage(double scale, int rowCount, int originX, int originY)

@@ -1004,11 +1004,10 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	WinAdvancedDisplayID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:WinAdvancedDisplayOptions" );
 	WinAdvancedDisplay      = TheWindowManager->winGetWindowFromId( nullptr, WinAdvancedDisplayID );
-	// X64.33 Modern Experience (no-ops in Classic): display/gameplay gadgets, then the category pages that arrange
-	// them together with the retail controls.
+	// X64.33 Modern Experience (no-op in Classic): the display/gameplay gadgets. The category pages are built at the
+	// END of init (below), after every retail show/hide decision, so their snapshot of "deliberately hidden" is final.
 	ModernDisplayOptions::create( comboBoxResolution, *pref,
 		((TheGameLogic->isInGame() && TheGameLogic->getGameMode() != GAME_SHELL) || TheGameSpyInfo) ? true : false );
-	OptionsTabs::create();
 
 	ButtonAdvancedAcceptID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ButtonAdvanceAccept" );
 	ButtonAdvancedAccept      = TheWindowManager->winGetWindowFromId( nullptr, ButtonAdvancedAcceptID );
@@ -1378,6 +1377,9 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	// set the gamma slider
  	GadgetSliderSetPosition( sliderGamma, REAL_TO_INT(pref->getGammaValue()) );
+
+	// X64.33 FIX3: category pages (no-op in Classic)
+	OptionsTabs::create();
 
 	// show menu
 	layout->hide( FALSE );

@@ -282,3 +282,65 @@ named timers, player-info list and popup messages keep the core-relative `hudX/h
 * `generalsv.exe` SHA256 `2EC09BF3F24656F8EE26779B094ABA518C13F27A783444B9EE38BA0986406008`
 * `generalsv.pdb` SHA256 `5365DAF8E385505CD70D1922C1C54848A7209D246970CABD743EE2C6D1B2ABD3`
 X64.33 is NOT accepted yet.
+
+## 16. FIX2 native review and FIX3 (x64-33-fix3-ui-polish)
+
+### Recorded native findings (x64-33-fix2-modern-ui)
+* **Main menu**: the modern borderless presentation looks good - a strong indication of the intended direction
+  (Generals identity + modern widescreen world). Not touched in FIX3.
+* **Options**: the tabbed concept is accepted. The implementation was not: tab labels overlapped, tab widths ignored
+  their text, tabs looked displaced/missing depending on the page, value text of Resolution/Detail/Unit Motion was
+  covered by brown segmented slider art, other pages' controls drew through the active page.
+* **Skirmish**: Match Options accepted; Starting Cash on one line; Slower/Faster gone; honors intact. Locked.
+* **HUD**: the centred "HUD island" with the world beside it is accepted. One lifecycle defect: a few milliseconds of
+  black HUD/backing before the HUD appears.
+
+### Options root cause
+FIX2 decided visibility by iterating the children of three panels it knew about. The volume sliders, the scroll
+slider and the unnamed retail section headers are not children of those panels. After a page switch they were never
+hidden, so they kept drawing at the row positions of the page they had last been placed on, which coincide with the
+Display/Gameplay rows: segmented slider art through Resolution, Detail and Unit Motion; the "VIDEO"/"AUDIO" headers
+(retail y 69-97) sat exactly in the tab strip row, which read as overlapping tab captions. (Identified by reading the
+FIX2 visibility loop against the retail layout; the layout dump tool is `build/wnd_tree.py`-style, not shipped.)
+
+### Ownership model
+`OptionsTabs.cpp::apply` decides visibility for the WHOLE layout tree on every page switch, by exclusion: a window is
+visible only if it is shared chrome (parent panel, Defaults/Accept/Cancel, version label, title), an item of the active
+page, the retail Network block while Network is active (with retail-hidden members staying hidden), a tab, or an
+ancestor of one of those. Gadgets are never recursed into (their edit box, arrow and list children are not page
+items); the retail Advanced Display panel manages itself. Page membership is the pure table in
+`OptionsPageLayout.h` (`ownerOf`, `ControlKind`), so the "one active page" invariant and "sliders only on
+Graphics/Audio/Controls" are unit-tested. Pages are built at the end of the Options init, after every retail
+show/hide decision. Windows are created once and switched (no per-switch creation, so nothing accumulates).
+
+### Retail control reuse
+The retail Resolution/Detail/Gamma/volume/scroll/network windows are still reused (they are bound to the retail save
+and accept paths); the defect was ownership/visibility, not reuse, and rebuilding them would duplicate the retail
+handlers. Classic is unaffected.
+
+### Tab strip
+Not six fixed buttons any more: caption widths are measured with the live font, each tab is `measured + 2 x pad`
+(minimum width), the slack is shared so the strip is aligned with the content on both edges, and widths shrink
+proportionally if captions ever cannot fit (`computeTabStrip`, tested 75-300 %). Tabs are drawn from primitives (dark
+opaque fill, orange line work, gold border/text for the selected tab, white text on hover) instead of the large retail
+Defaults button art, and their hit rectangle is the drawn rectangle. The Modern Options panel keeps the retail frame
+width: six padded tabs fit in the 485 unit content width at every supported scale (a wider panel would stretch the
+frame art; allowed, not needed).
+
+### Combo internals
+Combo children are laid out by the engine on resize (edit box = width - arrow width; list box matches); the earlier
+"value text under art" was the stale slider art, not the combo. Dropdown z-order: upper rows are brought to the front
+last on every page switch; tabs are brought to the front after the pages.
+
+### HUD black flash
+Root cause (from the code): the backing was anchored to the surface bottom while the bar slides in through the
+control-bar animation (the art is offset by the marker delta), so the black backing sat at its final place before the
+art arrived. The backing is now part of the band: the lower `(1 - viewportHeightScale) x height` of the band wherever
+the band currently is, clipped to the surface; when the band rests on the edge it continues to it (the art ends one
+reference pixel above the edge); `backingVisible(parentVisible, bandArtAvailable)` states the lifecycle rule. No delay,
+no timer. The backing itself is kept: the console panels are translucent, and without it the world would show through
+them where the retail viewport used to end.
+
+### Still native-unverified
+Tab look and hit areas, every page at several scales, dropdown stacking inside pages, the HUD slide-in with the
+backing, the Network page as a moved retail block.

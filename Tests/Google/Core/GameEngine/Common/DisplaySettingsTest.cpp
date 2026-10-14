@@ -454,3 +454,121 @@ TEST(OptionsPageLayout, PagesFitAndNeverGrowWithTheSurface)
 		EXPECT_EQ(computePage(s, 1, 0, 0).content.w, scaled(kContent.w, s));
 	}
 }
+
+TEST(HudComposition, BackingFollowsTheBandWhileTheBarSlidesIn)
+{
+	// FIX2 anchored the backing to the surface bottom: while the bar slid in the black backing was already at its final
+	// place and showed before the art (native review: a few ms of black). The backing is now part of the band.
+	for (Size size : {Size{1920, 1080}, Size{3440, 1440}, Size{5120, 1440}, Size{1111, 777}})
+	{
+		const DisplayGeometry::Layout layout = DisplayGeometry::computeLayout(size, 0);
+		const DisplayGeometry::Rect band = DisplayGeometry::referenceToPhysical(layout, DisplayGeometry::Rect{0, 408, 800, 191}, DisplayGeometry::Anchor::Bottom);
+		const int backingHeight = DisplayGeometry::scaled(120, layout.uiScalePercent);
+		for (int offset = 0; offset <= band.height + 10; offset += std::max(band.height / 16, 1))
+		{
+			const HudComposition::Composition c = HudComposition::compute(
+				band.x, band.y + offset, band.width, band.height, size.width, size.height, 800, 599, 800, 600, backingHeight);
+			ASSERT_TRUE(c.qualifies);
+			// never above the band's own lower part
+			if (!c.backing.empty())
+				EXPECT_GE(c.backing.y, c.core.y + c.core.h - backingHeight - 1) << offset;
+			// never visible below the surface; fully empty once the band is off the bottom edge
+			EXPECT_LE(c.backing.bottom(), size.height);
+			if (band.y + offset >= size.height)
+				EXPECT_TRUE(c.backing.empty()) << "backing visible while the band is off-screen, offset " << offset;
+			// moves with the band: its bottom is the band bottom, clipped
+			const int slack = std::max(c.core.h / 64, 2);
+			const bool resting = size.height - c.core.bottom() >= 0 && size.height - c.core.bottom() <= slack;
+			EXPECT_EQ(c.backing.bottom(), resting ? size.height : std::min(c.core.bottom(), size.height));
+		}
+	}
+}
+
+TEST(HudComposition, BackingVisibilityIsTheHudVisibility)
+{
+	// frontend -> loading -> world created, HUD not ready -> HUD ready -> HUD hidden -> menu
+	EXPECT_FALSE(HudComposition::backingVisible(false, false));   // frontend
+	EXPECT_FALSE(HudComposition::backingVisible(false, true));    // loading: art exists, bar not shown
+	EXPECT_FALSE(HudComposition::backingVisible(true, false));    // bar shown, scheme art not available yet
+	EXPECT_TRUE(HudComposition::backingVisible(true, true));      // HUD ready
+	EXPECT_FALSE(HudComposition::backingVisible(false, true));    // HUD hidden again
+}
+
+TEST(OptionsPageLayout, EveryControlIsOwnedByExactlyOnePage)
+{
+	using namespace OptionsPageLayout;
+	// names are unique across pages (no control or label can belong to two categories)
+	for (int a = 0; a < kCategoryCount; ++a)
+	{
+		const PageTable ta = pageItems(static_cast<Category>(a));
+		for (int i = 0; i < ta.count; ++i)
+		{
+			EXPECT_EQ(ownerOf(ta.items[i].control), a) << ta.items[i].control;
+			if (ta.items[i].label) EXPECT_EQ(ownerOf(ta.items[i].label), a) << ta.items[i].label;
+		}
+	}
+	EXPECT_EQ(ownerOf("SliderGamma"), static_cast<int>(Category::Graphics));
+	EXPECT_EQ(ownerOf("SliderSFXVolume"), static_cast<int>(Category::Audio));
+	EXPECT_EQ(ownerOf("SliderScrollSpeed"), static_cast<int>(Category::Controls));
+	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("NotAnOptionsControl"), -1);
+}
+
+TEST(OptionsPageLayout, SlidersOnlyLiveOnTheirOwnPages)
+{
+	using namespace OptionsPageLayout;
+	for (Category c : {Category::Display, Category::Gameplay, Category::Network})
+	{
+		const PageTable t = pageItems(c);
+		for (int i = 0; i < t.count; ++i)
+			EXPECT_NE(t.items[i].kind, ControlKind::Slider) << static_cast<int>(c);
+	}
+	int audioSliders = 0, controlSliders = 0, graphicsSliders = 0;
+	for (int i = 0; i < pageItems(Category::Audio).count; ++i)
+		audioSliders += pageItems(Category::Audio).items[i].kind == ControlKind::Slider;
+	for (int i = 0; i < pageItems(Category::Controls).count; ++i)
+		controlSliders += pageItems(Category::Controls).items[i].kind == ControlKind::Slider;
+	for (int i = 0; i < pageItems(Category::Graphics).count; ++i)
+		graphicsSliders += pageItems(Category::Graphics).items[i].kind == ControlKind::Slider;
+	EXPECT_EQ(audioSliders, 3);
+	EXPECT_EQ(controlSliders, 1);
+	EXPECT_EQ(graphicsSliders, 1);
+}
+
+TEST(OptionsPageLayout, TabStripUsesMeasuredWidthsWithPaddingAndNeverOverlaps)
+{
+	using namespace OptionsPageLayout;
+	// representative caption widths in reference pixels at 100 % (Arial 10 bold-ish), then scaled with the UI scale
+	const int base[kCategoryCount] = {47, 55, 36, 56, 59, 52};
+	for (int percent : {75, 100, 125, 150, 175, 200, 250, 300})
+	{
+		const double s = percent / 100.0;
+		int measured[kCategoryCount];
+		for (int i = 0; i < kCategoryCount; ++i)
+			measured[i] = static_cast<int>(base[i] * s + 0.5);
+		const int stripX = 50, stripY = 20, stripW = scaled(kTabStrip.w, s), stripH = scaled(kTabStrip.h, s);
+		const TabStrip t = computeTabStrip(measured, s, stripX, stripY, stripW, stripH);
+		EXPECT_TRUE(t.padded) << percent;
+		int previousRight = stripX - 1;
+		for (int i = 0; i < kCategoryCount; ++i)
+		{
+			EXPECT_GT(t.tab[i].w, 0);
+			EXPECT_GE(t.tab[i].w, measured[i] + 2 * scaled(10, s)) << "padding at " << percent << " tab " << i;
+			EXPECT_GT(t.tab[i].x, previousRight) << "order/overlap at " << percent;
+			EXPECT_TRUE(t.tab[i].inside(t.strip)) << percent;
+			previousRight = t.tab[i].right();
+		}
+		EXPECT_EQ(t.tab[kCategoryCount - 1].right(), t.strip.right());   // aligned with the content on both edges
+		EXPECT_EQ(t.tab[0].x, t.strip.x);
+	}
+	// captions that cannot fit shrink proportionally and still never overlap or leave the strip
+	const int huge[kCategoryCount] = {400, 400, 400, 400, 400, 400};
+	const TabStrip t = computeTabStrip(huge, 1.0, 0, 0, 485, 28);
+	EXPECT_FALSE(t.padded);
+	for (int i = 0; i < kCategoryCount; ++i)
+	{
+		EXPECT_GT(t.tab[i].w, 0);
+		EXPECT_TRUE(t.tab[i].inside(t.strip));
+		if (i) EXPECT_GT(t.tab[i].x, t.tab[i - 1].right() - 1);
+	}
+}
