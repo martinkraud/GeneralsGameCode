@@ -1,0 +1,124 @@
+1	01dd5bd2408ec0c6	261263965808	12904	20048	WinMain	normal_launch	0	generals64.log
+2	01dd5bd240904736	261264070462	12904	20048	WinMain	begin	0	Generals AMD64 ordinary play
+3	01dd5bd24090e374	261264107907	12904	20048	exception_filter	complete	0	
+4	01dd5bd2409158f9	261264142071	12904	20048	memory	begin	0	
+5	01dd5bd24091f4dd	261264176947	12904	20048	memory	complete	0	
+6	01dd5bd240926a08	261264211692	12904	20048	startup_parse	begin	0	
+7	01dd5bd24093064f	261264250191	12904	20048	HWND_DX8_browser_input	skipped	0	
+8	01dd5bd24093a737	261264295520	12904	20048	minidumper	begin	0	
+9	01dd5bd240946a6b	261264341286	12904	20048	dump_path	resolved	0	CrashDumps\
+10	01dd5bd24094b88f	261264367251	12904	20048	minidumper	complete	0	
+11	01dd5bd240952e00	261264386720	12904	20048	app_window	begin	0	ordinary WndProc; windowed 800x600 client
+12	01dd5bd240957bce	261264410188	12904	20048	app_window_class	complete	0	Game Window
+13	01dd5bd2409933d5	261264651281	12904	20048	app_window	complete	0	client=800x600 windowed=1 class=Game Window
+14	01dd5bd24099855d	261264672650	12904	20048	review_window	observed	0	review_scale=150% window_client=1200x900 logical=800x600
+15	01dd5bd24099d8a1	261264694157	12904	20048	instance	begin	0	
+16	01dd5bd2409a0b42	261264715859	12904	20048	instance	complete	0	
+17	01dd5bd2409a66de	261264737750	12904	20048	engine_init	begin	0	
+18	01dd5bd2409ac506	261264759775	12904	20048	TheLocalFileSystem	begin	0	
+19	01dd5bd2409b1322	261264779619	12904	20048	TheLocalFileSystem	complete	0	
+20	01dd5bd2409b61ab	261264800181	12904	20048	TheArchiveFileSystem	begin	0	
+21	01dd5bd240a39d71	261265336221	12904	20048	TheArchiveFileSystem	complete	0	
+22	01dd5bd240a3eb92	261265357732	12904	20048	TheWritableGlobalData	begin	0	
+23	01dd5bd240a78c30	261265594939	12904	20048	TheWritableGlobalData	complete	0	
+24	01dd5bd240a80178	261265621826	12904	20048	TheGameText	begin	0	
+25	01dd5bd240a8769c	261265656958	12904	20048	TheGameText	complete	0	
+26	01dd5bd240a8c4b9	261265679824	12904	20048	TheScienceStore	begin	0	
+27	01dd5bd240a947be	261265706447	12904	20048	TheScienceStore	complete	0	
+28	01dd5bd240a96ebd	261265726043	12904	20048	TheMultiplayerSettings	begin	0	
+29	01dd5bd240a9d10a	261265746226	12904	20048	TheMultiplayerSettings	complete	0	
+30	01dd5bd240aa1f7a	261265767000	12904	20048	TheTerrainTypes	begin	0	
+31	01dd5bd240aae251	261265816318	12904	20048	TheTerrainTypes	complete	0	
+32	01dd5bd240ab3091	261265836984	12904	20048	TheTerrainRoads	begin	0	
+33	01dd5bd240aba5c4	261265861425	12904	20048	TheTerrainRoads	complete	0	
+34	01dd5bd240abf3df	261265881137	12904	20048	TheGlobalLanguageData	begin	0	
+35	01dd5bd240ac421e	261265902411	12904	20048	TheGlobalLanguageData	complete	0	
+36	01dd5bd240ac9021	261265923506	12904	20048	TheAudio	begin	0	
+37	01dd5bd240c40e1f	261267465097	12904	20048	TheAudio	complete	0	
+38	01dd5bd240c4834d	261267488858	12904	20048	TheFunctionLexicon	begin	0	
+39	01dd5bd240c5339d	261267537307	12904	20048	TheFunctionLexicon	complete	0	
+40	01dd5bd240c61ed0	261267599494	12904	20048	TheModuleFactory	begin	0	
+41	01dd5bd240c66d00	261267621120	12904	20048	TheModuleFactory	complete	0	
+42	01dd5bd240c6bb20	261267641144	12904	20048	TheMessageStream	begin	0	
+43	01dd5bd240c71d07	261267660420	12904	20048	TheMessageStream	complete	0	
+44	01dd5bd240c76b32	261267679612	12904	20048	TheSidesList	begin	0	
+45	01dd5bd240c7a5fe	261267698833	12904	20048	TheSidesList	complete	0	
+46	01dd5bd240c7f455	261267717935	12904	20048	TheCaveSystem	begin	0	
+47	01dd5bd240c84282	261267737744	12904	20048	TheCaveSystem	complete	0	
+48	01dd5bd240c890a2	261267756193	12904	20048	TheRankInfoStore	begin	0	
+49	01dd5bd240c8cb92	261267776661	12904	20048	TheRankInfoStore	complete	0	
+50	01dd5bd240c919aa	261267794870	12904	20048	ThePlayerTemplateStore	begin	0	
+51	01dd5bd240c967c9	261267815973	12904	20048	ThePlayerTemplateStore	complete	0	
+52	01dd5bd240c9dd01	261267839000	12904	20048	TheParticleSystemManager	begin	0	
+53	01dd5bd240cc75d6	261268013644	12904	20048	TheParticleSystemManager	complete	0	
+54	01dd5bd240ccc3f6	261268032924	12904	20048	TheFXListStore	begin	0	
+55	01dd5bd240cd4d6e	261268070340	12904	20048	TheFXListStore	complete	0	
+56	01dd5bd240cd9b7d	261268088242	12904	20048	TheWeaponStore	begin	0	
+57	01dd5bd240ce37c5	261268125621	12904	20048	TheWeaponStore	complete	0	
+58	01dd5bd240ce85e4	261268145598	12904	20048	TheObjectCreationListStore	begin	0	
+59	01dd5bd240cf0ef6	261268186530	12904	20048	TheObjectCreationListStore	complete	0	
+60	01dd5bd240cf5d1a	261268205252	12904	20048	TheLocomotorStore	begin	0	
+61	01dd5bd240cfd23a	261268236489	12904	20048	TheLocomotorStore	complete	0	
+62	01dd5bd240d033fd	261268254681	12904	20048	TheSpecialPowerStore	begin	0	
+63	01dd5bd240d0824b	261268277478	12904	20048	TheSpecialPowerStore	complete	0	
+64	01dd5bd240d0d088	261268295726	12904	20048	TheDamageFXStore	begin	0	
+65	01dd5bd240d11eac	261268316101	12904	20048	TheDamageFXStore	complete	0	
+66	01dd5bd240d16ccb	261268334335	12904	20048	TheArmorStore	begin	0	
+67	01dd5bd240d1baf0	261268354881	12904	20048	TheArmorStore	complete	0	
+68	01dd5bd240d1f5cd	261268372652	12904	20048	TheBuildAssistant	begin	0	
+69	01dd5bd240d2440b	261268390821	12904	20048	TheBuildAssistant	complete	0	
+70	01dd5bd240d26b1d	261268409334	12904	20048	TheThingFactory	begin	0	
+71	01dd5bd240e06f25	261269327441	12904	20048	TheThingFactory	complete	0	
+72	01dd5bd240e16de2	261269388510	12904	20048	TheUpgradeCenter	begin	0	
+73	01dd5bd240e2fdc2	261269486946	12904	20048	TheUpgradeCenter	complete	0	
+74	01dd5bd240e34be7	261269507334	12904	20048	TheGameClient	begin	0	
+75	01dd5bd240e399dd	261269528279	12904	20048	TheDisplayStringManager.init	begin	0	
+76	01dd5bd240e3c112	261269547040	12904	20048	TheDisplayStringManager.init	complete	0	
+77	01dd5bd240e42381	261269566948	12904	20048	TheKeyboard.init	begin	0	
+78	01dd5bd240e86dd3	261269847935	12904	20048	TheKeyboard.init	complete	0	
+79	01dd5bd240e8d073	261269869780	12904	20048	TheMappedImageCollection.load	begin	0	
+80	01dd5bd240e993f2	261269919597	12904	20048	TheMappedImageCollection.load	complete	0	
+81	01dd5bd240e9e2ee	261269940002	12904	20048	TheAnim2DCollection.init	begin	0	
+82	01dd5bd240ea1dbd	261269961391	12904	20048	TheAnim2DCollection.init	complete	0	
+83	01dd5bd240ea6c1a	261269981888	12904	20048	TheFontLibrary.init	begin	0	
+84	01dd5bd240eaba48	261269999982	12904	20048	TheFontLibrary.init	complete	0	
+85	01dd5bd240eb0855	261270018287	12904	20048	TheMouse.parseIni	begin	0	
+86	01dd5bd240eb566f	261270037647	12904	20048	TheMouse.parseIni	complete	0	
+87	01dd5bd240eba495	261270055346	12904	20048	TheMouse.initCursorResources	begin	0	
+88	01dd5bd240efc1f5	261270325893	12904	20048	TheMouse.initCursorResources	complete	0	
+89	01dd5bd240f0373d	261270352997	12904	20048	TheDisplay.init	begin	0	
+90	01dd5bd240f08afd	261270374597	12904	20048	display_ordinary_init	begin	0	
+91	01dd5bd240f0d911	261270393965	12904	20048	display_config	complete	0	windowed=1 800x600x32 ApplicationHWnd
+92	01dd5bd240f12751	261270416198	12904	20048	display_bypass	complete	0	legacy_ww3d_init: WW3D::Init/DX8Backend/DX8Wrapper::Init (D3D8.DLL) not entered
+93	01dd5bd240f161f5	261270435709	12904	20048	display_bypass	complete	0	legacy_render_device: Set_Render_Device, enumeration, MSAA, filter, anisotropy not entered
+94	01dd5bd240f1c3eb	261270455770	12904	20048	display_bypass	complete	0	legacy_scenes: 2D/3D/interface scenes and lights not created (no world)
+95	01dd5bd240f2123d	261270475143	12904	20048	display_bypass	complete	0	legacy_shader_manager: W3DShaderManager not initialized (legacy shaders)
+96	01dd5bd240f2607c	261270494590	12904	20048	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+97	01dd5bd240f2ae9b	261270515379	12904	20048	display_bypass	complete	0	legacy_gamma_lod: gamma and texture LOD reduction not applied
+98	01dd5bd240f2fcba	261270534907	12904	20048	terrain_optin	complete	0	cpu_backed_geometry=1 depth_buffer=1 (terrain-only world pass; meshes/water/shadows/particles absent)
+99	01dd5bd240f34add	261270554310	12904	20048	graphics_device	begin	0	driver=hardware
+100	01dd5bd240fe3f4c	261271279912	12904	20048	graphics_device	complete	0	driver=hardware feature=0xB000 vendor=0x8086 device=0x7D45 adapter=Intel(R) Graphics size=800x600
+101	01dd5bd240fedb62	261271316218	12904	20048	graphics_window_association	begin	0	
+102	01dd5bd240ff2986	261271334718	12904	20048	graphics_window_association	complete	0	
+103	01dd5bd240ff7a68	261271353149	12904	20048	graphics_target	begin	0	
+104	01dd5bd240ffc8e1	261271376348	12904	20048	graphics_target	complete	0	RGBA8 single-sample backbuffer/RTV
+105	01dd5bd24100171f	261271395581	12904	20048	graphics_setup	begin	0	
+106	01dd5bd24101db22	261271509168	12904	20048	graphics_setup	complete	0	VS/PS/layout/states/resources
+107	01dd5bd24102293f	261271529595	12904	20048	graphics_viewport	begin	0	
+108	01dd5bd241025034	261271549022	12904	20048	graphics_viewport	complete	0	
+109	01dd5bd24102b2b1	261271567634	12904	20048	display_module_audit	complete	0	d3d8=0 d3dx8=0 d3d11=1 dxgi=1
+110	01dd5bd2410300cb	261271586297	12904	20048	display_size	complete	0	device=800x600 target=800x600 bits=32 windowed=1
+111	01dd5bd241034f08	261271605463	12904	20048	display_ordinary_init	complete	0	
+112	01dd5bd241039d01	261271624614	12904	20048	TheDisplay.init	complete	0	
+113	01dd5bd24103c41a	261271643124	12904	20048	TheHeaderTemplateManager.init	begin	0	
+114	01dd5bd241043b4b	261271672893	12904	20048	TheHeaderTemplateManager.init	complete	0	
+115	01dd5bd241049656	261271696018	12904	20048	TheWindowManager.init	begin	0	
+116	01dd5bd241050b7f	261271721399	12904	20048	TheWindowManager.init	complete	0	
+117	01dd5bd24105599b	261271740597	12904	20048	TheIMEManager.init	begin	0	
+118	01dd5bd2410756b1	261271875586	12904	20048	TheIMEManager.init	complete	0	
+119	01dd5bd24107a4e7	261271896162	12904	20048	TheShell.init	begin	0	
+120	01dd5bd241081a02	261271920401	12904	20048	TheShell.init	complete	0	
+121	01dd5bd24108683f	261271940052	12904	20048	TheInGameUI.init	begin	0	
+122	01dd5bd2410cea4c	261272237639	12904	20048	TheInGameUI.init	fail	0	
+123	01dd5bd2410d4c24	261272259108	12904	20048	TheGameClient	fail	0	
+124	01dd5bd2410d9ae8	261272278891	12904	20048	engine_init	fail	0	Error parsing INI file 'Data\INI\CommandButton.ini' (Line: 'CommandButton Command_FireParticleUplinkCannonFromShortcut ') 

@@ -88,7 +88,8 @@ class ClonedButtons(unittest.TestCase):
         for new, _src in mx.NEW_BUTTONS:
             m = re.search(r"CommandButton " + new + r"\n([\s\S]*?)\nEnd", out)
             self.assertIsNotNone(m, new)
-            self.assertIn("SPECIAL_POWER_FROM_SHORTCUT", m.group(1))
+            self.assertRegex(m.group(1), r"Command\s+=\s+SPECIAL_POWER_FROM_COMMAND_CENTER")
+            self.assertNotIn("SPECIAL_POWER_FROM_SHORTCUT", m.group(1))
             self.assertIn("NEED_SPECIAL_POWER_SCIENCE", m.group(1))
         # retail buttons are preserved verbatim
         self.assertIn("CommandButton Command_FireParticleUplinkCannon\n  Command           = SPECIAL_POWER\n", out)
@@ -169,6 +170,33 @@ class Bars(unittest.TestCase):
     def test_malformed_wnd_is_refused(self):
         with self.assertRaises(ValueError):
             mx.build_wnd("FILE_VERSION = 2;\nWINDOW\nEND\n", 3, 400)
+
+
+class EngineTokens(unittest.TestCase):
+    """The first native run of the overlay failed to parse CommandButton.ini: the Zero Hour spelling of the shortcut
+    command is not a token in a Generals build. Every Command token the overlay emits must be accepted by it."""
+
+    def generals_tokens(self):
+        header = (Path(__file__).resolve().parents[2] / "Core/GameEngine/Include/GameClient/ControlBar.h").read_text(
+            encoding="latin1").replace(chr(13) + chr(10), chr(10))
+        start = header.index("static const char *const TheGuiCommandNames[] =")
+        body = header[start:header.index("static_assert(ARRAY_SIZE(TheGuiCommandNames)", start)]
+        # keep the #if RTS_GENERALS branch, drop the #else branch
+        body = re.sub(r"#if RTS_GENERALS(.*?)#else.*?#endif", lambda m: m.group(1), body, flags=re.S)
+        return set(re.findall(r'"([A-Z_0-9]+)"', body))
+
+    def test_generated_buttons_use_a_token_the_generals_build_accepts(self):
+        tokens = self.generals_tokens()
+        self.assertIn("SPECIAL_POWER", tokens)
+        self.assertNotIn("SPECIAL_POWER_FROM_SHORTCUT", tokens)
+        self.assertIn(mx.SHORTCUT_COMMAND, tokens)
+        out = mx.patch_command_buttons(BUTTONS)
+        used = set(re.findall(r"(?m)^\s*Command\s*=\s*(\w+)", out))
+        self.assertTrue(used <= tokens, used - tokens)
+
+    def test_retail_buttons_already_use_the_same_token(self):
+        # the retail Generals shortcut buttons are exactly SPECIAL_POWER_FROM_COMMAND_CENTER buttons
+        self.assertEqual(mx.SHORTCUT_COMMAND, "SPECIAL_POWER_FROM_COMMAND_CENTER")
 
 
 class RetailData(unittest.TestCase):

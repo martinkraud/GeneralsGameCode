@@ -103,7 +103,7 @@ derives, from the player's installed Generals archives at staging time, loose ov
 | China | 5 → 6 | Neutron Missile |
 | GLA | 3 → 5 | SCUD Storm, Radar Van Scan |
 
-* new buttons are clones of the retail Generals buttons with `Command = SPECIAL_POWER_FROM_SHORTCUT` and
+* new buttons are clones of the retail Generals buttons with `Command = SPECIAL_POWER_FROM_COMMAND_CENTER` (a Generals build's spelling of the shortcut command; the Zero Hour spelling is not a token there — the first native run of the overlay failed to parse because of it) and
   `NEED_SPECIAL_POWER_SCIENCE` added (Zero Hour's rule: shown only when an object that has the power exists, hidden
   when the science/upgrade is missing); labels, tooltips, images, cursors, targeting radii are the Generals ones;
 * the Spy Satellite uses the retail `…FromCommandCenter` button that was never on the bar;
@@ -222,3 +222,7 @@ aircraft root interpolation; projectile/missile path smoothing; native verificat
 ## Candidate
 
 `x64-32-original-experience` (generalsv.exe SHA256 `CC306D1C1544AC2C0E0DCB984C5E7ABA593509B243540F2736227B53E1EA122B`), staged with the shortcut-sidebar overlay (`-Classic` omits it).
+
+## First native run and fix
+
+`x64-32-original-experience` failed at engine init: the overlay used Zero Hour's `SPECIAL_POWER_FROM_SHORTCUT` spelling, which a Generals build does not accept (it is `SPECIAL_POWER_FROM_COMMAND_CENTER`), so `CommandButton.ini` failed to parse (evidence: `evidence/x64-32-first-run-ini-parse/`). Fixed in `modern_extensions.py`; `test_modern_extensions_vocabulary.py` checks every generated field, Options bit and Command token against the engine's own tables. Fix candidate `x64-32-fix1` (generalsv.exe SHA256 `CC306D1C1544AC2C0E0DCB984C5E7ABA593509B243540F2736227B53E1EA122B`).

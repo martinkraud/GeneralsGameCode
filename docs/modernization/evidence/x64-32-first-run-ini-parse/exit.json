@@ -1,0 +1,15 @@
+{
+  "Executable": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-32-original-experience\\game\\generalsv.exe",
+  "ProcessId": 12904,
+  "Started": true,
+  "TimedOut": false,
+  "ExitCode": 1,
+  "Error": null,
+  "HasLog": true,
+  "PreservedLog": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-32-original-experience\\normal-launch\\20261014T1150464411895Z.generals64.log",
+  "CrashDumps": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-32-original-experience\\normal-launch\\crash-20261014T1150464411895Z\\CrashFG-20261014-135048-2dcdc6ed7-pid12904.dmp;C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-32-original-experience\\normal-launch\\crash-20261014T1150464411895Z\\CrashMG-20261014-135048-2dcdc6ed7-pid12904.dmp",
+  "CrashDumpCount": 2,
+  "StageRestored": true,
+  "CleanupError": null,
+  "FinishedUtc": "2026-10-14T11:50:52.5591451Z"
+}

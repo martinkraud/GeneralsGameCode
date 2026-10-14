@@ -25,6 +25,9 @@ from pathlib import Path
 
 CRLF = "\r\n"
 
+# GUI command token that selects GUI_COMMAND_SPECIAL_POWER_FROM_SHORTCUT in a Generals (RTS_GENERALS) build.
+SHORTCUT_COMMAND = "SPECIAL_POWER_FROM_COMMAND_CENTER"
+
 # power -> (new command button, retail button it is cloned from)
 NEW_BUTTONS = [
     ("Command_FireParticleUplinkCannonFromShortcut", "Command_FireParticleUplinkCannon"),
@@ -95,8 +98,12 @@ def clone_button(ini_text, source, new_name):
     if not m:
         raise KeyError("retail command button not found: " + source)
     body = m.group(1)
-    body = re.sub(r"(?m)^(\s*Command\s*=\s*)SPECIAL_POWER\b", r"\1SPECIAL_POWER_FROM_SHORTCUT", body)
-    if "SPECIAL_POWER_FROM_SHORTCUT" not in body:
+    # The shortcut command type has two spellings of the same enum value: Zero Hour's INI says
+    # SPECIAL_POWER_FROM_SHORTCUT, a Generals build (RTS_GENERALS, ControlBar.h) only accepts the legacy
+    # SPECIAL_POWER_FROM_COMMAND_CENTER (retail Generals uses it for this very sidebar). The Zero Hour spelling made
+    # the whole CommandButton.ini fail to parse in the first native run of the overlay.
+    body = re.sub(r"(?m)^(\s*Command\s*=\s*)SPECIAL_POWER\b", r"\1" + SHORTCUT_COMMAND, body)
+    if SHORTCUT_COMMAND not in body:
         raise ValueError(source + " is not a plain SPECIAL_POWER button")
     opt = re.search(r"(?m)^(\s*)Options(\s*=\s*)([^\n;]*)", body)
     if opt:
