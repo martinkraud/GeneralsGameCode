@@ -27,6 +27,7 @@
 // Author: Michael S. Booth, April 2001
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/ModernExperience.h"
 #include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/DeveloperHarness.h"
@@ -198,6 +199,8 @@ static void updateWindowTitle()
 	}
 
 	UnicodeString productString = TheVersion->getUnicodeProductString();
+	if (StartupDiagnostics::normalLaunch() && ModernExperience::enabled(ModernExperience::FEATURE_MODERN_DISPLAY))
+		productString.clear();   // Modern Experience: plain game title (no author/patch wording in the caption)
 
 	if (!productString.isEmpty())
 	{

@@ -28,7 +28,9 @@ struct Rect
 };
 
 // Reference rectangles on the Options canvas (the retail 800x600 frame).
-constexpr Rect kTabStrip = {151, 64, 485, 28};
+// The strip is centred on the content (151..636) and 10 units wider on each side (still inside the frame art, which
+// spans 120..661), so six padded captions get a visible gap between them instead of touching.
+constexpr Rect kTabStrip = {141, 64, 505, 28};
 constexpr Rect kContent = {151, 104, 485, 408};      // above the Defaults / Accept / Cancel buttons at y 528
 
 inline int scaled(int reference, double scale) { return static_cast<int>(std::floor(reference * scale + 0.5)); }
@@ -143,7 +145,7 @@ inline TabStrip computeTabStrip(const int measured[kCategoryCount], double scale
 {
 	TabStrip t;
 	t.strip = {stripX, stripY, stripW, stripH};
-	const int pad = scaled(10, scale), minW = scaled(56, scale), gap = std::max(scaled(4, scale), 1);
+	const int pad = scaled(8, scale), minW = scaled(56, scale), gap = std::max(scaled(10, scale), 2);
 	int want[kCategoryCount];
 	int total = gap * (kCategoryCount - 1);
 	for (int i = 0; i < kCategoryCount; ++i)

@@ -91,3 +91,17 @@ def revert(path, text):
         classic = "".join(line[1:] if line.startswith("\t") else line for line in classic.splitlines(True))
         text = text[:start] + classic + text[body_end + len("\t}\n"):]
     return text
+
+
+def with_modern_caption_hunk(baseline_text):
+    """GameEngine.cpp as accepted plus the reviewed X64.33 closeout hunk: the Modern Experience window caption carries
+    no product/author wording (two added lines and one include)."""
+    import re
+    text = baseline_text.replace("\r\n", "\n")
+    line = re.search(r'#include "PreRTS\.h"[^\n]*\n', text)
+    text = text[:line.end()] + '#include "Common/ModernExperience.h"\n' + text[line.end():]
+    anchor = "\tUnicodeString productString = TheVersion->getUnicodeProductString();\n"
+    assert text.count(anchor) == 1
+    return text.replace(anchor, anchor +
+        "\tif (StartupDiagnostics::normalLaunch() && ModernExperience::enabled(ModernExperience::FEATURE_MODERN_DISPLAY))\n"
+        "\t\tproductString.clear();   // Modern Experience: plain game title (no author/patch wording in the caption)\n")

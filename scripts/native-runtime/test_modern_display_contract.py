@@ -247,5 +247,25 @@ class FixThreeContracts(unittest.TestCase):
         self.assertIn("composition.backing", scheme)
 
 
+class FinalPolishContracts(unittest.TestCase):
+    def test_modern_footer_is_understated_and_classic_keeps_retail(self):
+        b = read("Core/GameEngine/Include/Common/ModernBranding.h")
+        self.assertIn("Modern Experience by MKRaudstein", b)
+        for gone in ("Community Patch", "rmk062026"):
+            self.assertNotIn(gone, b)
+        self.assertIn("return DisplayRuntime::modern();", b)           # Classic is never "modern"
+        for path in ("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp",
+                     "Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp"):
+            t = read(path)
+            self.assertIn("ModernBranding::useModernFooter()", t)
+            self.assertIn('checkpoint("version", "observed"', t)        # full string kept for diagnostics
+
+    def test_tab_gap_and_padding_constants(self):
+        layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        self.assertIn("pad = scaled(8, scale)", layout)
+        self.assertIn("gap = std::max(scaled(10, scale), 2)", layout)
+        self.assertIn("kTabStrip = {141, 64, 505, 28}", layout)
+
+
 if __name__ == "__main__":
     unittest.main()

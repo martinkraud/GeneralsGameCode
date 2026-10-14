@@ -553,8 +553,8 @@ TEST(OptionsPageLayout, TabStripUsesMeasuredWidthsWithPaddingAndNeverOverlaps)
 		for (int i = 0; i < kCategoryCount; ++i)
 		{
 			EXPECT_GT(t.tab[i].w, 0);
-			EXPECT_GE(t.tab[i].w, measured[i] + 2 * scaled(10, s)) << "padding at " << percent << " tab " << i;
-			EXPECT_GT(t.tab[i].x, previousRight) << "order/overlap at " << percent;
+			EXPECT_GE(t.tab[i].w, measured[i] + 2 * scaled(8, s)) << "padding at " << percent << " tab " << i;
+			EXPECT_GE(t.tab[i].x - previousRight, i ? scaled(10, s) : 0) << "visible gap at " << percent << " tab " << i;
 			EXPECT_TRUE(t.tab[i].inside(t.strip)) << percent;
 			previousRight = t.tab[i].right();
 		}

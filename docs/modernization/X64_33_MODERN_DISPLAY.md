@@ -350,3 +350,25 @@ backing, the Network page as a moved retail block.
 * `generalsv.exe` SHA256 `DAD2FA18DC6311E05893142AC4432D02A2891EE91232AA1417CBD72ECC978FFA`
 * `generalsv.pdb` SHA256 `F5615485892A2C70CF88C2DDBEFA3896773C88C31B5BBCD8B99A5244B1A04D9A`
 X64.33 is NOT accepted yet.
+
+## 17. FIX3 native review and final polish (x64-33-final)
+
+### Native evidence (x64-33-fix3-ui-polish)
+* Tabbed Modern Options works; controls of inactive pages no longer leak; Resolution/Detail/other combo values are clean.
+* Skirmish Match Options and the one-line Starting Cash stay clean.
+* The centred coherent HUD is accepted; **HUD black pre-flash: FIXED / NATIVE VERIFIED**.
+* The Modern widescreen main menu remains accepted.
+* Remaining requests: tab spacing (captions read as one run) and the footer branding.
+
+### Changes
+* **Tab rhythm**: gap 4 -> 10 reference units, padding 10 -> 8 per side, strip 485 -> 505 units wide (centred on the
+  content, inside the 541 unit frame art). Captions keep comfortable padding and a visible gap; slack is still shared
+  so the strip is aligned on both edges; hit rectangle == drawn rectangle. Tested at 75-300 %.
+* **Footer**: Modern Experience shows `Modern Experience by MKRaudstein | 64-bit • DirectX 11` (Options and Main Menu
+  version labels). The product/version/hash string is written to the log (checkpoint `version`). The Modern window
+  caption no longer carries product/author wording. Classic keeps the retail-style label.
+
+### Remaining X64.33 limitations
+Exclusive fullscreen and refresh-rate control (deferred); Network page is the retail block moved; frontend side art
+is not extended; live resolution change reuses `recreateWindowLayouts`; superweapon match option deferred (rules state);
+smooth unit motion remains opt-in until accepted.

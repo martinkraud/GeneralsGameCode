@@ -23,7 +23,10 @@ def expected_engine(baseline_source):
     new = ('createParticleSystemManager(TheGlobalData->m_headless && '
            '!(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("particles"))), nullptr);')
     assert baseline_source.count(old) == 1
-    return baseline_source.replace(old, new)
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    import x64_33_deltas
+    return x64_33_deltas.with_modern_caption_hunk(baseline_source.replace(old, new))
 
 
 def body(source, signature):
