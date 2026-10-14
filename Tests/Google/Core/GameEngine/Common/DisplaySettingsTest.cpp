@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "Common/DisplaySettings.h"
+#include "Common/DisplayRuntime.h"
 
 using namespace DisplayConfig;
 using DisplayGeometry::Size;
@@ -230,4 +231,102 @@ TEST(DisplaySettings, SizeChoicesAreRealAndFit)
 	const auto borderless = sizeChoices(m, WindowMode::Borderless, 16, 39);
 	ASSERT_EQ(borderless.size(), 1u);
 	EXPECT_EQ(borderless[0], (Size{3440, 1440}));
+}
+
+namespace
+{
+struct ModernScope
+{
+	DisplayRuntime::State saved;
+	explicit ModernScope(DisplayGeometry::Size client, int uiScale = 0) : saved(DisplayRuntime::state())
+	{
+		DisplayRuntime::State &s = DisplayRuntime::state();
+		s.modern = true;
+		s.settings = DisplayConfig::Settings{};
+		s.settings.uiScalePercent = uiScale;
+		DisplayRuntime::setClient(client);
+	}
+	~ModernScope() { DisplayRuntime::state() = saved; }
+};
+}
+
+TEST(DisplayRuntime, ClassicKeepsTheOriginalPerAxisRatios)
+{
+	EXPECT_FALSE(DisplayRuntime::modern());
+	EXPECT_DOUBLE_EQ(DisplayRuntime::referenceScaleX(1024), 1024 / 800.0);
+	EXPECT_DOUBLE_EQ(DisplayRuntime::referenceScaleY(768), 768 / 600.0);
+	EXPECT_EQ(DisplayRuntime::controlBarOrigin().x, 0);
+	EXPECT_EQ(DisplayRuntime::controlBarOrigin().y, 0);
+	EXPECT_FLOAT_EQ(DisplayRuntime::controlBarMultiplier(1024, 800, 1.28f), 1.28f);
+	EXPECT_FALSE(DisplayRuntime::expectedClient().valid());
+	EXPECT_DOUBLE_EQ(DisplayRuntime::uiScale(), 1.0);
+}
+
+TEST(DisplayRuntime, ModernScalesUniformlyAndAnchorsTheControlBarToTheBottom)
+{
+	for (Size size : {Size{1920, 1080}, Size{2560, 1080}, Size{3440, 1440}, Size{5120, 1440}, Size{3840, 2160}, Size{1280, 720}})
+	{
+		ModernScope scope(size);
+		const double scale = DisplayRuntime::uiScale();
+		EXPECT_DOUBLE_EQ(DisplayRuntime::referenceScaleX(size.width), scale);
+		EXPECT_DOUBLE_EQ(DisplayRuntime::referenceScaleY(size.height), scale);   // never anisotropic
+		EXPECT_EQ(DisplayRuntime::expectedClient(), size);
+		const DisplayGeometry::Point origin = DisplayRuntime::controlBarOrigin();
+		const DisplayGeometry::Layout &layout = DisplayRuntime::layout();
+		EXPECT_EQ(origin.y + DisplayGeometry::scaled(600, layout.uiScalePercent), size.height);   // bottom edge
+		EXPECT_EQ(origin.x, layout.canvas.x);                                                    // centered horizontally
+		// 1024x768 control bar art maps onto the same 800-wide reference block.
+		EXPECT_NEAR(DisplayRuntime::controlBarMultiplier(size.width, 1024, 0.0f), scale * 800.0 / 1024.0, 1e-5);
+	}
+}
+
+TEST(DisplayRuntime, HitTestingUsesTheSameTransformAsDrawing)
+{
+	using DisplayGeometry::Anchor;
+	using DisplayGeometry::Point;
+	using DisplayGeometry::Rect;
+	for (Size size : {Size{800, 600}, Size{1024, 768}, Size{1920, 1080}, Size{3440, 1440}, Size{5120, 1440}, Size{1111, 777}})
+	{
+		ModernScope scope(size);
+		const DisplayGeometry::Layout &layout = DisplayRuntime::layout();
+		struct Control { Rect reference; };
+		const Control controls[] = {
+			{{4, 425, 180, 170}},     // radar
+			{{216, 428, 34, 34}},     // a command button
+			{{752, 120, 48, 41}},     // shortcut sidebar slot
+			{{0, 0, 800, 600}},       // full-screen menu parent
+		};
+		for (const Control &c : controls)
+		{
+			const Anchor anchor = DisplayGeometry::inferAnchor(c.reference);
+			const Rect physical = DisplayGeometry::referenceToPhysical(layout, c.reference, anchor);
+			const Point center = {physical.x + physical.width / 2, physical.y + physical.height / 2};
+			EXPECT_TRUE(physical.contains(center));
+			// A click on the drawn centre converts back to the centre of the reference rectangle (within one scaled pixel).
+			const Point back = DisplayGeometry::physicalToReference(layout, center, anchor);
+			EXPECT_NEAR(back.x, c.reference.x + c.reference.width / 2.0, 1.0 + 1.0 / layout.scale());
+			EXPECT_NEAR(back.y, c.reference.y + c.reference.height / 2.0, 1.0 + 1.0 / layout.scale());
+			// The pixel just outside every edge is outside.
+			EXPECT_FALSE(physical.contains({physical.x - 1, center.y}));
+			EXPECT_FALSE(physical.contains({physical.right(), center.y}));
+		}
+		// Edge scrolling works on the physical surface: its extremes are always inside the world viewport.
+		EXPECT_TRUE(layout.world.contains({0, 0}));
+		EXPECT_TRUE(layout.world.contains({size.width - 1, size.height - 1}));
+		EXPECT_FALSE(layout.world.contains({size.width, size.height - 1}));
+	}
+}
+
+TEST(DisplayRuntime, ShortcutSidebarAndRadarStayOnTheirEdgesOnUltrawide)
+{
+	using DisplayGeometry::Anchor;
+	using DisplayGeometry::Rect;
+	ModernScope scope({5120, 1440});
+	const DisplayGeometry::Layout &layout = DisplayRuntime::layout();
+	const Rect sidebar = DisplayGeometry::referenceToPhysical(layout, Rect{752, 120, 48, 41}, Anchor::Right);
+	EXPECT_EQ(sidebar.right(), 5120);                      // hugging the right edge, not drifting to x=800*scale
+	const Rect radar = DisplayGeometry::referenceToPhysical(layout, Rect{4, 425, 180, 170}, Anchor::Bottom);
+	EXPECT_LT(radar.x, 5120 / 2);
+	EXPECT_LE(radar.bottom(), 1440);
+	EXPECT_GT(radar.x, 0);                                  // inside the centered canvas, left part of the bar
 }

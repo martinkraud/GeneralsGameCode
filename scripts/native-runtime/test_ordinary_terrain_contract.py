@@ -8,9 +8,12 @@ they prove the new behaviour is reachable only through the terrain token.
 import pathlib
 import re
 import subprocess
+import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import x64_33_deltas  # noqa: E402  (reviewed X64.33 hunks; see the module docstring)
 ACCEPTED_X64_24 = "b78388f1e"
 
 
@@ -70,7 +73,9 @@ class OrdinaryTerrainContract(unittest.TestCase):
                      "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.cpp",
                      "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.h",
                      "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.cpp"):
-            self.assertEqual(read(path), baseline(path), path)
+            # X64.33 (Modern Experience display) extends these files in exactly the reviewed hunks of
+            # x64_33_deltas.py; they are reverted first so any other difference still fails.
+            self.assertEqual(x64_33_deltas.revert(path, read(path)), baseline(path), path)
 
     def test_win32_reference_and_zero_hour_have_no_terrain_route(self):
         for path in ("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp",

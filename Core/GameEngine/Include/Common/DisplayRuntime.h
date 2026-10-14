@@ -30,6 +30,13 @@ inline State &state()
 
 inline bool modern() { return state().modern; }
 
+// Device-layer entry points registered by the presentation owner (W3DDisplay) so engine-level code (Options) can
+// ask for a display change without depending on the device library.
+using ApplyModeFn = bool (*)(unsigned width, unsigned height, bool borderless, int monitorIndex /* -1 = keep */);
+using VsyncFn = void (*)(bool enabled);
+inline ApplyModeFn &applyModeHook() { static ApplyModeFn fn = nullptr; return fn; }
+inline VsyncFn &vsyncHook() { static VsyncFn fn = nullptr; return fn; }
+
 inline const DisplayGeometry::Layout &layout() { return state().layout; }
 
 // Called once the window/back buffer exists at `client` (or after a runtime change).

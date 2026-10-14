@@ -1,9 +1,13 @@
 """X64.22 ordinary-host source contracts; never executes a title."""
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import x64_33_deltas  # noqa: E402  (reviewed X64.33 hunks; see the module docstring)
+
 BASELINE = "55bc829890f53118cc7205d4a8c32708c6ecb8b5"  # accepted X64.21 handoff
 
 
@@ -67,7 +71,7 @@ class OrdinaryHostContract(unittest.TestCase):
                       "legacy_shader_manager", "legacy_debug_display_browser", "legacy_gamma_lod"):
             self.assertIn(token, raw)
         self.assertLess(fn.index("clientIsExact"), fn.index("Init_Native_Presentation"))
-        self.assertLess(fn.index("m_2DRender = NEW Render2DClass;"), fn.index("setWidth(800);"))
+        self.assertLess(fn.index("m_2DRender = NEW Render2DClass;"), fn.index("setWidth(displaySize.width);"))
 
     def test_ui_only_draw_has_no_world_or_depth(self):
         presentation = read(PRESENTATION)
@@ -135,7 +139,10 @@ class OrdinaryHostContract(unittest.TestCase):
         for path in ("Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.cpp",
                      "Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp"):
             old = subprocess.check_output(["git", "show", f"{BASELINE}:{path}"], cwd=ROOT)
-            self.assertEqual((ROOT / path).read_bytes().replace(b"\r\n", b"\n"), old.replace(b"\r\n", b"\n"), path)
+            # X64.33 (Modern Experience display) extends ww3d.cpp in exactly the reviewed hunks listed in
+            # x64_33_deltas.py; they are reverted first, so any other difference still fails this contract.
+            current = x64_33_deltas.revert(path, (ROOT / path).read_bytes().decode("latin1")).encode("latin1")
+            self.assertEqual(current, old.replace(b"\r\n", b"\n"), path)
 
     def test_launcher_requires_real_success_and_exact_grammar(self):
         launch = read("scripts/native-runtime/Invoke-NativeOrdinaryHost.ps1")

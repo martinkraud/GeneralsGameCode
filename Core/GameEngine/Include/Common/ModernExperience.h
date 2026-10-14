@@ -12,6 +12,9 @@ namespace ModernExperience
 enum Feature
 {
 	FEATURE_STARTING_CASH,   // Skirmish Starting Cash selector (Zero Hour semantics, Generals default amount)
+	FEATURE_MODERN_DISPLAY,  // X64.33: native-resolution window/swap chain, borderless, UI scale + anchors, Hor+ camera,
+	                         //         VSync and Options > Display Options (normal launch only; see DisplayRuntime.h)
+	FEATURE_SMOOTH_MOTION,   // X64.33: Options > Unit Motion (ground interpolation); off by default until native-accepted
 	FEATURE_COUNT
 };
 

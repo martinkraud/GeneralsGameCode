@@ -11,6 +11,7 @@
 #include "Common/DisplaySettings.h"
 #include "Common/DisplayModes.h"
 #include "Common/ModernExperience.h"
+#include "Common/GroundTranslation.h"
 #include "Common/OptionPreferences.h"
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
@@ -80,7 +81,7 @@ extern HWND ApplicationHWnd;
 namespace {
 bool modernRequested()
 {
-    return StartupDiagnostics::normalLaunch() && !ModernExperience::classic();
+    return StartupDiagnostics::normalLaunch() && ModernExperience::enabled(ModernExperience::FEATURE_MODERN_DISPLAY);
 }
 
 DisplayConfig::Environment enumerateEnvironment()
@@ -131,14 +132,14 @@ void placeWindow(HWND window, const DisplayConfig::Resolved &r)
 
 // Runtime change of the display (Options): same window, same swap chain, new size/mode. Returns false (state
 // unchanged) when it cannot be applied; the persisted preference is written by the caller either way.
-bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless)
+bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, int monitorIndex)
 {
     if (!DisplayRuntime::modern() || !ApplicationHWnd || !TheDisplay) return false;
     DisplayConfig::Settings wanted = DisplayRuntime::state().settings;
     wanted.explicitSettings = true;
     wanted.mode = borderless ? DisplayConfig::WindowMode::Borderless : DisplayConfig::WindowMode::Windowed;
     wanted.resolution = { static_cast<int>(width), static_cast<int>(height) };
-    wanted.monitor = DisplayRuntime::state().resolved.monitorIndex;
+    wanted.monitor = monitorIndex >= 0 ? monitorIndex : DisplayRuntime::state().resolved.monitorIndex;
     const DisplayConfig::Environment env = enumerateEnvironment();
     const DisplayConfig::Resolved r = DisplayConfig::resolve(wanted, env);
     if (!r.client.valid()) return false;
@@ -201,6 +202,9 @@ void W3DDisplay::initOrdinaryHostPresentation()
             { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) });
         DisplayRuntime::State &state = DisplayRuntime::state();
         state.modern = true;
+        DisplayRuntime::applyModeHook() = &NativeApplyDisplayMode;
+        DisplayRuntime::vsyncHook() = [](bool enabled) { WW3D::Set_Native_Vsync(enabled); };
+        if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
         state.settings = settings;
         state.resolved = resolved;
         DisplayRuntime::setClient(resolved.client);
@@ -423,7 +427,7 @@ int W3DDisplay::runOrdinaryHostGate()
                 TheMessageStream->containsMessageOfType(GameMessage::MSG_META_DEMO_INSTANT_QUIT);
             const bool iconic = IsIconic(ApplicationHWnd) != FALSE;
             if (!iconic && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
-                throw std::runtime_error("Unsupported resize: client is not the configured size");
+                throw std::runtime_error("Unsupported resize: client is not 800x600");
             elapsed = static_cast<unsigned>(GetTickCount64() - start);
             const bool visible = IsWindowVisible(ApplicationHWnd) && !iconic;
             const Decision decision = NativeGraphicsSmoke::Evaluate(elapsed, frames, visibleFrames,
@@ -825,7 +829,7 @@ int W3DDisplay::runOrdinaryMenuHost()
             if (!IsWindow(ApplicationHWnd)) throw std::runtime_error("Application window destroyed");
             const bool iconic = IsIconic(ApplicationHWnd) != FALSE;
             if (!iconic && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
-                throw std::runtime_error("Unsupported resize: client is not the configured size");
+                throw std::runtime_error("Unsupported resize: client is not 800x600");
 
             TheKeyboard->UPDATE(); TheKeyboard->createStreamMessages();
             TheMouse->UPDATE(); TheMouse->createStreamMessages();

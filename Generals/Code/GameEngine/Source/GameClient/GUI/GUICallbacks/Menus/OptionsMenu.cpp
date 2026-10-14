@@ -53,6 +53,8 @@
 #include "GameClient/GadgetTextEntry.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/FrameRateOptions.h"
+#include "GameClient/ModernDisplayOptions.h"
+#include "Common/DisplayRuntime.h"
 #include "GameClient/GadgetRadioButton.h"
 #include "GameClient/GadgetSlider.h"
 #include "GameClient/HeaderTemplate.h"
@@ -211,6 +213,7 @@ static OptionPreferences *pref = nullptr;
 static void setDefaults()
 {
 	resetFrameRateOptions(comboBoxFrameRateLimit);
+	ModernDisplayOptions::reset();
 	constexpr const Bool ModifyDisplaySettings = FALSE;
 
 	//-------------------------------------------------------------------------------------------------
@@ -821,6 +824,7 @@ static void saveOptions()
 
 	GadgetComboBoxGetSelectedPos( comboBoxResolution, &index );
 	Int xres, yres, bitDepth;
+	Bool layoutsRebuilt = FALSE;
 
 	oldDispSettings.xRes = TheDisplay->getWidth();
 	oldDispSettings.yRes = TheDisplay->getHeight();
@@ -855,8 +859,20 @@ static void saveOptions()
 
 				TheInGameUI->recreateControlBar();
 				TheInGameUI->refreshCustomUiResources();
+				layoutsRebuilt = TRUE;
 			}
 		}
+	}
+
+	// X64.33 Modern Experience: window mode / monitor / UI scale / VSync / unit motion (no-op in Classic). Last, for
+	// the same reason as the resolution change: rebuilding the layouts ends further gadget interaction.
+	if (DisplayRuntime::modern() && ModernDisplayOptions::apply(*pref, layoutsRebuilt))
+	{
+		TheHeaderTemplateManager->onResolutionChanged();
+		TheMouse->onResolutionChanged();
+		TheShell->recreateWindowLayouts();
+		TheInGameUI->recreateControlBar();
+		TheInGameUI->refreshCustomUiResources();
 	}
 
 	// MUST NEVER ADD ANOTHER OPTION HERE AT THE END !
@@ -866,6 +882,7 @@ static void DestroyOptionsLayout() {
 
 	SignalUIInteraction(SHELL_SCRIPT_HOOK_OPTIONS_CLOSED);
 
+	ModernDisplayOptions::forget();
 	TheShell->destroyOptionsLayout();
 	OptionsLayout = nullptr;
 }
@@ -985,6 +1002,10 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	WinAdvancedDisplayID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:WinAdvancedDisplayOptions" );
 	WinAdvancedDisplay      = TheWindowManager->winGetWindowFromId( nullptr, WinAdvancedDisplayID );
+	// X64.33 Modern Experience: Display Options entry on the Resolution row (no-op in Classic).
+	ModernDisplayOptions::create( comboBoxResolution, WinAdvancedDisplay,
+		TheWindowManager->winGetWindowFromId( nullptr, TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ButtonAdvanceAccept" ) ),
+		*pref, ((TheGameLogic->isInGame() && TheGameLogic->getGameMode() != GAME_SHELL) || TheGameSpyInfo) ? true : false );
 
 	ButtonAdvancedAcceptID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ButtonAdvanceAccept" );
 	ButtonAdvancedAccept      = TheWindowManager->winGetWindowFromId( nullptr, ButtonAdvancedAcceptID );
@@ -1608,6 +1629,10 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 			else if (controlID == buttonDefaults )
 			{
 				setDefaults();
+			}
+			else if (ModernDisplayOptions::onButton(controlID))
+			{
+				// X64.33: Display Options popup opened
 			}
 			else if (controlID == ButtonAdvancedAcceptID )
 			{

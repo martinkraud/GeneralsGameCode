@@ -804,7 +804,7 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 	// X64.33 Modern Experience: the window is created hidden at a provisional 800x600 client; the display
 	// (W3DDisplay::initOrdinaryHostPresentation) resolves the persisted settings, shapes and shows the window.
 	// Classic and the diagnostic profiles keep the accepted review window below.
-	const bool modernDisplay = StartupDiagnostics::normalLaunch() && !ModernExperience::classic();
+	const bool modernDisplay = StartupDiagnostics::normalLaunch() && ModernExperience::enabled(ModernExperience::FEATURE_MODERN_DISPLAY);
 	// Developer-review window (play profile): the same 800x600 logical display shown larger.
 	int reviewPercent = 100;
 	if( StartupDiagnostics::ordinaryPlay() && !modernDisplay )

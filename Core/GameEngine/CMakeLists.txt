@@ -602,6 +602,7 @@ set(GAMEENGINE_SRC
     Source/Common/GroundTranslation.cpp
     Source/Common/FrameRateLimit.cpp
     Source/GameClient/GUI/FrameRateOptions.cpp
+    Source/GameClient/GUI/ModernDisplayOptions.cpp
 #    Source/Common/GameEngine.cpp
 #    Source/Common/GameLOD.cpp
 #    Source/Common/GameMain.cpp

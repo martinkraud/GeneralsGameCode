@@ -496,7 +496,7 @@ W3DDisplay::~W3DDisplay()
 
 #if defined(_WIN64)
 // X64.33 Modern Experience (W3DDisplayOrdinaryHost.cpp)
-extern bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless);
+extern bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, int monitorIndex);
 extern void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out);
 #endif
 
@@ -622,7 +622,7 @@ Bool W3DDisplay::setDisplayMode( UnsignedInt xres, UnsignedInt yres, UnsignedInt
 		if (TheGameLogic && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame())
 			return FALSE;
 		const bool borderless = DisplayRuntime::state().resolved.mode != DisplayConfig::WindowMode::Windowed;
-		if (!NativeApplyDisplayMode(xres, yres, borderless))
+		if (!NativeApplyDisplayMode(xres, yres, borderless, -1))
 			return FALSE;
 		Display::setDisplayMode(DisplayRuntime::state().resolved.client.width,
 			DisplayRuntime::state().resolved.client.height, 32, TRUE);

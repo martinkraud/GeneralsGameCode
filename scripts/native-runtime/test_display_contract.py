@@ -1,6 +1,8 @@
 from pathlib import Path
-import subprocess,unittest,re
+import subprocess,sys,unittest,re
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+import x64_33_deltas  # reviewed X64.33 hunks (Modern Experience display); see the module docstring
 BASE='c8aaccbee77e32f7ad21dbaa54682b7ea6537d3e'
 def read(p):return (ROOT/p).read_bytes().decode('latin1').replace('\r\n','\n')
 def without_native(s):
@@ -63,7 +65,8 @@ class DisplayContracts(unittest.TestCase):
   # Preserve the manager, original default USER draw, and primitive forwarding.
   for p in ['Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp', 'Core/GameEngine/Source/GameClient/GUI/GameWindowGlobal.cpp', 'Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/W3DGameWindow.cpp']:
    old=subprocess.check_output(['git','show',f'34fdd323f68621fdfea3cc1cf0d27fd62a7a34a2:{p}'],cwd=ROOT)
-   self.assertEqual((ROOT/p).read_bytes().replace(b'\r\n',b'\n'),old.replace(b'\r\n',b'\n'))
+   current=x64_33_deltas.revert(p,(ROOT/p).read_bytes().decode('latin1')).encode('latin1')
+   self.assertEqual(current,old.replace(b'\r\n',b'\n'))
  def test_static_menu_preserves_original_parser_widgets_fonts_and_owner_boundaries(self):
   paths=['Core/GameEngine/Source/GameClient/GUI/GameWindowManagerScript.cpp',
    'Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp',
@@ -72,7 +75,8 @@ class DisplayContracts(unittest.TestCase):
    'Core/Libraries/Source/WWVegas/WW3D2/FontChars.cpp']
   for p in paths:
    old=subprocess.check_output(['git','show',f'2caf429835dc28fda634f6f8d7d9dd4b1a530014:{p}'],cwd=ROOT)
-   self.assertEqual((ROOT/p).read_bytes().replace(b'\r\n',b'\n'),old.replace(b'\r\n',b'\n'))
+   current=x64_33_deltas.revert(p,(ROOT/p).read_bytes().decode('latin1')).encode('latin1')
+   self.assertEqual(current,old.replace(b'\r\n',b'\n'))
   s=read('Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeMenuComposition.h')
   for term in ['->execute(', '->update(', 'showShell(', 'MainMenuInit(', 'new WindowLayout', 'Get_Texture(']:self.assertNotIn(term,s)
   for term in [r'winCreateFromScript("Window\\Menus\\MainMenu.wnd")','drawWindow(root)','GadgetPushButtonSystem','GadgetStaticTextSystem',
