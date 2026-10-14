@@ -782,3 +782,16 @@ TEST(NativeOrdinaryPlayGate, ConfigureImpliesTerrainStackAndTerrainNeverImpliesP
     ASSERT_TRUE(RemoveDirectoryA(root.c_str()));
 }
 #endif
+
+#include "Common/ModernExperience.h"
+TEST(ModernExperience, ClassicSwitchDisablesEveryExtensionAndDefaultsToEnabled)
+{
+    ModernExperience::setClassic(false);
+    EXPECT_TRUE(ModernExperience::enabled(ModernExperience::FEATURE_STARTING_CASH));
+    ModernExperience::setClassic(true);
+    EXPECT_TRUE(ModernExperience::classic());
+    for (int f = 0; f < ModernExperience::FEATURE_COUNT; ++f)
+        EXPECT_FALSE(ModernExperience::enabled(static_cast<ModernExperience::Feature>(f)));
+    EXPECT_FALSE(ModernExperience::enabled(static_cast<ModernExperience::Feature>(ModernExperience::FEATURE_COUNT)));
+    ModernExperience::setClassic(false);
+}

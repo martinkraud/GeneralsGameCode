@@ -1,0 +1,1070 @@
+1	01dd5bc8c168c5a0	220476071641	2412	25848	WinMain	normal_launch	0	generals64.log
+2	01dd5bc8c16a73c7	220476173951	2412	25848	WinMain	begin	0	Generals AMD64 ordinary play
+3	01dd5bc8c16ae8f7	220476207532	2412	25848	exception_filter	complete	0	
+4	01dd5bc8c16b6260	220476240431	2412	25848	memory	begin	0	
+5	01dd5bc8c16bf04f	220476273948	2412	25848	memory	complete	0	
+6	01dd5bc8c16c6575	220476307042	2412	25848	startup_parse	begin	0	
+7	01dd5bc8c16d0211	220476342492	2412	25848	HWND_DX8_browser_input	skipped	0	
+8	01dd5bc8c16d7767	220476380140	2412	25848	minidumper	begin	0	
+9	01dd5bc8c16e137e	220476420316	2412	25848	dump_path	resolved	0	CrashDumps\
+10	01dd5bc8c16e6ff2	220476442920	2412	25848	minidumper	complete	0	
+11	01dd5bc8c16ecd1d	220476461404	2412	25848	app_window	begin	0	ordinary WndProc; windowed 800x600 client
+12	01dd5bc8c16f1b35	220476482053	2412	25848	app_window_class	complete	0	Game Window
+13	01dd5bc8c172b5de	220476716555	2412	25848	app_window	complete	0	client=800x600 windowed=1 class=Game Window
+14	01dd5bc8c17303e2	220476735285	2412	25848	review_window	observed	0	review_scale=150% window_client=1200x900 logical=800x600
+15	01dd5bc8c1732aed	220476753282	2412	25848	instance	begin	0	
+16	01dd5bc8c1738b28	220476771845	2412	25848	instance	complete	0	
+17	01dd5bc8c173d9c7	220476792115	2412	25848	engine_init	begin	0	
+18	01dd5bc8c1742ab0	220476813133	2412	25848	TheLocalFileSystem	begin	0	
+19	01dd5bc8c17478c7	220476831723	2412	25848	TheLocalFileSystem	complete	0	
+20	01dd5bc8c174c70a	220476851209	2412	25848	TheArchiveFileSystem	begin	0	
+21	01dd5bc8c17cdd9a	220477389417	2412	25848	TheArchiveFileSystem	complete	0	
+22	01dd5bc8c17e3d59	220477471458	2412	25848	TheWritableGlobalData	begin	0	
+23	01dd5bc8c18100e7	220477659105	2412	25848	TheWritableGlobalData	complete	0	
+24	01dd5bc8c1817600	220477682954	2412	25848	TheGameText	begin	0	
+25	01dd5bc8c181ffcd	220477717613	2412	25848	TheGameText	complete	0	
+26	01dd5bc8c18226da	220477736596	2412	25848	TheScienceStore	begin	0	
+27	01dd5bc8c1829c0e	220477758028	2412	25848	TheScienceStore	complete	0	
+28	01dd5bc8c182c30d	220477775955	2412	25848	TheMultiplayerSettings	begin	0	
+29	01dd5bc8c1831184	220477796760	2412	25848	TheMultiplayerSettings	complete	0	
+30	01dd5bc8c1835f65	220477814894	2412	25848	TheTerrainTypes	begin	0	
+31	01dd5bc8c18422cc	220477857707	2412	25848	TheTerrainTypes	complete	0	
+32	01dd5bc8c18449c8	220477875089	2412	25848	TheTerrainRoads	begin	0	
+33	01dd5bc8c18497d2	220477896488	2412	25848	TheTerrainRoads	complete	0	
+34	01dd5bc8c184e5f4	220477914668	2412	25848	TheGlobalLanguageData	begin	0	
+35	01dd5bc8c1853411	220477935998	2412	25848	TheGlobalLanguageData	complete	0	
+36	01dd5bc8c1858280	220477955839	2412	25848	TheAudio	begin	0	
+37	01dd5bc8c19dca3f	220479539284	2412	25848	TheAudio	complete	0	
+38	01dd5bc8c19e186f	220479561476	2412	25848	TheFunctionLexicon	begin	0	
+39	01dd5bc8c19e66b5	220479582039	2412	25848	TheFunctionLexicon	complete	0	
+40	01dd5bc8c19e9b3c	220479600146	2412	25848	TheModuleFactory	begin	0	
+41	01dd5bc8c19ee9c6	220479619551	2412	25848	TheModuleFactory	complete	0	
+42	01dd5bc8c19f37c5	220479637463	2412	25848	TheMessageStream	begin	0	
+43	01dd5bc8c19f5ed7	220479655156	2412	25848	TheMessageStream	complete	0	
+44	01dd5bc8c19fc144	220479672544	2412	25848	TheSidesList	begin	0	
+45	01dd5bc8c1a00f62	220479689971	2412	25848	TheSidesList	complete	0	
+46	01dd5bc8c1a05d83	220479707345	2412	25848	TheCaveSystem	begin	0	
+47	01dd5bc8c1a0986e	220479723885	2412	25848	TheCaveSystem	complete	0	
+48	01dd5bc8c1a0bfe8	220479740538	2412	25848	TheRankInfoStore	begin	0	
+49	01dd5bc8c1a10e4d	220479759773	2412	25848	TheRankInfoStore	complete	0	
+50	01dd5bc8c1a15c70	220479777189	2412	25848	ThePlayerTemplateStore	begin	0	
+51	01dd5bc8c1a1aa7a	220479798230	2412	25848	ThePlayerTemplateStore	complete	0	
+52	01dd5bc8c1a1f8ad	220479821911	2412	25848	TheParticleSystemManager	begin	0	
+53	01dd5bc8c1a4a22b	220479992584	2412	25848	TheParticleSystemManager	complete	0	
+54	01dd5bc8c1a4f034	220480010381	2412	25848	TheFXListStore	begin	0	
+55	01dd5bc8c1a553da	220480040256	2412	25848	TheFXListStore	complete	0	
+56	01dd5bc8c1a5a1cc	220480056839	2412	25848	TheWeaponStore	begin	0	
+57	01dd5bc8c1a616f8	220480087718	2412	25848	TheWeaponStore	complete	0	
+58	01dd5bc8c1a6651e	220480103978	2412	25848	TheObjectCreationListStore	begin	0	
+59	01dd5bc8c1a722a8	220480153086	2412	25848	TheObjectCreationListStore	complete	0	
+60	01dd5bc8c1a749b0	220480169804	2412	25848	TheLocomotorStore	begin	0	
+61	01dd5bc8c1a7d283	220480196275	2412	25848	TheLocomotorStore	complete	0	
+62	01dd5bc8c1a7f9b8	220480212199	2412	25848	TheSpecialPowerStore	begin	0	
+63	01dd5bc8c1a85baa	220480231146	2412	25848	TheSpecialPowerStore	complete	0	
+64	01dd5bc8c1a882cf	220480247760	2412	25848	TheDamageFXStore	begin	0	
+65	01dd5bc8c1a8d0dd	220480267073	2412	25848	TheDamageFXStore	complete	0	
+66	01dd5bc8c1a91f07	220480283633	2412	25848	TheArmorStore	begin	0	
+67	01dd5bc8c1a96d89	220480303531	2412	25848	TheArmorStore	complete	0	
+68	01dd5bc8c1a9948f	220480320835	2412	25848	TheBuildAssistant	begin	0	
+69	01dd5bc8c1a9f6d4	220480336860	2412	25848	TheBuildAssistant	complete	0	
+70	01dd5bc8c1aa1dd5	220480355006	2412	25848	TheThingFactory	begin	0	
+71	01dd5bc8c1b82945	220481274306	2412	25848	TheThingFactory	complete	0	
+72	01dd5bc8c1b9009c	220481329499	2412	25848	TheUpgradeCenter	begin	0	
+73	01dd5bc8c1ba6092	220481413433	2412	25848	TheUpgradeCenter	complete	0	
+74	01dd5bc8c1baea14	220481454407	2412	25848	TheGameClient	begin	0	
+75	01dd5bc8c1bb381d	220481476157	2412	25848	TheDisplayStringManager.init	begin	0	
+76	01dd5bc8c1bb863e	220481494424	2412	25848	TheDisplayStringManager.init	complete	0	
+77	01dd5bc8c1bbd45c	220481514018	2412	25848	TheKeyboard.init	begin	0	
+78	01dd5bc8c1c091b8	220481823594	2412	25848	TheKeyboard.init	complete	0	
+79	01dd5bc8c1c0e01b	220481841541	2412	25848	TheMappedImageCollection.load	begin	0	
+80	01dd5bc8c1c182ce	220481887821	2412	25848	TheMappedImageCollection.load	complete	0	
+81	01dd5bc8c1c1d0fc	220481905342	2412	25848	TheAnim2DCollection.init	begin	0	
+82	01dd5bc8c1c23333	220481924576	2412	25848	TheAnim2DCollection.init	complete	0	
+83	01dd5bc8c1c28151	220481944984	2412	25848	TheFontLibrary.init	begin	0	
+84	01dd5bc8c1c2a88e	220481963204	2412	25848	TheFontLibrary.init	complete	0	
+85	01dd5bc8c1c2f693	220481980027	2412	25848	TheMouse.parseIni	begin	0	
+86	01dd5bc8c1c344b4	220481998492	2412	25848	TheMouse.parseIni	complete	0	
+87	01dd5bc8c1c36bc9	220482014806	2412	25848	TheMouse.initCursorResources	begin	0	
+88	01dd5bc8c1c72b3d	220482257100	2412	25848	TheMouse.initCursorResources	complete	0	
+89	01dd5bc8c1c7c760	220482292266	2412	25848	TheDisplay.init	begin	0	
+90	01dd5bc8c1c8157e	220482311045	2412	25848	display_ordinary_init	begin	0	
+91	01dd5bc8c1c850a7	220482327377	2412	25848	display_config	complete	0	windowed=1 800x600x32 ApplicationHWnd
+92	01dd5bc8c1c877af	220482343691	2412	25848	display_bypass	complete	0	legacy_ww3d_init: WW3D::Init/DX8Backend/DX8Wrapper::Init (D3D8.DLL) not entered
+93	01dd5bc8c1c8c5f7	220482360081	2412	25848	display_bypass	complete	0	legacy_render_device: Set_Render_Device, enumeration, MSAA, filter, anisotropy not entered
+94	01dd5bc8c1c9140f	220482376665	2412	25848	display_bypass	complete	0	legacy_scenes: 2D/3D/interface scenes and lights not created (no world)
+95	01dd5bc8c1c93b25	220482392604	2412	25848	display_bypass	complete	0	legacy_shader_manager: W3DShaderManager not initialized (legacy shaders)
+96	01dd5bc8c1c9893c	220482408577	2412	25848	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+97	01dd5bc8c1c9c42b	220482424744	2412	25848	display_bypass	complete	0	legacy_gamma_lod: gamma and texture LOD reduction not applied
+98	01dd5bc8c1ca12c7	220482442143	2412	25848	terrain_optin	complete	0	cpu_backed_geometry=1 depth_buffer=1 (terrain-only world pass; meshes/water/shadows/particles absent)
+99	01dd5bc8c1ca39d5	220482460416	2412	25848	graphics_device	begin	0	driver=hardware
+100	01dd5bc8c1d5b78c	220483203957	2412	25848	graphics_device	complete	0	driver=hardware feature=0xB000 vendor=0x8086 device=0x7D45 adapter=Intel(R) Graphics size=800x600
+101	01dd5bc8c1d619fb	220483237249	2412	25848	graphics_window_association	begin	0	
+102	01dd5bc8c1d66813	220483254280	2412	25848	graphics_window_association	complete	0	
+103	01dd5bc8c1d6b643	220483271069	2412	25848	graphics_target	begin	0	
+104	01dd5bc8c1d70441	220483295027	2412	25848	graphics_target	complete	0	RGBA8 single-sample backbuffer/RTV
+105	01dd5bc8c1d72b75	220483312853	2412	25848	graphics_setup	begin	0	
+106	01dd5bc8c1d8dfd1	220483419770	2412	25848	graphics_setup	complete	0	VS/PS/layout/states/resources
+107	01dd5bc8c1d941ff	220483437818	2412	25848	graphics_viewport	begin	0	
+108	01dd5bc8c1d9903b	220483457965	2412	25848	graphics_viewport	complete	0	
+109	01dd5bc8c1d9b755	220483475393	2412	25848	display_module_audit	complete	0	d3d8=0 d3dx8=0 d3d11=1 dxgi=1
+110	01dd5bc8c1da0567	220483491507	2412	25848	display_size	complete	0	device=800x600 target=800x600 bits=32 windowed=1
+111	01dd5bc8c1da5369	220483508217	2412	25848	display_ordinary_init	complete	0	
+112	01dd5bc8c1da8e56	220483525133	2412	25848	TheDisplay.init	complete	0	
+113	01dd5bc8c1dadceb	220483541365	2412	25848	TheHeaderTemplateManager.init	begin	0	
+114	01dd5bc8c1db2aff	220483564189	2412	25848	TheHeaderTemplateManager.init	complete	0	
+115	01dd5bc8c1db5258	220483580458	2412	25848	TheWindowManager.init	begin	0	
+116	01dd5bc8c1dbc734	220483605882	2412	25848	TheWindowManager.init	complete	0	
+117	01dd5bc8c1dc1563	220483622597	2412	25848	TheIMEManager.init	begin	0	
+118	01dd5bc8c1de12ac	220483754010	2412	25848	TheIMEManager.init	complete	0	
+119	01dd5bc8c1de6116	220483771594	2412	25848	TheShell.init	begin	0	
+120	01dd5bc8c1de87df	220483790935	2412	25848	TheShell.init	complete	0	
+121	01dd5bc8c1ded5f8	220483807296	2412	25848	TheInGameUI.init	begin	0	
+122	01dd5bc8c1e43050	220484158489	2412	25848	TheInGameUI.init	complete	0	
+123	01dd5bc8c1e4cc8c	220484194860	2412	25848	TheHotKeyManager.init	begin	0	
+124	01dd5bc8c1e59ac3	220484246334	2412	25848	TheHotKeyManager.init	complete	0	
+125	01dd5bc8c1e5c1d5	220484264261	2412	25848	TheTerrainVisual.init	begin	0	
+126	01dd5bc8c1e6102d	220484284151	2412	25848	terrain_bridge_buffer_init	begin	0	
+127	01dd5bc8c1e65e1c	220484304554	2412	25848	terrain_bridge_buffer_init	complete	0	
+128	01dd5bc8c1e6c010	220484321832	2412	25848	terrain_road_buffer_init	begin	0	
+129	01dd5bc8c1e735aa	220484354903	2412	25848	terrain_road_buffer_init	complete	0	
+130	01dd5bc8c1e783c6	220484374521	2412	25848	TheTerrainVisual.init	complete	0	
+131	01dd5bc8c1e7d1ee	220484390999	2412	25848	TheRayEffects.init	begin	0	
+132	01dd5bc8c1e82005	220484411703	2412	25848	TheRayEffects.init	complete	0	
+133	01dd5bc8c1e85b46	220484427527	2412	25848	TheMouse.init	begin	0	
+134	01dd5bc8c1e8827a	220484443543	2412	25848	TheMouse.init	complete	0	
+135	01dd5bc8c1e8d08f	220484461975	2412	25848	TheVideoPlayer.init	begin	0	
+136	01dd5bc8c1e91ec2	220484480334	2412	25848	TheVideoPlayer.init	complete	0	
+137	01dd5bc8c1e96ccb	220484495998	2412	25848	TheLanguageFilter.init	begin	0	
+138	01dd5bc8c1e993e0	220484511917	2412	25848	TheLanguageFilter.init	complete	0	
+139	01dd5bc8c1e9ced6	220484527519	2412	25848	TheCampaignManager.init	begin	0	
+140	01dd5bc8c1ea457a	220484554941	2412	25848	TheCampaignManager.init	complete	0	
+141	01dd5bc8c1ea9382	220484574053	2412	25848	TheEva.init	begin	0	
+142	01dd5bc8c1eae199	220484599214	2412	25848	TheEva.init	complete	0	
+143	01dd5bc8c1eb1cbf	220484619730	2412	25848	TheDisplayStringManager.postProcessLoad	begin	0	
+144	01dd5bc8c1eb8071	220484640146	2412	25848	TheDisplayStringManager.postProcessLoad	complete	0	
+145	01dd5bc8c1ebce93	220484658738	2412	25848	TheGameClient	complete	0	
+146	01dd5bc8c1ec43c2	220484683236	2412	25848	TheAI	begin	0	
+147	01dd5bc8c1ec91e3	220484706188	2412	25848	TheAI	complete	0	
+148	01dd5bc8c1ecdfe1	220484725397	2412	25848	TheGameLogic	begin	0	
+149	01dd5bc8c1ed41dc	220484747262	2412	25848	TheGameLogic	complete	0	
+150	01dd5bc8c1ed8ffc	220484766727	2412	25848	TheTeamFactory	begin	0	
+151	01dd5bc8c1edb716	220484786230	2412	25848	TheTeamFactory	complete	0	
+152	01dd5bc8c1ee0533	220484804627	2412	25848	TheCrateSystem	begin	0	
+153	01dd5bc8c1ee6700	220484827670	2412	25848	TheCrateSystem	complete	0	
+154	01dd5bc8c1eeb553	220484848143	2412	25848	ThePlayerList	begin	0	
+155	01dd5bc8c1ef03b8	220484866827	2412	25848	ThePlayerList	complete	0	
+156	01dd5bc8c1ef51ad	220484888517	2412	25848	TheRecorder	begin	0	
+157	01dd5bc8c1ef9fe8	220484907702	2412	25848	TheRecorder	complete	0	
+158	01dd5bc8c1f00208	220484926906	2412	25848	TheRadar	begin	0	
+159	01dd5bc8c1f0506e	220484946865	2412	25848	TheRadar	complete	0	
+160	01dd5bc8c1f07766	220484964166	2412	25848	TheVictoryConditions	begin	0	
+161	01dd5bc8c1f0c56c	220484980149	2412	25848	TheVictoryConditions	complete	0	
+162	01dd5bc8c1f0ec83	220484996435	2412	25848	TheMetaMap	begin	0	
+163	01dd5bc8c1f13a9d	220485018525	2412	25848	TheMetaMap	complete	0	
+164	01dd5bc8c1f19cd6	220485035167	2412	25848	TheActionManager	begin	0	
+165	01dd5bc8c1f1eaf3	220485051927	2412	25848	TheActionManager	complete	0	
+166	01dd5bc8c1f21208	220485068203	2412	25848	TheGameStateMap	begin	0	
+167	01dd5bc8c1f26020	220485084051	2412	25848	TheGameStateMap	complete	0	
+168	01dd5bc8c1f28737	220485100069	2412	25848	TheGameState	begin	0	
+169	01dd5bc8c1f2d55c	220485117355	2412	25848	TheGameState	complete	0	
+170	01dd5bc8c1f3107a	220485134637	2412	25848	TheGameResultsQueue	begin	0	
+171	01dd5bc8c1f35ec9	220485151343	2412	25848	TheGameResultsQueue	complete	0	
+172	01dd5bc8c1f3acda	220485167364	2412	25848	postProcessLoadAll	begin	0	
+173	01dd5bc8c1f3d43c	220485186704	2412	25848	postProcessLoadAll	complete	0	
+174	01dd5bc8c1f436c7	220485202987	2412	25848	map_cache	begin	0	
+175	01dd5bc8c1f49887	220485235338	2412	25848	map_cache	complete	0	
+176	01dd5bc8c1f4e6b5	220485251956	2412	25848	initial_reset	begin	0	
+177	01dd5bc8c1f60bd7	220485329638	2412	25848	initial_reset	complete	0	
+178	01dd5bc8c1f65aa2	220485348302	2412	25848	HideControlBar	begin	0	
+179	01dd5bc8c1f6a86b	220485365250	2412	25848	HideControlBar	complete	0	
+180	01dd5bc8c1f6cf82	220485381312	2412	25848	engine_init	complete	0	C:\Users\buskr\Documents\Command and Conquer Generals Data\
+181	01dd5bc8c1f71d9a	220485397864	2412	25848	audio_stats	sample	0	free2d=3 free3d=25 playing2d=0 playing3d=0 streams=0 voices_active=0 peak=0 alloc=30 released=0 completions=0 delivered=0 starved=0 underruns=0
+182	01dd5bc8c20a93c9	220486672550	2412	25848	terrain_roads_load	begin	0	
+183	01dd5bc8c20ae1f1	220486694710	2412	25848	terrain_roads_load	complete	0	
+184	01dd5bc8c20b3008	220486711095	2412	25848	terrain_bridges_load	begin	0	
+185	01dd5bc8c20b6af6	220486727594	2412	25848	terrain_bridges_load	complete	0	
+186	01dd5bc8c2c70fc4	220499026159	2412	25848	terrain_first_frame	complete	0	tiles=16 draws=19 atlas_uploads=1 use_cloud=0 use_noise=0 soft_edge=0 map_extra=93 map_shore=0 map_roads=66 map_bridges=0 (terrain combined single pass + overlays; UI follows)
+187	01dd5bc8c2c7ac5e	220499061909	2412	25848	world_objects_first_frame	complete	0	registered=184 objects_drawn=155 batches=411 triangles=34993 meshes_drawn=390 skinned=0 textures=39 texture_failures=0 team_colored=42 unsupported_states=0
+188	01dd5bc8c4be171f	220531995151	2412	25848	skirmish_ui	layout	0	starting_cash combo=(57,339 156x24) game_speed_remnants_hidden=2
+189	01dd5bc8cbfdaf84	220653599107	2412	25848	terrain_roads_load	begin	0	
+190	01dd5bc8cbfec279	220653672918	2412	25848	terrain_roads_load	complete	0	
+191	01dd5bc8cbff109c	220653690962	2412	25848	terrain_bridges_load	begin	0	
+192	01dd5bc8cbff5eab	220653717413	2412	25848	terrain_bridges_load	complete	0	
+193	01dd5bc8d1db9534	220752028133	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+194	01dd5bc8d1dc8001	220752085044	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+195	01dd5bc8d3da7005	220785511805	2412	25848	audio_stats	sample	0	free2d=3 free3d=21 playing2d=0 playing3d=4 streams=1 voices_active=5 peak=28 alloc=39 released=8 completions=177 delivered=177 starved=0 underruns=0
+196	01dd5bc8e5bace63	221085421349	2412	25848	audio_stats	sample	0	free2d=2 free3d=18 playing2d=1 playing3d=7 streams=1 voices_active=9 peak=28 alloc=39 released=8 completions=240 delivered=240 starved=0 underruns=0
+197	01dd5bc8f79c3304	221385404663	2412	25848	audio_stats	sample	0	free2d=3 free3d=16 playing2d=0 playing3d=9 streams=1 voices_active=10 peak=28 alloc=39 released=8 completions=384 delivered=384 starved=0 underruns=0
+198	01dd5bc9097f7728	221685517947	2412	25848	audio_stats	sample	0	free2d=3 free3d=18 playing2d=0 playing3d=7 streams=1 voices_active=8 peak=28 alloc=41 released=10 completions=519 delivered=519 starved=0 underruns=0
+199	01dd5bc91b601ded	221985447721	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=28 alloc=42 released=11 completions=668 delivered=668 starved=0 underruns=0
+200	01dd5bc92d419cf9	222285443478	2412	25848	audio_stats	sample	0	free2d=3 free3d=23 playing2d=0 playing3d=2 streams=1 voices_active=3 peak=28 alloc=44 released=13 completions=761 delivered=761 starved=0 underruns=0
+201	01dd5bc92da79998	222292131978	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+202	01dd5bc92da896a3	222292188543	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+203	01dd5bc93f23e196	222585491039	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=28 alloc=46 released=15 completions=857 delivered=857 starved=0 underruns=0
+204	01dd5bc95105127b	222885450952	2412	25848	audio_stats	sample	0	free2d=2 free3d=1 playing2d=1 playing3d=24 streams=1 voices_active=26 peak=28 alloc=47 released=16 completions=985 delivered=985 starved=0 underruns=0
+205	01dd5bc962e577eb	223185374415	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=28 alloc=48 released=17 completions=1294 delivered=1294 starved=0 underruns=0
+206	01dd5bc974c72a7a	223485378859	2412	25848	audio_stats	sample	0	free2d=2 free3d=8 playing2d=1 playing3d=17 streams=1 voices_active=19 peak=28 alloc=49 released=18 completions=1599 delivered=1599 starved=0 underruns=0
+207	01dd5bc986aad865	223785514891	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=28 alloc=50 released=19 completions=1718 delivered=1718 starved=0 underruns=0
+208	01dd5bc9888722f3	223816721777	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+209	01dd5bc988883292	223816793171	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+210	01dd5bc9988af8a7	224085411255	2412	25848	audio_stats	sample	0	free2d=3 free3d=0 playing2d=0 playing3d=25 streams=1 voices_active=26 peak=28 alloc=51 released=20 completions=1857 delivered=1857 starved=0 underruns=0
+211	01dd5bc9aa6c60b4	224385391555	2412	25848	audio_stats	sample	0	free2d=2 free3d=3 playing2d=1 playing3d=22 streams=1 voices_active=24 peak=28 alloc=52 released=21 completions=2141 delivered=2141 starved=0 underruns=0
+212	01dd5bc9aa8b3654	224387417017	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+213	01dd5bc9aa8c2226	224387476712	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+214	01dd5bc9aa8ce583	224387523698	2412	25848	delivery	start	0	obj=2511 AmericaJetA10Thunderbolt move=(478,1563) target=(478,1563) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+215	01dd5bc9aa8d211d	224387546570	2412	25848	delivery	start	0	obj=2512 AmericaJetA10Thunderbolt move=(508,1602) target=(493,1582) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+216	01dd5bc9ab1a21a5	224396779852	2412	25848	delivery	trace	0	frame=11190 obj=2511 AmericaJetA10Thunderbolt pos=(4062,1969,160) target=(478,1563) dist2d=3607 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+217	01dd5bc9ab1b1af2	224396846572	2412	25848	delivery	trace	0	frame=11190 obj=2512 AmericaJetA10Thunderbolt pos=(4093,2008,160) target=(493,1582) dist2d=3625 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+218	01dd5bc9abb2d0b7	224406788676	2412	25848	delivery	trace	0	frame=11220 obj=2512 AmericaJetA10Thunderbolt pos=(3972,1994,160) target=(493,1582) dist2d=3503 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+219	01dd5bc9abb3f7ec	224406863934	2412	25848	delivery	trace	0	frame=11220 obj=2511 AmericaJetA10Thunderbolt pos=(3941,1956,160) target=(478,1563) dist2d=3486 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+220	01dd5bc9ac4b8c41	224416799761	2412	25848	delivery	trace	0	frame=11250 obj=2512 AmericaJetA10Thunderbolt pos=(3851,1981,160) target=(493,1582) dist2d=3382 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+221	01dd5bc9ac4cc7f2	224416876352	2412	25848	delivery	trace	0	frame=11250 obj=2511 AmericaJetA10Thunderbolt pos=(3820,1942,160) target=(478,1563) dist2d=3364 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+222	01dd5bc9ace400e4	224426791006	2412	25848	delivery	trace	0	frame=11280 obj=2511 AmericaJetA10Thunderbolt pos=(3700,1928,163) target=(478,1563) dist2d=3243 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+223	01dd5bc9ace51413	224426860235	2412	25848	delivery	trace	0	frame=11280 obj=2512 AmericaJetA10Thunderbolt pos=(3730,1967,160) target=(493,1582) dist2d=3260 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+224	01dd5bc9ad7cc788	224436799699	2412	25848	delivery	trace	0	frame=11310 obj=2512 AmericaJetA10Thunderbolt pos=(3610,1953,192) target=(493,1582) dist2d=3139 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+225	01dd5bc9ad7dc7a5	224436873233	2412	25848	delivery	trace	0	frame=11310 obj=2511 AmericaJetA10Thunderbolt pos=(3579,1914,201) target=(478,1563) dist2d=3121 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+226	01dd5bc9ae151ee1	224446789975	2412	25848	delivery	trace	0	frame=11340 obj=2511 AmericaJetA10Thunderbolt pos=(3458,1900,205) target=(478,1563) dist2d=3000 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+227	01dd5bc9ae164475	224446860071	2412	25848	delivery	trace	0	frame=11340 obj=2512 AmericaJetA10Thunderbolt pos=(3489,1939,210) target=(493,1582) dist2d=3017 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+228	01dd5bc9aeadb6ad	224456789227	2412	25848	delivery	trace	0	frame=11370 obj=2511 AmericaJetA10Thunderbolt pos=(3337,1887,227) target=(478,1563) dist2d=2878 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+229	01dd5bc9aeaedd99	224456859234	2412	25848	delivery	trace	0	frame=11370 obj=2512 AmericaJetA10Thunderbolt pos=(3368,1926,230) target=(493,1582) dist2d=2896 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+230	01dd5bc9af4687ed	224466799174	2412	25848	delivery	trace	0	frame=11400 obj=2511 AmericaJetA10Thunderbolt pos=(3217,1873,220) target=(478,1563) dist2d=2756 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+231	01dd5bc9af47b195	224466879217	2412	25848	delivery	trace	0	frame=11400 obj=2512 AmericaJetA10Thunderbolt pos=(3247,1912,233) target=(493,1582) dist2d=2774 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+232	01dd5bc9afdf1664	224476795811	2412	25848	delivery	trace	0	frame=11430 obj=2511 AmericaJetA10Thunderbolt pos=(3096,1859,177) target=(478,1563) dist2d=2635 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+233	01dd5bc9afe02bb7	224476870534	2412	25848	delivery	trace	0	frame=11430 obj=2512 AmericaJetA10Thunderbolt pos=(3127,1898,188) target=(493,1582) dist2d=2653 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+234	01dd5bc9b077ba1c	224486800844	2412	25848	delivery	trace	0	frame=11460 obj=2512 AmericaJetA10Thunderbolt pos=(3006,1884,164) target=(493,1582) dist2d=2531 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+235	01dd5bc9b078b75e	224486866966	2412	25848	delivery	trace	0	frame=11460 obj=2511 AmericaJetA10Thunderbolt pos=(2975,1845,162) target=(478,1563) dist2d=2513 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+236	01dd5bc9b1102a8b	224496790125	2412	25848	delivery	trace	0	frame=11490 obj=2512 AmericaJetA10Thunderbolt pos=(2885,1871,162) target=(493,1582) dist2d=2409 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+237	01dd5bc9b111714d	224496872497	2412	25848	delivery	trace	0	frame=11490 obj=2511 AmericaJetA10Thunderbolt pos=(2854,1831,162) target=(478,1563) dist2d=2392 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+238	01dd5bc9b1a8c9f7	224506795843	2412	25848	delivery	trace	0	frame=11520 obj=2511 AmericaJetA10Thunderbolt pos=(2733,1818,162) target=(478,1563) dist2d=2270 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+239	01dd5bc9b1a9e70c	224506871937	2412	25848	delivery	trace	0	frame=11520 obj=2512 AmericaJetA10Thunderbolt pos=(2764,1857,163) target=(493,1582) dist2d=2288 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+240	01dd5bc9b2424383	224516851432	2412	25848	delivery	trace	0	frame=11550 obj=2512 AmericaJetA10Thunderbolt pos=(2644,1843,174) target=(493,1582) dist2d=2166 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+241	01dd5bc9b24379af	224516929337	2412	25848	delivery	trace	0	frame=11550 obj=2511 AmericaJetA10Thunderbolt pos=(2613,1804,183) target=(478,1563) dist2d=2149 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+242	01dd5bc9b2dac1a9	224526843770	2412	25848	delivery	trace	0	frame=11580 obj=2511 AmericaJetA10Thunderbolt pos=(2492,1790,221) target=(478,1563) dist2d=2027 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+243	01dd5bc9b2dbebbe	224526923986	2412	25848	delivery	trace	0	frame=11580 obj=2512 AmericaJetA10Thunderbolt pos=(2523,1829,215) target=(493,1582) dist2d=2045 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+244	01dd5bc9b371545d	224536713430	2412	25848	delivery	trace	0	frame=11610 obj=2511 AmericaJetA10Thunderbolt pos=(2371,1776,211) target=(478,1563) dist2d=1906 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+245	01dd5bc9b3726873	224536785268	2412	25848	delivery	trace	0	frame=11610 obj=2512 AmericaJetA10Thunderbolt pos=(2402,1816,212) target=(493,1582) dist2d=1923 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+246	01dd5bc9b409d45d	224546719731	2412	25848	delivery	trace	0	frame=11640 obj=2511 AmericaJetA10Thunderbolt pos=(2250,1763,173) target=(478,1563) dist2d=1784 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+247	01dd5bc9b40b1d2c	224546795238	2412	25848	delivery	trace	0	frame=11640 obj=2512 AmericaJetA10Thunderbolt pos=(2281,1802,174) target=(493,1582) dist2d=1802 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+248	01dd5bc9b4a2f341	224556747065	2412	25848	delivery	trace	0	frame=11670 obj=2511 AmericaJetA10Thunderbolt pos=(2130,1749,162) target=(478,1563) dist2d=1662 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+249	01dd5bc9b4a42f1b	224556823273	2412	25848	delivery	trace	0	frame=11670 obj=2512 AmericaJetA10Thunderbolt pos=(2161,1788,162) target=(493,1582) dist2d=1680 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+250	01dd5bc9b53b9bf7	224566751910	2412	25848	delivery	trace	0	frame=11700 obj=2511 AmericaJetA10Thunderbolt pos=(2009,1735,163) target=(478,1563) dist2d=1541 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+251	01dd5bc9b53cbe16	224566826855	2412	25848	delivery	trace	0	frame=11700 obj=2512 AmericaJetA10Thunderbolt pos=(2040,1774,162) target=(493,1582) dist2d=1559 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+252	01dd5bc9b5d3efbe	224576733516	2412	25848	delivery	trace	0	frame=11730 obj=2512 AmericaJetA10Thunderbolt pos=(1919,1761,167) target=(493,1582) dist2d=1437 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+253	01dd5bc9b5d5324b	224576811404	2412	25848	delivery	trace	0	frame=11730 obj=2511 AmericaJetA10Thunderbolt pos=(1888,1721,177) target=(478,1563) dist2d=1419 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+254	01dd5bc9b66cf929	224586757427	2412	25848	delivery	trace	0	frame=11760 obj=2512 AmericaJetA10Thunderbolt pos=(1798,1747,162) target=(493,1582) dist2d=1316 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+255	01dd5bc9b66e193a	224586835981	2412	25848	delivery	trace	0	frame=11760 obj=2511 AmericaJetA10Thunderbolt pos=(1767,1707,164) target=(478,1563) dist2d=1298 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+256	01dd5bc9b70550a8	224596744793	2412	25848	delivery	trace	0	frame=11790 obj=2512 AmericaJetA10Thunderbolt pos=(1678,1733,163) target=(493,1582) dist2d=1194 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+257	01dd5bc9b7064f9a	224596815942	2412	25848	delivery	trace	0	frame=11790 obj=2511 AmericaJetA10Thunderbolt pos=(1647,1694,162) target=(478,1563) dist2d=1176 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+258	01dd5bc9b79e021a	224606749075	2412	25848	delivery	trace	0	frame=11820 obj=2512 AmericaJetA10Thunderbolt pos=(1557,1720,162) target=(493,1582) dist2d=1073 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+259	01dd5bc9b79f3ecc	224606831121	2412	25848	delivery	trace	0	frame=11820 obj=2511 AmericaJetA10Thunderbolt pos=(1526,1680,162) target=(478,1563) dist2d=1055 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+260	01dd5bc9b8368866	224616744760	2412	25848	delivery	trace	0	frame=11850 obj=2512 AmericaJetA10Thunderbolt pos=(1436,1706,163) target=(493,1582) dist2d=951 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+261	01dd5bc9b837a883	224616826857	2412	25848	delivery	trace	0	frame=11850 obj=2511 AmericaJetA10Thunderbolt pos=(1405,1666,163) target=(478,1563) dist2d=933 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+262	01dd5bc9b8cf1cc8	224626751579	2412	25848	delivery	trace	0	frame=11880 obj=2512 AmericaJetA10Thunderbolt pos=(1315,1692,164) target=(493,1582) dist2d=829 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+263	01dd5bc9b8d06e32	224626829834	2412	25848	delivery	trace	0	frame=11880 obj=2511 AmericaJetA10Thunderbolt pos=(1284,1652,165) target=(478,1563) dist2d=812 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+264	01dd5bc9b967fe71	224636762910	2412	25848	delivery	trace	0	frame=11910 obj=2511 AmericaJetA10Thunderbolt pos=(1163,1638,163) target=(478,1563) dist2d=690 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+265	01dd5bc9b968fc9e	224636830665	2412	25848	delivery	trace	0	frame=11910 obj=2512 AmericaJetA10Thunderbolt pos=(1194,1678,163) target=(493,1582) dist2d=708 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+266	01dd5bc9ba00777a	224646760718	2412	25848	delivery	trace	0	frame=11940 obj=2511 AmericaJetA10Thunderbolt pos=(1043,1625,162) target=(478,1563) dist2d=568 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+267	01dd5bc9ba019af7	224646835156	2412	25848	delivery	trace	0	frame=11940 obj=2512 AmericaJetA10Thunderbolt pos=(1074,1665,162) target=(493,1582) dist2d=586 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+268	01dd5bc9ba98faa6	224656758142	2412	25848	delivery	trace	0	frame=11970 obj=2511 AmericaJetA10Thunderbolt pos=(922,1611,156) target=(478,1563) dist2d=447 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+269	01dd5bc9ba9a1d6d	224656832371	2412	25848	delivery	trace	0	frame=11970 obj=2512 AmericaJetA10Thunderbolt pos=(953,1651,160) target=(493,1582) dist2d=465 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+270	01dd5bc9bb31ee99	224666783512	2412	25848	delivery	trace	0	frame=12000 obj=2512 AmericaJetA10Thunderbolt pos=(832,1637,110) target=(493,1582) dist2d=344 speed=4.0 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+271	01dd5bc9bb332651	224666856423	2412	25848	delivery	trace	0	frame=12000 obj=2511 AmericaJetA10Thunderbolt pos=(801,1597,97) target=(478,1563) dist2d=325 speed=4.0 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+272	01dd5bc9bbcb1753	224676819984	2412	25848	delivery	trace	0	frame=12030 obj=2512 AmericaJetA10Thunderbolt pos=(713,1624,61) target=(493,1582) dist2d=224 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+273	01dd5bc9bbcb8f21	224676843545	2412	25848	delivery	trace	0	frame=12030 obj=2511 AmericaJetA10Thunderbolt pos=(681,1583,68) target=(478,1563) dist2d=205 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+274	01dd5bc9bc4e3f2e	224685409053	2412	25848	audio_stats	sample	0	free2d=2 free3d=0 playing2d=1 playing3d=25 streams=1 voices_active=27 peak=28 alloc=52 released=21 completions=2319 delivered=2319 starved=0 underruns=0
+275	01dd5bc9bc631b3b	224686783516	2412	25848	delivery	trace	0	frame=12060 obj=2512 AmericaJetA10Thunderbolt pos=(592,1610,137) target=(493,1582) dist2d=103 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+276	01dd5bc9bc6440ab	224686849162	2412	25848	delivery	trace	0	frame=12060 obj=2511 AmericaJetA10Thunderbolt pos=(561,1570,145) target=(478,1563) dist2d=83 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+277	01dd5bc9bcfbd50b	224696783675	2412	25848	delivery	trace	0	frame=12090 obj=2512 AmericaJetA10Thunderbolt pos=(471,1596,163) target=(493,1582) dist2d=26 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+278	01dd5bc9bcfccec4	224696854796	2412	25848	delivery	trace	0	frame=12090 obj=2511 AmericaJetA10Thunderbolt pos=(440,1556,163) target=(478,1563) dist2d=39 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+279	01dd5bc9bd9449ae	224706781189	2412	25848	delivery	trace	0	frame=12120 obj=2512 AmericaJetA10Thunderbolt pos=(351,1582,163) target=(493,1582) dist2d=143 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+280	01dd5bc9bd9556b7	224706845168	2412	25848	delivery	trace	0	frame=12120 obj=2511 AmericaJetA10Thunderbolt pos=(319,1542,162) target=(478,1563) dist2d=160 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+281	01dd5bc9be2d3aea	224716800413	2412	25848	delivery	trace	0	frame=12150 obj=2511 AmericaJetA10Thunderbolt pos=(198,1528,170) target=(478,1563) dist2d=282 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+282	01dd5bc9be2e3a1a	224716864772	2412	25848	delivery	trace	0	frame=12150 obj=2512 AmericaJetA10Thunderbolt pos=(230,1569,170) target=(493,1582) dist2d=264 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+283	01dd5bc9becda41d	224727310520	2412	25848	delivery	trace	0	frame=12180 obj=2511 AmericaJetA10Thunderbolt pos=(77,1514,244) target=(478,1563) dist2d=403 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+284	01dd5bc9beceab80	224727381791	2412	25848	delivery	trace	0	frame=12180 obj=2512 AmericaJetA10Thunderbolt pos=(109,1555,228) target=(493,1582) dist2d=385 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+285	01dd5bc9bf663fbc	224737316295	2412	25848	delivery	trace	0	frame=12210 obj=2511 AmericaJetA10Thunderbolt pos=(-43,1501,293) target=(478,1563) dist2d=525 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+286	01dd5bc9bf676571	224737394137	2412	25848	delivery	trace	0	frame=12210 obj=2512 AmericaJetA10Thunderbolt pos=(-12,1541,270) target=(493,1582) dist2d=506 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+287	01dd5bc9bffecde7	224747311044	2412	25848	delivery	trace	0	frame=12240 obj=2512 AmericaJetA10Thunderbolt pos=(-133,1527,243) target=(493,1582) dist2d=628 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+288	01dd5bc9bfffc4d8	224747374841	2412	25848	delivery	trace	0	frame=12240 obj=2511 AmericaJetA10Thunderbolt pos=(-164,1487,251) target=(478,1563) dist2d=646 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+289	01dd5bc9c0974a74	224757304894	2412	25848	delivery	trace	0	frame=12270 obj=2511 AmericaJetA10Thunderbolt pos=(-285,1473,184) target=(478,1563) dist2d=768 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+290	01dd5bc9c0989e1a	224757392806	2412	25848	delivery	trace	0	frame=12270 obj=2512 AmericaJetA10Thunderbolt pos=(-253,1514,195) target=(493,1582) dist2d=749 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+291	01dd5bc9c12fd58b	224767306499	2412	25848	delivery	trace	0	frame=12300 obj=2511 AmericaJetA10Thunderbolt pos=(-406,1459,160) target=(478,1563) dist2d=889 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+292	01dd5bc9c1312b0b	224767392193	2412	25848	delivery	trace	0	frame=12300 obj=2512 AmericaJetA10Thunderbolt pos=(-374,1500,160) target=(493,1582) dist2d=871 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+293	01dd5bc9c1c6dd9f	224777206937	2412	25848	delivery	trace	0	frame=12330 obj=2511 AmericaJetA10Thunderbolt pos=(-526,1446,160) target=(478,1563) dist2d=1011 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+294	01dd5bc9c1c8123a	224777279330	2412	25848	delivery	trace	0	frame=12330 obj=2512 AmericaJetA10Thunderbolt pos=(-495,1486,160) target=(493,1582) dist2d=993 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+295	01dd5bc9ce314434	224985502846	2412	25848	audio_stats	sample	0	free2d=3 free3d=0 playing2d=0 playing3d=25 streams=1 voices_active=26 peak=28 alloc=54 released=23 completions=2575 delivered=2575 starved=0 underruns=0
+296	01dd5bc9df62608a	225273938212	2412	25848	delivery	start	0	obj=3471 AmericaJetCargoPlane move=(3182,1376) target=(3182,1376) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+297	01dd5bc9df954641	225277270784	2412	25848	delivery	trace	0	frame=13830 obj=3471 AmericaJetCargoPlane pos=(4077,1376,110) target=(3182,1376) dist2d=895 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+298	01dd5bc9e011266d	225285388664	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=28 alloc=56 released=25 completions=2731 delivered=2731 starved=0 underruns=0
+299	01dd5bc9e02dbcd3	225287264708	2412	25848	delivery	trace	0	frame=13860 obj=3471 AmericaJetCargoPlane pos=(3952,1376,110) target=(3182,1376) dist2d=770 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+300	01dd5bc9e0c53d15	225297189266	2412	25848	delivery	trace	0	frame=13890 obj=3471 AmericaJetCargoPlane pos=(3827,1376,110) target=(3182,1376) dist2d=645 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+301	01dd5bc9e15de18d	225307190345	2412	25848	delivery	trace	0	frame=13920 obj=3471 AmericaJetCargoPlane pos=(3702,1376,110) target=(3182,1376) dist2d=520 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+302	01dd5bc9e1f68d5b	225317195296	2412	25848	delivery	trace	0	frame=13950 obj=3471 AmericaJetCargoPlane pos=(3577,1376,141) target=(3182,1376) dist2d=395 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+303	01dd5bc9e28f052b	225327193919	2412	25848	delivery	trace	0	frame=13980 obj=3471 AmericaJetCargoPlane pos=(3452,1375,180) target=(3182,1376) dist2d=270 speed=4.2 ai=1 sm=1 items=4 disabled=0 dead=0 locomotor=1
+304	01dd5bc9e327b780	225337194194	2412	25848	delivery	trace	0	frame=14010 obj=3471 AmericaJetCargoPlane pos=(3327,1375,193) target=(3182,1376) dist2d=145 speed=4.2 ai=1 sm=1 items=2 disabled=0 dead=0 locomotor=1
+305	01dd5bc9e3c1583f	225347268587	2412	25848	delivery	trace	0	frame=14040 obj=3471 AmericaJetCargoPlane pos=(3207,1375,164) target=(3182,1376) dist2d=25 speed=4.1 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+306	01dd5bc9e3dae631	225348944508	2412	25848	delivery	start	0	obj=3499 AmericaJetCargoPlane move=(2565,466) target=(2565,466) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+307	01dd5bc9e459f769	225357266911	2412	25848	delivery	trace	0	frame=14070 obj=3499 AmericaJetCargoPlane pos=(2565,-515,110) target=(2565,466) dist2d=981 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+308	01dd5bc9e45ae4fa	225357332885	2412	25848	delivery	trace	0	frame=14070 obj=3471 AmericaJetCargoPlane pos=(3082,1375,115) target=(3182,1376) dist2d=100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+309	01dd5bc9e4f29528	225367266506	2412	25848	special_power	activate	0	src=ChinaCommandCenter power=SuperweaponClusterMines loc=yes disabled=0 ocl=1 createLoc=0
+310	01dd5bc9e4f393d8	225367339049	2412	25848	delivery	start	0	obj=3516 ChinaJetCargoPlane move=(2261,2477) target=(2261,2477) deliveryDistance=140 maxAttempts=4 dropDelay=0 fire=0
+311	01dd5bc9e4f408ff	225367367849	2412	25848	delivery	trace	0	frame=14100 obj=3471 AmericaJetCargoPlane pos=(2957,1375,112) target=(3182,1376) dist2d=225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+312	01dd5bc9e4f4571d	225367387273	2412	25848	delivery	trace	0	frame=14100 obj=3499 AmericaJetCargoPlane pos=(2565,-390,110) target=(2565,466) dist2d=856 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+313	01dd5bc9e58b65b6	225377281362	2412	25848	delivery	trace	0	frame=14130 obj=3499 AmericaJetCargoPlane pos=(2565,-265,113) target=(2565,466) dist2d=731 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+314	01dd5bc9e58c8e2f	225377361259	2412	25848	delivery	trace	0	frame=14130 obj=3516 ChinaJetCargoPlane pos=(2019,3582,143) target=(2261,2477) dist2d=1131 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+315	01dd5bc9e58cdc54	225377379994	2412	25848	delivery	trace	0	frame=14130 obj=3471 AmericaJetCargoPlane pos=(2832,1374,112) target=(3182,1376) dist2d=350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+316	01dd5bc9e5ebfd2a	225383617850	2412	25848	delivery	start	0	obj=3521 AmericaJetCargoPlane move=(2664,556) target=(2664,556) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+317	01dd5bc9e623e5f9	225387281559	2412	25848	delivery	trace	0	frame=14160 obj=3471 AmericaJetCargoPlane pos=(2707,1374,112) target=(3182,1376) dist2d=475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+318	01dd5bc9e624e427	225387341274	2412	25848	delivery	trace	0	frame=14160 obj=3499 AmericaJetCargoPlane pos=(2565,-140,126) target=(2565,466) dist2d=606 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+319	01dd5bc9e625323d	225387360892	2412	25848	delivery	trace	0	frame=14160 obj=3521 AmericaJetCargoPlane pos=(2664,-573,110) target=(2664,556) dist2d=1130 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+320	01dd5bc9e6258063	225387379728	2412	25848	delivery	trace	0	frame=14160 obj=3516 ChinaJetCargoPlane pos=(2047,3454,141) target=(2261,2477) dist2d=1000 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+321	01dd5bc9e6bc81a4	225397280121	2412	25848	delivery	trace	0	frame=14190 obj=3499 AmericaJetCargoPlane pos=(2565,-15,160) target=(2565,466) dist2d=481 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+322	01dd5bc9e6bd966a	225397347604	2412	25848	delivery	trace	0	frame=14190 obj=3471 AmericaJetCargoPlane pos=(2582,1374,113) target=(3182,1376) dist2d=600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+323	01dd5bc9e6bde487	225397368711	2412	25848	delivery	trace	0	frame=14190 obj=3516 ChinaJetCargoPlane pos=(2075,3326,167) target=(2261,2477) dist2d=869 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+324	01dd5bc9e6be32a7	225397387092	2412	25848	delivery	trace	0	frame=14190 obj=3521 AmericaJetCargoPlane pos=(2664,-448,110) target=(2664,556) dist2d=1005 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+325	01dd5bc9e7553457	225407288355	2412	25848	delivery	trace	0	frame=14220 obj=3471 AmericaJetCargoPlane pos=(2457,1374,113) target=(3182,1376) dist2d=725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+326	01dd5bc9e755bd69	225407323457	2412	25848	delivery	trace	0	frame=14220 obj=3499 AmericaJetCargoPlane pos=(2565,110,196) target=(2565,466) dist2d=356 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+327	01dd5bc9e7560bfe	225407342330	2412	25848	delivery	trace	0	frame=14220 obj=3516 ChinaJetCargoPlane pos=(2104,3198,170) target=(2261,2477) dist2d=738 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+328	01dd5bc9e7565a11	225407360716	2412	25848	delivery	trace	0	frame=14220 obj=3521 AmericaJetCargoPlane pos=(2664,-323,110) target=(2664,556) dist2d=880 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+329	01dd5bc9e7edd7e9	225417287795	2412	25848	delivery	trace	0	frame=14250 obj=3521 AmericaJetCargoPlane pos=(2664,-198,116) target=(2664,556) dist2d=755 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+330	01dd5bc9e7eed04c	225417351544	2412	25848	delivery	trace	0	frame=14250 obj=3471 AmericaJetCargoPlane pos=(2332,1374,107) target=(3182,1376) dist2d=850 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+331	01dd5bc9e7ef1e68	225417370636	2412	25848	delivery	trace	0	frame=14250 obj=3516 ChinaJetCargoPlane pos=(2132,3070,130) target=(2261,2477) dist2d=607 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+332	01dd5bc9e7ef6c6d	225417392215	2412	25848	delivery	trace	0	frame=14250 obj=3499 AmericaJetCargoPlane pos=(2565,235,182) target=(2565,466) dist2d=231 speed=4.2 ai=1 sm=1 items=3 disabled=0 dead=0 locomotor=1
+333	01dd5bc9e886678f	225427287659	2412	25848	delivery	trace	0	frame=14280 obj=3516 ChinaJetCargoPlane pos=(2161,2942,112) target=(2261,2477) dist2d=476 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+334	01dd5bc9e8873f59	225427347910	2412	25848	delivery	trace	0	frame=14280 obj=3521 AmericaJetCargoPlane pos=(2664,-73,147) target=(2664,556) dist2d=630 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+335	01dd5bc9e8880297	225427391464	2412	25848	delivery	trace	0	frame=14280 obj=3471 AmericaJetCargoPlane pos=(2207,1373,107) target=(3182,1376) dist2d=975 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+336	01dd5bc9e88850bc	225427409691	2412	25848	delivery	trace	0	frame=14280 obj=3499 AmericaJetCargoPlane pos=(2565,360,138) target=(2565,466) dist2d=106 speed=4.1 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+337	01dd5bc9e8fbbaf7	225434976479	2412	25848	delivery	start	0	obj=3567 AmericaJetCargoPlane move=(3121,2511) target=(3121,2511) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+338	01dd5bc9e91f38ab	225437304687	2412	25848	delivery	trace	0	frame=14310 obj=3516 ChinaJetCargoPlane pos=(2189,2814,112) target=(2261,2477) dist2d=345 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+339	01dd5bc9e9204c9b	225437371430	2412	25848	delivery	trace	0	frame=14310 obj=3471 AmericaJetCargoPlane pos=(2082,1373,112) target=(3182,1376) dist2d=1100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+340	01dd5bc9e9209ac6	225437390419	2412	25848	delivery	trace	0	frame=14310 obj=3567 AmericaJetCargoPlane pos=(4090,2511,110) target=(3121,2511) dist2d=969 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+341	01dd5bc9e920c1ce	225437408808	2412	25848	delivery	trace	0	frame=14310 obj=3521 AmericaJetCargoPlane pos=(2664,52,182) target=(2664,556) dist2d=505 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+342	01dd5bc9e92123fa	225437426277	2412	25848	delivery	trace	0	frame=14310 obj=3499 AmericaJetCargoPlane pos=(2565,481,122) target=(2565,466) dist2d=15 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+343	01dd5bc9e9b81902	225447319833	2412	25848	delivery	trace	0	frame=14340 obj=3516 ChinaJetCargoPlane pos=(2218,2686,113) target=(2261,2477) dist2d=214 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+344	01dd5bc9e9b923b9	225447392260	2412	25848	delivery	trace	0	frame=14340 obj=3567 AmericaJetCargoPlane pos=(3965,2512,110) target=(3121,2511) dist2d=844 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+345	01dd5bc9e9b971db	225447413820	2412	25848	delivery	trace	0	frame=14340 obj=3471 AmericaJetCargoPlane pos=(1957,1373,113) target=(3182,1376) dist2d=1225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+346	01dd5bc9e9b9d419	225447434017	2412	25848	delivery	trace	0	frame=14340 obj=3499 AmericaJetCargoPlane pos=(2565,606,113) target=(2565,466) dist2d=140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+347	01dd5bc9e9ba2277	225447452447	2412	25848	delivery	trace	0	frame=14340 obj=3521 AmericaJetCargoPlane pos=(2664,177,199) target=(2664,556) dist2d=380 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+348	01dd5bc9ea4f7318	225457242129	2412	25848	delivery	trace	0	frame=14370 obj=3567 AmericaJetCargoPlane pos=(3840,2512,110) target=(3121,2511) dist2d=719 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+349	01dd5bc9ea500f46	225457279571	2412	25848	delivery	trace	0	frame=14370 obj=3516 ChinaJetCargoPlane pos=(2246,2559,112) target=(2261,2477) dist2d=83 speed=4.1 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+350	01dd5bc9ea505db3	225457298970	2412	25848	delivery	trace	0	frame=14370 obj=3471 AmericaJetCargoPlane pos=(1832,1373,113) target=(3182,1376) dist2d=1350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+351	01dd5bc9ea50ab97	225457318948	2412	25848	delivery	trace	0	frame=14370 obj=3521 AmericaJetCargoPlane pos=(2665,302,188) target=(2664,556) dist2d=255 speed=4.2 ai=1 sm=1 items=4 disabled=0 dead=0 locomotor=1
+352	01dd5bc9ea50e6e5	225457337730	2412	25848	delivery	trace	0	frame=14370 obj=3499 AmericaJetCargoPlane pos=(2566,731,113) target=(2565,466) dist2d=265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+353	01dd5bc9eae8068f	225467243744	2412	25848	delivery	trace	0	frame=14400 obj=3521 AmericaJetCargoPlane pos=(2665,427,138) target=(2664,556) dist2d=130 speed=4.2 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+354	01dd5bc9eae8f1a5	225467303303	2412	25848	delivery	trace	0	frame=14400 obj=3471 AmericaJetCargoPlane pos=(1707,1373,113) target=(3182,1376) dist2d=1475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+355	01dd5bc9eae947b7	225467326068	2412	25848	delivery	trace	0	frame=14400 obj=3567 AmericaJetCargoPlane pos=(3715,2513,110) target=(3121,2511) dist2d=594 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+356	01dd5bc9eae9963b	225467345208	2412	25848	delivery	trace	0	frame=14400 obj=3516 ChinaJetCargoPlane pos=(2275,2432,112) target=(2261,2477) dist2d=47 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+357	01dd5bc9eae9e498	225467363208	2412	25848	delivery	trace	0	frame=14400 obj=3499 AmericaJetCargoPlane pos=(2566,856,111) target=(2565,466) dist2d=390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+358	01dd5bc9eb80d970	225477262011	2412	25848	delivery	trace	0	frame=14430 obj=3471 AmericaJetCargoPlane pos=(1582,1372,113) target=(3182,1376) dist2d=1600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+359	01dd5bc9eb81f489	225477331775	2412	25848	delivery	trace	0	frame=14430 obj=3499 AmericaJetCargoPlane pos=(2566,981,107) target=(2565,466) dist2d=515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+360	01dd5bc9eb830654	225477395017	2412	25848	delivery	trace	0	frame=14430 obj=3567 AmericaJetCargoPlane pos=(3590,2513,124) target=(3121,2511) dist2d=469 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+361	01dd5bc9eb832d4c	225477412996	2412	25848	delivery	trace	0	frame=14430 obj=3521 AmericaJetCargoPlane pos=(2665,548,113) target=(2664,556) dist2d=9 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+362	01dd5bc9eb838f99	225477431829	2412	25848	delivery	trace	0	frame=14430 obj=3516 ChinaJetCargoPlane pos=(2303,2304,112) target=(2261,2477) dist2d=178 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+363	01dd5bc9ec1c28ee	225487437018	2412	25848	delivery	trace	0	frame=14460 obj=3516 ChinaJetCargoPlane pos=(2332,2176,112) target=(2261,2477) dist2d=309 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+364	01dd5bc9ec1d2afd	225487501713	2412	25848	delivery	trace	0	frame=14460 obj=3521 AmericaJetCargoPlane pos=(2665,673,113) target=(2664,556) dist2d=117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+365	01dd5bc9ec1d5216	225487519759	2412	25848	delivery	trace	0	frame=14460 obj=3499 AmericaJetCargoPlane pos=(2566,1106,107) target=(2565,466) dist2d=640 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+366	01dd5bc9ec1db47c	225487538142	2412	25848	delivery	trace	0	frame=14460 obj=3567 AmericaJetCargoPlane pos=(3465,2514,181) target=(3121,2511) dist2d=344 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+367	01dd5bc9ec1e0291	225487555852	2412	25848	delivery	trace	0	frame=14460 obj=3471 AmericaJetCargoPlane pos=(1457,1372,112) target=(3182,1376) dist2d=1725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+368	01dd5bc9ecaa6f3e	225496762777	2412	25848	delivery	start	0	obj=3605 AmericaJetCargoPlane move=(2998,2615) target=(2998,2615) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+369	01dd5bc9ecb44c17	225497403879	2412	25848	delivery	trace	0	frame=14490 obj=3516 ChinaJetCargoPlane pos=(2360,2048,112) target=(2261,2477) dist2d=440 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+370	01dd5bc9ecb49a4c	225497429245	2412	25848	delivery	trace	0	frame=14490 obj=3499 AmericaJetCargoPlane pos=(2567,1231,112) target=(2565,466) dist2d=765 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+371	01dd5bc9ecb539f9	225497463245	2412	25848	delivery	trace	0	frame=14490 obj=3567 AmericaJetCargoPlane pos=(3340,2514,217) target=(3121,2511) dist2d=219 speed=4.2 ai=1 sm=1 items=3 disabled=0 dead=0 locomotor=1
+372	01dd5bc9ecb58821	225497482297	2412	25848	delivery	trace	0	frame=14490 obj=3471 AmericaJetCargoPlane pos=(1332,1372,115) target=(3182,1376) dist2d=1850 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+373	01dd5bc9ecb5d64f	225497503526	2412	25848	delivery	trace	0	frame=14490 obj=3605 AmericaJetCargoPlane pos=(4111,2615,110) target=(2998,2615) dist2d=1113 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+374	01dd5bc9ecb62460	225497522494	2412	25848	delivery	trace	0	frame=14490 obj=3521 AmericaJetCargoPlane pos=(2665,798,108) target=(2664,556) dist2d=242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+375	01dd5bc9ed4d0b3f	225507414892	2412	25848	delivery	trace	0	frame=14520 obj=3516 ChinaJetCargoPlane pos=(2389,1920,113) target=(2261,2477) dist2d=571 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+376	01dd5bc9ed4df0e9	225507480043	2412	25848	delivery	trace	0	frame=14520 obj=3471 AmericaJetCargoPlane pos=(1207,1372,113) target=(3182,1376) dist2d=1975 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+377	01dd5bc9ed4f364a	225507556439	2412	25848	delivery	trace	0	frame=14520 obj=3605 AmericaJetCargoPlane pos=(3986,2615,110) target=(2998,2615) dist2d=988 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+378	01dd5bc9ed4f8471	225507577716	2412	25848	delivery	trace	0	frame=14520 obj=3567 AmericaJetCargoPlane pos=(3215,2515,199) target=(3121,2511) dist2d=94 speed=4.1 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+379	01dd5bc9ed4fd289	225507594400	2412	25848	delivery	trace	0	frame=14520 obj=3499 AmericaJetCargoPlane pos=(2567,1356,113) target=(2565,466) dist2d=890 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+380	01dd5bc9ed4ff995	225507613189	2412	25848	delivery	trace	0	frame=14520 obj=3521 AmericaJetCargoPlane pos=(2666,923,107) target=(2664,556) dist2d=367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+381	01dd5bc9ede7191f	225517512870	2412	25848	delivery	trace	0	frame=14550 obj=3605 AmericaJetCargoPlane pos=(3861,2615,110) target=(2998,2615) dist2d=863 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+382	01dd5bc9ede8263f	225517578148	2412	25848	delivery	trace	0	frame=14550 obj=3516 ChinaJetCargoPlane pos=(2417,1792,116) target=(2261,2477) dist2d=703 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+383	01dd5bc9ede87463	225517597929	2412	25848	delivery	trace	0	frame=14550 obj=3499 AmericaJetCargoPlane pos=(2567,1481,113) target=(2565,466) dist2d=1015 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+384	01dd5bc9ede89b6f	225517615819	2412	25848	delivery	trace	0	frame=14550 obj=3471 AmericaJetCargoPlane pos=(1082,1371,113) target=(3182,1376) dist2d=2100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+385	01dd5bc9ede8fdc9	225517634098	2412	25848	delivery	trace	0	frame=14550 obj=3521 AmericaJetCargoPlane pos=(2666,1048,111) target=(2664,556) dist2d=492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+386	01dd5bc9ede94bfc	225517652578	2412	25848	delivery	trace	0	frame=14550 obj=3567 AmericaJetCargoPlane pos=(3095,2515,135) target=(3121,2511) dist2d=27 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+387	01dd5bc9ee7dcf2a	225527396035	2412	25848	delivery	trace	0	frame=14580 obj=3567 AmericaJetCargoPlane pos=(2970,2516,112) target=(3121,2511) dist2d=152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+388	01dd5bc9ee7f0007	225527462638	2412	25848	delivery	trace	0	frame=14580 obj=3499 AmericaJetCargoPlane pos=(2568,1606,112) target=(2565,466) dist2d=1140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+389	01dd5bc9ee7f2719	225527479979	2412	25848	delivery	trace	0	frame=14580 obj=3516 ChinaJetCargoPlane pos=(2446,1664,116) target=(2261,2477) dist2d=834 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+390	01dd5bc9ee7f7535	225527497122	2412	25848	delivery	trace	0	frame=14580 obj=3605 AmericaJetCargoPlane pos=(3736,2615,110) target=(2998,2615) dist2d=738 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+391	01dd5bc9ee7fc01a	225527516701	2412	25848	delivery	trace	0	frame=14580 obj=3521 AmericaJetCargoPlane pos=(2666,1173,112) target=(2664,556) dist2d=617 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+392	01dd5bc9ee8010fa	225527533988	2412	25848	delivery	trace	0	frame=14580 obj=3471 AmericaJetCargoPlane pos=(957,1371,112) target=(3182,1376) dist2d=2225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+393	01dd5bc9ef1733e7	225537440798	2412	25848	delivery	trace	0	frame=14610 obj=3499 AmericaJetCargoPlane pos=(2568,1731,130) target=(2565,466) dist2d=1265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+394	01dd5bc9ef181e38	225537497241	2412	25848	delivery	trace	0	frame=14610 obj=3567 AmericaJetCargoPlane pos=(2845,2516,113) target=(3121,2511) dist2d=277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+395	01dd5bc9ef18454e	225537514206	2412	25848	delivery	trace	0	frame=14610 obj=3605 AmericaJetCargoPlane pos=(3611,2615,124) target=(2998,2615) dist2d=613 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+396	01dd5bc9ef18a78c	225537533991	2412	25848	delivery	trace	0	frame=14610 obj=3516 ChinaJetCargoPlane pos=(2474,1536,112) target=(2261,2477) dist2d=965 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+397	01dd5bc9ef18cede	225537550997	2412	25848	delivery	trace	0	frame=14610 obj=3521 AmericaJetCargoPlane pos=(2666,1298,113) target=(2664,556) dist2d=742 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+398	01dd5bc9ef191cf8	225537567490	2412	25848	delivery	trace	0	frame=14610 obj=3471 AmericaJetCargoPlane pos=(832,1371,112) target=(3182,1376) dist2d=2350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+399	01dd5bc9efb026d3	225547464663	2412	25848	delivery	trace	0	frame=14640 obj=3567 AmericaJetCargoPlane pos=(2720,2517,113) target=(3121,2511) dist2d=402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+400	01dd5bc9efb113c5	225547529022	2412	25848	delivery	trace	0	frame=14640 obj=3471 AmericaJetCargoPlane pos=(707,1371,112) target=(3182,1376) dist2d=2475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+401	01dd5bc9efb16270	225547549329	2412	25848	delivery	trace	0	frame=14640 obj=3499 AmericaJetCargoPlane pos=(2568,1856,179) target=(2565,466) dist2d=1390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+402	01dd5bc9efb1b08b	225547569892	2412	25848	delivery	trace	0	frame=14640 obj=3605 AmericaJetCargoPlane pos=(3486,2615,172) target=(2998,2615) dist2d=488 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+403	01dd5bc9efb1feae	225547590299	2412	25848	delivery	trace	0	frame=14640 obj=3516 ChinaJetCargoPlane pos=(2503,1408,113) target=(2261,2477) dist2d=1096 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+404	01dd5bc9efb24cd2	225547610176	2412	25848	delivery	trace	0	frame=14640 obj=3521 AmericaJetCargoPlane pos=(2666,1423,113) target=(2664,556) dist2d=867 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+405	01dd5bc9f0495fc2	225557510301	2412	25848	delivery	trace	0	frame=14670 obj=3516 ChinaJetCargoPlane pos=(2531,1281,113) target=(2261,2477) dist2d=1227 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+406	01dd5bc9f04a73f5	225557581228	2412	25848	delivery	trace	0	frame=14670 obj=3499 AmericaJetCargoPlane pos=(2568,1981,157) target=(2565,466) dist2d=1515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+407	01dd5bc9f04b4bb2	225557628519	2412	25848	delivery	trace	0	frame=14670 obj=3605 AmericaJetCargoPlane pos=(3361,2615,216) target=(2998,2615) dist2d=363 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+408	01dd5bc9f04b99cc	225557649246	2412	25848	delivery	trace	0	frame=14670 obj=3471 AmericaJetCargoPlane pos=(582,1371,113) target=(3182,1376) dist2d=2600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+409	01dd5bc9f04be800	225557669857	2412	25848	delivery	trace	0	frame=14670 obj=3567 AmericaJetCargoPlane pos=(2595,2517,113) target=(3121,2511) dist2d=527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+410	01dd5bc9f04c0f03	225557689632	2412	25848	delivery	trace	0	frame=14670 obj=3521 AmericaJetCargoPlane pos=(2667,1548,113) target=(2664,556) dist2d=992 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+411	01dd5bc9f0e0b90e	225567421322	2412	25848	delivery	trace	0	frame=14700 obj=3471 AmericaJetCargoPlane pos=(457,1370,112) target=(3182,1376) dist2d=2725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+412	01dd5bc9f0e1b8ab	225567491513	2412	25848	delivery	trace	0	frame=14700 obj=3605 AmericaJetCargoPlane pos=(3236,2615,218) target=(2998,2615) dist2d=238 speed=4.2 ai=1 sm=1 items=3 disabled=0 dead=0 locomotor=1
+413	01dd5bc9f0e26918	225567535511	2412	25848	delivery	trace	0	frame=14700 obj=3499 AmericaJetCargoPlane pos=(2569,2106,174) target=(2565,466) dist2d=1640 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+414	01dd5bc9f0e2b777	225567555417	2412	25848	delivery	trace	0	frame=14700 obj=3516 ChinaJetCargoPlane pos=(2560,1153,112) target=(2261,2477) dist2d=1358 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+415	01dd5bc9f0e30595	225567572545	2412	25848	delivery	trace	0	frame=14700 obj=3521 AmericaJetCargoPlane pos=(2667,1673,112) target=(2664,556) dist2d=1117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+416	01dd5bc9f0e32ca4	225567589297	2412	25848	delivery	trace	0	frame=14700 obj=3567 AmericaJetCargoPlane pos=(2470,2518,113) target=(3121,2511) dist2d=652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+417	01dd5bc9f17a38aa	225577485275	2412	25848	delivery	trace	0	frame=14730 obj=3521 AmericaJetCargoPlane pos=(2667,1798,126) target=(2664,556) dist2d=1242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+418	01dd5bc9f17b2893	225577543008	2412	25848	delivery	trace	0	frame=14730 obj=3605 AmericaJetCargoPlane pos=(3111,2615,165) target=(2998,2615) dist2d=113 speed=4.2 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+419	01dd5bc9f17c12f1	225577611717	2412	25848	delivery	trace	0	frame=14730 obj=3499 AmericaJetCargoPlane pos=(2569,2231,151) target=(2565,466) dist2d=1765 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+420	01dd5bc9f17c755e	225577631784	2412	25848	delivery	trace	0	frame=14730 obj=3567 AmericaJetCargoPlane pos=(2345,2518,112) target=(3121,2511) dist2d=777 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+421	01dd5bc9f17cc396	225577650886	2412	25848	delivery	trace	0	frame=14730 obj=3471 AmericaJetCargoPlane pos=(332,1370,112) target=(3182,1376) dist2d=2850 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+422	01dd5bc9f17d119e	225577668941	2412	25848	delivery	trace	0	frame=14730 obj=3516 ChinaJetCargoPlane pos=(2588,1025,107) target=(2261,2477) dist2d=1489 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+423	01dd5bc9f1f4e6ff	225585522970	2412	25848	audio_stats	sample	0	free2d=3 free3d=12 playing2d=0 playing3d=13 streams=1 voices_active=14 peak=28 alloc=56 released=25 completions=2965 delivered=2965 starved=0 underruns=0
+424	01dd5bc9f21165eb	225587392316	2412	25848	delivery	trace	0	frame=14760 obj=3499 AmericaJetCargoPlane pos=(2569,2356,138) target=(2565,466) dist2d=1890 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+425	01dd5bc9f2123dac	225587451638	2412	25848	delivery	trace	0	frame=14760 obj=3605 AmericaJetCargoPlane pos=(2989,2615,120) target=(2998,2615) dist2d=9 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+426	01dd5bc9f2128b9b	225587469216	2412	25848	delivery	trace	0	frame=14760 obj=3567 AmericaJetCargoPlane pos=(2220,2519,113) target=(3121,2511) dist2d=902 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+427	01dd5bc9f212d9b9	225587487707	2412	25848	delivery	trace	0	frame=14760 obj=3516 ChinaJetCargoPlane pos=(2616,897,107) target=(2261,2477) dist2d=1620 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+428	01dd5bc9f21327d8	225587505142	2412	25848	delivery	trace	0	frame=14760 obj=3471 AmericaJetCargoPlane pos=(207,1370,112) target=(3182,1376) dist2d=2975 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+429	01dd5bc9f21362b0	225587525038	2412	25848	delivery	trace	0	frame=14760 obj=3521 AmericaJetCargoPlane pos=(2667,1923,146) target=(2664,556) dist2d=1367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+430	01dd5bc9f2aad758	225597454347	2412	25848	delivery	trace	0	frame=14790 obj=3567 AmericaJetCargoPlane pos=(2095,2519,131) target=(3121,2511) dist2d=1027 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+431	01dd5bc9f2ac181e	225597527269	2412	25848	delivery	trace	0	frame=14790 obj=3521 AmericaJetCargoPlane pos=(2668,2048,134) target=(2664,556) dist2d=1492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+432	01dd5bc9f2ac66d7	225597547720	2412	25848	delivery	trace	0	frame=14790 obj=3516 ChinaJetCargoPlane pos=(2645,769,112) target=(2261,2477) dist2d=1751 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+433	01dd5bc9f2acb4f3	225597567873	2412	25848	delivery	trace	0	frame=14790 obj=3471 AmericaJetCargoPlane pos=(82,1370,139) target=(3182,1376) dist2d=3100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+434	01dd5bc9f2ad0315	225597587556	2412	25848	delivery	trace	0	frame=14790 obj=3605 AmericaJetCargoPlane pos=(2864,2615,112) target=(2998,2615) dist2d=134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+435	01dd5bc9f2ad5152	225597610506	2412	25848	delivery	trace	0	frame=14790 obj=3499 AmericaJetCargoPlane pos=(2570,2481,112) target=(2565,466) dist2d=2015 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+436	01dd5bc9f34445bf	225607504037	2412	25848	delivery	trace	0	frame=14820 obj=3567 AmericaJetCargoPlane pos=(1970,2520,153) target=(3121,2511) dist2d=1152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+437	01dd5bc9f3454618	225607567834	2412	25848	delivery	trace	0	frame=14820 obj=3471 AmericaJetCargoPlane pos=(-43,1370,217) target=(3182,1376) dist2d=3225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+438	01dd5bc9f3464527	225607634154	2412	25848	delivery	trace	0	frame=14820 obj=3605 AmericaJetCargoPlane pos=(2739,2615,113) target=(2998,2615) dist2d=259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+439	01dd5bc9f3469372	225607653871	2412	25848	delivery	trace	0	frame=14820 obj=3521 AmericaJetCargoPlane pos=(2668,2173,121) target=(2664,556) dist2d=1617 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+440	01dd5bc9f346e16a	225607672857	2412	25848	delivery	trace	0	frame=14820 obj=3499 AmericaJetCargoPlane pos=(2570,2606,111) target=(2565,466) dist2d=2140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+441	01dd5bc9f3472f8c	225607692355	2412	25848	delivery	trace	0	frame=14820 obj=3516 ChinaJetCargoPlane pos=(2673,641,113) target=(2261,2477) dist2d=1882 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+442	01dd5bc9f3db8118	225617420085	2412	25848	delivery	trace	0	frame=14850 obj=3521 AmericaJetCargoPlane pos=(2668,2298,113) target=(2664,556) dist2d=1742 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+443	01dd5bc9f3dbe3a6	225617442837	2412	25848	delivery	trace	0	frame=14850 obj=3516 ChinaJetCargoPlane pos=(2702,513,113) target=(2261,2477) dist2d=2013 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+444	01dd5bc9f3dc31c5	225617461805	2412	25848	delivery	trace	0	frame=14850 obj=3471 AmericaJetCargoPlane pos=(-168,1369,211) target=(3182,1376) dist2d=3350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+445	01dd5bc9f3dc7fe2	225617481139	2412	25848	delivery	trace	0	frame=14850 obj=3605 AmericaJetCargoPlane pos=(2614,2614,111) target=(2998,2615) dist2d=384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+446	01dd5bc9f3dcce16	225617499324	2412	25848	delivery	trace	0	frame=14850 obj=3567 AmericaJetCargoPlane pos=(1845,2520,149) target=(3121,2511) dist2d=1277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+447	01dd5bc9f3dcf51a	225617517173	2412	25848	delivery	trace	0	frame=14850 obj=3499 AmericaJetCargoPlane pos=(2570,2731,111) target=(2565,466) dist2d=2265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+448	01dd5bc9f4743648	225627422223	2412	25848	delivery	trace	0	frame=14880 obj=3567 AmericaJetCargoPlane pos=(1720,2521,136) target=(3121,2511) dist2d=1402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+449	01dd5bc9f4753f49	225627493782	2412	25848	delivery	trace	0	frame=14880 obj=3605 AmericaJetCargoPlane pos=(2489,2614,112) target=(2998,2615) dist2d=509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+450	01dd5bc9f4758d72	225627511299	2412	25848	delivery	trace	0	frame=14880 obj=3499 AmericaJetCargoPlane pos=(2570,2856,113) target=(2565,466) dist2d=2390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+451	01dd5bc9f475c8a6	225627530417	2412	25848	delivery	trace	0	frame=14880 obj=3516 ChinaJetCargoPlane pos=(2730,385,113) target=(2261,2477) dist2d=2144 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+452	01dd5bc9f4761745	225627548941	2412	25848	delivery	trace	0	frame=14880 obj=3471 AmericaJetCargoPlane pos=(-293,1369,137) target=(3182,1376) dist2d=3475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+453	01dd5bc9f4766567	225627566983	2412	25848	delivery	trace	0	frame=14880 obj=3521 AmericaJetCargoPlane pos=(2668,2423,112) target=(2664,556) dist2d=1867 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+454	01dd5bc9f50d685f	225637463292	2412	25848	delivery	trace	0	frame=14910 obj=3471 AmericaJetCargoPlane pos=(-418,1369,110) target=(3182,1376) dist2d=3600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+455	01dd5bc9f50e843f	225637532008	2412	25848	delivery	trace	0	frame=14910 obj=3499 AmericaJetCargoPlane pos=(2571,2981,113) target=(2565,466) dist2d=2515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+456	01dd5bc9f50ed2cc	225637552361	2412	25848	delivery	trace	0	frame=14910 obj=3605 AmericaJetCargoPlane pos=(2364,2614,113) target=(2998,2615) dist2d=634 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+457	01dd5bc9f50f20ba	225637572221	2412	25848	delivery	trace	0	frame=14910 obj=3521 AmericaJetCargoPlane pos=(2668,2548,112) target=(2664,556) dist2d=1992 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+458	01dd5bc9f50f6ee2	225637592203	2412	25848	delivery	trace	0	frame=14910 obj=3516 ChinaJetCargoPlane pos=(2759,257,123) target=(2261,2477) dist2d=2275 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+459	01dd5bc9f50fbcfa	225637614163	2412	25848	delivery	trace	0	frame=14910 obj=3567 AmericaJetCargoPlane pos=(1595,2521,159) target=(3121,2511) dist2d=1527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+460	01dd5bc9f5a71a7a	225647536031	2412	25848	delivery	trace	0	frame=14940 obj=3516 ChinaJetCargoPlane pos=(2787,129,199) target=(2261,2477) dist2d=2406 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+461	01dd5bc9f5a832cc	225647605005	2412	25848	delivery	trace	0	frame=14940 obj=3471 AmericaJetCargoPlane pos=(-543,1369,110) target=(3182,1376) dist2d=3725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+462	01dd5bc9f5a8e382	225647651386	2412	25848	delivery	trace	0	frame=14940 obj=3567 AmericaJetCargoPlane pos=(1470,2522,114) target=(3121,2511) dist2d=1652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+463	01dd5bc9f5a931a6	225647672108	2412	25848	delivery	trace	0	frame=14940 obj=3499 AmericaJetCargoPlane pos=(2571,3106,113) target=(2565,466) dist2d=2640 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+464	01dd5bc9f5a958b9	225647693067	2412	25848	delivery	trace	0	frame=14940 obj=3521 AmericaJetCargoPlane pos=(2669,2673,111) target=(2664,556) dist2d=2117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+465	01dd5bc9f5a9bb6e	225647713762	2412	25848	delivery	trace	0	frame=14940 obj=3605 AmericaJetCargoPlane pos=(2239,2614,112) target=(2998,2615) dist2d=759 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+466	01dd5bc9f63f0c27	225657494148	2412	25848	delivery	trace	0	frame=14970 obj=3605 AmericaJetCargoPlane pos=(2114,2613,112) target=(2998,2615) dist2d=884 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+467	01dd5bc9f63fe3a3	225657551821	2412	25848	delivery	trace	0	frame=14970 obj=3499 AmericaJetCargoPlane pos=(2571,3231,158) target=(2565,466) dist2d=2765 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+468	01dd5bc9f6403202	225657572326	2412	25848	delivery	trace	0	frame=14970 obj=3521 AmericaJetCargoPlane pos=(2669,2798,112) target=(2664,556) dist2d=2242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+469	01dd5bc9f640a6fd	225657594358	2412	25848	delivery	trace	0	frame=14970 obj=3516 ChinaJetCargoPlane pos=(2816,1,226) target=(2261,2477) dist2d=2537 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+470	01dd5bc9f640ce0e	225657614576	2412	25848	delivery	trace	0	frame=14970 obj=3567 AmericaJetCargoPlane pos=(1345,2522,112) target=(3121,2511) dist2d=1777 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+471	01dd5bc9f6d7cf92	225667509179	2412	25848	delivery	trace	0	frame=15000 obj=3605 AmericaJetCargoPlane pos=(1989,2613,153) target=(2998,2615) dist2d=1009 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+472	01dd5bc9f6d8eb87	225667573783	2412	25848	delivery	trace	0	frame=15000 obj=3499 AmericaJetCargoPlane pos=(2572,3356,199) target=(2565,466) dist2d=2890 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+473	01dd5bc9f6d93a5a	225667596349	2412	25848	delivery	trace	0	frame=15000 obj=3521 AmericaJetCargoPlane pos=(2669,2923,112) target=(2664,556) dist2d=2367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+474	01dd5bc9f6d96171	225667614261	2412	25848	delivery	trace	0	frame=15000 obj=3567 AmericaJetCargoPlane pos=(1220,2523,112) target=(3121,2511) dist2d=1902 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+475	01dd5bc9f6d9c3e9	225667635292	2412	25848	delivery	trace	0	frame=15000 obj=3516 ChinaJetCargoPlane pos=(2844,-126,200) target=(2261,2477) dist2d=2668 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+476	01dd5bc9f770ae93	225677530345	2412	25848	delivery	trace	0	frame=15030 obj=3567 AmericaJetCargoPlane pos=(1095,2523,107) target=(3121,2511) dist2d=2027 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+477	01dd5bc9f771c757	225677592034	2412	25848	delivery	trace	0	frame=15030 obj=3516 ChinaJetCargoPlane pos=(2873,-254,161) target=(2261,2477) dist2d=2799 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+478	01dd5bc9f771ee6e	225677610196	2412	25848	delivery	trace	0	frame=15030 obj=3605 AmericaJetCargoPlane pos=(1864,2613,191) target=(2998,2615) dist2d=1134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+479	01dd5bc9f772509e	225677628459	2412	25848	delivery	trace	0	frame=15030 obj=3521 AmericaJetCargoPlane pos=(2669,3048,113) target=(2664,556) dist2d=2492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+480	01dd5bc9f77277ce	225677645974	2412	25848	delivery	trace	0	frame=15030 obj=3499 AmericaJetCargoPlane pos=(2572,3481,167) target=(2565,466) dist2d=3015 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+481	01dd5bc9f809a31b	225687543303	2412	25848	delivery	trace	0	frame=15060 obj=3521 AmericaJetCargoPlane pos=(2669,3173,145) target=(2664,556) dist2d=2617 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+482	01dd5bc9f80a665a	225687603086	2412	25848	delivery	trace	0	frame=15060 obj=3499 AmericaJetCargoPlane pos=(2572,3606,172) target=(2565,466) dist2d=3140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+483	01dd5bc9f80ac886	225687621832	2412	25848	delivery	trace	0	frame=15060 obj=3516 ChinaJetCargoPlane pos=(2901,-382,112) target=(2261,2477) dist2d=2930 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+484	01dd5bc9f80b1721	225687639444	2412	25848	delivery	trace	0	frame=15060 obj=3605 AmericaJetCargoPlane pos=(1739,2613,193) target=(2998,2615) dist2d=1259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+485	01dd5bc9f80b6559	225687659247	2412	25848	delivery	trace	0	frame=15060 obj=3567 AmericaJetCargoPlane pos=(970,2524,107) target=(3121,2511) dist2d=2152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+486	01dd5bc9f8a019d3	225697412792	2412	25848	delivery	trace	0	frame=15090 obj=3521 AmericaJetCargoPlane pos=(2670,3298,161) target=(2664,556) dist2d=2742 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+487	01dd5bc9f8a1083f	225697473089	2412	25848	delivery	trace	0	frame=15090 obj=3605 AmericaJetCargoPlane pos=(1614,2612,154) target=(2998,2615) dist2d=1384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+488	01dd5bc9f8a22de5	225697541236	2412	25848	delivery	trace	0	frame=15090 obj=3567 AmericaJetCargoPlane pos=(845,2524,107) target=(3121,2511) dist2d=2277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+489	01dd5bc9f8a27c2b	225697563625	2412	25848	delivery	trace	0	frame=15090 obj=3499 AmericaJetCargoPlane pos=(2572,3731,119) target=(2565,466) dist2d=3265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+490	01dd5bc9f8a2ca32	225697582228	2412	25848	delivery	trace	0	frame=15090 obj=3516 ChinaJetCargoPlane pos=(2930,-510,110) target=(2261,2477) dist2d=3061 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+491	01dd5bc9f939a1d6	225707474613	2412	25848	delivery	trace	0	frame=15120 obj=3521 AmericaJetCargoPlane pos=(2670,3423,187) target=(2664,556) dist2d=2867 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+492	01dd5bc9f93aa089	225707533218	2412	25848	delivery	trace	0	frame=15120 obj=3567 AmericaJetCargoPlane pos=(720,2525,113) target=(3121,2511) dist2d=2402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+493	01dd5bc9f93b63d2	225707581231	2412	25848	delivery	trace	0	frame=15120 obj=3605 AmericaJetCargoPlane pos=(1489,2612,114) target=(2998,2615) dist2d=1509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+494	01dd5bc9f93b8aea	225707600878	2412	25848	delivery	trace	0	frame=15120 obj=3499 AmericaJetCargoPlane pos=(2573,3856,110) target=(2565,466) dist2d=3390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+495	01dd5bc9f9d18a83	225717429963	2412	25848	delivery	trace	0	frame=15150 obj=3521 AmericaJetCargoPlane pos=(2670,3548,200) target=(2664,556) dist2d=2992 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+496	01dd5bc9f9d22458	225717464897	2412	25848	delivery	trace	0	frame=15150 obj=3567 AmericaJetCargoPlane pos=(595,2525,113) target=(3121,2511) dist2d=2527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+497	01dd5bc9f9d27279	225717482665	2412	25848	delivery	trace	0	frame=15150 obj=3605 AmericaJetCargoPlane pos=(1364,2612,113) target=(2998,2615) dist2d=1634 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+498	01dd5bc9f9d29990	225717500122	2412	25848	delivery	trace	0	frame=15150 obj=3499 AmericaJetCargoPlane pos=(2573,3981,110) target=(2565,466) dist2d=3515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+499	01dd5bc9fa6a4c08	225727439424	2412	25848	delivery	trace	0	frame=15180 obj=3605 AmericaJetCargoPlane pos=(1239,2612,113) target=(2998,2615) dist2d=1759 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+500	01dd5bc9fa6b23cf	225727494845	2412	25848	delivery	trace	0	frame=15180 obj=3567 AmericaJetCargoPlane pos=(470,2526,112) target=(3121,2511) dist2d=2652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+501	01dd5bc9fa6c2285	225727561695	2412	25848	delivery	trace	0	frame=15180 obj=3521 AmericaJetCargoPlane pos=(2670,3673,131) target=(2664,556) dist2d=3117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+502	01dd5bc9fb0351e2	225737461020	2412	25848	delivery	trace	0	frame=15210 obj=3567 AmericaJetCargoPlane pos=(345,2526,117) target=(3121,2511) dist2d=2777 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+503	01dd5bc9fb043e4b	225737529383	2412	25848	delivery	trace	0	frame=15210 obj=3521 AmericaJetCargoPlane pos=(2670,3798,110) target=(2664,556) dist2d=3242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+504	01dd5bc9fb048cfc	225737546982	2412	25848	delivery	trace	0	frame=15210 obj=3605 AmericaJetCargoPlane pos=(1114,2611,113) target=(2998,2615) dist2d=1884 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+505	01dd5bc9fb9bb02f	225747454274	2412	25848	delivery	trace	0	frame=15240 obj=3605 AmericaJetCargoPlane pos=(989,2611,107) target=(2998,2615) dist2d=2009 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+506	01dd5bc9fb9caf97	225747517346	2412	25848	delivery	trace	0	frame=15240 obj=3567 AmericaJetCargoPlane pos=(220,2527,112) target=(3121,2511) dist2d=2902 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+507	01dd5bc9fb9cea5a	225747536657	2412	25848	delivery	trace	0	frame=15240 obj=3521 AmericaJetCargoPlane pos=(2671,3923,110) target=(2664,556) dist2d=3367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+508	01dd5bc9fc346c19	225757457704	2412	25848	delivery	trace	0	frame=15270 obj=3567 AmericaJetCargoPlane pos=(95,2527,173) target=(3121,2511) dist2d=3027 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+509	01dd5bc9fc355e2a	225757528673	2412	25848	delivery	trace	0	frame=15270 obj=3605 AmericaJetCargoPlane pos=(864,2611,107) target=(2998,2615) dist2d=2134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+510	01dd5bc9fc35be10	225757546923	2412	25848	delivery	trace	0	frame=15270 obj=3521 AmericaJetCargoPlane pos=(2671,4048,110) target=(2664,556) dist2d=3492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+511	01dd5bc9fccd1400	225767468916	2412	25848	delivery	trace	0	frame=15300 obj=3605 AmericaJetCargoPlane pos=(739,2611,111) target=(2998,2615) dist2d=2259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+512	01dd5bc9fccd764a	225767491761	2412	25848	delivery	trace	0	frame=15300 obj=3567 AmericaJetCargoPlane pos=(-30,2528,201) target=(3121,2511) dist2d=3152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+513	01dd5bc9fd6595d6	225777458103	2412	25848	delivery	trace	0	frame=15330 obj=3567 AmericaJetCargoPlane pos=(-155,2528,185) target=(3121,2511) dist2d=3277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+514	01dd5bc9fd66936d	225777523082	2412	25848	delivery	trace	0	frame=15330 obj=3605 AmericaJetCargoPlane pos=(614,2610,112) target=(2998,2615) dist2d=2384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+515	01dd5bc9fdfe08a4	225787458300	2412	25848	delivery	trace	0	frame=15360 obj=3605 AmericaJetCargoPlane pos=(489,2610,118) target=(2998,2615) dist2d=2509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+516	01dd5bc9fdff5441	225787532374	2412	25848	delivery	trace	0	frame=15360 obj=3567 AmericaJetCargoPlane pos=(-280,2529,130) target=(3121,2511) dist2d=3402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+517	01dd5bc9fe96a601	225797453070	2412	25848	delivery	trace	0	frame=15390 obj=3567 AmericaJetCargoPlane pos=(-405,2529,110) target=(3121,2511) dist2d=3527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+518	01dd5bc9fe97bc56	225797527694	2412	25848	delivery	trace	0	frame=15390 obj=3605 AmericaJetCargoPlane pos=(364,2610,117) target=(2998,2615) dist2d=2634 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+519	01dd5bc9ff2f5956	225807455897	2412	25848	delivery	trace	0	frame=15420 obj=3567 AmericaJetCargoPlane pos=(-530,2530,110) target=(3121,2511) dist2d=3652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+520	01dd5bc9ff3063da	225807524416	2412	25848	delivery	trace	0	frame=15420 obj=3605 AmericaJetCargoPlane pos=(239,2610,117) target=(2998,2615) dist2d=2759 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+521	01dd5bc9ffc7ff51	225817460319	2412	25848	delivery	trace	0	frame=15450 obj=3605 AmericaJetCargoPlane pos=(114,2609,188) target=(2998,2615) dist2d=2884 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+522	01dd5bca0060c604	225827475207	2412	25848	delivery	trace	0	frame=15480 obj=3605 AmericaJetCargoPlane pos=(-11,2609,209) target=(2998,2615) dist2d=3009 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+523	01dd5bca00f935e6	225837469280	2412	25848	delivery	trace	0	frame=15510 obj=3605 AmericaJetCargoPlane pos=(-136,2609,209) target=(2998,2615) dist2d=3134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+524	01dd5bca01927297	225847517997	2412	25848	delivery	trace	0	frame=15540 obj=3605 AmericaJetCargoPlane pos=(-261,2609,155) target=(2998,2615) dist2d=3259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+525	01dd5bca022b06e5	225857513863	2412	25848	delivery	trace	0	frame=15570 obj=3605 AmericaJetCargoPlane pos=(-386,2608,112) target=(2998,2615) dist2d=3384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+526	01dd5bca02c3a644	225867517179	2412	25848	delivery	trace	0	frame=15600 obj=3605 AmericaJetCargoPlane pos=(-511,2608,110) target=(2998,2615) dist2d=3509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+527	01dd5bca03d8702b	225885652488	2412	25848	audio_stats	sample	0	free2d=1 free3d=0 playing2d=2 playing3d=25 streams=1 voices_active=28 peak=28 alloc=56 released=25 completions=3226 delivered=3226 starved=0 underruns=0
+528	01dd5bca15b8dc87	226185570692	2412	25848	audio_stats	sample	0	free2d=2 free3d=18 playing2d=1 playing3d=7 streams=1 voices_active=9 peak=28 alloc=57 released=26 completions=3410 delivered=3410 starved=0 underruns=0
+529	01dd5bca2717eea9	226477016572	2412	25848	delivery	start	0	obj=4067 AmericaJetCargoPlane move=(3182,1376) target=(3182,1376) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+530	01dd5bca274ab6fb	226480338985	2412	25848	delivery	trace	0	frame=17430 obj=4067 AmericaJetCargoPlane pos=(4077,1376,110) target=(3182,1376) dist2d=895 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+531	01dd5bca279b8099	226485639145	2412	25848	audio_stats	sample	0	free2d=3 free3d=11 playing2d=0 playing3d=14 streams=1 voices_active=15 peak=28 alloc=57 released=26 completions=3581 delivered=3581 starved=0 underruns=0
+532	01dd5bca27e35f26	226490344468	2412	25848	delivery	trace	0	frame=17460 obj=4067 AmericaJetCargoPlane pos=(3952,1376,110) target=(3182,1376) dist2d=770 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+533	01dd5bca287bd86c	226500341600	2412	25848	delivery	trace	0	frame=17490 obj=4067 AmericaJetCargoPlane pos=(3827,1376,110) target=(3182,1376) dist2d=645 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+534	01dd5bca29149436	226510348582	2412	25848	delivery	trace	0	frame=17520 obj=4067 AmericaJetCargoPlane pos=(3702,1376,110) target=(3182,1376) dist2d=520 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+535	01dd5bca29ad0d8a	226520349707	2412	25848	delivery	trace	0	frame=17550 obj=4067 AmericaJetCargoPlane pos=(3577,1376,141) target=(3182,1376) dist2d=395 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+536	01dd5bca2a45b9cd	226530346485	2412	25848	delivery	trace	0	frame=17580 obj=4067 AmericaJetCargoPlane pos=(3452,1375,180) target=(3182,1376) dist2d=270 speed=4.2 ai=1 sm=1 items=4 disabled=0 dead=0 locomotor=1
+537	01dd5bca2addc247	226540308682	2412	25848	delivery	trace	0	frame=17610 obj=4067 AmericaJetCargoPlane pos=(3327,1375,193) target=(3182,1376) dist2d=145 speed=4.2 ai=1 sm=1 items=2 disabled=0 dead=0 locomotor=1
+538	01dd5bca2b76d3e3	226550345152	2412	25848	delivery	trace	0	frame=17640 obj=4067 AmericaJetCargoPlane pos=(3207,1375,164) target=(3182,1376) dist2d=25 speed=4.1 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+539	01dd5bca2b90772c	226552017852	2412	25848	delivery	start	0	obj=4123 AmericaJetCargoPlane move=(2565,466) target=(2565,466) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+540	01dd5bca2c0f80bd	226560345833	2412	25848	delivery	trace	0	frame=17670 obj=4123 AmericaJetCargoPlane pos=(2565,-515,110) target=(2565,466) dist2d=981 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+541	01dd5bca2c11d5cc	226560502690	2412	25848	delivery	trace	0	frame=17670 obj=4067 AmericaJetCargoPlane pos=(3082,1375,115) target=(3182,1376) dist2d=100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+542	01dd5bca2ca63acd	226570230409	2412	25848	delivery	trace	0	frame=17700 obj=4123 AmericaJetCargoPlane pos=(2565,-390,110) target=(2565,466) dist2d=856 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+543	01dd5bca2ca7bc06	226570327118	2412	25848	delivery	trace	0	frame=17700 obj=4067 AmericaJetCargoPlane pos=(2957,1375,112) target=(3182,1376) dist2d=225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+544	01dd5bca2d3eede4	226580232399	2412	25848	delivery	trace	0	frame=17730 obj=4123 AmericaJetCargoPlane pos=(2565,-265,113) target=(2565,466) dist2d=731 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+545	01dd5bca2d408295	226580339074	2412	25848	delivery	trace	0	frame=17730 obj=4067 AmericaJetCargoPlane pos=(2832,1374,112) target=(3182,1376) dist2d=350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+546	01dd5bca2d9fe947	226586586049	2412	25848	delivery	start	0	obj=4138 AmericaJetCargoPlane move=(2664,556) target=(2664,556) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+547	01dd5bca2dd7af8d	226590245587	2412	25848	delivery	trace	0	frame=17760 obj=4138 AmericaJetCargoPlane pos=(2664,-573,110) target=(2664,556) dist2d=1130 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+548	01dd5bca2dd96a5d	226590354117	2412	25848	delivery	trace	0	frame=17760 obj=4123 AmericaJetCargoPlane pos=(2565,-140,126) target=(2565,466) dist2d=606 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+549	01dd5bca2dda9738	226590430981	2412	25848	delivery	trace	0	frame=17760 obj=4067 AmericaJetCargoPlane pos=(2707,1374,112) target=(3182,1376) dist2d=475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+550	01dd5bca2e71d775	226600343118	2412	25848	delivery	trace	0	frame=17790 obj=4123 AmericaJetCargoPlane pos=(2565,-15,160) target=(2565,466) dist2d=481 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+551	01dd5bca2e734ba4	226600445202	2412	25848	delivery	trace	0	frame=17790 obj=4138 AmericaJetCargoPlane pos=(2664,-448,110) target=(2664,556) dist2d=1005 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+552	01dd5bca2e740f31	226600496518	2412	25848	delivery	trace	0	frame=17790 obj=4067 AmericaJetCargoPlane pos=(2582,1374,113) target=(3182,1376) dist2d=600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+553	01dd5bca2f08dac3	226610242814	2412	25848	delivery	trace	0	frame=17820 obj=4123 AmericaJetCargoPlane pos=(2565,110,196) target=(2565,466) dist2d=356 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+554	01dd5bca2f0a7e88	226610346648	2412	25848	delivery	trace	0	frame=17820 obj=4138 AmericaJetCargoPlane pos=(2664,-323,110) target=(2664,556) dist2d=880 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+555	01dd5bca2f0aa599	226610363590	2412	25848	delivery	trace	0	frame=17820 obj=4067 AmericaJetCargoPlane pos=(2457,1374,113) target=(3182,1376) dist2d=725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+556	01dd5bca2fa2114b	226620281350	2412	25848	delivery	trace	0	frame=17850 obj=4123 AmericaJetCargoPlane pos=(2565,235,182) target=(2565,466) dist2d=231 speed=4.2 ai=1 sm=1 items=3 disabled=0 dead=0 locomotor=1
+557	01dd5bca2fa399ba	226620384415	2412	25848	delivery	trace	0	frame=17850 obj=4067 AmericaJetCargoPlane pos=(2332,1374,107) target=(3182,1376) dist2d=850 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+558	01dd5bca2fa3e7c3	226620402441	2412	25848	delivery	trace	0	frame=17850 obj=4138 AmericaJetCargoPlane pos=(2664,-198,116) target=(2664,556) dist2d=755 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+559	01dd5bca303ad089	226630292021	2412	25848	delivery	trace	0	frame=17880 obj=4138 AmericaJetCargoPlane pos=(2664,-73,147) target=(2664,556) dist2d=630 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+560	01dd5bca303c279f	226630379096	2412	25848	delivery	trace	0	frame=17880 obj=4123 AmericaJetCargoPlane pos=(2565,360,138) target=(2565,466) dist2d=106 speed=4.1 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+561	01dd5bca303c75bf	226630398459	2412	25848	delivery	trace	0	frame=17880 obj=4067 AmericaJetCargoPlane pos=(2207,1373,107) target=(3182,1376) dist2d=975 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+562	01dd5bca30b08755	226638016204	2412	25848	delivery	start	0	obj=4156 AmericaJetCargoPlane move=(3121,2511) target=(3121,2511) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+563	01dd5bca30d42dd5	226640344505	2412	25848	delivery	trace	0	frame=17910 obj=4138 AmericaJetCargoPlane pos=(2664,52,182) target=(2664,556) dist2d=505 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+564	01dd5bca30d715e7	226640538324	2412	25848	delivery	trace	0	frame=17910 obj=4123 AmericaJetCargoPlane pos=(2565,481,122) target=(2565,466) dist2d=15 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+565	01dd5bca30d763f2	226640555683	2412	25848	delivery	trace	0	frame=17910 obj=4156 AmericaJetCargoPlane pos=(4090,2511,110) target=(3121,2511) dist2d=969 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+566	01dd5bca30d7b21b	226640573191	2412	25848	delivery	trace	0	frame=17910 obj=4067 AmericaJetCargoPlane pos=(2082,1373,112) target=(3182,1376) dist2d=1100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+567	01dd5bca316c2108	226650301261	2412	25848	delivery	trace	0	frame=17940 obj=4156 AmericaJetCargoPlane pos=(3965,2512,110) target=(3121,2511) dist2d=844 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+568	01dd5bca316d98a7	226650404155	2412	25848	delivery	trace	0	frame=17940 obj=4067 AmericaJetCargoPlane pos=(1957,1373,113) target=(3182,1376) dist2d=1225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+569	01dd5bca316dfaaa	226650428305	2412	25848	delivery	trace	0	frame=17940 obj=4123 AmericaJetCargoPlane pos=(2565,606,113) target=(2565,466) dist2d=140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+570	01dd5bca316e493a	226650446445	2412	25848	delivery	trace	0	frame=17940 obj=4138 AmericaJetCargoPlane pos=(2664,177,199) target=(2664,556) dist2d=380 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+571	01dd5bca32057cf5	226660359604	2412	25848	delivery	trace	0	frame=17970 obj=4138 AmericaJetCargoPlane pos=(2665,302,188) target=(2664,556) dist2d=255 speed=4.2 ai=1 sm=1 items=4 disabled=0 dead=0 locomotor=1
+572	01dd5bca3207545d	226660475232	2412	25848	delivery	trace	0	frame=17970 obj=4067 AmericaJetCargoPlane pos=(1832,1373,113) target=(3182,1376) dist2d=1350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+573	01dd5bca3207a279	226660497930	2412	25848	delivery	trace	0	frame=17970 obj=4156 AmericaJetCargoPlane pos=(3840,2512,110) target=(3121,2511) dist2d=719 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+574	01dd5bca320817a8	226660522621	2412	25848	delivery	trace	0	frame=17970 obj=4123 AmericaJetCargoPlane pos=(2566,731,113) target=(2565,466) dist2d=265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+575	01dd5bca329c8a78	226670258295	2412	25848	delivery	trace	0	frame=18000 obj=4067 AmericaJetCargoPlane pos=(1707,1373,113) target=(3182,1376) dist2d=1475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+576	01dd5bca329f1bbe	226670417805	2412	25848	delivery	trace	0	frame=18000 obj=4156 AmericaJetCargoPlane pos=(3715,2513,110) target=(3121,2511) dist2d=594 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+577	01dd5bca329fdf95	226670474424	2412	25848	delivery	trace	0	frame=18000 obj=4138 AmericaJetCargoPlane pos=(2665,427,138) target=(2664,556) dist2d=130 speed=4.2 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+578	01dd5bca32a054c4	226670499267	2412	25848	delivery	trace	0	frame=18000 obj=4123 AmericaJetCargoPlane pos=(2566,856,111) target=(2565,466) dist2d=390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+579	01dd5bca33365bc5	226680334879	2412	25848	delivery	trace	0	frame=18030 obj=4123 AmericaJetCargoPlane pos=(2566,981,107) target=(2565,466) dist2d=515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+580	01dd5bca33381c1d	226680448280	2412	25848	delivery	trace	0	frame=18030 obj=4156 AmericaJetCargoPlane pos=(3590,2513,124) target=(3121,2511) dist2d=469 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+581	01dd5bca33389119	226680480217	2412	25848	delivery	trace	0	frame=18030 obj=4067 AmericaJetCargoPlane pos=(1582,1372,113) target=(3182,1376) dist2d=1600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+582	01dd5bca33394138	226680519667	2412	25848	delivery	trace	0	frame=18030 obj=4138 AmericaJetCargoPlane pos=(2665,548,113) target=(2664,556) dist2d=9 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+583	01dd5bca33cde43a	226690260607	2412	25848	delivery	trace	0	frame=18060 obj=4123 AmericaJetCargoPlane pos=(2566,1106,107) target=(2565,466) dist2d=640 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+584	01dd5bca33cf4506	226690356202	2412	25848	delivery	trace	0	frame=18060 obj=4067 AmericaJetCargoPlane pos=(1457,1372,112) target=(3182,1376) dist2d=1725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+585	01dd5bca33cfe148	226690400323	2412	25848	delivery	trace	0	frame=18060 obj=4138 AmericaJetCargoPlane pos=(2665,673,113) target=(2664,556) dist2d=117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+586	01dd5bca33d05671	226690423528	2412	25848	delivery	trace	0	frame=18060 obj=4156 AmericaJetCargoPlane pos=(3465,2514,181) target=(3121,2511) dist2d=344 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+587	01dd5bca345d4572	226699666566	2412	25848	delivery	start	0	obj=4179 AmericaJetCargoPlane move=(2998,2615) target=(2998,2615) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+588	01dd5bca3465a428	226700211955	2412	25848	delivery	trace	0	frame=18090 obj=4067 AmericaJetCargoPlane pos=(1332,1372,115) target=(3182,1376) dist2d=1850 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+589	01dd5bca3468b306	226700411071	2412	25848	delivery	trace	0	frame=18090 obj=4138 AmericaJetCargoPlane pos=(2665,798,108) target=(2664,556) dist2d=242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+590	01dd5bca3469a597	226700470506	2412	25848	delivery	trace	0	frame=18090 obj=4123 AmericaJetCargoPlane pos=(2567,1231,112) target=(2565,466) dist2d=765 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+591	01dd5bca346a1ac8	226700504314	2412	25848	delivery	trace	0	frame=18090 obj=4156 AmericaJetCargoPlane pos=(3340,2514,217) target=(3121,2511) dist2d=219 speed=4.2 ai=1 sm=1 items=3 disabled=0 dead=0 locomotor=1
+592	01dd5bca346aa438	226700539602	2412	25848	delivery	trace	0	frame=18090 obj=4179 AmericaJetCargoPlane pos=(4111,2615,110) target=(2998,2615) dist2d=1113 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+593	01dd5bca34ffaab6	226710305842	2412	25848	delivery	trace	0	frame=18120 obj=4067 AmericaJetCargoPlane pos=(1207,1372,113) target=(3182,1376) dist2d=1975 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+594	01dd5bca35020843	226710458350	2412	25848	delivery	trace	0	frame=18120 obj=4179 AmericaJetCargoPlane pos=(3986,2615,110) target=(2998,2615) dist2d=988 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+595	01dd5bca3502a470	226710501643	2412	25848	delivery	trace	0	frame=18120 obj=4156 AmericaJetCargoPlane pos=(3215,2515,199) target=(3121,2511) dist2d=94 speed=4.1 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+596	01dd5bca35030699	226710524807	2412	25848	delivery	trace	0	frame=18120 obj=4123 AmericaJetCargoPlane pos=(2567,1356,113) target=(2565,466) dist2d=890 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+597	01dd5bca35037c4b	226710558545	2412	25848	delivery	trace	0	frame=18120 obj=4138 AmericaJetCargoPlane pos=(2666,923,107) target=(2664,556) dist2d=367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+598	01dd5bca359aa6f1	226720459629	2412	25848	delivery	trace	0	frame=18150 obj=4138 AmericaJetCargoPlane pos=(2666,1048,111) target=(2664,556) dist2d=492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+599	01dd5bca359c508f	226720568225	2412	25848	delivery	trace	0	frame=18150 obj=4123 AmericaJetCargoPlane pos=(2567,1481,113) target=(2565,466) dist2d=1015 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+600	01dd5bca359cecd3	226720616178	2412	25848	delivery	trace	0	frame=18150 obj=4179 AmericaJetCargoPlane pos=(3861,2615,110) target=(2998,2615) dist2d=863 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+601	01dd5bca359d4f13	226720641060	2412	25848	delivery	trace	0	frame=18150 obj=4067 AmericaJetCargoPlane pos=(1082,1371,113) target=(3182,1376) dist2d=2100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+602	01dd5bca359e39ae	226720696537	2412	25848	delivery	trace	0	frame=18150 obj=4156 AmericaJetCargoPlane pos=(3095,2515,135) target=(3121,2511) dist2d=27 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+603	01dd5bca363319bd	226730449451	2412	25848	delivery	trace	0	frame=18180 obj=4156 AmericaJetCargoPlane pos=(2970,2516,112) target=(3121,2511) dist2d=152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+604	01dd5bca3634b941	226730555590	2412	25848	delivery	trace	0	frame=18180 obj=4067 AmericaJetCargoPlane pos=(957,1371,112) target=(3182,1376) dist2d=2225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+605	01dd5bca36352e72	226730588596	2412	25848	delivery	trace	0	frame=18180 obj=4138 AmericaJetCargoPlane pos=(2666,1173,112) target=(2664,556) dist2d=617 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+606	01dd5bca363a26f9	226730913623	2412	25848	delivery	trace	0	frame=18180 obj=4123 AmericaJetCargoPlane pos=(2568,1606,112) target=(2565,466) dist2d=1140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+607	01dd5bca363a8706	226730941388	2412	25848	delivery	trace	0	frame=18180 obj=4179 AmericaJetCargoPlane pos=(3736,2615,110) target=(2998,2615) dist2d=738 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+608	01dd5bca36d3ac19	226740975683	2412	25848	delivery	trace	0	frame=18210 obj=4067 AmericaJetCargoPlane pos=(832,1371,112) target=(3182,1376) dist2d=2350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+609	01dd5bca36d56682	226741091631	2412	25848	delivery	trace	0	frame=18210 obj=4138 AmericaJetCargoPlane pos=(2666,1298,113) target=(2664,556) dist2d=742 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+610	01dd5bca36d5b4a2	226741118120	2412	25848	delivery	trace	0	frame=18210 obj=4123 AmericaJetCargoPlane pos=(2568,1731,130) target=(2565,466) dist2d=1265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+611	01dd5bca36d6b352	226741171320	2412	25848	delivery	trace	0	frame=18210 obj=4179 AmericaJetCargoPlane pos=(3611,2615,124) target=(2998,2615) dist2d=613 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+612	01dd5bca36d72894	226741204482	2412	25848	delivery	trace	0	frame=18210 obj=4156 AmericaJetCargoPlane pos=(2845,2516,113) target=(3121,2511) dist2d=277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+613	01dd5bca376c02c7	226750955441	2412	25848	delivery	trace	0	frame=18240 obj=4156 AmericaJetCargoPlane pos=(2720,2517,113) target=(3121,2511) dist2d=402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+614	01dd5bca376d4fd4	226751049476	2412	25848	delivery	trace	0	frame=18240 obj=4138 AmericaJetCargoPlane pos=(2666,1423,113) target=(2664,556) dist2d=867 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+615	01dd5bca376dec18	226751085262	2412	25848	delivery	trace	0	frame=18240 obj=4123 AmericaJetCargoPlane pos=(2568,1856,179) target=(2565,466) dist2d=1390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+616	01dd5bca376e9c73	226751132902	2412	25848	delivery	trace	0	frame=18240 obj=4179 AmericaJetCargoPlane pos=(3486,2615,172) target=(2998,2615) dist2d=488 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+617	01dd5bca376fadf6	226751196074	2412	25848	delivery	trace	0	frame=18240 obj=4067 AmericaJetCargoPlane pos=(707,1371,112) target=(3182,1376) dist2d=2475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+618	01dd5bca3802e8aa	226760851894	2412	25848	delivery	trace	0	frame=18270 obj=4067 AmericaJetCargoPlane pos=(582,1371,113) target=(3182,1376) dist2d=2600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+619	01dd5bca38040db2	226760920525	2412	25848	delivery	trace	0	frame=18270 obj=4123 AmericaJetCargoPlane pos=(2568,1981,157) target=(2565,466) dist2d=1515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+620	01dd5bca38044a61	226760944466	2412	25848	delivery	trace	0	frame=18270 obj=4179 AmericaJetCargoPlane pos=(3361,2615,216) target=(2998,2615) dist2d=363 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+621	01dd5bca3804c016	226760965717	2412	25848	delivery	trace	0	frame=18270 obj=4156 AmericaJetCargoPlane pos=(2595,2517,113) target=(3121,2511) dist2d=527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+622	01dd5bca38050e0a	226760986983	2412	25848	delivery	trace	0	frame=18270 obj=4138 AmericaJetCargoPlane pos=(2667,1548,113) target=(2664,556) dist2d=992 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+623	01dd5bca389c1f86	226770888421	2412	25848	delivery	trace	0	frame=18300 obj=4179 AmericaJetCargoPlane pos=(3236,2615,218) target=(2998,2615) dist2d=238 speed=4.2 ai=1 sm=1 items=4 disabled=0 dead=0 locomotor=1
+624	01dd5bca389d202e	226770953981	2412	25848	delivery	trace	0	frame=18300 obj=4067 AmericaJetCargoPlane pos=(457,1370,112) target=(3182,1376) dist2d=2725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+625	01dd5bca389e5192	226771031130	2412	25848	delivery	trace	0	frame=18300 obj=4156 AmericaJetCargoPlane pos=(2470,2518,113) target=(3121,2511) dist2d=652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+626	01dd5bca389e9fb1	226771053086	2412	25848	delivery	trace	0	frame=18300 obj=4138 AmericaJetCargoPlane pos=(2667,1673,112) target=(2664,556) dist2d=1117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+627	01dd5bca389eedcd	226771073506	2412	25848	delivery	trace	0	frame=18300 obj=4123 AmericaJetCargoPlane pos=(2569,2106,174) target=(2565,466) dist2d=1640 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+628	01dd5bca39348e68	226780883573	2412	25848	delivery	trace	0	frame=18330 obj=4138 AmericaJetCargoPlane pos=(2667,1798,126) target=(2664,556) dist2d=1242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+629	01dd5bca3935a39f	226780949594	2412	25848	delivery	trace	0	frame=18330 obj=4123 AmericaJetCargoPlane pos=(2569,2231,151) target=(2565,466) dist2d=1765 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+630	01dd5bca39360580	226780971299	2412	25848	delivery	trace	0	frame=18330 obj=4179 AmericaJetCargoPlane pos=(3111,2615,165) target=(2998,2615) dist2d=113 speed=4.2 ai=1 sm=1 items=1 disabled=0 dead=0 locomotor=1
+631	01dd5bca393653f2	226780994045	2412	25848	delivery	trace	0	frame=18330 obj=4067 AmericaJetCargoPlane pos=(332,1370,112) target=(3182,1376) dist2d=2850 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+632	01dd5bca3936a212	226781016664	2412	25848	delivery	trace	0	frame=18330 obj=4156 AmericaJetCargoPlane pos=(2345,2518,112) target=(3121,2511) dist2d=777 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+633	01dd5bca397bab53	226785544631	2412	25848	audio_stats	sample	0	free2d=3 free3d=2 playing2d=0 playing3d=23 streams=1 voices_active=25 peak=29 alloc=57 released=26 completions=3776 delivered=3776 starved=0 underruns=0
+634	01dd5bca39cda574	226790912733	2412	25848	delivery	trace	0	frame=18360 obj=4156 AmericaJetCargoPlane pos=(2220,2519,113) target=(3121,2511) dist2d=902 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+635	01dd5bca39cea46f	226790974300	2412	25848	delivery	trace	0	frame=18360 obj=4123 AmericaJetCargoPlane pos=(2569,2356,138) target=(2565,466) dist2d=1890 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+636	01dd5bca39cf06d5	226790999760	2412	25848	delivery	trace	0	frame=18360 obj=4138 AmericaJetCargoPlane pos=(2667,1923,146) target=(2664,556) dist2d=1367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+637	01dd5bca39cf54f7	226791019941	2412	25848	delivery	trace	0	frame=18360 obj=4067 AmericaJetCargoPlane pos=(207,1370,112) target=(3182,1376) dist2d=2975 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+638	01dd5bca39cf9044	226791042702	2412	25848	delivery	trace	0	frame=18360 obj=4179 AmericaJetCargoPlane pos=(2989,2615,120) target=(2998,2615) dist2d=9 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+639	01dd5bca3a651330	226800838650	2412	25848	delivery	trace	0	frame=18390 obj=4179 AmericaJetCargoPlane pos=(2864,2615,112) target=(2998,2615) dist2d=134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+640	01dd5bca3a661342	226800905652	2412	25848	delivery	trace	0	frame=18390 obj=4156 AmericaJetCargoPlane pos=(2095,2519,131) target=(3121,2511) dist2d=1027 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+641	01dd5bca3a669cc0	226800938233	2412	25848	delivery	trace	0	frame=18390 obj=4067 AmericaJetCargoPlane pos=(82,1370,139) target=(3182,1376) dist2d=3100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+642	01dd5bca3a66eadc	226800960432	2412	25848	delivery	trace	0	frame=18390 obj=4123 AmericaJetCargoPlane pos=(2570,2481,112) target=(2565,466) dist2d=2015 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+643	01dd5bca3a673900	226800982118	2412	25848	delivery	trace	0	frame=18390 obj=4138 AmericaJetCargoPlane pos=(2668,2048,134) target=(2664,556) dist2d=1492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+644	01dd5bca3afe57dc	226810877692	2412	25848	delivery	trace	0	frame=18420 obj=4156 AmericaJetCargoPlane pos=(1970,2520,153) target=(3121,2511) dist2d=1152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+645	01dd5bca3aff64da	226810951108	2412	25848	delivery	trace	0	frame=18420 obj=4179 AmericaJetCargoPlane pos=(2739,2615,113) target=(2998,2615) dist2d=259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+646	01dd5bca3affda08	226810979159	2412	25848	delivery	trace	0	frame=18420 obj=4138 AmericaJetCargoPlane pos=(2668,2173,121) target=(2664,556) dist2d=1617 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+647	01dd5bca3b00282b	226810999628	2412	25848	delivery	trace	0	frame=18420 obj=4067 AmericaJetCargoPlane pos=(-43,1370,217) target=(3182,1376) dist2d=3225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+648	01dd5bca3b00764d	226811020046	2412	25848	delivery	trace	0	frame=18420 obj=4123 AmericaJetCargoPlane pos=(2570,2606,111) target=(2565,466) dist2d=2140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+649	01dd5bca3b986569	226820976752	2412	25848	delivery	trace	0	frame=18450 obj=4179 AmericaJetCargoPlane pos=(2614,2614,111) target=(2998,2615) dist2d=384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+650	01dd5bca3b996690	226821043834	2412	25848	delivery	trace	0	frame=18450 obj=4067 AmericaJetCargoPlane pos=(-168,1369,211) target=(3182,1376) dist2d=3350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+651	01dd5bca3b99b4ec	226821063704	2412	25848	delivery	trace	0	frame=18450 obj=4138 AmericaJetCargoPlane pos=(2668,2298,113) target=(2664,556) dist2d=1742 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+652	01dd5bca3b9a03de	226821085446	2412	25848	delivery	trace	0	frame=18450 obj=4123 AmericaJetCargoPlane pos=(2570,2731,111) target=(2565,466) dist2d=2265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+653	01dd5bca3b9a5150	226821105299	2412	25848	delivery	trace	0	frame=18450 obj=4156 AmericaJetCargoPlane pos=(1845,2520,149) target=(3121,2511) dist2d=1277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+654	01dd5bca3c2f01de	226830852799	2412	25848	delivery	trace	0	frame=18480 obj=4179 AmericaJetCargoPlane pos=(2489,2614,112) target=(2998,2615) dist2d=509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+655	01dd5bca3c2f9e20	226830887059	2412	25848	delivery	trace	0	frame=18480 obj=4138 AmericaJetCargoPlane pos=(2668,2423,112) target=(2664,556) dist2d=1867 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+656	01dd5bca3c2fec3c	226830911820	2412	25848	delivery	trace	0	frame=18480 obj=4067 AmericaJetCargoPlane pos=(-293,1369,137) target=(3182,1376) dist2d=3475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+657	01dd5bca3c304ede	226830932559	2412	25848	delivery	trace	0	frame=18480 obj=4156 AmericaJetCargoPlane pos=(1720,2521,136) target=(3121,2511) dist2d=1402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+658	01dd5bca3c309cd2	226830952700	2412	25848	delivery	trace	0	frame=18480 obj=4123 AmericaJetCargoPlane pos=(2570,2856,113) target=(2565,466) dist2d=2390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+659	01dd5bca3cc7a336	226840848607	2412	25848	delivery	trace	0	frame=18510 obj=4138 AmericaJetCargoPlane pos=(2668,2548,112) target=(2664,556) dist2d=1992 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+660	01dd5bca3cc88d9c	226840908054	2412	25848	delivery	trace	0	frame=18510 obj=4156 AmericaJetCargoPlane pos=(1595,2521,159) target=(3121,2511) dist2d=1527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+661	01dd5bca3cc8c8e0	226840929328	2412	25848	delivery	trace	0	frame=18510 obj=4067 AmericaJetCargoPlane pos=(-418,1369,110) target=(3182,1376) dist2d=3600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+662	01dd5bca3cc91786	226840946723	2412	25848	delivery	trace	0	frame=18510 obj=4123 AmericaJetCargoPlane pos=(2571,2981,113) target=(2565,466) dist2d=2515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+663	01dd5bca3cc965a3	226840966141	2412	25848	delivery	trace	0	frame=18510 obj=4179 AmericaJetCargoPlane pos=(2364,2614,113) target=(2998,2615) dist2d=634 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+664	01dd5bca3d604449	226850856319	2412	25848	delivery	trace	0	frame=18540 obj=4123 AmericaJetCargoPlane pos=(2571,3106,113) target=(2565,466) dist2d=2640 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+665	01dd5bca3d6157a9	226850921561	2412	25848	delivery	trace	0	frame=18540 obj=4067 AmericaJetCargoPlane pos=(-543,1369,110) target=(3182,1376) dist2d=3725 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+666	01dd5bca3d62697a	226850994026	2412	25848	delivery	trace	0	frame=18540 obj=4179 AmericaJetCargoPlane pos=(2239,2614,112) target=(2998,2615) dist2d=759 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+667	01dd5bca3d62b79f	226851013489	2412	25848	delivery	trace	0	frame=18540 obj=4156 AmericaJetCargoPlane pos=(1470,2522,114) target=(3121,2511) dist2d=1652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+668	01dd5bca3d631a07	226851036577	2412	25848	delivery	trace	0	frame=18540 obj=4138 AmericaJetCargoPlane pos=(2669,2673,111) target=(2664,556) dist2d=2117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+669	01dd5bca3dfaedc4	226860990653	2412	25848	delivery	trace	0	frame=18570 obj=4123 AmericaJetCargoPlane pos=(2571,3231,158) target=(2565,466) dist2d=2765 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+670	01dd5bca3dfbc5b4	226861053191	2412	25848	delivery	trace	0	frame=18570 obj=4179 AmericaJetCargoPlane pos=(2114,2613,112) target=(2998,2615) dist2d=884 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+671	01dd5bca3dfd4e03	226861149541	2412	25848	delivery	trace	0	frame=18570 obj=4156 AmericaJetCargoPlane pos=(1345,2522,112) target=(3121,2511) dist2d=1777 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+672	01dd5bca3dfdc372	226861170442	2412	25848	delivery	trace	0	frame=18570 obj=4138 AmericaJetCargoPlane pos=(2669,2798,112) target=(2664,556) dist2d=2242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+673	01dd5bca3e921a4f	226870895531	2412	25848	delivery	trace	0	frame=18600 obj=4156 AmericaJetCargoPlane pos=(1220,2523,112) target=(3121,2511) dist2d=1902 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+674	01dd5bca3e930b24	226870958014	2412	25848	delivery	trace	0	frame=18600 obj=4179 AmericaJetCargoPlane pos=(1989,2613,153) target=(2998,2615) dist2d=1009 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+675	01dd5bca3e935941	226870977862	2412	25848	delivery	trace	0	frame=18600 obj=4123 AmericaJetCargoPlane pos=(2572,3356,199) target=(2565,466) dist2d=2890 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+676	01dd5bca3e93a763	226870997149	2412	25848	delivery	trace	0	frame=18600 obj=4138 AmericaJetCargoPlane pos=(2669,2923,112) target=(2664,556) dist2d=2367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+677	01dd5bca3f2ab20e	226880898329	2412	25848	delivery	trace	0	frame=18630 obj=4123 AmericaJetCargoPlane pos=(2572,3481,167) target=(2565,466) dist2d=3015 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+678	01dd5bca3f2b9fb5	226880964598	2412	25848	delivery	trace	0	frame=18630 obj=4179 AmericaJetCargoPlane pos=(1864,2613,191) target=(2998,2615) dist2d=1134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+679	01dd5bca3f2dc59b	226881098280	2412	25848	delivery	trace	0	frame=18630 obj=4156 AmericaJetCargoPlane pos=(1095,2523,107) target=(3121,2511) dist2d=2027 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+680	01dd5bca3f2decb0	226881118211	2412	25848	delivery	trace	0	frame=18630 obj=4138 AmericaJetCargoPlane pos=(2669,3048,113) target=(2664,556) dist2d=2492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+681	01dd5bca3fc26339	226890836235	2412	25848	delivery	trace	0	frame=18660 obj=4179 AmericaJetCargoPlane pos=(1739,2613,193) target=(2998,2615) dist2d=1259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+682	01dd5bca3fc3897c	226890912353	2412	25848	delivery	trace	0	frame=18660 obj=4123 AmericaJetCargoPlane pos=(2572,3606,172) target=(2565,466) dist2d=3140 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+683	01dd5bca3fc5b191	226891059170	2412	25848	delivery	trace	0	frame=18660 obj=4156 AmericaJetCargoPlane pos=(970,2524,107) target=(3121,2511) dist2d=2152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+684	01dd5bca3fc5ff90	226891079594	2412	25848	delivery	trace	0	frame=18660 obj=4138 AmericaJetCargoPlane pos=(2669,3173,145) target=(2664,556) dist2d=2617 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+685	01dd5bca405cdf23	226900964964	2412	25848	delivery	trace	0	frame=18690 obj=4156 AmericaJetCargoPlane pos=(845,2524,107) target=(3121,2511) dist2d=2277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+686	01dd5bca405df827	226901036821	2412	25848	delivery	trace	0	frame=18690 obj=4179 AmericaJetCargoPlane pos=(1614,2612,154) target=(2998,2615) dist2d=1384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+687	01dd5bca40606507	226901194486	2412	25848	delivery	trace	0	frame=18690 obj=4123 AmericaJetCargoPlane pos=(2572,3731,119) target=(2565,466) dist2d=3265 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+688	01dd5bca4060da14	226901218889	2412	25848	delivery	trace	0	frame=18690 obj=4138 AmericaJetCargoPlane pos=(2670,3298,161) target=(2664,556) dist2d=2742 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+689	01dd5bca40f537a2	226910945816	2412	25848	delivery	trace	0	frame=18720 obj=4138 AmericaJetCargoPlane pos=(2670,3423,187) target=(2664,556) dist2d=2867 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+690	01dd5bca40f62c4b	226911016892	2412	25848	delivery	trace	0	frame=18720 obj=4179 AmericaJetCargoPlane pos=(1489,2612,114) target=(2998,2615) dist2d=1509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+691	01dd5bca40f68e46	226911036885	2412	25848	delivery	trace	0	frame=18720 obj=4123 AmericaJetCargoPlane pos=(2573,3856,110) target=(2565,466) dist2d=3390 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+692	01dd5bca40f6dc74	226911058339	2412	25848	delivery	trace	0	frame=18720 obj=4156 AmericaJetCargoPlane pos=(720,2525,113) target=(3121,2511) dist2d=2402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+693	01dd5bca418e179b	226920961565	2412	25848	delivery	trace	0	frame=18750 obj=4179 AmericaJetCargoPlane pos=(1364,2612,113) target=(2998,2615) dist2d=1634 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+694	01dd5bca418f1f2a	226921035869	2412	25848	delivery	trace	0	frame=18750 obj=4138 AmericaJetCargoPlane pos=(2670,3548,200) target=(2664,556) dist2d=2992 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+695	01dd5bca418fbb82	226921068360	2412	25848	delivery	trace	0	frame=18750 obj=4123 AmericaJetCargoPlane pos=(2573,3981,110) target=(2565,466) dist2d=3515 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+696	01dd5bca41900958	226921090481	2412	25848	delivery	trace	0	frame=18750 obj=4156 AmericaJetCargoPlane pos=(595,2525,113) target=(3121,2511) dist2d=2527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+697	01dd5bca41fe3e45	226928320307	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+698	01dd5bca41ff775e	226928392992	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+699	01dd5bca41ffc592	226928415688	2412	25848	delivery	start	0	obj=4666 AmericaJetA10Thunderbolt move=(1532,376) target=(1532,376) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+700	01dd5bca42002817	226928437764	2412	25848	delivery	start	0	obj=4667 AmericaJetA10Thunderbolt move=(1538,426) target=(1535,401) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+701	01dd5bca420075f8	226928458995	2412	25848	delivery	start	0	obj=4668 AmericaJetA10Thunderbolt move=(1581,370) target=(1556,373) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+702	01dd5bca4225018b	226930859758	2412	25848	delivery	trace	0	frame=18780 obj=4668 AmericaJetA10Thunderbolt pos=(4058,2295,160) target=(1556,373) dist2d=3155 speed=3.4 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+703	01dd5bca42260b85	226930925573	2412	25848	delivery	trace	0	frame=18780 obj=4666 AmericaJetA10Thunderbolt pos=(4009,2301,160) target=(1532,376) dist2d=3137 speed=3.4 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+704	01dd5bca4226a80b	226930960239	2412	25848	delivery	trace	0	frame=18780 obj=4138 AmericaJetCargoPlane pos=(2670,3673,131) target=(2664,556) dist2d=3117 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+705	01dd5bca4226cf86	226930977807	2412	25848	delivery	trace	0	frame=18780 obj=4179 AmericaJetCargoPlane pos=(1239,2612,113) target=(2998,2615) dist2d=1759 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+706	01dd5bca42271d64	226930994387	2412	25848	delivery	trace	0	frame=18780 obj=4667 AmericaJetA10Thunderbolt pos=(4015,2350,160) target=(1535,401) dist2d=3155 speed=3.4 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+707	01dd5bca42276b58	226931010280	2412	25848	delivery	trace	0	frame=18780 obj=4156 AmericaJetCargoPlane pos=(470,2526,112) target=(3121,2511) dist2d=2652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+708	01dd5bca42be2fff	226940898841	2412	25848	delivery	trace	0	frame=18810 obj=4138 AmericaJetCargoPlane pos=(2670,3798,110) target=(2664,556) dist2d=3242 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+709	01dd5bca42bf2ee5	226940960452	2412	25848	delivery	trace	0	frame=18810 obj=4668 AmericaJetA10Thunderbolt pos=(3931,2196,160) target=(1556,373) dist2d=2994 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+710	01dd5bca42bf7cb6	226940977319	2412	25848	delivery	trace	0	frame=18810 obj=4666 AmericaJetA10Thunderbolt pos=(3882,2203,160) target=(1532,376) dist2d=2976 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+711	01dd5bca42bfa3ff	226940994060	2412	25848	delivery	trace	0	frame=18810 obj=4179 AmericaJetCargoPlane pos=(1114,2611,113) target=(2998,2615) dist2d=1884 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+712	01dd5bca42bff222	226941011210	2412	25848	delivery	trace	0	frame=18810 obj=4156 AmericaJetCargoPlane pos=(345,2526,117) target=(3121,2511) dist2d=2777 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+713	01dd5bca42c02ced	226941029252	2412	25848	delivery	trace	0	frame=18810 obj=4667 AmericaJetA10Thunderbolt pos=(3888,2252,160) target=(1535,401) dist2d=2994 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+714	01dd5bca4356f87a	226950914966	2412	25848	delivery	trace	0	frame=18840 obj=4138 AmericaJetCargoPlane pos=(2671,3923,110) target=(2664,556) dist2d=3367 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+715	01dd5bca43583de4	226950986450	2412	25848	delivery	trace	0	frame=18840 obj=4666 AmericaJetA10Thunderbolt pos=(3752,2102,160) target=(1532,376) dist2d=2812 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+716	01dd5bca4358c734	226951030387	2412	25848	delivery	trace	0	frame=18840 obj=4179 AmericaJetCargoPlane pos=(989,2611,107) target=(2998,2615) dist2d=2009 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+717	01dd5bca43591590	226951050563	2412	25848	delivery	trace	0	frame=18840 obj=4156 AmericaJetCargoPlane pos=(220,2527,112) target=(3121,2511) dist2d=2902 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+718	01dd5bca43596402	226951069613	2412	25848	delivery	trace	0	frame=18840 obj=4668 AmericaJetA10Thunderbolt pos=(3801,2095,160) target=(1556,373) dist2d=2829 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+719	01dd5bca4359b1c9	226951087590	2412	25848	delivery	trace	0	frame=18840 obj=4667 AmericaJetA10Thunderbolt pos=(3758,2151,160) target=(1535,401) dist2d=2829 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+720	01dd5bca43f08cd1	226960971089	2412	25848	delivery	trace	0	frame=18870 obj=4138 AmericaJetCargoPlane pos=(2671,4048,110) target=(2664,556) dist2d=3492 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+721	01dd5bca43f1abf8	226961042529	2412	25848	delivery	trace	0	frame=18870 obj=4666 AmericaJetA10Thunderbolt pos=(3622,2001,184) target=(1532,376) dist2d=2647 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+722	01dd5bca43f1fa10	226961062667	2412	25848	delivery	trace	0	frame=18870 obj=4668 AmericaJetA10Thunderbolt pos=(3671,1994,166) target=(1556,373) dist2d=2664 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+723	01dd5bca43f24832	226961085585	2412	25848	delivery	trace	0	frame=18870 obj=4156 AmericaJetCargoPlane pos=(95,2527,173) target=(3121,2511) dist2d=3027 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+724	01dd5bca43f508f7	226961261720	2412	25848	delivery	trace	0	frame=18870 obj=4179 AmericaJetCargoPlane pos=(864,2611,107) target=(2998,2615) dist2d=2134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+725	01dd5bca43f5572e	226961282838	2412	25848	delivery	trace	0	frame=18870 obj=4667 AmericaJetA10Thunderbolt pos=(3628,2050,188) target=(1535,401) dist2d=2664 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+726	01dd5bca44899d1d	226971004738	2412	25848	delivery	trace	0	frame=18900 obj=4668 AmericaJetA10Thunderbolt pos=(3541,1893,205) target=(1556,373) dist2d=2500 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+727	01dd5bca448ab0a3	226971070159	2412	25848	delivery	trace	0	frame=18900 obj=4666 AmericaJetA10Thunderbolt pos=(3491,1900,207) target=(1532,376) dist2d=2482 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+728	01dd5bca448ad768	226971088323	2412	25848	delivery	trace	0	frame=18900 obj=4156 AmericaJetCargoPlane pos=(-30,2528,201) target=(3121,2511) dist2d=3152 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+729	01dd5bca448b25e5	226971107289	2412	25848	delivery	trace	0	frame=18900 obj=4179 AmericaJetCargoPlane pos=(739,2611,111) target=(2998,2615) dist2d=2259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+730	01dd5bca448b73e3	226971125895	2412	25848	delivery	trace	0	frame=18900 obj=4667 AmericaJetA10Thunderbolt pos=(3498,1949,207) target=(1535,401) dist2d=2500 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+731	01dd5bca45229958	226981025139	2412	25848	delivery	trace	0	frame=18930 obj=4179 AmericaJetCargoPlane pos=(614,2610,112) target=(2998,2615) dist2d=2384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+732	01dd5bca45230eac	226981062651	2412	25848	delivery	trace	0	frame=18930 obj=4667 AmericaJetA10Thunderbolt pos=(3368,1848,223) target=(1535,401) dist2d=2335 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+733	01dd5bca45268f3c	226981292640	2412	25848	delivery	trace	0	frame=18930 obj=4666 AmericaJetA10Thunderbolt pos=(3361,1799,219) target=(1532,376) dist2d=2318 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+734	01dd5bca4526dd84	226981313012	2412	25848	delivery	trace	0	frame=18930 obj=4668 AmericaJetA10Thunderbolt pos=(3411,1792,212) target=(1556,373) dist2d=2335 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+735	01dd5bca45274047	226981332765	2412	25848	delivery	trace	0	frame=18930 obj=4156 AmericaJetCargoPlane pos=(-155,2528,185) target=(3121,2511) dist2d=3277 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+736	01dd5bca45bba0c3	226991059592	2412	25848	delivery	trace	0	frame=18960 obj=4179 AmericaJetCargoPlane pos=(489,2610,118) target=(2998,2615) dist2d=2509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+737	01dd5bca45bca629	226991124631	2412	25848	delivery	trace	0	frame=18960 obj=4667 AmericaJetA10Thunderbolt pos=(3237,1747,234) target=(1535,401) dist2d=2170 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+738	01dd5bca45c06b0d	226991370281	2412	25848	delivery	trace	0	frame=18960 obj=4668 AmericaJetA10Thunderbolt pos=(3281,1691,245) target=(1556,373) dist2d=2170 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+739	01dd5bca45c0b96a	226991390270	2412	25848	delivery	trace	0	frame=18960 obj=4156 AmericaJetCargoPlane pos=(-280,2529,130) target=(3121,2511) dist2d=3402 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+740	01dd5bca45c1077f	226991410407	2412	25848	delivery	trace	0	frame=18960 obj=4666 AmericaJetA10Thunderbolt pos=(3231,1698,239) target=(1532,376) dist2d=2153 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+741	01dd5bca46555fbe	227001133563	2412	25848	delivery	trace	0	frame=18990 obj=4179 AmericaJetCargoPlane pos=(364,2610,117) target=(2998,2615) dist2d=2634 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+742	01dd5bca46566238	227001199635	2412	25848	delivery	trace	0	frame=18990 obj=4156 AmericaJetCargoPlane pos=(-405,2529,110) target=(3121,2511) dist2d=3527 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+743	01dd5bca465a3621	227001447448	2412	25848	delivery	trace	0	frame=18990 obj=4668 AmericaJetA10Thunderbolt pos=(3150,1590,228) target=(1556,373) dist2d=2005 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+744	01dd5bca465a846f	227001468425	2412	25848	delivery	trace	0	frame=18990 obj=4667 AmericaJetA10Thunderbolt pos=(3107,1646,193) target=(1535,401) dist2d=2006 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+745	01dd5bca465aab8f	227001486224	2412	25848	delivery	trace	0	frame=18990 obj=4666 AmericaJetA10Thunderbolt pos=(3101,1597,200) target=(1532,376) dist2d=1988 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+746	01dd5bca46edec78	227011127163	2412	25848	delivery	trace	0	frame=19020 obj=4668 AmericaJetA10Thunderbolt pos=(3020,1489,182) target=(1556,373) dist2d=1841 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+747	01dd5bca46ef0b09	227011206727	2412	25848	delivery	trace	0	frame=19020 obj=4666 AmericaJetA10Thunderbolt pos=(2971,1497,168) target=(1532,376) dist2d=1824 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+748	01dd5bca46ef5925	227011224832	2412	25848	delivery	trace	0	frame=19020 obj=4156 AmericaJetCargoPlane pos=(-530,2530,110) target=(3121,2511) dist2d=3652 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+749	01dd5bca46ef8fa5	227011242357	2412	25848	delivery	trace	0	frame=19020 obj=4179 AmericaJetCargoPlane pos=(239,2610,117) target=(2998,2615) dist2d=2759 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+750	01dd5bca46efdd97	227011260606	2412	25848	delivery	trace	0	frame=19020 obj=4667 AmericaJetA10Thunderbolt pos=(2977,1545,165) target=(1535,401) dist2d=1841 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+751	01dd5bca4786ee5c	227021157931	2412	25848	delivery	trace	0	frame=19050 obj=4666 AmericaJetA10Thunderbolt pos=(2841,1396,162) target=(1532,376) dist2d=1659 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+752	01dd5bca4787f99c	227021229104	2412	25848	delivery	trace	0	frame=19050 obj=4668 AmericaJetA10Thunderbolt pos=(2890,1388,163) target=(1556,373) dist2d=1676 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+753	01dd5bca478847fe	227021246924	2412	25848	delivery	trace	0	frame=19050 obj=4667 AmericaJetA10Thunderbolt pos=(2847,1444,163) target=(1535,401) dist2d=1676 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+754	01dd5bca478895f6	227021266165	2412	25848	delivery	trace	0	frame=19050 obj=4179 AmericaJetCargoPlane pos=(114,2609,188) target=(2998,2615) dist2d=2884 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+755	01dd5bca48213c71	227031276563	2412	25848	delivery	trace	0	frame=19080 obj=4179 AmericaJetCargoPlane pos=(-11,2609,209) target=(2998,2615) dist2d=3009 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+756	01dd5bca48223ac7	227031336371	2412	25848	delivery	trace	0	frame=19080 obj=4666 AmericaJetA10Thunderbolt pos=(2710,1295,162) target=(1532,376) dist2d=1494 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+757	01dd5bca4827325c	227031664852	2412	25848	delivery	trace	0	frame=19080 obj=4667 AmericaJetA10Thunderbolt pos=(2717,1343,162) target=(1535,401) dist2d=1512 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+758	01dd5bca4827a7dc	227031691445	2412	25848	delivery	trace	0	frame=19080 obj=4668 AmericaJetA10Thunderbolt pos=(2760,1287,163) target=(1556,373) dist2d=1511 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+759	01dd5bca48bbfadb	227041417352	2412	25848	delivery	trace	0	frame=19110 obj=4666 AmericaJetA10Thunderbolt pos=(2580,1194,162) target=(1532,376) dist2d=1330 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+760	01dd5bca48bcec2e	227041475991	2412	25848	delivery	trace	0	frame=19110 obj=4179 AmericaJetCargoPlane pos=(-136,2609,209) target=(2998,2615) dist2d=3134 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+761	01dd5bca48bd3a46	227041499489	2412	25848	delivery	trace	0	frame=19110 obj=4667 AmericaJetA10Thunderbolt pos=(2587,1242,163) target=(1535,401) dist2d=1347 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+762	01dd5bca48bd889d	227041519407	2412	25848	delivery	trace	0	frame=19110 obj=4668 AmericaJetA10Thunderbolt pos=(2630,1186,162) target=(1556,373) dist2d=1347 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+763	01dd5bca4954bb35	227051420997	2412	25848	delivery	trace	0	frame=19140 obj=4668 AmericaJetA10Thunderbolt pos=(2500,1085,157) target=(1556,373) dist2d=1182 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+764	01dd5bca4955a858	227051488225	2412	25848	delivery	trace	0	frame=19140 obj=4667 AmericaJetA10Thunderbolt pos=(2457,1141,157) target=(1535,401) dist2d=1182 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+765	01dd5bca4955f697	227051505987	2412	25848	delivery	trace	0	frame=19140 obj=4666 AmericaJetA10Thunderbolt pos=(2450,1093,157) target=(1532,376) dist2d=1165 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+766	01dd5bca495658b0	227051525000	2412	25848	delivery	trace	0	frame=19140 obj=4179 AmericaJetCargoPlane pos=(-261,2609,155) target=(2998,2615) dist2d=3259 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+767	01dd5bca49ed80af	227061437192	2412	25848	delivery	trace	0	frame=19170 obj=4668 AmericaJetA10Thunderbolt pos=(2370,984,161) target=(1556,373) dist2d=1017 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+768	01dd5bca49ee1d31	227061471455	2412	25848	delivery	trace	0	frame=19170 obj=4179 AmericaJetCargoPlane pos=(-386,2608,112) target=(2998,2615) dist2d=3384 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+769	01dd5bca49ee43ec	227061490255	2412	25848	delivery	trace	0	frame=19170 obj=4667 AmericaJetA10Thunderbolt pos=(2326,1040,161) target=(1535,401) dist2d=1018 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+770	01dd5bca49ee9220	227061509826	2412	25848	delivery	trace	0	frame=19170 obj=4666 AmericaJetA10Thunderbolt pos=(2320,992,162) target=(1532,376) dist2d=1000 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+771	01dd5bca4a864f47	227071447681	2412	25848	delivery	trace	0	frame=19200 obj=4666 AmericaJetA10Thunderbolt pos=(2190,891,162) target=(1532,376) dist2d=836 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+772	01dd5bca4a873976	227071511851	2412	25848	delivery	trace	0	frame=19200 obj=4179 AmericaJetCargoPlane pos=(-511,2608,110) target=(2998,2615) dist2d=3509 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+773	01dd5bca4a879bc9	227071532249	2412	25848	delivery	trace	0	frame=19200 obj=4667 AmericaJetA10Thunderbolt pos=(2196,939,162) target=(1535,401) dist2d=853 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+774	01dd5bca4a87ea01	227071553765	2412	25848	delivery	trace	0	frame=19200 obj=4668 AmericaJetA10Thunderbolt pos=(2240,883,162) target=(1556,373) dist2d=852 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+775	01dd5bca4b1f3053	227081470668	2412	25848	delivery	trace	0	frame=19230 obj=4668 AmericaJetA10Thunderbolt pos=(2110,781,162) target=(1556,373) dist2d=688 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+776	01dd5bca4b206adf	227081547365	2412	25848	delivery	trace	0	frame=19230 obj=4666 AmericaJetA10Thunderbolt pos=(2060,791,162) target=(1532,376) dist2d=671 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+777	01dd5bca4b210754	227081586990	2412	25848	delivery	trace	0	frame=19230 obj=4667 AmericaJetA10Thunderbolt pos=(2066,838,162) target=(1535,401) dist2d=688 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+778	01dd5bca4b5e6a47	227085612932	2412	25848	audio_stats	sample	0	free2d=3 free3d=10 playing2d=0 playing3d=15 streams=1 voices_active=16 peak=29 alloc=57 released=26 completions=4055 delivered=4055 starved=0 underruns=0
+779	01dd5bca4bb8053c	227091486306	2412	25848	delivery	trace	0	frame=19260 obj=4666 AmericaJetA10Thunderbolt pos=(1930,690,162) target=(1532,376) dist2d=506 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+780	01dd5bca4bb90396	227091545553	2412	25848	delivery	trace	0	frame=19260 obj=4668 AmericaJetA10Thunderbolt pos=(1980,680,162) target=(1556,373) dist2d=523 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+781	01dd5bca4bb9c718	227091603390	2412	25848	delivery	trace	0	frame=19260 obj=4667 AmericaJetA10Thunderbolt pos=(1936,737,162) target=(1535,401) dist2d=524 speed=4.0 ai=1 sm=0 items=0 disabled=0 dead=0 locomotor=1
+782	01dd5bca4c4e5b89	227101334678	2412	25848	delivery	trace	0	frame=19290 obj=4666 AmericaJetA10Thunderbolt pos=(1799,589,132) target=(1532,376) dist2d=342 speed=4.0 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+783	01dd5bca4c4f53be	227101399890	2412	25848	delivery	trace	0	frame=19290 obj=4668 AmericaJetA10Thunderbolt pos=(1849,579,139) target=(1556,373) dist2d=358 speed=4.0 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+784	01dd5bca4c4fa1f5	227101419598	2412	25848	delivery	trace	0	frame=19290 obj=4667 AmericaJetA10Thunderbolt pos=(1806,636,140) target=(1535,401) dist2d=359 speed=4.0 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+785	01dd5bca4ce6f7ce	227111339782	2412	25848	delivery	trace	0	frame=19320 obj=4666 AmericaJetA10Thunderbolt pos=(1671,490,72) target=(1532,376) dist2d=180 speed=3.8 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+786	01dd5bca4ce810f5	227111408959	2412	25848	delivery	trace	0	frame=19320 obj=4667 AmericaJetA10Thunderbolt pos=(1678,537,77) target=(1535,401) dist2d=198 speed=3.8 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+787	01dd5bca4ce87392	227111432143	2412	25848	delivery	trace	0	frame=19320 obj=4668 AmericaJetA10Thunderbolt pos=(1721,480,76) target=(1556,373) dist2d=197 speed=3.8 ai=1 sm=1 items=0 disabled=0 dead=0 locomotor=1
+788	01dd5bca4d8057d8	227121395499	2412	25848	delivery	trace	0	frame=19350 obj=4667 AmericaJetA10Thunderbolt pos=(1549,437,124) target=(1535,401) dist2d=39 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+789	01dd5bca4d817f95	227121463803	2412	25848	delivery	trace	0	frame=19350 obj=4666 AmericaJetA10Thunderbolt pos=(1541,389,132) target=(1532,376) dist2d=16 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+790	01dd5bca4d821bd6	227121513439	2412	25848	delivery	trace	0	frame=19350 obj=4668 AmericaJetA10Thunderbolt pos=(1592,379,123) target=(1556,373) dist2d=36 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+791	01dd5bca4e192c08	227131407744	2412	25848	delivery	trace	0	frame=19380 obj=4666 AmericaJetA10Thunderbolt pos=(1411,288,163) target=(1532,376) dist2d=149 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+792	01dd5bca4e1a2b18	227131471209	2412	25848	delivery	trace	0	frame=19380 obj=4668 AmericaJetA10Thunderbolt pos=(1462,278,163) target=(1556,373) dist2d=134 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+793	01dd5bca4e1a79eb	227131493319	2412	25848	delivery	trace	0	frame=19380 obj=4667 AmericaJetA10Thunderbolt pos=(1419,336,163) target=(1535,401) dist2d=133 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+794	01dd5bca4eb1ca61	227141412345	2412	25848	delivery	trace	0	frame=19410 obj=4667 AmericaJetA10Thunderbolt pos=(1289,235,174) target=(1535,401) dist2d=297 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+795	01dd5bca4eb2c9d0	227141473347	2412	25848	delivery	trace	0	frame=19410 obj=4666 AmericaJetA10Thunderbolt pos=(1281,187,191) target=(1532,376) dist2d=314 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+796	01dd5bca4eb3180a	227141496175	2412	25848	delivery	trace	0	frame=19410 obj=4668 AmericaJetA10Thunderbolt pos=(1332,177,196) target=(1556,373) dist2d=298 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+797	01dd5bca4f4a57fc	227151409038	2412	25848	delivery	trace	0	frame=19440 obj=4667 AmericaJetA10Thunderbolt pos=(1158,134,243) target=(1535,401) dist2d=461 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+798	01dd5bca4f4b6730	227151475702	2412	25848	delivery	trace	0	frame=19440 obj=4668 AmericaJetA10Thunderbolt pos=(1202,76,262) target=(1556,373) dist2d=462 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+799	01dd5bca4f4bb524	227151496836	2412	25848	delivery	trace	0	frame=19440 obj=4666 AmericaJetA10Thunderbolt pos=(1151,86,260) target=(1532,376) dist2d=479 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+800	01dd5bca4fe3022e	227161411878	2412	25848	delivery	trace	0	frame=19470 obj=4666 AmericaJetA10Thunderbolt pos=(1021,-15,249) target=(1532,376) dist2d=643 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+801	01dd5bca4fe41f3c	227161484877	2412	25848	delivery	trace	0	frame=19470 obj=4667 AmericaJetA10Thunderbolt pos=(1028,33,240) target=(1535,401) dist2d=626 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+802	01dd5bca4fe56bc0	227161570139	2412	25848	delivery	trace	0	frame=19470 obj=4668 AmericaJetA10Thunderbolt pos=(1072,-25,260) target=(1556,373) dist2d=627 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+803	01dd5bca507c858e	227171472102	2412	25848	delivery	trace	0	frame=19500 obj=4668 AmericaJetA10Thunderbolt pos=(942,-126,202) target=(1556,373) dist2d=792 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+804	01dd5bca507cfa82	227171497766	2412	25848	delivery	trace	0	frame=19500 obj=4667 AmericaJetA10Thunderbolt pos=(898,-68,215) target=(1535,401) dist2d=790 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+805	01dd5bca507d48f7	227171521802	2412	25848	delivery	trace	0	frame=19500 obj=4666 AmericaJetA10Thunderbolt pos=(891,-115,200) target=(1532,376) dist2d=808 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+806	01dd5bca5114d8cf	227181462266	2412	25848	delivery	trace	0	frame=19530 obj=4667 AmericaJetA10Thunderbolt pos=(768,-169,184) target=(1535,401) dist2d=955 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+807	01dd5bca51163ded	227181542391	2412	25848	delivery	trace	0	frame=19530 obj=4668 AmericaJetA10Thunderbolt pos=(811,-227,178) target=(1556,373) dist2d=956 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+808	01dd5bca51168bff	227181566950	2412	25848	delivery	trace	0	frame=19530 obj=4666 AmericaJetA10Thunderbolt pos=(760,-216,173) target=(1532,376) dist2d=973 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+809	01dd5bca51ad91be	227191462723	2412	25848	delivery	trace	0	frame=19560 obj=4667 AmericaJetA10Thunderbolt pos=(638,-270,160) target=(1535,401) dist2d=1120 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+810	01dd5bca51ae06bc	227191488768	2412	25848	delivery	trace	0	frame=19560 obj=4668 AmericaJetA10Thunderbolt pos=(681,-328,160) target=(1556,373) dist2d=1121 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+811	01dd5bca51ae5500	227191511223	2412	25848	delivery	trace	0	frame=19560 obj=4666 AmericaJetA10Thunderbolt pos=(630,-317,160) target=(1532,376) dist2d=1137 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+812	01dd5bca52467433	227201481446	2412	25848	delivery	trace	0	frame=19590 obj=4668 AmericaJetA10Thunderbolt pos=(551,-429,160) target=(1556,373) dist2d=1286 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+813	01dd5bca52473dfe	227201539314	2412	25848	delivery	trace	0	frame=19590 obj=4667 AmericaJetA10Thunderbolt pos=(508,-371,160) target=(1535,401) dist2d=1284 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+814	01dd5bca5247b325	227201560467	2412	25848	delivery	trace	0	frame=19590 obj=4666 AmericaJetA10Thunderbolt pos=(500,-418,160) target=(1532,376) dist2d=1302 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+815	01dd5bca52df228e	227211485230	2412	25848	delivery	trace	0	frame=19620 obj=4667 AmericaJetA10Thunderbolt pos=(378,-472,160) target=(1535,401) dist2d=1449 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+816	01dd5bca52e01acf	227211554711	2412	25848	delivery	trace	0	frame=19620 obj=4666 AmericaJetA10Thunderbolt pos=(370,-519,160) target=(1532,376) dist2d=1467 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+817	01dd5bca52e0b6c8	227211593615	2412	25848	delivery	trace	0	frame=19620 obj=4668 AmericaJetA10Thunderbolt pos=(421,-530,160) target=(1556,373) dist2d=1451 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+818	01dd5bca537734bb	227221458918	2412	25848	delivery	trace	0	frame=19650 obj=4667 AmericaJetA10Thunderbolt pos=(248,-573,160) target=(1535,401) dist2d=1614 speed=4.0 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+819	01dd5bca5d4051e5	227385631600	2412	25848	audio_stats	sample	0	free2d=3 free3d=0 playing2d=0 playing3d=25 streams=1 voices_active=26 peak=29 alloc=58 released=27 completions=4322 delivered=4322 starved=0 underruns=0
+820	01dd5bca6eb7945d	227678656106	2412	25848	delivery	start	0	obj=5694 AmericaJetCargoPlane move=(3182,1376) target=(3182,1376) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+821	01dd5bca6eea3d2e	227681981450	2412	25848	delivery	trace	0	frame=21030 obj=5694 AmericaJetCargoPlane pos=(4077,1376,110) target=(3182,1376) dist2d=895 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+822	01dd5bca6f21af8d	227685615598	2412	25848	audio_stats	sample	0	free2d=3 free3d=3 playing2d=0 playing3d=22 streams=1 voices_active=23 peak=29 alloc=58 released=27 completions=4572 delivered=4572 starved=0 underruns=0
+823	01dd5bca6f82eb1f	227691983041	2412	25848	delivery	trace	0	frame=21060 obj=5694 AmericaJetCargoPlane pos=(3952,1376,110) target=(3182,1376) dist2d=770 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+824	01dd5bca701b91d8	227701987538	2412	25848	delivery	trace	0	frame=21090 obj=5694 AmericaJetCargoPlane pos=(3827,1376,110) target=(3182,1376) dist2d=645 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+825	01dd5bca70b41eb1	227711987200	2412	25848	delivery	trace	0	frame=21120 obj=5694 AmericaJetCargoPlane pos=(3702,1376,110) target=(3182,1376) dist2d=520 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+826	01dd5bca714c9320	227721983014	2412	25848	delivery	trace	0	frame=21150 obj=5694 AmericaJetCargoPlane pos=(3577,1376,141) target=(3182,1376) dist2d=395 speed=4.2 ai=1 sm=1 items=6 disabled=0 dead=0 locomotor=1
+827	01dd5bca71e56706	227731991067	2412	25848	delivery	trace	0	frame=21180 obj=5694 AmericaJetCargoPlane pos=(3452,1375,180) target=(3182,1376) dist2d=270 speed=4.2 ai=1 sm=1 items=4 disabled=0 dead=0 locomotor=1
+828	01dd5bca727e371b	227742010167	2412	25848	delivery	trace	0	frame=21210 obj=5694 AmericaJetCargoPlane pos=(3327,1375,193) target=(3182,1376) dist2d=145 speed=4.2 ai=1 sm=1 items=2 disabled=0 dead=0 locomotor=1
+829	01dd5bca7314b31c	227751872151	2412	25848	delivery	trace	0	frame=21240 obj=5694 AmericaJetCargoPlane pos=(3207,1375,164) target=(3182,1376) dist2d=25 speed=4.1 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+830	01dd5bca732e5b92	227753547813	2412	25848	delivery	start	0	obj=5777 AmericaJetCargoPlane move=(2565,466) target=(2565,466) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+831	01dd5bca73ad5bfe	227761873972	2412	25848	delivery	trace	0	frame=21270 obj=5777 AmericaJetCargoPlane pos=(2565,-515,110) target=(2565,466) dist2d=981 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+832	01dd5bca73ae4874	227761939334	2412	25848	delivery	trace	0	frame=21270 obj=5694 AmericaJetCargoPlane pos=(3082,1375,115) target=(3182,1376) dist2d=100 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+833	01dd5bca7445d20e	227771870188	2412	25848	special_power	activate	0	src=ChinaCommandCenter power=SuperweaponClusterMines loc=yes disabled=0 ocl=1 createLoc=0
+834	01dd5bca7446d0d9	227771930806	2412	25848	delivery	start	0	obj=5791 ChinaJetCargoPlane move=(2478,2899) target=(2478,2899) deliveryDistance=140 maxAttempts=4 dropDelay=0 fire=0
+835	01dd5bca74474641	227771959736	2412	25848	delivery	trace	0	frame=21300 obj=5694 AmericaJetCargoPlane pos=(2957,1375,112) target=(3182,1376) dist2d=225 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+836	01dd5bca74479430	227771981383	2412	25848	delivery	trace	0	frame=21300 obj=5777 AmericaJetCargoPlane pos=(2565,-390,110) target=(2565,466) dist2d=856 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+837	01dd5bca74de8add	227781874687	2412	25848	delivery	trace	0	frame=21330 obj=5777 AmericaJetCargoPlane pos=(2565,-265,113) target=(2565,466) dist2d=731 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+838	01dd5bca74df8e5f	227781940035	2412	25848	delivery	trace	0	frame=21330 obj=5791 ChinaJetCargoPlane pos=(1999,3550,131) target=(2478,2899) dist2d=808 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+839	01dd5bca74e078b9	227782005126	2412	25848	delivery	trace	0	frame=21330 obj=5694 AmericaJetCargoPlane pos=(2832,1374,112) target=(3182,1376) dist2d=350 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+840	01dd5bca753f87c8	227788231629	2412	25848	delivery	start	0	obj=5793 AmericaJetCargoPlane move=(2664,556) target=(2664,556) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+841	01dd5bca7577671e	227791891539	2412	25848	delivery	trace	0	frame=21360 obj=5694 AmericaJetCargoPlane pos=(2707,1374,112) target=(3182,1376) dist2d=475 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+842	01dd5bca75785010	227791951881	2412	25848	delivery	trace	0	frame=21360 obj=5793 AmericaJetCargoPlane pos=(2664,-573,110) target=(2664,556) dist2d=1130 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+843	01dd5bca75789df5	227791970870	2412	25848	delivery	trace	0	frame=21360 obj=5777 AmericaJetCargoPlane pos=(2565,-140,126) target=(2565,466) dist2d=606 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+844	01dd5bca7578ec07	227791989088	2412	25848	delivery	trace	0	frame=21360 obj=5791 ChinaJetCargoPlane pos=(2098,3413,144) target=(2478,2899) dist2d=639 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+845	01dd5bca76100bad	227801892724	2412	25848	delivery	trace	0	frame=21390 obj=5791 ChinaJetCargoPlane pos=(2198,3276,182) target=(2478,2899) dist2d=470 speed=4.2 ai=1 sm=0 items=1 disabled=0 dead=0 locomotor=1
+846	01dd5bca761113d0	227801960715	2412	25848	delivery	trace	0	frame=21390 obj=5777 AmericaJetCargoPlane pos=(2565,-15,160) target=(2565,466) dist2d=481 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+847	01dd5bca7611d76f	227802014158	2412	25848	delivery	trace	0	frame=21390 obj=5694 AmericaJetCargoPlane pos=(2582,1374,113) target=(3182,1376) dist2d=600 speed=4.2 ai=1 sm=4 items=0 disabled=0 dead=0 locomotor=1
+848	01dd5bca76121243	227802030632	2412	25848	delivery	trace	0	frame=21390 obj=5793 AmericaJetCargoPlane pos=(2664,-448,110) target=(2664,556) dist2d=1005 speed=4.2 ai=1 sm=0 items=6 disabled=0 dead=0 locomotor=1
+849	01dd5bca78508268	227839679629	2412	25848	delivery	start	0	obj=5817 AmericaJetCargoPlane move=(3121,2511) target=(3121,2511) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+850	01dd5bca7bfde30f	227901369404	2412	25848	delivery	start	0	obj=5885 AmericaJetCargoPlane move=(2998,2615) target=(2998,2615) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+851	01dd5bca8101f7f4	227985528514	2412	25848	audio_stats	sample	0	free2d=3 free3d=16 playing2d=0 playing3d=9 streams=1 voices_active=10 peak=29 alloc=58 released=27 completions=4837 delivered=4837 starved=0 underruns=0
+852	01dd5bca8ed0d4f4	228217183026	2412	25848	skirmish_ui	layout	0	starting_cash combo=(57,339 156x24) game_speed_remnants_hidden=0
+853	01dd5bca8ee7e400	228218700904	2412	25848	terrain_roads_load	begin	0	
+854	01dd5bca8ee957fd	228218792201	2412	25848	terrain_roads_load	complete	0	
+855	01dd5bca8ee9a5d6	228218814805	2412	25848	terrain_bridges_load	begin	0	
+856	01dd5bca8eea08ac	228218840585	2412	25848	terrain_bridges_load	complete	0	
+857	01dd5bca92e3b2f7	228285528723	2412	25848	audio_stats	sample	0	free2d=3 free3d=1 playing2d=0 playing3d=24 streams=1 voices_active=26 peak=29 alloc=66 released=35 completions=5022 delivered=5022 starved=0 underruns=0
+858	01dd5bca974bae62	228359452944	2412	25848	terrain_roads_load	begin	0	
+859	01dd5bca974c725e	228359507644	2412	25848	terrain_roads_load	complete	0	
+860	01dd5bca974cc0c2	228359528301	2412	25848	terrain_bridges_load	begin	0	
+861	01dd5bca974d3646	228359554963	2412	25848	terrain_bridges_load	complete	0	
+862	01dd5bca9d12130b	228456346553	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+863	01dd5bca9d12fddf	228456405876	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+864	01dd5bcaa4c7944f	228585674628	2412	25848	audio_stats	sample	0	free2d=3 free3d=22 playing2d=0 playing3d=3 streams=1 voices_active=4 peak=29 alloc=71 released=40 completions=5146 delivered=5146 starved=0 underruns=0
+865	01dd5bcab6aa2726	228885737072	2412	25848	audio_stats	sample	0	free2d=2 free3d=15 playing2d=1 playing3d=10 streams=1 voices_active=12 peak=29 alloc=71 released=40 completions=5231 delivered=5231 starved=0 underruns=0
+866	01dd5bcac88af0a4	229185680724	2412	25848	audio_stats	sample	0	free2d=2 free3d=16 playing2d=1 playing3d=9 streams=1 voices_active=11 peak=29 alloc=72 released=41 completions=5353 delivered=5353 starved=0 underruns=0
+867	01dd5bcada6df632	229485777944	2412	25848	audio_stats	sample	0	free2d=3 free3d=21 playing2d=0 playing3d=4 streams=1 voices_active=5 peak=29 alloc=73 released=42 completions=5467 delivered=5467 starved=0 underruns=0
+868	01dd5bcadb166940	229496809176	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+869	01dd5bcadb174b8d	229496871461	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+870	01dd5bcaec4ed70f	229785719553	2412	25848	audio_stats	sample	0	free2d=2 free3d=19 playing2d=1 playing3d=6 streams=1 voices_active=8 peak=29 alloc=75 released=44 completions=5577 delivered=5577 starved=0 underruns=0
+871	01dd5bcafe30284f	230085705816	2412	25848	audio_stats	sample	0	free2d=1 free3d=21 playing2d=2 playing3d=4 streams=1 voices_active=7 peak=29 alloc=75 released=44 completions=5682 delivered=5682 starved=0 underruns=0
+872	01dd5bcb1012c6c9	230385764130	2412	25848	audio_stats	sample	0	free2d=3 free3d=22 playing2d=0 playing3d=3 streams=1 voices_active=4 peak=29 alloc=75 released=44 completions=5848 delivered=5848 starved=0 underruns=0
+873	01dd5bcb1eaf8b60	230630919810	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+874	01dd5bcb1eb077a8	230630984514	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+875	01dd5bcb21f3e866	230685735535	2412	25848	audio_stats	sample	0	free2d=3 free3d=20 playing2d=0 playing3d=5 streams=1 voices_active=6 peak=29 alloc=78 released=47 completions=5925 delivered=5925 starved=0 underruns=0
+876	01dd5bcb33d55ff7	230985720240	2412	25848	audio_stats	sample	0	free2d=3 free3d=21 playing2d=0 playing3d=4 streams=1 voices_active=5 peak=29 alloc=78 released=47 completions=6021 delivered=6021 starved=0 underruns=0
+877	01dd5bcb45b82750	231285796832	2412	25848	audio_stats	sample	0	free2d=3 free3d=18 playing2d=0 playing3d=7 streams=1 voices_active=8 peak=29 alloc=78 released=47 completions=6138 delivered=6138 starved=0 underruns=0
+878	01dd5bcb57985209	231585705378	2412	25848	audio_stats	sample	0	free2d=3 free3d=17 playing2d=0 playing3d=8 streams=1 voices_active=9 peak=29 alloc=78 released=47 completions=6277 delivered=6277 starved=0 underruns=0
+879	01dd5bcb697aef60	231885762391	2412	25848	audio_stats	sample	0	free2d=1 free3d=20 playing2d=2 playing3d=5 streams=1 voices_active=8 peak=29 alloc=78 released=47 completions=6407 delivered=6407 starved=0 underruns=0
+880	01dd5bcb6e317dc8	231964837806	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+881	01dd5bcb6e326cbb	231964903968	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+882	01dd5bcb7b5d185c	232185801836	2412	25848	audio_stats	sample	0	free2d=3 free3d=19 playing2d=0 playing3d=6 streams=1 voices_active=7 peak=29 alloc=78 released=47 completions=6501 delivered=6501 starved=0 underruns=0
+883	01dd5bcb7cff25c7	232213200555	2412	25848	delivery	start	0	obj=3126 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+884	01dd5bcb8d3f2ed3	232485826813	2412	25848	audio_stats	sample	0	free2d=3 free3d=3 playing2d=0 playing3d=22 streams=2 voices_active=24 peak=29 alloc=79 released=47 completions=6648 delivered=6648 starved=0 underruns=0
+885	01dd5bcb9e3ee6a1	232771021207	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+886	01dd5bcb9f2086ab	232785809960	2412	25848	audio_stats	sample	0	free2d=3 free3d=1 playing2d=0 playing3d=24 streams=1 voices_active=26 peak=29 alloc=82 released=51 completions=6881 delivered=6881 starved=0 underruns=0
+887	01dd5bcbb101b2a7	233085783063	2412	25848	audio_stats	sample	0	free2d=3 free3d=0 playing2d=0 playing3d=25 streams=1 voices_active=26 peak=29 alloc=82 released=51 completions=7076 delivered=7076 starved=0 underruns=0
+888	01dd5bcbb8836c5f	233211721753	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+889	01dd5bcbb88457c0	233211779662	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+890	01dd5bcbb884a5cc	233211803690	2412	25848	delivery	start	0	obj=5041 AmericaJetA10Thunderbolt move=(1536,384) target=(1536,384) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+891	01dd5bcbb8850888	233211825239	2412	25848	delivery	start	0	obj=5042 AmericaJetA10Thunderbolt move=(1542,433) target=(1539,408) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+892	01dd5bcbbc0a724e	233270900464	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+893	01dd5bcbc2e3ab51	233385800445	2412	25848	audio_stats	sample	0	free2d=2 free3d=7 playing2d=1 playing3d=18 streams=1 voices_active=20 peak=29 alloc=83 released=52 completions=7234 delivered=7234 starved=0 underruns=0
+894	01dd5bcbc4866c58	233413241635	2412	25848	delivery	start	0	obj=5311 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+895	01dd5bcbd4c5555d	233685807196	2412	25848	audio_stats	sample	0	free2d=3 free3d=20 playing2d=0 playing3d=5 streams=1 voices_active=6 peak=29 alloc=83 released=52 completions=7369 delivered=7369 starved=0 underruns=0
+896	01dd5bcbe578dd6c	233966007357	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+897	01dd5bcbe579eb96	233966071620	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+898	01dd5bcbe6a73fa1	233985820574	2412	25848	audio_stats	sample	0	free2d=3 free3d=23 playing2d=0 playing3d=2 streams=1 voices_active=3 peak=29 alloc=83 released=52 completions=7495 delivered=7495 starved=0 underruns=0
+899	01dd5bcbec2bfa38	234078411112	2412	25848	delivery	start	0	obj=6139 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+900	01dd5bcbf8883582	234285782436	2412	25848	audio_stats	sample	0	free2d=3 free3d=24 playing2d=0 playing3d=1 streams=1 voices_active=2 peak=29 alloc=83 released=52 completions=7590 delivered=7590 starved=0 underruns=0
+901	01dd5bcc0a68f594	234585716260	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=29 alloc=83 released=52 completions=7723 delivered=7723 starved=0 underruns=0
+902	01dd5bcc0c0faf8a	234613421878	2412	25848	delivery	start	0	obj=6439 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+903	01dd5bcc1c4b7132	234885778906	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=29 alloc=83 released=52 completions=7903 delivered=7903 starved=0 underruns=0
+904	01dd5bcc26f6a56f	235064766527	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+905	01dd5bcc26f77cbe	235064824663	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+906	01dd5bcc2d4bf369	235171018682	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+907	01dd5bcc2e2dd287	235185824564	2412	25848	audio_stats	sample	0	free2d=3 free3d=21 playing2d=0 playing3d=4 streams=1 voices_active=7 peak=29 alloc=87 released=56 completions=7965 delivered=7965 starved=0 underruns=0
+908	01dd5bcc30f415b9	235232369041	2412	25848	delivery	start	0	obj=7120 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+909	01dd5bcc33b1defd	235278363835	2412	25848	delivery	start	0	obj=7134 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+910	01dd5bcc365677d8	235322703327	2412	25848	delivery	start	0	obj=7147 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+911	01dd5bcc400f7cfa	235485829668	2412	25848	audio_stats	sample	0	free2d=1 free3d=21 playing2d=2 playing3d=4 streams=1 voices_active=7 peak=29 alloc=88 released=57 completions=8080 delivered=8080 starved=0 underruns=0
+912	01dd5bcc48859257	235627779779	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+913	01dd5bcc488685f4	235627847424	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+914	01dd5bcc4886d409	235627867693	2412	25848	delivery	start	0	obj=7209 AmericaJetA10Thunderbolt move=(947,1589) target=(947,1589) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+915	01dd5bcc4887223c	235627886989	2412	25848	delivery	start	0	obj=7210 AmericaJetA10Thunderbolt move=(977,1628) target=(962,1608) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+916	01dd5bcc4b1b13b3	235671131254	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+917	01dd5bcc51f168f2	235785840591	2412	25848	audio_stats	sample	0	free2d=3 free3d=14 playing2d=0 playing3d=11 streams=1 voices_active=12 peak=29 alloc=88 released=57 completions=8223 delivered=8223 starved=0 underruns=0
+918	01dd5bcc53959f52	235813386667	2412	25848	delivery	start	0	obj=7335 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+919	01dd5bcc578a0480	235879735258	2412	25848	delivery	start	0	obj=7435 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+920	01dd5bcc5f715a8d	236012328420	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+921	01dd5bcc5f726da9	236012403602	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+922	01dd5bcc63d3005d	236085843772	2412	25848	audio_stats	sample	0	free2d=3 free3d=20 playing2d=0 playing3d=5 streams=1 voices_active=6 peak=29 alloc=89 released=58 completions=8450 delivered=8450 starved=0 underruns=0
+923	01dd5bcc75b51d29	236385873251	2412	25848	audio_stats	sample	0	free2d=1 free3d=18 playing2d=2 playing3d=7 streams=1 voices_active=10 peak=29 alloc=89 released=58 completions=8575 delivered=8575 starved=0 underruns=0
+924	01dd5bcc787b5e96	236432423702	2412	25848	delivery	start	0	obj=7834 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+925	01dd5bcc7b3985a1	236478438581	2412	25848	delivery	start	0	obj=7994 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+926	01dd5bcc7dde0a97	236522768937	2412	25848	delivery	start	0	obj=8057 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+927	01dd5bcc879827b3	236685965591	2412	25848	audio_stats	sample	0	free2d=2 free3d=16 playing2d=1 playing3d=9 streams=1 voices_active=11 peak=29 alloc=89 released=58 completions=8779 delivered=8779 starved=0 underruns=0
+928	01dd5bcc997a455a	236985994053	2412	25848	audio_stats	sample	0	free2d=2 free3d=15 playing2d=1 playing3d=10 streams=1 voices_active=12 peak=29 alloc=90 released=59 completions=8940 delivered=8940 starved=0 underruns=0
+929	01dd5bcc9b1c1bf4	237013377797	2412	25848	delivery	start	0	obj=8986 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+930	01dd5bcc9f102f05	237079710482	2412	25848	delivery	start	0	obj=9107 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+931	01dd5bcca9e55884	237261448259	2412	25848	delivery	start	0	obj=9216 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+932	01dd5bccab5d540d	237286086597	2412	25848	audio_stats	sample	0	free2d=3 free3d=19 playing2d=0 playing3d=6 streams=1 voices_active=7 peak=29 alloc=93 released=62 completions=9183 delivered=9183 starved=0 underruns=0
+933	01dd5bccbc592f66	237571030890	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+934	01dd5bccbd3da474	237586002481	2412	25848	audio_stats	sample	0	free2d=3 free3d=16 playing2d=0 playing3d=9 streams=1 voices_active=10 peak=29 alloc=93 released=62 completions=9301 delivered=9301 starved=0 underruns=0
+935	01dd5bccbf1c6b68	237617374663	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+936	01dd5bccbf1d60ad	237617439799	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+937	01dd5bccc0017634	237632385530	2412	25848	delivery	start	0	obj=9372 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+938	01dd5bccc2bf4881	237678388009	2412	25848	delivery	start	0	obj=9387 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+939	01dd5bccc563d7d8	237722725519	2412	25848	delivery	start	0	obj=9401 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+940	01dd5bcccf1fc239	237886035151	2412	25848	audio_stats	sample	0	free2d=3 free3d=19 playing2d=0 playing3d=6 streams=1 voices_active=7 peak=29 alloc=94 released=63 completions=9439 delivered=9439 starved=0 underruns=0
+941	01dd5bccda27fc98	238071124809	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+942	01dd5bcce10157db	238186032807	2412	25848	audio_stats	sample	0	free2d=1 free3d=0 playing2d=2 playing3d=25 streams=1 voices_active=28 peak=29 alloc=94 released=63 completions=9551 delivered=9551 starved=0 underruns=0
+943	01dd5bcce2a3b0e6	238213445131	2412	25848	delivery	start	0	obj=9881 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+944	01dd5bcce697d327	238279783336	2412	25848	delivery	start	0	obj=9948 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+945	01dd5bccf16a6f7b	238461348587	2412	25848	delivery	start	0	obj=10206 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+946	01dd5bccf2e4a716	238486136245	2412	25848	audio_stats	sample	0	free2d=3 free3d=17 playing2d=0 playing3d=8 streams=1 voices_active=9 peak=29 alloc=94 released=63 completions=9864 delivered=9864 starved=0 underruns=0
+947	01dd5bccf44171d9	238509001343	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+948	01dd5bccf44280ef	238509070473	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+949	01dd5bccf442cf41	238509091548	2412	25848	delivery	start	0	obj=10221 AmericaJetA10Thunderbolt move=(911,1734) target=(911,1734) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+950	01dd5bccf4431d58	238509112866	2412	25848	delivery	start	0	obj=10222 AmericaJetA10Thunderbolt move=(943,1771) target=(927,1752) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+951	01dd5bcd03934381	238766018319	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+952	01dd5bcd03945e0a	238766090350	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+953	01dd5bcd04c54169	238786067723	2412	25848	audio_stats	sample	0	free2d=3 free3d=9 playing2d=0 playing3d=16 streams=1 voices_active=17 peak=29 alloc=94 released=63 completions=10019 delivered=10019 starved=0 underruns=0
+954	01dd5bcd0788f463	238832450525	2412	25848	delivery	start	0	obj=10350 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+955	01dd5bcd0a46f8c7	238878461929	2412	25848	delivery	start	0	obj=10399 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+956	01dd5bcd0cec0cbd	238922836383	2412	25848	delivery	start	0	obj=10412 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+957	01dd5bcd16a7a578	239086120537	2412	25848	audio_stats	sample	0	free2d=2 free3d=19 playing2d=1 playing3d=6 streams=1 voices_active=8 peak=29 alloc=95 released=64 completions=10199 delivered=10199 starved=0 underruns=0
+958	01dd5bcd28895fa9	239386126467	2412	25848	audio_stats	sample	0	free2d=3 free3d=23 playing2d=0 playing3d=2 streams=1 voices_active=3 peak=29 alloc=96 released=65 completions=10338 delivered=10338 starved=0 underruns=0
+959	01dd5bcd2a2b0bd9	239413504307	2412	25848	delivery	start	0	obj=10555 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+960	01dd5bcd2e1cc361	239479671734	2412	25848	delivery	start	0	obj=10569 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+961	01dd5bcd38f0e553	239661347544	2412	25848	delivery	start	0	obj=10596 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+962	01dd5bcd3a6b3407	239686144428	2412	25848	audio_stats	sample	0	free2d=3 free3d=18 playing2d=0 playing3d=7 streams=1 voices_active=8 peak=29 alloc=96 released=65 completions=10424 delivered=10424 starved=0 underruns=0
+963	01dd5bcd4b66b714	239971062346	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+964	01dd5bcd4c4b9291	239986058593	2412	25848	audio_stats	sample	0	free2d=3 free3d=7 playing2d=0 playing3d=18 streams=1 voices_active=19 peak=29 alloc=96 released=65 completions=10503 delivered=10503 starved=0 underruns=0
+965	01dd5bcd4f0f40cc	240032434706	2412	25848	delivery	start	0	obj=10663 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+966	01dd5bcd51cd312d	240078436315	2412	25848	delivery	start	0	obj=10678 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+967	01dd5bcd5471e1de	240122782660	2412	25848	delivery	start	0	obj=10701 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+968	01dd5bcd5e2cefcd	240286038471	2412	25848	audio_stats	sample	0	free2d=2 free3d=15 playing2d=1 playing3d=10 streams=1 voices_active=12 peak=29 alloc=97 released=66 completions=10786 delivered=10786 starved=0 underruns=0
+969	01dd5bcd68e317b5	240465746716	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+970	01dd5bcd68e4b327	240465853501	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+971	01dd5bcd6934c212	240471106162	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+972	01dd5bcd700dd46a	240585994365	2412	25848	audio_stats	sample	0	free2d=2 free3d=17 playing2d=1 playing3d=8 streams=1 voices_active=10 peak=29 alloc=99 released=68 completions=10865 delivered=10865 starved=0 underruns=0
+973	01dd5bcd71af9d62	240613371882	2412	25848	delivery	start	0	obj=10904 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+974	01dd5bcd75a3b68e	240679702686	2412	25848	delivery	start	0	obj=10921 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+975	01dd5bcd80788f45	240861420377	2412	25848	delivery	start	0	obj=10946 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+976	01dd5bcd81f0368c	240886040751	2412	25848	audio_stats	sample	0	free2d=3 free3d=15 playing2d=0 playing3d=10 streams=1 voices_active=11 peak=29 alloc=99 released=68 completions=10996 delivered=10996 starved=0 underruns=0
+977	01dd5bcd93d1b1ca	241186033822	2412	25848	audio_stats	sample	0	free2d=3 free3d=19 playing2d=0 playing3d=6 streams=1 voices_active=7 peak=29 alloc=102 released=71 completions=11280 delivered=11280 starved=0 underruns=0
+978	01dd5bcd9532497b	241209138866	2412	25848	special_power	dispatch	0	id=2 power=SuperweaponDaisyCutter source=AmericaCommandCenter module=1 canDo=1
+979	01dd5bcd95334971	241209203189	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponDaisyCutter loc=yes disabled=0 ocl=1 createLoc=0
+980	01dd5bcd9533ac18	241209230649	2412	25848	delivery	start	0	obj=11407 AmericaJetB52 move=(790,1217) target=(790,1217) deliveryDistance=140 maxAttempts=1 dropDelay=0 fire=0
+981	01dd5bcd9696dad5	241232500175	2412	25848	delivery	start	0	obj=11410 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+982	01dd5bcd9715be2d	241240821080	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+983	01dd5bcd971694df	241240880352	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+984	01dd5bcd9716e2fc	241240900043	2412	25848	delivery	start	0	obj=11424 AmericaJetA10Thunderbolt move=(781,1342) target=(781,1342) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+985	01dd5bcd97174500	241240920176	2412	25848	delivery	start	0	obj=11425 AmericaJetA10Thunderbolt move=(808,1383) target=(794,1362) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+986	01dd5bcd9717938f	241240940093	2412	25848	delivery	start	0	obj=11426 AmericaJetA10Thunderbolt move=(822,1315) target=(801,1328) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+987	01dd5bcd99526ec6	241278355498	2412	25848	delivery	start	0	obj=11428 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+988	01dd5bcd9bf710cc	241322691603	2412	25848	delivery	start	0	obj=11443 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+989	01dd5bcda5b46fdb	241486100823	2412	25848	audio_stats	sample	0	free2d=3 free3d=0 playing2d=0 playing3d=25 streams=1 voices_active=26 peak=29 alloc=102 released=71 completions=11455 delivered=11455 starved=0 underruns=0
+990	01dd5bcdb795cda8	241786083574	2412	25848	audio_stats	sample	0	free2d=3 free3d=20 playing2d=0 playing3d=5 streams=1 voices_active=6 peak=29 alloc=103 released=72 completions=11646 delivered=11646 starved=0 underruns=0
+991	01dd5bcdb93796c8	241813459463	2412	25848	delivery	start	0	obj=11963 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+992	01dd5bcdbd2c5887	241879831485	2412	25848	delivery	start	0	obj=12126 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+993	01dd5bcdc7ff639f	242061434531	2412	25848	delivery	start	0	obj=12373 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+994	01dd5bcdc9771209	242086055417	2412	25848	audio_stats	sample	0	free2d=2 free3d=5 playing2d=1 playing3d=20 streams=1 voices_active=22 peak=29 alloc=104 released=73 completions=11853 delivered=11853 starved=0 underruns=0
+995	01dd5bcdd1c0a5a0	242225098464	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+996	01dd5bcdd1c1b7f1	242225164878	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+997	01dd5bcdda7488f9	242371102664	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+998	01dd5bcddb58d73d	242386067356	2412	25848	audio_stats	sample	0	free2d=2 free3d=20 playing2d=1 playing3d=5 streams=1 voices_active=7 peak=29 alloc=105 released=74 completions=12012 delivered=12012 starved=0 underruns=0
+999	01dd5bcdde1c8c3f	242432449601	2412	25848	delivery	start	0	obj=12442 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1000	01dd5bcde0dab5b8	242478464237	2412	25848	delivery	start	0	obj=12455 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1001	01dd5bcde37f4d47	242522802674	2412	25848	delivery	start	0	obj=12472 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1002	01dd5bcded3bc984	242686151469	2412	25848	audio_stats	sample	0	free2d=3 free3d=17 playing2d=0 playing3d=8 streams=1 voices_active=9 peak=29 alloc=106 released=75 completions=12225 delivered=12225 starved=0 underruns=0
+1003	01dd5bcdf24b667b	242771068219	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponAnthraxBomb loc=yes disabled=0 ocl=1 createLoc=0
+1004	01dd5bcdf24cbf92	242771148656	2412	25848	delivery	start	0	obj=12876 GLAJetCargoPlane move=(2874,2590) target=(2874,2590) deliveryDistance=140 maxAttempts=1 dropDelay=0 fire=0
+1005	01dd5bcdff1ef150	242986251488	2412	25848	audio_stats	sample	0	free2d=3 free3d=0 playing2d=0 playing3d=25 streams=1 voices_active=26 peak=29 alloc=107 released=76 completions=12525 delivered=12525 starved=0 underruns=0
+1006	01dd5bce00be275e	243013460842	2412	25848	delivery	start	0	obj=13153 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1007	01dd5bce04b23e6d	243079797648	2412	25848	delivery	start	0	obj=13192 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1008	01dd5bce0f857684	243261412277	2412	25848	delivery	start	0	obj=13409 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1009	01dd5bce10ffdb0d	243286206489	2412	25848	audio_stats	sample	0	free2d=3 free3d=15 playing2d=0 playing3d=10 streams=1 voices_active=11 peak=29 alloc=107 released=76 completions=12715 delivered=12715 starved=0 underruns=0
+1010	01dd5bce22e2c17d	243586285032	2412	25848	audio_stats	sample	0	free2d=2 free3d=11 playing2d=1 playing3d=14 streams=1 voices_active=16 peak=29 alloc=110 released=79 completions=12930 delivered=12930 starved=0 underruns=0
+1011	01dd5bce25a1f497	243632370158	2412	25848	delivery	start	0	obj=13652 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1012	01dd5bce28602c13	243678394455	2412	25848	delivery	start	0	obj=13666 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1013	01dd5bce2b04a977	243722728891	2412	25848	delivery	start	0	obj=13683 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1014	01dd5bce31b25fb2	243834776757	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+1015	01dd5bce31b375de	243834843989	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+1016	01dd5bce34c42c54	243886272093	2412	25848	audio_stats	sample	0	free2d=3 free3d=12 playing2d=0 playing3d=13 streams=1 voices_active=14 peak=29 alloc=110 released=79 completions=13129 delivered=13129 starved=0 underruns=0
+1017	01dd5bce3bf89619	244007149332	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+1018	01dd5bce3bf98056	244007206608	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+1019	01dd5bce3bf9bb8a	244007228623	2412	25848	delivery	start	0	obj=13829 AmericaJetA10Thunderbolt move=(816,1163) target=(816,1163) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+1020	01dd5bce3bfa09c6	244007249678	2412	25848	delivery	start	0	obj=13830 AmericaJetA10Thunderbolt move=(841,1206) target=(829,1185) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+1021	01dd5bce3bfa57e3	244007270652	2412	25848	delivery	start	0	obj=13831 AmericaJetA10Thunderbolt move=(860,1139) target=(838,1151) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+1022	01dd5bce46a47d4d	244186188129	2412	25848	audio_stats	sample	0	free2d=3 free3d=20 playing2d=0 playing3d=5 streams=1 voices_active=6 peak=29 alloc=110 released=79 completions=13254 delivered=13254 starved=0 underruns=0
+1023	01dd5bce4843ad82	244213402135	2412	25848	delivery	start	0	obj=13841 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1024	01dd5bce4c38c8a7	244279795217	2412	25848	delivery	start	0	obj=13973 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1025	01dd5bce570b2bb8	244461356185	2412	25848	delivery	start	0	obj=14127 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1026	01dd5bce5885aacc	244486156510	2412	25848	audio_stats	sample	0	free2d=3 free3d=15 playing2d=0 playing3d=10 streams=1 voices_active=11 peak=29 alloc=111 released=80 completions=13445 delivered=13445 starved=0 underruns=0
+1027	01dd5bce698126d6	244771071797	2412	25848	special_power	activate	0	src=GLACommandCenter power=SuperweaponRebelAmbush loc=yes disabled=0 ocl=1 createLoc=2
+1028	01dd5bce6a67fc3f	244786204263	2412	25848	audio_stats	sample	0	free2d=2 free3d=16 playing2d=1 playing3d=9 streams=2 voices_active=12 peak=29 alloc=112 released=80 completions=13590 delivered=13590 starved=0 underruns=0
+1029	01dd5bce6bbb60b1	244808446408	2412	25848	special_power	dispatch	0	id=16 power=SpecialPowerSpyDrone source=AmericaCommandCenter module=1 canDo=1
+1030	01dd5bce6bbc7441	244808513853	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SpecialPowerSpyDrone loc=yes disabled=0 ocl=1 createLoc=4
+1031	01dd5bce6d29e7c5	244832463026	2412	25848	delivery	start	0	obj=14830 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1032	01dd5bce6fe7b0fe	244878461069	2412	25848	delivery	start	0	obj=14893 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1033	01dd5bce728c5575	244922799150	2412	25848	delivery	start	0	obj=14918 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1034	01dd5bce7c48e62e	245086159484	2412	25848	audio_stats	sample	0	free2d=3 free3d=3 playing2d=0 playing3d=22 streams=1 voices_active=23 peak=29 alloc=113 released=82 completions=13842 delivered=13842 starved=0 underruns=0
+1035	01dd5bce8e2cc80f	245386300934	2412	25848	audio_stats	sample	0	free2d=3 free3d=12 playing2d=0 playing3d=13 streams=1 voices_active=14 peak=29 alloc=115 released=84 completions=14118 delivered=14118 starved=0 underruns=0
+1036	01dd5bce8fca0914	245413390481	2412	25848	delivery	start	0	obj=15358 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1037	01dd5bce93bf049a	245479776831	2412	25848	delivery	start	0	obj=15456 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1038	01dd5bce98df1b7a	245565757224	2412	25848	special_power	dispatch	0	id=2 power=SuperweaponDaisyCutter source=AmericaCommandCenter module=1 canDo=1
+1039	01dd5bce98dfff9a	245565823823	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponDaisyCutter loc=yes disabled=0 ocl=1 createLoc=0
+1040	01dd5bce98e0ea38	245565878130	2412	25848	delivery	start	0	obj=15681 AmericaJetB52 move=(615,1636) target=(615,1636) deliveryDistance=140 maxAttempts=1 dropDelay=0 fire=0
+1041	01dd5bce9e9275f4	245661400589	2412	25848	delivery	start	0	obj=15843 AmericaJetCargoPlane move=(2824,2499) target=(2824,2499) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1042	01dd5bcea00f176c	245686346140	2412	25848	audio_stats	sample	0	free2d=3 free3d=3 playing2d=0 playing3d=22 streams=1 voices_active=24 peak=29 alloc=116 released=85 completions=14415 delivered=14415 starved=0 underruns=0
+1043	01dd5bceb1f1082d	245986368675	2412	25848	audio_stats	sample	0	free2d=3 free3d=9 playing2d=0 playing3d=16 streams=1 voices_active=17 peak=29 alloc=118 released=87 completions=14743 delivered=14743 starved=0 underruns=0
+1044	01dd5bceb4afefc0	246032430900	2412	25848	delivery	start	0	obj=16496 AmericaJetCargoPlane move=(2912,2583) target=(2912,2583) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1045	01dd5bceb76d0860	246078374982	2412	25848	delivery	start	0	obj=16598 AmericaJetCargoPlane move=(3045,2640) target=(3045,2640) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1046	01dd5bceba10d34f	246122677608	2412	25848	delivery	start	0	obj=16639 AmericaJetCargoPlane move=(2696,2552) target=(2696,2552) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1047	01dd5bcec3d3e5c2	246286443844	2412	25848	audio_stats	sample	0	free2d=3 free3d=2 playing2d=0 playing3d=23 streams=1 voices_active=24 peak=29 alloc=119 released=88 completions=15076 delivered=15076 starved=0 underruns=0
+1048	01dd5bcecc30a1e0	246426744481	2412	25848	special_power	dispatch	0	id=8 power=SuperweaponA10ThunderboltMissileStrike source=AmericaCommandCenter module=1 canDo=1
+1049	01dd5bcecc318c72	246426804299	2412	25848	special_power	activate	0	src=AmericaCommandCenter power=SuperweaponA10ThunderboltMissileStrike loc=yes disabled=0 ocl=1 createLoc=0
+1050	01dd5bcecc321649	246426840898	2412	25848	delivery	start	0	obj=17308 AmericaJetA10Thunderbolt move=(942,1599) target=(942,1599) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+1051	01dd5bcecc32644d	246426862915	2412	25848	delivery	start	0	obj=17309 AmericaJetA10Thunderbolt move=(972,1638) target=(957,1618) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+1052	01dd5bcecc32d97b	246426883789	2412	25848	delivery	start	0	obj=17310 AmericaJetA10Thunderbolt move=(981,1568) target=(961,1584) deliveryDistance=450 maxAttempts=1 dropDelay=15 fire=0
+1053	01dd5bced5b567a9	246586441127	2412	25848	audio_stats	sample	0	free2d=3 free3d=13 playing2d=0 playing3d=12 streams=1 voices_active=13 peak=29 alloc=121 released=90 completions=15313 delivered=15313 starved=0 underruns=0
+1054	01dd5bced7501fc3	246613351401	2412	25848	delivery	start	0	obj=17407 AmericaJetCargoPlane move=(2905,2782) target=(2905,2782) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1055	01dd5bcedb4434ca	246679680956	2412	25848	delivery	start	0	obj=17438 AmericaJetCargoPlane move=(1610,3141) target=(1610,3141) deliveryDistance=410 maxAttempts=4 dropDelay=11 fire=0
+1056	01dd5bceddced876	246722328089	2412	25848	skirmish_ui	layout	0	starting_cash combo=(57,339 156x24) game_speed_remnants_hidden=0
+1057	01dd5bcedde5c77d	246723823866	2412	25848	terrain_roads_load	begin	0	
+1058	01dd5bcedde6c5ab	246723887336	2412	25848	terrain_roads_load	complete	0	
+1059	01dd5bcedde6ecf0	246723906645	2412	25848	terrain_bridges_load	begin	0	
+1060	01dd5bcedde74f23	246723925911	2412	25848	terrain_bridges_load	complete	0	
+1061	01dd5bcedfc610af	246755305476	2412	25848	engine_cleanup	begin	0	
+1062	01dd5bcedfc914c6	246755501208	2412	25848	display_detach	begin	0	ordinary destructor
+1063	01dd5bcedfc9a10f	246755539953	2412	25848	ui_residency_release	complete	0	live_residencies=0 before backend release
+1064	01dd5bcedfd82337	246756484951	2412	25848	display_detach	complete	0	backend/device released; HWND still owned by WinMain
+1065	01dd5bcedfde8fc5	246756910872	2412	25848	engine_cleanup	complete	0	
+1066	01dd5bcedfdf2be9	246756946297	2412	25848	app_window_release	begin	0	backend and display already destroyed
+1067	01dd5bcedfe19cf0	246757104109	2412	25848	app_window_release	complete	0	
+1068	01dd5bcedfe1eb03	246757127899	2412	25848	minidumper_shutdown	begin	0	
+1069	01dd5bcedfe26053	246757158791	2412	25848	minidumper_shutdown	complete	0	
+1070	01dd5bcedfe2aeb7	246757180508	2412	25848	WinMain	complete	0	exit

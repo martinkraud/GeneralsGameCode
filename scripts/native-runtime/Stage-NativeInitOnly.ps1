@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
-      [Parameter(Mandatory)][string]$AssetSource)
+      [Parameter(Mandatory)][string]$AssetSource,
+      [switch]$ModernExtensions)
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $stage=Get-NativeStage $Title $Name
 if (Test-Path -LiteralPath $stage) { throw 'Fresh stage name required; existing evidence is never overwritten' }
@@ -32,6 +33,15 @@ foreach ($entry in $assets) {
     New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $source $entry.Path) -Destination $target
     if ((Get-FileHash -LiteralPath $target).Hash -ne $entry.SHA256) { throw "Asset copy mismatch: $($entry.Path)" }
+}
+if ($ModernExtensions) {
+    # X64.32: Zero Hour style shortcut sidebar for Generals, generated from the installed retail archives as loose
+    # override files (removing them restores retail). Classic staging simply omits this switch.
+    if ($Title -ne 'Generals') { throw 'Modern extensions are Generals-only' }
+    $python=Get-Command python -ErrorAction SilentlyContinue
+    if (!$python) { throw 'python is required for -ModernExtensions' }
+    & $python.Source (Join-Path $PSScriptRoot 'modern_extensions.py') --game $source --out $game
+    if ($LASTEXITCODE -ne 0) { throw 'modern_extensions.py failed' }
 }
 foreach ($file in @($build.Executable,$build.Pdb)) { Copy-Item -LiteralPath $file -Destination $game }
 $dependencies=@(Assert-NativeDependencies (Join-Path $game ([IO.Path]::GetFileName($build.Executable))) $game)

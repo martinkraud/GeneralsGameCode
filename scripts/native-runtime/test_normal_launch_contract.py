@@ -198,5 +198,32 @@ class NormalLaunchContract(unittest.TestCase):
         self.assertIn('checkpoint("special_power", "dispatch"', a)
 
 
+    # ---- X64.32 ----
+    def test_modern_experience_gate_is_single_and_used(self):
+        h = read("Core/GameEngine/Include/Common/ModernExperience.h")
+        self.assertIn("enum Feature", h)
+        self.assertIn("FEATURE_STARTING_CASH", h)
+        c = read("Core/GameEngine/Source/Common/CommandLine.cpp")
+        self.assertIn('{ "-classic", parseClassic }', c)
+        m = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp")
+        self.assertIn("ModernExperience::enabled(ModernExperience::FEATURE_STARTING_CASH)", m)
+
+    def test_zero_hour_save_load_fixes_are_ported(self):
+        s = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/PopupSaveLoad.cpp")
+        # ESC must kill the delete confirmation before the dialog closes (retail crash)
+        i = s.index("deleteConfirm->winHide( TRUE );")
+        self.assertLess(i, s.index("TheWindowManager->winSendSystemMsg( window, GBM_SELECTED,", i - 200))
+        self.assertIn("listboxGames->winEnable( TRUE );", s[i:i + 200])
+        self.assertIn("defaultDesc.truncateBy(4);", s)
+
+    def test_staging_applies_the_overlay_unless_classic(self):
+        a = read("scripts/native-runtime/Stage-NativeOrdinaryPlay.ps1")
+        self.assertIn("-ModernExtensions:(!$Classic)", a)
+        b = read("scripts/native-runtime/Stage-NativeInitOnly.ps1")
+        self.assertIn("modern_extensions.py", b)
+        # the overlay is written before the manifest inventory is taken (so the integrity gate covers it)
+        self.assertLess(b.index("modern_extensions.py"), b.index("Inventory=@(Get-ZHInventory $game)"))
+
+
 if __name__ == "__main__":
     unittest.main()

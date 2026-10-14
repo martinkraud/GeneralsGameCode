@@ -1,12 +1,14 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals')][string]$Title,
-      [Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$AssetSource)
+      [Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$AssetSource,
+      [switch]$Classic)
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
 # Reuse exact asset isolation/copy/inventory rules; never overwrite an old stage.
 $build=Get-NativeBuild $Title
 $null=Assert-NativeGraphicsDependencies $build.Executable (Split-Path $build.Executable -Parent)
-& (Join-Path $PSScriptRoot 'Stage-NativeInitOnly.ps1') -Title $Title -Name $Name -AssetSource $AssetSource
+# Normal-launch candidates carry the modern extension overlay unless -Classic is given.
+& (Join-Path $PSScriptRoot 'Stage-NativeInitOnly.ps1') -Title $Title -Name $Name -AssetSource $AssetSource -ModernExtensions:(!$Classic)
 $manifest=Read-NativeStage $Title $Name
 $host_=[pscustomobject]@{
     Mode=(Get-NativeOrdinaryPlayMode);StagePath=$manifest.StagePath

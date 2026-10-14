@@ -29,6 +29,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/ModernExperience.h"
 #include "Common/StartupDiagnostics.h"
 
 
@@ -129,7 +130,7 @@ static GameWindow *comboBoxStartingCash = nullptr;
 
 static Bool startingCashExtensionEnabled()
 {
-	return TRUE;
+	return ModernExperience::enabled(ModernExperience::FEATURE_STARTING_CASH) ? TRUE : FALSE;
 }
 
 static void startingCashChoices(std::vector<Int> &values)

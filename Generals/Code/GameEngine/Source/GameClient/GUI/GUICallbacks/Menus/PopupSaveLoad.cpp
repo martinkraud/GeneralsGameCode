@@ -331,6 +331,14 @@ WindowMsgHandledType SaveLoadMenuInput( GameWindow *window, UnsignedInt msg, Win
 					if( BitIsSet( state, KEY_STATE_UP ) )
 					{
 						GameWindow *button = TheWindowManager->winGetWindowFromId( parent, buttonBackKey );
+
+						// X64.32: Zero Hour patch 1.01 fix, absent from the Generals source. Leaving with ESC while the
+						// delete confirmation is up left the confirmation alive for the next visit, where "Yes" crashed.
+						// Kill the confirmation and re-enable the list and button frame whenever ESC leaves the dialog.
+						deleteConfirm->winHide( TRUE );
+						listboxGames->winEnable( TRUE );
+						buttonFrame->winEnable( TRUE );
+
 						TheWindowManager->winSendSystemMsg( window, GBM_SELECTED,
 																								(WindowMsgData)button, buttonBackKey );
 
@@ -464,6 +472,12 @@ static void setEditDescription( GameWindow *editControl )
 			defaultDesc.format( L"%S", mapName + 1 );
 		else
 			defaultDesc.format( L"%S", TheGlobalData->m_mapName.str() );
+
+		// X64.32: Zero Hour keeps a file extension out of the descriptive save name.
+		if( (defaultDesc.getLength() >= 4)  &&  (defaultDesc.getCharAt(defaultDesc.getLength()-4) == '.') )
+		{
+			defaultDesc.truncateBy(4);
+		}
 
 	}
 

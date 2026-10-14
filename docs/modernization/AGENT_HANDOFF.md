@@ -125,6 +125,8 @@ Both titles link AMD64. External D3DX helper count is zero; this does not remove
 
 ## Current primary objective and next task
 
+**X64.31 ACCEPTED (2026-10-14, x64-31-fix5).** **X64.32 (original experience completion + frontend/QoL audit) in progress:** audit and plans in `X64_32_ORIGINAL_EXPERIENCE_AUDIT.md`; shortcut-sidebar overlay generated at staging by `scripts/native-runtime/modern_extensions.py` (Generals data only, `-Classic` omits it); `-classic` runtime flag (`Common/ModernExperience.h`); Zero Hour Save/Load dialog fixes ported. Direction: original Generals gameplay and identity, never "fix" retail values; QoL only when it does not alter gameplay.
+
 **X64.31 (2026-10-14) — ORIGINAL GAME EXPERIENCE / NORMAL LAUNCH: offline batch complete, candidate staged,
 awaiting human run.** Authoritative report: `NORMAL_LAUNCH.md`. X64.30 is accepted (evidence preserved under
 `evidence/x64-30-world-ui-completeness/`). Summary: `generalsv.exe` with no diagnostic token is a normal launch

@@ -24,6 +24,7 @@
 
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/ModernExperience.h"
 #include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/DeveloperHarness.h"
@@ -1217,8 +1218,16 @@ static Int parseGroundInterpolation(char *args[], int num)
 	return 1;
 }
 
+// X64.32: original Generals only - disables the code-level modern extensions (see Common/ModernExperience.h).
+static Int parseClassic(char *args[], int num)
+{
+	ModernExperience::setClassic(true);
+	return 1;
+}
+
 static CommandLineParam paramsForStartup[] =
 {
+	{ "-classic", parseClassic },
 	{ "-skipIntro", parseSkipIntro },
 	{ "-performanceScenario", parsePerformanceScenario },
 	{ "-devMode", parseDevMode },
