@@ -30,6 +30,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/ModernExperience.h"
+#include "Common/MatchOptionsLayout.h"
 #include "Common/StartupDiagnostics.h"
 
 
@@ -174,19 +175,18 @@ static void copyStartingCashAppearance(GameWindow *target, GameWindow *source)
 // texts inside the block's rectangle (between the header's left edge and the Battle Honors column, from the
 // slider's top down to the next section) - never by text. Everything else (Battle Honors header, the honors
 // statistics rows, the setup grid) lies outside that rectangle and is not touched.
-static Int hideGameSpeedRemnants(GameWindow *root, GameWindow *header, GameWindow *slider, GameWindow *keep)
+static Int hideGameSpeedRemnants(GameWindow *root, const MatchOptionsLayout::Layout &layout, GameWindow *header,
+                                GameWindow *slider, GameWindow *keep)
 {
+	// X64.33 FIX1: the block rectangle comes from MatchOptionsLayout in the header's own (scaled) coordinates. The
+	// first X64.33 build compared against fixed 14/140 pixel margins, which stopped matching the 12 px/75 px captions
+	// as soon as the UI scale was not 100 %, so "Slower"/"Faster" came back on the modern display.
 	if (!root || !header || !slider)
 		return 0;
-	Int hx, hy, hw, hh, sx, sy, sw, sh;
-	header->winGetScreenPosition(&hx, &hy);
-	header->winGetSize(&hw, &hh);
-	slider->winGetScreenPosition(&sx, &sy);
-	slider->winGetSize(&sw, &sh);
-	const Int left = hx - 4;
-	const Int right = hx + hw + 140;       // the Faster caption ends 75 px right of the header
-	const Int top = sy;                    // slider's top
-	const Int bottom = sy + sh + 14;       // retail captions end 12 px below the slider; honors rows start 17 px lower
+	const Int left = layout.remnantBlock.x;
+	const Int right = layout.remnantBlock.right();
+	const Int top = layout.remnantBlock.y;
+	const Int bottom = layout.remnantBlock.bottom();
 	Int hidden = 0;
 	for (GameWindow *w = root->winGetChild(); w; w = w->winGetNext())
 	{
@@ -202,9 +202,50 @@ static Int hideGameSpeedRemnants(GameWindow *root, GameWindow *header, GameWindo
 			}
 		}
 		if (w->winGetChild())
-			hidden += hideGameSpeedRemnants(w, header, slider, keep);
+			hidden += hideGameSpeedRemnants(w, layout, header, slider, keep);
 	}
 	return hidden;
+}
+
+// Moves the Battle Honors statistics block down by the layout's shift (Zero Hour did the same 7 px) so the two
+// match-option rows fit above it. A window that moves carries its children, so only top-most matches are moved.
+static Int shiftHonorsBlock(GameWindow *root, const MatchOptionsLayout::Layout &layout)
+{
+	if (!root || layout.honorsShift <= 0)
+		return 0;
+	Int moved = 0;
+	for (GameWindow *w = root->winGetChild(); w; w = w->winGetNext())
+	{
+		Int wx, wy, ww, wh;
+		w->winGetScreenPosition(&wx, &wy);
+		w->winGetSize(&ww, &wh);
+		const MatchOptionsLayout::Rect &b = layout.honorsBlockBefore;
+		if (wx >= b.x && wx + ww <= b.right() && wy >= b.y && wy + wh <= b.bottom() && !w->winIsHidden())
+		{
+			Int px, py;
+			w->winGetPosition(&px, &py);
+			w->winSetPosition(px, py + layout.honorsShift);
+			++moved;
+		}
+		else if (w->winGetChild())
+		{
+			moved += shiftHonorsBlock(w, layout);
+		}
+	}
+	return moved;
+}
+
+static MatchOptionsLayout::Layout matchOptionsLayoutFor(GameWindow *header, GameWindow *rowDonor, Bool screenSpace)
+{
+	Int hx, hy, hw, hh, rw, rh;
+	if (screenSpace)
+		header->winGetScreenPosition(&hx, &hy);
+	else
+		header->winGetPosition(&hx, &hy);
+	header->winGetSize(&hw, &hh);
+	rowDonor->winGetSize(&rw, &rh);
+	const double scale = rh > 0 ? rh / 24.0 : 1.0;      // grid rows are 24 reference px tall
+	return MatchOptionsLayout::compute(hx, hy, hw, hh, scale);
 }
 
 // Builds the combo box directly under the reused "Game Speed" section header (relabelled "Starting Cash"),
@@ -225,17 +266,30 @@ static GameWindow *createStartingCashControl(GameWindow *slot, GameWindow *capti
 	GameWindow *combo = TheWindowManager->winGetWindowFromId(parent, comboBoxStartingCashID);
 	if (!combo)
 	{
-		Int x, y, width, height;
-		Int cx, cy, cw, ch;
-		caption->winGetPosition(&cx, &cy);
-		caption->winGetSize(&cw, &ch);
-		Int aw, ah;
-		appearance->winGetSize(&aw, &ah);
-		height = ah;                          // one grid row, like every other combo on this screen
-		x = cx;                               // header's left edge
-		y = cy + ch;                          // flush under the header, like the grid's first row under its header
-		width = cw;                           // header's width
+		// X64.33 FIX1: Match Options block. The header becomes "Match Options"; row 0 is "Starting Cash" + combo on the
+		// grid's 24 px rhythm; row 1 is reserved (see MatchOptionsLayout.h). Zero Hour used a label + combo pair
+		// on one row for the same option.
+		const MatchOptionsLayout::Layout layout = matchOptionsLayoutFor(caption, appearance, FALSE);
+		const Int x = layout.control[0].x, y = layout.control[0].y, width = layout.control[0].w, height = layout.control[0].h;
 		(void)column;
+		{
+			GameWindow *donor = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextWins"));
+			WinInstanceData label;
+			label.m_font = donor ? donor->winGetFont() : appearance->winGetFont();
+			label.m_style = GWS_STATIC_TEXT;
+			label.m_id = NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextStartingCash");
+			TextData text = {};
+			text.centeredVertically = TRUE;
+			GameWindow *labelWindow = TheWindowManager->gogoGadgetStaticText(parent, WIN_STATUS_ENABLED | WIN_STATUS_NO_INPUT,
+				layout.label[0].x, layout.label[0].y, layout.label[0].w, layout.label[0].h, &label, &text, label.m_font, FALSE);
+			if (labelWindow)
+			{
+				if (donor)
+					copyStartingCashAppearance(labelWindow, donor);
+				labelWindow->winSetFont(appearance->winGetFont());
+				GadgetStaticTextSetText(labelWindow, TheGameText->FETCH_OR_SUBSTITUTE("GUI:StartingCash", L"Starting Cash"));
+			}
+		}
 
 		WinInstanceData instance;
 		instance.m_font = appearance->winGetFont();
@@ -265,6 +319,9 @@ static GameWindow *createStartingCashControl(GameWindow *slot, GameWindow *capti
 		copyStartingCashAppearance(GadgetComboBoxGetEditBox(combo), GadgetComboBoxGetEditBox(appearance));
 		copyStartingCashAppearance(GadgetComboBoxGetDropDownButton(combo), GadgetComboBoxGetDropDownButton(appearance));
 		copyStartingCashAppearance(GadgetComboBoxGetListBox(combo), GadgetComboBoxGetListBox(appearance));
+		// The option's dropdown opens downward over the honors statistics and the (future) rows below: it must be in
+		// front of every sibling, which is where a runtime-created gadget already is; keep it there explicitly.
+		combo->winBringToTop();
 	}
 	GadgetComboBoxReset(combo);
 	std::vector<Int> values;
@@ -281,7 +338,7 @@ static GameWindow *createStartingCashControl(GameWindow *slot, GameWindow *capti
 		GadgetComboBoxSetItemData(combo, index, (void *)(intptr_t)values[i]);
 	}
 	if (caption)
-		GadgetStaticTextSetText(caption, TheGameText->FETCH_OR_SUBSTITUTE("GUI:StartingCash", L"Starting Cash"));
+		GadgetStaticTextSetText(caption, TheGameText->FETCH_OR_SUBSTITUTE("GUI:MatchOptions", L"Match Options"));
 	return combo;
 }
 
@@ -1482,11 +1539,29 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	staticTextGameSpeed->winHide(TRUE);
 	GameWindow *speedLabel = TheWindowManager->winGetWindowFromId(parentSkirmishGameOptions,
 		NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1"));
+	// The retired Game Speed block is hidden whatever the extension state (Classic included), BEFORE the Match
+	// Options controls are created (they occupy part of that rectangle).
+	MatchOptionsLayout::Layout screenLayout;
+	Int hiddenRemnants = 0;
+	if (speedLabel && sliderGameSpeed && comboBoxTeam[0])
+	{
+		screenLayout = matchOptionsLayoutFor(speedLabel, comboBoxTeam[0], TRUE);
+		hiddenRemnants = hideGameSpeedRemnants(parentSkirmishGameOptions, screenLayout, speedLabel, sliderGameSpeed, nullptr);
+	}
 	comboBoxStartingCashID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash");
 	comboBoxStartingCash = createStartingCashControl(sliderGameSpeed, speedLabel, comboBoxTeam[0], comboBoxPlayer[1]);
+	Int movedHonors = 0;
+	if (comboBoxStartingCash)
+		movedHonors = shiftHonorsBlock(parentSkirmishGameOptions, screenLayout);
+	{
+		char receipt[160];
+		sprintf(receipt, "match_options remnants_hidden=%d honors_windows_shifted=%d shift=%d", hiddenRemnants, movedHonors,
+			screenLayout.honorsShift);
+		StartupDiagnostics::checkpoint("skirmish_ui", "layout", receipt);
+	}
 	if (comboBoxStartingCash)
 	{
-		const Int hidden = hideGameSpeedRemnants(parentSkirmishGameOptions, speedLabel, sliderGameSpeed, comboBoxStartingCash);
+		const Int hidden = 0;
 		Int cx, cy, cw, ch;
 		comboBoxStartingCash->winGetScreenPosition(&cx, &cy);
 		comboBoxStartingCash->winGetSize(&cw, &ch);

@@ -105,6 +105,24 @@ inline Coord offsetByControlBarOrigin(Coord offset)
 	return offset;
 }
 
+// Position of an INI "fraction of the screen" HUD anchor (superweapon/named timers, player info list, popup
+// messages). Classic: the fraction of the physical size, as before. Modern: the same fraction of the bottom-anchored
+// 800x600 reference block at the UI scale, so the element keeps its distance from the control bar and the canvas
+// and never drifts with the surface width (an INI value of 0.7 means 70 % across the HUD block, not 70 % of the surface width).
+inline int hudX(double fraction, int displayWidth)
+{
+	if (!state().modern) return static_cast<int>(fraction * displayWidth);
+	const DisplayGeometry::Point origin = DisplayGeometry::anchorOrigin(state().layout, DisplayGeometry::Anchor::Bottom);
+	return origin.x + static_cast<int>(fraction * DisplayGeometry::kReferenceSize.width * state().layout.scale());
+}
+
+inline int hudY(double fraction, int displayHeight)
+{
+	if (!state().modern) return static_cast<int>(fraction * displayHeight);
+	const DisplayGeometry::Point origin = DisplayGeometry::anchorOrigin(state().layout, DisplayGeometry::Anchor::Bottom);
+	return origin.y + static_cast<int>(fraction * DisplayGeometry::kReferenceSize.height * state().layout.scale());
+}
+
 // The expected window client size for the "client must be exact" checks; {0,0} when the classic rules apply.
 inline DisplayGeometry::Size expectedClient()
 {

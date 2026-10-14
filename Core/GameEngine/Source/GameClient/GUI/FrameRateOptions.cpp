@@ -13,6 +13,7 @@
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GadgetComboBox.h"
+#include "GameClient/GadgetLayering.h"
 #include "GameClient/GadgetStaticText.h"
 
 static void copyAppearance(GameWindow *target, GameWindow *source)
@@ -96,6 +97,11 @@ GameWindow *createFrameRateOptions(GameWindow *detail, const OptionPreferences &
 		copyAppearance(GadgetComboBoxGetListBox(combo), GadgetComboBoxGetListBox(detail));
 		detail->winSetSize(columnWidth, height);
 		label->winSetSize(columnWidth, labelHeight);
+		// Runtime gadgets are created at the front of the draw order. The original dropdowns open over the controls
+		// below them because the layout file creates lower controls earlier; keep that relationship: the new combo
+		// sits directly behind the Detail combo, the caption directly behind the new combo.
+		GadgetLayering::placeBehind(combo, detail);
+		GadgetLayering::placeBehind(caption, combo);
 	}
 	GadgetComboBoxReset(combo);
 	for (Int i = 0; i < RenderFpsPreset::OptionCount; ++i)

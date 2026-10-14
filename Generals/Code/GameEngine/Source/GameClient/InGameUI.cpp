@@ -3830,8 +3830,8 @@ void InGameUI::postDraw()
 	if (TheGameLogic->getFrame() > 0 && !m_superweaponHiddenByScript)
 	{
 //	Int superweaponCount = 0;
-		Int startX = (Int)(m_superweaponPosition.x * TheDisplay->getWidth());
-		Int startY = (Int)(m_superweaponPosition.y * TheDisplay->getHeight());
+		Int startX = DisplayRuntime::hudX(m_superweaponPosition.x, TheDisplay->getWidth());
+		Int startY = DisplayRuntime::hudY(m_superweaponPosition.y, TheDisplay->getHeight());
 
 		Int bottomMargin = (Int)( (Real)TheTacticalView->getHeight() * 0.82f );
 
@@ -3984,8 +3984,8 @@ void InGameUI::postDraw()
 	{
 //		Int namedTimerCount = 0;
 		Bool reverseXDir = (m_namedTimerPosition.x >= 0.5f);
-		Int startX = (Int)(m_namedTimerPosition.x * TheDisplay->getWidth());
-		Int startY = (Int)(m_namedTimerPosition.y * TheDisplay->getHeight());
+		Int startX = DisplayRuntime::hudX(m_namedTimerPosition.x, TheDisplay->getWidth());
+		Int startY = DisplayRuntime::hudY(m_namedTimerPosition.y, TheDisplay->getHeight());
 		Color bgColor = GameMakeColor( 0, 0, 0, 255 );
 		for (NamedTimerMapIt mapIt = m_namedTimers.begin(); mapIt != m_namedTimers.end(); ++mapIt)
 		{
@@ -5429,8 +5429,8 @@ void InGameUI::popupMessage( const AsciiString& identifier, Int x, Int y, Int wi
 	if( y < 0 )
 		y = 0;
 
-	m_popupMessageData->x = TheDisplay->getWidth() * (INT_TO_REAL(x) / 100);
-	m_popupMessageData->y = TheDisplay->getHeight() * (INT_TO_REAL(y) / 100);
+	m_popupMessageData->x = DisplayRuntime::hudX(INT_TO_REAL(x) / 100, TheDisplay->getWidth());
+	m_popupMessageData->y = DisplayRuntime::hudY(INT_TO_REAL(y) / 100, TheDisplay->getHeight());
 	// cap the lower limit of the width
 	if(width < 50)
 		width = 50;
@@ -6182,8 +6182,8 @@ void InGameUI::drawGameTime()
 
 void InGameUI::drawPlayerInfoList()
 {
-	const Int baseX = (Int)(m_playerInfoListPosition.x * TheDisplay->getWidth());
-	const Int baseY = (Int)(m_playerInfoListPosition.y * TheDisplay->getHeight());
+	const Int baseX = DisplayRuntime::hudX(m_playerInfoListPosition.x, TheDisplay->getWidth());
+	const Int baseY = DisplayRuntime::hudY(m_playerInfoListPosition.y, TheDisplay->getHeight());
 	const Int lineH = m_playerInfoList.labels[PlayerInfoList::LabelType_Team]->getFont()->height;
 	const Int columnGap = static_cast<Int>(lineH * (6.0f / 12.0f) + 0.5f);
 

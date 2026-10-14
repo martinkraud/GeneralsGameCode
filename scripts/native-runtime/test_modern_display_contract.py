@@ -128,6 +128,46 @@ class ModernDisplayContracts(unittest.TestCase):
             "Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp",
         ])
 
+class FixOneContracts(unittest.TestCase):
+    """x64-33-fix1-ui: first native review findings."""
+
+    def test_runtime_gadgets_are_placed_in_the_draw_order_not_left_at_the_front(self):
+        layering = read("Core/GameEngine/Include/GameClient/GadgetLayering.h")
+        self.assertIn("insertWindowAheadOf", layering)
+        self.assertIn("HEAD is the front", layering)
+        rate = read("Core/GameEngine/Source/GameClient/GUI/FrameRateOptions.cpp")
+        self.assertIn("GadgetLayering::placeBehind(combo, detail);", rate)
+        popup = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
+        self.assertIn("GadgetLayering::placeBehind(s_entry, resolutionCombo);", popup)
+        # rows are created bottom to top so an upper row's dropdown opens over the rows below it
+        order = [popup.index("caption(%d," % row) for row in (4, 3, 2, 1, 0)]
+        self.assertEqual(order, sorted(order))
+
+    def test_options_panel_geometry_is_scale_derived(self):
+        popup = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
+        self.assertIn("OptionsPanelLayout::compute(", popup)
+        for stale in ("rowY0", "pitch = 52", "const Int pad = 24"):
+            self.assertNotIn(stale, popup)
+        layout = read("Core/GameEngine/Include/Common/OptionsPanelLayout.h")
+        self.assertIn("scaled(52, scale)", layout)
+
+    def test_control_bar_extension_is_general_and_solid(self):
+        scheme = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp")
+        self.assertIn("HudExtensionLayout::compute(", scheme)
+        self.assertIn("GameWinBlockInput", scheme)
+        self.assertIn("winHide( TRUE )", scheme)
+        layout = read("Core/GameEngine/Include/Common/HudExtensionLayout.h")
+        for path_text in (scheme, layout, read("Core/GameEngine/Include/Common/DisplayRuntime.h"),
+                          read("Core/GameEngine/Include/Common/DisplayGeometry.h")):
+            for literal in ("5120", "3440", "2560", "3840", "1920", "1440"):
+                self.assertNotIn(literal, path_text)       # no monitor-specific branch anywhere in the layout code
+
+    def test_timers_use_the_hud_anchor_helpers(self):
+        ui = read("Generals/Code/GameEngine/Source/GameClient/InGameUI.cpp")
+        self.assertIn("DisplayRuntime::hudX(m_superweaponPosition.x, TheDisplay->getWidth())", ui)
+        self.assertIn("DisplayRuntime::hudX(m_namedTimerPosition.x, TheDisplay->getWidth())", ui)
+        self.assertNotIn("m_superweaponPosition.x * TheDisplay->getWidth()", ui)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,7 +12,10 @@
 #include "Common/ModernExperience.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionPreferences.h"
+#include "Common/OptionsPanelLayout.h"
+#include "Common/StartupDiagnostics.h"
 #include "GameClient/GadgetComboBox.h"
+#include "GameClient/GadgetLayering.h"
 #include "GameClient/GadgetPushButton.h"
 #include "GameClient/GadgetStaticText.h"
 #include "GameClient/GameText.h"
@@ -206,10 +209,13 @@ bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *
 		x + columnWidth + gap, y, columnWidth, height, &entry, entry.m_font, FALSE);
 	copyAppearance(s_entry, buttonTemplate);
 	GadgetButtonSetText(s_entry, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayOptions", L"Display Options..."));
-	makeCaption(rowParent, label, resolutionCombo, x + columnWidth + gap, labelY, columnWidth, labelHeight,
-		L"Window, Scale, VSync", "GUI:DisplayOptionsCaption");
+	GameWindow *entryCaption = makeCaption(rowParent, label, resolutionCombo, x + columnWidth + gap, labelY, columnWidth,
+		labelHeight, L"Window, Scale, VSync", "GUI:DisplayOptionsCaption");
 	resolutionCombo->winSetSize(columnWidth, height);
 	label->winSetSize(columnWidth, labelHeight);
+	// Behind the Resolution combo (whose dropdown opens over the Detail row below) but in front of the rows beneath.
+	GadgetLayering::placeBehind(s_entry, resolutionCombo);
+	GadgetLayering::placeBehind(entryCaption, s_entry);
 
 	// --- popup panel (same footprint and draw data as the Advanced Display Options panel) -------------
 	Int px, py, pw, ph;
@@ -228,33 +234,48 @@ bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *
 	// monitor list
 	s_monitors = DisplayModes::enumerateMonitors();
 	GameWindow *comboTemplate = resolutionCombo;
-	const Int pad = 24, rowY0 = 58, pitch = 52, comboH = height, labelW = pw / 2 - pad, comboX = pw / 2;
 
-	makeCaption(s_popup, label, comboTemplate, pad, 14, pw - 2 * pad, 30, L"DISPLAY OPTIONS", "GUI:DisplayOptionsTitle");
+	// Geometry comes from OptionsPanelLayout (reference units x the live UI scale, rows below the title, notes
+	// above the button zone); nothing here is a fixed pixel number.
+	Int bx0, by0, bw0, bh0;
+	buttonTemplate->winGetPosition(&bx0, &by0);
+	buttonTemplate->winGetSize(&bw0, &bh0);
+	const int rowCount = 5;
+	const OptionsPanelLayout::Panel layout = OptionsPanelLayout::compute(pw, ph, height, DisplayRuntime::uiScale(),
+		rowCount, by0 - py);
+	if (!layout.fits)
+		StartupDiagnostics::checkpoint("display_options", "observed", "panel rows exceed the button zone; compact layout");
 
-	Int row = 0;
-	makeCaption(s_popup, label, comboTemplate, pad, rowY0 + pitch * row, labelW, comboH, L"Monitor", "GUI:DisplayMonitor");
-	s_monitor = makeCombo(s_popup, comboTemplate, comboX, rowY0 + pitch * row, pw / 2 - pad, comboH,
-		s_monitors.empty() ? 1 : static_cast<Int>(s_monitors.size()));
-	if (s_monitors.empty())
-		addEntry(s_monitor, UnicodeString(L"1"));
-	for (size_t i = 0; i < s_monitors.size(); ++i)
-	{
-		UnicodeString text;
-		text.format(L"%d%s  %dx%d", static_cast<int>(i + 1), s_monitors[i].primary ? L" (Primary)" : L"",
-			s_monitors[i].bounds.width, s_monitors[i].bounds.height);
-		addEntry(s_monitor, text);
-	}
-	++row;
+	makeCaption(s_popup, label, comboTemplate, layout.title.x, layout.title.y, layout.title.w, layout.title.h,
+		L"DISPLAY OPTIONS", "GUI:DisplayOptionsTitle");
 
-	makeCaption(s_popup, label, comboTemplate, pad, rowY0 + pitch * row, labelW, comboH, L"Display Mode", "GUI:DisplayMode");
-	s_mode = makeCombo(s_popup, comboTemplate, comboX, rowY0 + pitch * row, pw / 2 - pad, comboH, 2);
-	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeWindowed", L"Windowed"));
-	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeBorderless", L"Borderless Fullscreen"));
-	++row;
+	// Rows are created BOTTOM TO TOP: a later-created sibling is drawn in front, and an upper row's dropdown must
+	// open over the rows below it (see GadgetLayering.h).
+	auto caption = [&](int row, const WideChar *fallback, const char *key) {
+		makeCaption(s_popup, label, comboTemplate, layout.label[row].x, layout.label[row].y, layout.label[row].w,
+			layout.label[row].h, fallback, key);
+	};
+	auto combo = [&](int row, Int entries) {
+		return makeCombo(s_popup, comboTemplate, layout.control[row].x, layout.control[row].y, layout.control[row].w,
+			layout.control[row].h, entries);
+	};
 
-	makeCaption(s_popup, label, comboTemplate, pad, rowY0 + pitch * row, labelW, comboH, L"UI Scale", "GUI:UIScale");
-	s_uiScale = makeCombo(s_popup, comboTemplate, comboX, rowY0 + pitch * row, pw / 2 - pad, comboH, kUiScaleCount);
+	makeCaption(s_popup, label, comboTemplate, layout.note.x, layout.note.y, layout.note.w, layout.note.h,
+		L"Window, monitor and UI scale changes apply from the menus. Frame Rate Limit is on the Options screen.",
+		"GUI:DisplayOptionsNote");
+
+	caption(4, L"Unit Motion", "GUI:UnitMotion");
+	s_motion = combo(4, 2);
+	addEntry(s_motion, TheGameText->FETCH_OR_SUBSTITUTE("GUI:UnitMotionOriginal", L"Original (30 Hz steps)"));
+	addEntry(s_motion, TheGameText->FETCH_OR_SUBSTITUTE("GUI:UnitMotionSmooth", L"Smooth (experimental)"));
+
+	caption(3, L"VSync", "GUI:VSync");
+	s_vsync = combo(3, 2);
+	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:Off", L"Off"));
+	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:On", L"On"));
+
+	caption(2, L"UI Scale", "GUI:UIScale");
+	s_uiScale = combo(2, kUiScaleCount);
 	for (int i = 0; i < kUiScaleCount; ++i)
 	{
 		UnicodeString text;
@@ -264,23 +285,23 @@ bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *
 			text.format(L"%d%%", kUiScaleChoices[i]);
 		addEntry(s_uiScale, text);
 	}
-	++row;
 
-	makeCaption(s_popup, label, comboTemplate, pad, rowY0 + pitch * row, labelW, comboH, L"VSync", "GUI:VSync");
-	s_vsync = makeCombo(s_popup, comboTemplate, comboX, rowY0 + pitch * row, pw / 2 - pad, comboH, 2);
-	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:Off", L"Off"));
-	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:On", L"On"));
-	++row;
+	caption(1, L"Display Mode", "GUI:DisplayMode");
+	s_mode = combo(1, 2);
+	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeWindowed", L"Windowed"));
+	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeBorderless", L"Borderless Fullscreen"));
 
-	makeCaption(s_popup, label, comboTemplate, pad, rowY0 + pitch * row, labelW, comboH, L"Unit Motion", "GUI:UnitMotion");
-	s_motion = makeCombo(s_popup, comboTemplate, comboX, rowY0 + pitch * row, pw / 2 - pad, comboH, 2);
-	addEntry(s_motion, TheGameText->FETCH_OR_SUBSTITUTE("GUI:UnitMotionOriginal", L"Original (30 Hz steps)"));
-	addEntry(s_motion, TheGameText->FETCH_OR_SUBSTITUTE("GUI:UnitMotionSmooth", L"Smooth (experimental)"));
-	++row;
-
-	makeCaption(s_popup, label, comboTemplate, pad, rowY0 + pitch * row + 8, pw - 2 * pad, comboH * 2,
-		L"Window, monitor and UI scale changes apply from the menus. Frame Rate Limit is on the Options screen.",
-		"GUI:DisplayOptionsNote");
+	caption(0, L"Monitor", "GUI:DisplayMonitor");
+	s_monitor = combo(0, s_monitors.empty() ? 1 : static_cast<Int>(s_monitors.size()));
+	if (s_monitors.empty())
+		addEntry(s_monitor, UnicodeString(L"1"));
+	for (size_t i = 0; i < s_monitors.size(); ++i)
+	{
+		UnicodeString text;
+		text.format(L"%d%s  %dx%d", static_cast<int>(i + 1), s_monitors[i].primary ? L" (Primary)" : L"",
+			s_monitors[i].bounds.width, s_monitors[i].bounds.height);
+		addEntry(s_monitor, text);
+	}
 
 	// accept / back buttons, same art as the Advanced panel's
 	Int bx, by, bw, bh, cx, cy, cw, ch;

@@ -171,14 +171,15 @@ class NormalLaunchContract(unittest.TestCase):
         # parented to the header's own parent (the inset sub-panel); the fix3 control landed ~41 px off
         self.assertIn("GameWindow *parent = caption->winGetParent();", c)
         self.assertNotIn("createStartingCashControl(parentSkirmishGameOptions", c)
-        # header-aligned (same left edge and width), flush under the header, one 24 px grid row tall
-        self.assertIn("x = cx;", c)
-        self.assertIn("y = cy + ch;", c)
-        self.assertIn("width = cw;", c)
+        # X64.33 FIX1: header-aligned Match Options rows, one 24 px grid row tall, flush under the header; the
+        # geometry now comes from MatchOptionsLayout (header left edge, grid rhythm) instead of fixed pixels
+        self.assertIn("matchOptionsLayoutFor(caption, appearance, FALSE)", c)
+        self.assertIn("layout.control[0].x", c)
+        self.assertIn("layout.control[0].y", c)
         self.assertIn("createStartingCashControl(sliderGameSpeed, speedLabel, comboBoxTeam[0], comboBoxPlayer[1])", c)
         # remnants are identified geometrically (unnamed static texts), never by localized text
         self.assertIn("static Int hideGameSpeedRemnants(", c)
-        self.assertIn("hideGameSpeedRemnants(parentSkirmishGameOptions, speedLabel, sliderGameSpeed, comboBoxStartingCash)", c)
+        self.assertIn("hideGameSpeedRemnants(parentSkirmishGameOptions, screenLayout, speedLabel, sliderGameSpeed, nullptr)", c)
         self.assertNotIn("text == slower", c)
         self.assertIn('checkpoint("skirmish_ui", "layout"', c)
 

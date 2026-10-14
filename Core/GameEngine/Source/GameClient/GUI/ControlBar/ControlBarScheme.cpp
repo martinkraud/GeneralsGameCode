@@ -64,6 +64,8 @@
 #include "GameClient/Image.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GadgetPushButton.h"
+#include "Common/NameKeyGenerator.h"
+#include <map>
 
 //-----------------------------------------------------------------------------
 // DEFINES ////////////////////////////////////////////////////////////////////
@@ -792,8 +794,99 @@ void ControlBarScheme::drawForeground( Coord2D multi, ICoord2D offset )
 //
 // Add an image to the proper layer list
 //-----------------------------------------------------------------------------
+// X64.33 FIX1 -- widescreen extension of the control bar band (see Common/HudExtensionLayout.h).
+// The slice is a tiny Image over one column of the band's own texture; it is created once per band image.
+static std::map<const Image *, Image *> &extensionSlices()
+{
+	static std::map<const Image *, Image *> slices;
+	return slices;
+}
+
+void releaseControlBarExtensionSlices()
+{
+	for( std::map<const Image *, Image *>::iterator it = extensionSlices().begin(); it != extensionSlices().end(); ++it )
+		if( it->second )
+			deleteInstance( it->second );
+	extensionSlices().clear();
+}
+
+static Image *extensionSliceFor( const Image *band )
+{
+	std::map<const Image *, Image *>::iterator found = extensionSlices().find( band );
+	if( found != extensionSlices().end() )
+		return found->second;
+	const Region2D *uv = band->getUV();
+	const ICoord2D *texture = band->getTextureSize();
+	if( !uv || !texture || texture->x <= 0 )
+	{
+		extensionSlices()[band] = nullptr;
+		return nullptr;
+	}
+	Image *slice = newInstance(Image);
+	const Real width = uv->hi.x - uv->lo.x;
+	Region2D column;
+	column.lo.x = uv->lo.x + width * (Real)HudExtensionLayout::kSliceFraction;
+	column.hi.x = column.lo.x + (Real)HudExtensionLayout::kSliceTexels / (Real)texture->x;
+	column.lo.y = uv->lo.y;
+	column.hi.y = uv->hi.y;
+	slice->setFilename( band->getFilename() );
+	slice->setUV( &column );
+	slice->setTextureWidth( texture->x );
+	slice->setTextureHeight( texture->y );
+	ICoord2D size;
+	size.x = HudExtensionLayout::kSliceTexels;
+	size.y = band->getImageHeight();
+	slice->setImageSize( &size );
+	extensionSlices()[band] = slice;
+	return slice;
+}
+
+// Computes the extension rectangles of the scheme's band image (physical pixels). Returns FALSE when there is none.
+Bool ControlBarScheme::getExtensionLayout( Coord2D multi, ICoord2D offset, HudExtensionLayout::Layout &out, const Image **bandImage ) const
+{
+	if( !DisplayRuntime::modern() || !TheDisplay )
+		return FALSE;
+	for( Int i = MAX_CONTROL_BAR_SCHEME_IMAGE_LAYERS - 1; i >= CONTROL_BAR_SCHEME_FOREGROUND_IMAGE_LAYERS; i-- )
+	{
+		for( ControlBarSchemeImageList::const_iterator it = m_layer[i].begin(); it != m_layer[i].end(); ++it )
+		{
+			const ControlBarSchemeImage *si = *it;
+			if( !si || !si->m_image )
+				continue;
+			const Int x1 = (Int)(si->m_position.x * multi.x + offset.x);
+			const Int y1 = (Int)(si->m_position.y * multi.y + offset.y);
+			const Int x2 = (Int)((si->m_position.x + si->m_size.x) * multi.x + offset.x);
+			const Int y2 = (Int)((si->m_position.y + si->m_size.y) * multi.y + offset.y);
+			HudExtensionLayout::Layout layout = HudExtensionLayout::compute( x1, y1, x2 - x1, y2 - y1, (Int)TheDisplay->getWidth(),
+				si->m_size.x, si->m_position.y + si->m_size.y, m_ScreenCreationRes.x, m_ScreenCreationRes.y );
+			if( layout.qualifies )
+			{
+				out = layout;
+				if( bandImage )
+					*bandImage = si->m_image;
+				return TRUE;
+			}
+		}
+	}
+	return FALSE;
+}
+
 void ControlBarScheme::drawBackground( Coord2D multi, ICoord2D offset )
 {
+	{
+		HudExtensionLayout::Layout extension;
+		const Image *band = nullptr;
+		if( getExtensionLayout( multi, offset, extension, &band ) )
+		{
+			if( Image *slice = extensionSliceFor( band ) )
+			{
+				if( !extension.left.empty() )
+					TheDisplay->drawImage( slice, extension.left.x, extension.left.y, extension.left.right(), extension.left.bottom() );
+				if( !extension.right.empty() )
+					TheDisplay->drawImage( slice, extension.right.x, extension.right.y, extension.right.right(), extension.right.bottom() );
+			}
+		}
+	}
 
 	for(Int i = MAX_CONTROL_BAR_SCHEME_IMAGE_LAYERS - 1; i >= CONTROL_BAR_SCHEME_FOREGROUND_IMAGE_LAYERS; i--)
 	{
@@ -853,6 +946,7 @@ ControlBarSchemeManager::~ControlBarSchemeManager()
 	}
 	m_schemeList.clear();
 	m_currentScheme = nullptr;
+	releaseControlBarExtensionSlices();
 
 }
 
@@ -1074,6 +1168,58 @@ void ControlBarSchemeManager::update()
 {
 	if(m_currentScheme)
 		m_currentScheme->update();
+	updateExtensionBlockers();
+}
+
+//-----------------------------------------------------------------------------
+// X64.33 FIX1: the extension is visible, so it must also be solid. Two top-level windows with the engine's own
+// "wall" input function cover the left/right extension rectangles; they follow the control bar parent's visibility
+// (so the frontend never has an invisible wall) and are looked up by name each time (the layout owns the bar; these
+// windows belong to the window manager's top-level list).
+//-----------------------------------------------------------------------------
+void ControlBarSchemeManager::updateExtensionBlockers()
+{
+	if( !DisplayRuntime::modern() || !TheWindowManager || !TheNameKeyGenerator )
+		return;
+	static const char *const names[2] = { "ControlBar.wnd:ExtensionLeft", "ControlBar.wnd:ExtensionRight" };
+	GameWindow *parent = TheWindowManager->winGetWindowFromId( nullptr, TheNameKeyGenerator->nameToKey( "ControlBar.wnd:ControlBarParent" ) );
+	HudExtensionLayout::Layout layout;
+	ICoord2D none;
+	none.x = none.y = 0;
+	const Bool want = m_currentScheme && parent && !parent->winIsHidden() &&
+		m_currentScheme->getExtensionLayout( m_multiplier, DisplayRuntime::offsetByControlBarOrigin( none ), layout, nullptr );
+	for( Int i = 0; i < 2; ++i )
+	{
+		const HudExtensionLayout::Rect &r = i == 0 ? layout.left : layout.right;
+		const NameKeyType id = TheNameKeyGenerator->nameToKey( names[i] );
+		GameWindow *blocker = TheWindowManager->winGetWindowFromId( nullptr, id );
+		if( !want || r.empty() )
+		{
+			if( blocker )
+				blocker->winHide( TRUE );
+			continue;
+		}
+		if( !blocker )
+		{
+			WinInstanceData instance;
+			instance.m_id = id;
+			instance.m_style = GWS_USER_WINDOW;
+			blocker = TheWindowManager->winCreate( nullptr, WIN_STATUS_ENABLED | WIN_STATUS_NO_FOCUS | WIN_STATUS_SEE_THRU,
+				r.x, r.y, r.w, r.h, nullptr, &instance );
+			if( !blocker )
+				continue;
+			blocker->winSetInputFunc( GameWinBlockInput );
+		}
+		Int bx, by, bw, bh;
+		blocker->winGetPosition( &bx, &by );
+		blocker->winGetSize( &bw, &bh );
+		if( bx != r.x || by != r.y || bw != r.w || bh != r.h )
+		{
+			blocker->winSetPosition( r.x, r.y );
+			blocker->winSetSize( r.w, r.h );
+		}
+		blocker->winHide( FALSE );
+	}
 }
 
 //-----------------------------------------------------------------------------

@@ -149,3 +149,51 @@ scale/aspect); frontend centred and clickable; Options > Resolution row > `Displ
 Mode, UI Scale, VSync, Unit Motion); change Resolution and Accept; switch Borderless; change UI Scale; VSync on/off
 with the FPS counter; start a Skirmish and check wide world, bottom bar, radar, shortcut sidebar at the right edge,
 edge scrolling and selection boxes; `-classic` launch for the unchanged 800x600 presentation.
+
+## 14. First native review (x64-33-modern-display) and FIX1 (x64-33-fix1-ui)
+
+The first native run reached the frontend and a Skirmish match and exposed four connected UI problems. All four came
+from the same cause: runtime-built or runtime-sized UI was positioned with numbers that did not follow the window
+system's own scale and draw order. FIX1 corrects them on top of the unchanged display architecture.
+
+| Finding | Root cause | Fix |
+|---|---|---|
+| Options controls overlap | The Display Options panel used fixed pixel metrics (row pitch 52, top 58, pad 24) next to scaled fonts and control heights | `OptionsPanelLayout` derives every metric from reference units x the live UI scale and the panel's own size; tests at 75-300 % |
+| Dropdown lists behind other controls | The window system draws a parent's children tail-to-head, so the head is the front. Window files create lower controls later, which is why original dropdowns open over what is below them. Runtime gadgets are created last and therefore land in FRONT of the Resolution/Detail dropdowns | `GadgetLayering::placeBehind` places each runtime gadget deliberately (frame-rate row behind Detail, Display Options entry behind Resolution); popup rows are created bottom-to-top; the Starting Cash combo is brought to the front |
+| Black regions beside the control bar | The bar art is an 800 reference-unit band, centred; nothing drew or blocked input at the sides | `HudExtensionLayout`: the band is extended to both surface edges with a two-texel slice of the bar's own console panel (stretching one column cannot distort the radar, buttons or decoration); two top-level windows with the engine's `GameWinBlockInput` follow the bar's visibility so the extension is also solid for input |
+| "Slower / Faster" returned | The geometric remnant filter used fixed 14 px / 140 px margins; the captions are 12 / 75 reference px away, i.e. outside the rectangle as soon as the UI scale was not 100 % | The rectangle comes from `MatchOptionsLayout` in the header's own scaled coordinates, is applied before the new controls are created, and no longer depends on the Starting Cash extension (Classic included) |
+
+### Skirmish: Generals vs Zero Hour
+Zero Hour's Skirmish screen keeps the Generals structure and adds a match-options row under the player grid at y 334-360
+(Game Speed slider, "Starting Money" caption + combo at x 453-557, "Limit Superweapons" checkbox at x 593-745) and shifts
+the Battle Honors statistics down 7 px. Generals keeps its own left column: the retired Game Speed header becomes the
+**Match Options** header; row 0 is Starting Cash (label + 24 px combo on the grid rhythm); row 1 is reserved; the honors
+statistics move down 7 reference px exactly as in Zero Hour. Starting Cash keeps its behaviour (Modern Experience only,
+retail amount default, Zero Hour choice list, human and AI). The Zero Hour screen is a reference, not an import: no
+Zero Hour data or content is used.
+
+### Superweapon match option: deferred (feasibility documented)
+Shared plumbing exists in base: `GameInfo::m_superweaponRestriction` (serialised in the game-info string and savegames),
+`ThingTemplate` keyword `DeterminedBySuperweaponRestriction`, `SuperweaponRestrict` preference key, `GameLogic::getSuperweaponRestriction()`.
+What base Generals lacks: a `GameLogic` restriction member/setter (this is simulation state and a savegame-format change)
+and Generals Object INI that uses the keyword (the three superweapon buildings have no `MaxSimultaneousOfType`; it would
+be a data overlay of `FactionBuilding.ini`). That is a rules-state change, so it is not slipped into a UI pass: the row
+is reserved, the contract test refuses a fake checkbox, and the option stays a separate, explicitly designed milestone.
+
+### Timers
+Superweapon and named timers, the player-info list and popup messages used INI fractions of the physical width. They now
+use `DisplayRuntime::hudX/hudY`: the same fraction of the bottom-anchored reference block at the UI scale (Classic: the
+old fraction of the surface), so they keep their relation to the control bar on every aspect. Native-unverified.
+
+### Extensibility
+HUD regions are named by geometry, not by monitors: left extension / core / right extension
+(`HudExtensionLayout`), the shortcut sidebar (right-edge anchor), the timer block (`hudX/hudY`). Match Options has
+`kRowCapacity = 2` rows. Options and Skirmish share the same discipline: reference units x scale, parent-derived rects,
+explicit z-order.
+
+### Not changed on purpose
+In-game special-power sidebar (accepted X64.32), ground interpolation (still optional/default-off), gameplay, Classic.
+
+### Still native-unverified
+Everything visual: the dropdown stacking in the real Options screen, the extension art seam at the bar edges for all
+three factions, input blocking over the extension, the Match Options rows, the honors shift, timer positions.
