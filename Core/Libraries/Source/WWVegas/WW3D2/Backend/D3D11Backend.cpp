@@ -274,6 +274,26 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11ShaderResourceView> white, bound;
     unsigned vertexCapacity = 0, indexCapacity = 0;
     unsigned textures = 0, buffers = 0, draws = 0;
+    // X64.35 measurement only: what the per-draw state re-issue requests versus what would actually change
+    // relative to the last value issued. Never alters the calls made.
+    enum Slot { SRtv, SDsv, SBlend, SDepth, SRaster, SLayout, SVb, SIb, SVs, SPs, SVcb, SPcb, SSrv0, SSrv1, SSrv2, SSrv3,
+                SSmp0, SSmp1, SSmp2, SSmp3, SlotCount };
+    const void *lastState[SlotCount] = {};
+    RenderStats stats;
+    std::string adapterDescription;
+    void Note(Slot slot, const void *value)
+    {
+        ++stats.state_requested;
+        if (lastState[slot] != value)
+        {
+            lastState[slot] = value;
+            ++stats.state_changed;
+            if (slot == SSrv0) ++stats.texture_binds;
+            else if (slot == SPs || slot == SVs) ++stats.shader_changes;
+            else if (slot == SRtv || slot == SDsv) ++stats.target_changes;
+            else if (slot == SVb || slot == SIb) ++stats.buffer_changes;
+        }
+    }
     D3D_FEATURE_LEVEL level = D3D_FEATURE_LEVEL_10_0;
     bool scene = false;
     Presentation lastPresent;
@@ -448,6 +468,12 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
             "driver=%s feature=0x%X vendor=0x%X device=0x%X adapter=%s size=%ux%u",
             config.software ? "WARP" : "hardware", static_cast<unsigned>(impl->level),
             desc.VendorId, desc.DeviceId, name, config.width, config.height);
+        {
+            char hw[400]; std::snprintf(hw, sizeof(hw), "%s; vendor=0x%X device=0x%X; feature_level=0x%X; dedicated_vram_mb=%llu shared_mb=%llu",
+                name, desc.VendorId, desc.DeviceId, static_cast<unsigned>(impl->level),
+                static_cast<unsigned long long>(desc.DedicatedVideoMemory >> 20), static_cast<unsigned long long>(desc.SharedSystemMemory >> 20));
+            impl->adapterDescription = hw;
+        }
         report("complete", detail);
         if (config.diagnostic_windowed) {
             phase = "graphics_window_association"; report("begin");
@@ -699,6 +725,7 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     auto *vb = impl->vertices.Get(); auto *cb = impl->placement.Get(); auto *rtv = impl->rtv.Get();
     auto *srv = impl->bound ? impl->bound.Get() : impl->white.Get(); auto *sampler = impl->boundSampler.Get();
     impl->context->OMSetRenderTargets(1, &rtv, nullptr);
+    impl->Note(Impl::SRtv, rtv); impl->Note(Impl::SDsv, nullptr);
     auto *blendState = mode.blend == BlendMode::Additive ? impl->blendAdditive.Get()
         : mode.blend == BlendMode::Opaque ? impl->blendOpaque.Get() : impl->blend.Get();
     impl->context->OMSetBlendState(blendState, nullptr, 0xffffffff);
@@ -715,6 +742,14 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
         : mode.pipe == Pipe::Flat ? impl->colorPS.Get() : impl->ps.Get(), nullptr, 0);
     impl->context->PSSetShaderResources(0, 1, &srv);
     impl->context->PSSetSamplers(0, 1, &sampler);
+    {
+        const auto *ps2 = mode.pipe == Pipe::Gray ? impl->grayPS.Get() : mode.pipe == Pipe::Flat ? impl->colorPS.Get() : impl->ps.Get();
+        impl->Note(Impl::SBlend, blendState); impl->Note(Impl::SDepth, impl->depth.Get()); impl->Note(Impl::SRaster, impl->raster.Get());
+        impl->Note(Impl::SLayout, impl->layout.Get()); impl->Note(Impl::SVb, vb); impl->Note(Impl::SIb, impl->indices.Get());
+        impl->Note(Impl::SVs, impl->vs.Get()); impl->Note(Impl::SVcb, cb); impl->Note(Impl::SPs, ps2);
+        impl->Note(Impl::SSrv0, srv); impl->Note(Impl::SSmp0, sampler);
+        ++impl->stats.draws_2d; impl->stats.triangles += s.index_count / 3;
+    }
     impl->context->DrawIndexed(s.index_count, 0, 0); ++impl->draws;
 }
 void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene = true; }
@@ -775,6 +810,8 @@ std::vector<unsigned char> D3D11Backend::Readback_RGBA8()
 unsigned D3D11Backend::Texture_Creations() const { return impl->textures; }
 unsigned D3D11Backend::Buffer_Creations() const { return impl->buffers; }
 unsigned D3D11Backend::Draw_Count() const { return impl->draws; }
+D3D11Backend::RenderStats D3D11Backend::Render_Stats() const { return impl->stats; }
+const char *D3D11Backend::Adapter_Description() const { return impl->adapterDescription.c_str(); }
 unsigned D3D11Backend::Live_Residencies() { return liveResidencies.load(); }
 static std::atomic<bool> cpuBackedGeometry{false};
 void D3D11Backend::Enable_CPU_Backed_Geometry(bool enable) { cpuBackedGeometry = enable; }
@@ -961,6 +998,19 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
                                        impl->cloudSampler.Get()};
     impl->context->PSSetShaderResources(0, 4, views);
     impl->context->PSSetSamplers(0, 4, samplers);
+    {
+        impl->Note(Impl::SRtv, rtv); impl->Note(Impl::SDsv, impl->dsv.Get());
+        impl->Note(Impl::SBlend, blendState); impl->Note(Impl::SDepth, depthState);
+        impl->Note(Impl::SRaster, (((s.material == WorldMaterial::TerrainOverlay || water) && s.double_sided)
+                                   ? impl->worldRasterNoCull.Get() : impl->worldRaster.Get()));
+        impl->Note(Impl::SLayout, impl->worldLayout.Get()); impl->Note(Impl::SVb, vb); impl->Note(Impl::SIb, g->indices.Get());
+        impl->Note(Impl::SVs, impl->worldVS.Get()); impl->Note(Impl::SVcb, cb); impl->Note(Impl::SPs, pixelShader);
+        impl->Note(Impl::SPcb, cb);
+        for (unsigned i = 0; i < 4; ++i) { impl->Note(static_cast<Impl::Slot>(Impl::SSrv0 + i), views[i]);
+                                           impl->Note(static_cast<Impl::Slot>(Impl::SSmp0 + i), samplers[i]); }
+        ++impl->stats.draws_world; impl->stats.triangles += s.index_count / 3;
+        if (water) ++impl->stats.draws_water;
+    }
     impl->context->DrawIndexed(s.index_count, s.first_index, 0);
     ++impl->draws;
     // The Render2D path binds its own pipeline per draw; leave no stale depth state.

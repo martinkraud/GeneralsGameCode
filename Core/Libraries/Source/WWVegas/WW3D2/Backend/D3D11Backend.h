@@ -55,6 +55,16 @@ public:
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;
+    // X64.35: cumulative measurement counters. state_requested = state calls the per-draw re-issue makes;
+    // state_changed = how many of those differ from the previously issued value (the real change rate).
+    struct RenderStats
+    {
+        unsigned long long draws_2d = 0, draws_world = 0, draws_water = 0, triangles = 0;
+        unsigned long long state_requested = 0, state_changed = 0, texture_binds = 0, shader_changes = 0,
+                           target_changes = 0, buffer_changes = 0;
+    };
+    RenderStats Render_Stats() const;
+    const char *Adapter_Description() const; // adapter, ids, feature level, VRAM (X64.35 receipt context)
     // Opt-in (default off) for the world renderer: legacy DX8 vertex/index buffers become
     // CPU-backed while this backend owns WW3D. Profiles that do not render the world
     // (X64.22-24) keep the exact previous runtime behavior.

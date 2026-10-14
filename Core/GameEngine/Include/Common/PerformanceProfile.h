@@ -23,7 +23,11 @@ enum class Category : unsigned int
 // DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame
 // GAUGES (sampled once per outer frame, so their per-frame values are levels, not rates).
 enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisited, DrawablesUpdated, QueuedPaths, QueueCells,
-	DrawCalls, TexturesCreated, BuffersCreated, DrawablesDrawn, ParticlesLive, ObjectsLive, Count };
+	DrawCalls, TexturesCreated, BuffersCreated, DrawablesDrawn, ParticlesLive, ObjectsLive,
+	// X64.35 renderer measurement (deltas of D3D11Backend::Render_Stats): state_requested = calls the per-draw re-issue
+	// makes, state_changed = how many differ from the previously issued value.
+	Draws2D, DrawsWorld, DrawsWater, Triangles, StateRequested, StateChanged, TextureBinds, ShaderChanges, TargetChanges,
+	BufferChanges, Count };
 constexpr unsigned int CategoryCount = static_cast<unsigned int>(Category::Count);
 constexpr unsigned int CounterCount = static_cast<unsigned int>(Counter::Count);
 constexpr unsigned int MaxFrames = 16384, MaxDepth = 64;
@@ -113,12 +117,16 @@ private:
 struct Metadata
 {
 	std::string title, git, timestamp, startedUtc, label, build, mode;
+	std::string hardware, renderContext;   // X64.35: machine + renderer identification so receipts are not compared blindly
 	bool dirty=false, interpolation=false;
 	std::uint64_t frequency=1;
 };
 void report(const Recorder& recorder, const Metadata& metadata, std::ostream& summary,
 	std::ostream& frames, std::ostream& categories, std::ostream& slowFrames);
 Tick now();
+// X64.35: one-line renderer/display context supplied by the display host (adapter, size, vsync, cap).
+void setRenderContext(const std::string& text);
+const std::string& renderContext();
 Tick frequency();
 extern thread_local Recorder* activeRecorder;
 using Clock = Tick(*)();

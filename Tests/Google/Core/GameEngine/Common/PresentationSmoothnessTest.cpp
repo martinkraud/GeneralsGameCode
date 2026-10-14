@@ -288,3 +288,39 @@ TEST(PerformanceReceipt, CounterNamesAreCompleteAndUnique)
 			EXPECT_STRNE(name(static_cast<Counter>(a)), name(static_cast<Counter>(b)));
 	}
 }
+
+TEST(PerformanceReceipt, ReportsRendererStateCountersAndHardwareContext)
+{
+	using namespace PerformanceProfile;
+	activeRecorder = nullptr;
+	Recorder r(8);
+	r.start(0);
+	for (int i = 0; i < 4; ++i)
+	{
+		ASSERT_TRUE(r.beginFrame(i * 10, i, 60, 60));
+		activeRecorder = &r;
+		r.add(Counter::Draws2D, 10);
+		r.add(Counter::DrawsWorld, 90);
+		r.add(Counter::Triangles, 5000);
+		r.add(Counter::StateRequested, 1800);
+		r.add(Counter::StateChanged, 300);
+		r.add(Counter::TextureBinds, 40);
+		activeRecorder = nullptr;
+		r.endFrame(i * 10 + 10, i);
+	}
+	r.stop();
+	Metadata meta;
+	meta.frequency = 1000;
+	meta.hardware = "cpu=test; logical_cores=14; ram_mb=16384";
+	meta.renderContext = "adapter=[Test GPU]; client=1280x720; vsync=0";
+	std::ostringstream summary, frames, categories, slow;
+	report(r, meta, summary, frames, categories, slow);
+	const std::string text = summary.str();
+	EXPECT_NE(text.find("avg_draws_2d 10"), std::string::npos);
+	EXPECT_NE(text.find("avg_draws_world 90"), std::string::npos);
+	EXPECT_NE(text.find("avg_triangles 5000"), std::string::npos);
+	EXPECT_NE(text.find("avg_requested 1800 avg_changed 300"), std::string::npos);
+	EXPECT_NE(text.find("avg_texture_binds 40"), std::string::npos);
+	EXPECT_NE(text.find("hardware: cpu=test; logical_cores=14; ram_mb=16384"), std::string::npos);
+	EXPECT_NE(text.find("render_context: adapter=[Test GPU]"), std::string::npos);
+}

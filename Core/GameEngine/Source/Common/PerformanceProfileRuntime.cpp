@@ -11,8 +11,29 @@
 #include <fstream>
 #include <memory>
 #include <ctime>
+#include <intrin.h>
+#include <string>
+#include <cstring>
+#include <cstdio>
 namespace PerformanceProfile
 {
+namespace { std::string g_renderContext; }
+void setRenderContext(const std::string& text){g_renderContext=text;}
+const std::string& renderContext(){return g_renderContext;}
+namespace {
+// X64.35: machine identification stored with every receipt (CPU, cores, RAM, OS) so results from different machines are not
+// compared as if identical.
+std::string hardwareDescription()
+{
+	int regs[4]={0,0,0,0};char brand[49]={};
+	for(unsigned i=0;i<3;++i){__cpuid(regs,static_cast<int>(0x80000002u+i));memcpy(brand+i*16,regs,16);}
+	SYSTEM_INFO si{};GetNativeSystemInfo(&si);
+	MEMORYSTATUSEX mem{};mem.dwLength=sizeof(mem);GlobalMemoryStatusEx(&mem);
+	char text[320];
+	snprintf(text,sizeof(text),"cpu=%s; logical_cores=%u; ram_mb=%llu",brand,si.dwNumberOfProcessors,static_cast<unsigned long long>(mem.ullTotalPhys>>20));
+	return text;
+}
+}
 Tick now() { LARGE_INTEGER q;return QueryPerformanceCounter(&q)?static_cast<Tick>(q.QuadPart):0; }
 Tick frequency() { LARGE_INTEGER q;return QueryPerformanceFrequency(&q)?static_cast<Tick>(q.QuadPart):0; }
 namespace
@@ -50,7 +71,7 @@ void flush(const char* reason)
 	metadata.git=GitSHA1;metadata.dirty=GitUncommittedChanges;metadata.timestamp=stamp;
 	metadata.label=captureLabel;metadata.startedUtc=captureStartUtc;
 	metadata.build="MSVC "+std::to_string(_MSC_FULL_VER)+"; " __DATE__ " " __TIME__;
-	metadata.mode=reason;metadata.frequency=clockFrequency;metadata.interpolation=GroundTranslation::isEnabled();
+	metadata.hardware=hardwareDescription();metadata.renderContext=renderContext();metadata.mode=reason;metadata.frequency=clockFrequency;metadata.interpolation=GroundTranslation::isEnabled();
 	report(*recorder,metadata,summary,frames,categories,slow);
 	bool written=true;
 	if(recorder->deepPaths())

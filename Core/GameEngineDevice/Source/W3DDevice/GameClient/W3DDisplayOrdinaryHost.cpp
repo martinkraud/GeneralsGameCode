@@ -170,17 +170,52 @@ bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, in
 // X64.34: per-frame deltas of the native backend's cumulative counters plus two world gauges, attributed to the
 // current outer frame of an active profiler capture (the sample point is the start of the display draw, so a frame's
 // numbers describe the preceding draw pass). Free when no capture is running.
+static bool g_countersPrimed = false;
 void NativeSampleRenderCounters()
 {
-    if (!PerformanceProfile::activeRecorder)
+    if (!PerformanceProfile::activeRecorder) {
+        g_countersPrimed = false;   // the first sample of the next capture only establishes the baseline (no whole-session spike)
         return;
+    }
     static unsigned lastDraws = 0, lastTextures = 0, lastBuffers = 0;
+    static D3D11Backend::RenderStats last;
+    static bool contextSet = false;
+    bool &primed = g_countersPrimed;
+    if (!primed) {
+        if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+            lastDraws = backend->Draw_Count(); lastTextures = backend->Texture_Creations();
+            lastBuffers = backend->Buffer_Creations(); last = backend->Render_Stats();
+        }
+        primed = true;
+    }
     if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
         const unsigned draws = backend->Draw_Count(), textures = backend->Texture_Creations(), buffers = backend->Buffer_Creations();
         PerformanceProfile::count(PerformanceProfile::Counter::DrawCalls, draws - lastDraws);
         PerformanceProfile::count(PerformanceProfile::Counter::TexturesCreated, textures - lastTextures);
         PerformanceProfile::count(PerformanceProfile::Counter::BuffersCreated, buffers - lastBuffers);
         lastDraws = draws; lastTextures = textures; lastBuffers = buffers;
+        const D3D11Backend::RenderStats now = backend->Render_Stats();
+        using PC = PerformanceProfile::Counter;
+        PerformanceProfile::count(PC::Draws2D, now.draws_2d - last.draws_2d);
+        PerformanceProfile::count(PC::DrawsWorld, now.draws_world - last.draws_world);
+        PerformanceProfile::count(PC::DrawsWater, now.draws_water - last.draws_water);
+        PerformanceProfile::count(PC::Triangles, now.triangles - last.triangles);
+        PerformanceProfile::count(PC::StateRequested, now.state_requested - last.state_requested);
+        PerformanceProfile::count(PC::StateChanged, now.state_changed - last.state_changed);
+        PerformanceProfile::count(PC::TextureBinds, now.texture_binds - last.texture_binds);
+        PerformanceProfile::count(PC::ShaderChanges, now.shader_changes - last.shader_changes);
+        PerformanceProfile::count(PC::TargetChanges, now.target_changes - last.target_changes);
+        PerformanceProfile::count(PC::BufferChanges, now.buffer_changes - last.buffer_changes);
+        last = now;
+        if (!contextSet) {
+            contextSet = true;
+            const DisplayRuntime::State &state = DisplayRuntime::state();
+            char text[512];
+            sprintf_s(text, "adapter=[%s]; client=%dx%d; vsync=%d; mode=%s", backend->Adapter_Description(),
+                static_cast<int>(TheDisplay ? TheDisplay->getWidth() : 0), static_cast<int>(TheDisplay ? TheDisplay->getHeight() : 0),
+                state.resolved.vsync ? 1 : 0, "native-d3d11");
+            PerformanceProfile::setRenderContext(text);
+        }
     }
     if (TheGameLogic)
         PerformanceProfile::count(PerformanceProfile::Counter::ObjectsLive, TheGameLogic->getObjectCount());

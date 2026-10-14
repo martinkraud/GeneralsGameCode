@@ -31,7 +31,9 @@ const char* name(Counter c)
 {
 	static const char* names[]={"completed_logic_ticks","update_modules_invoked","objects_visited_disabled_loop",
 		"drawables_updated","queued_paths_processed","queue_cells_allocated",
-		"draw_calls","textures_created","buffers_created","drawables_drawn","particles_live_gauge","objects_live_gauge"};
+		"draw_calls","textures_created","buffers_created","drawables_drawn","particles_live_gauge","objects_live_gauge",
+		"draws_2d","draws_world","draws_water","triangles","state_requested","state_changed","texture_binds","shader_changes",
+		"target_changes","buffer_changes"};
 	static_assert(sizeof(names)/sizeof(*names)==CounterCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -261,6 +263,13 @@ void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
 	   <<" buffers_created "<<sum[static_cast<unsigned>(Counter::BuffersCreated)]<<"\n"
 	   <<"world: avg_objects "<<sum[static_cast<unsigned>(Counter::ObjectsLive)]/n<<" peak_objects "<<peak[static_cast<unsigned>(Counter::ObjectsLive)]
 	   <<" avg_particles "<<sum[static_cast<unsigned>(Counter::ParticlesLive)]/n<<" peak_particles "<<peak[static_cast<unsigned>(Counter::ParticlesLive)]<<"\n"
+	   <<"renderer: avg_draws_2d "<<sum[static_cast<unsigned>(Counter::Draws2D)]/n<<" avg_draws_world "<<sum[static_cast<unsigned>(Counter::DrawsWorld)]/n
+	   <<" avg_draws_water "<<sum[static_cast<unsigned>(Counter::DrawsWater)]/n<<" avg_triangles "<<sum[static_cast<unsigned>(Counter::Triangles)]/n
+	   <<" peak_triangles "<<peak[static_cast<unsigned>(Counter::Triangles)]<<"\n"
+	   <<"state: avg_requested "<<sum[static_cast<unsigned>(Counter::StateRequested)]/n<<" avg_changed "<<sum[static_cast<unsigned>(Counter::StateChanged)]/n
+	   <<" avg_texture_binds "<<sum[static_cast<unsigned>(Counter::TextureBinds)]/n<<" avg_shader_changes "<<sum[static_cast<unsigned>(Counter::ShaderChanges)]/n
+	   <<" avg_target_changes "<<sum[static_cast<unsigned>(Counter::TargetChanges)]/n<<" avg_buffer_changes "<<sum[static_cast<unsigned>(Counter::BufferChanges)]/n<<"\n"
+	   <<"hardware: "<<meta.hardware<<"\nrender_context: "<<meta.renderContext<<"\n"
 	   <<"interpolation(smooth): "<<meta.interpolation<<"\nnote: CPU wall time incl. pacer waits; GPU time is not measured.\n"
 	   <<"=== end receipt ===\n";
 }
