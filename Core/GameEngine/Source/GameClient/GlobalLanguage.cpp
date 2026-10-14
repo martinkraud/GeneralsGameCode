@@ -52,6 +52,8 @@
 //-----------------------------------------------------------------------------
 #include "PreRTS.h"
 
+#include "Common/DisplayRuntime.h"
+
 #include "Common/AddonCompat.h"
 #include "Common/INI.h"
 #include "Common/Registry.h"
@@ -206,6 +208,14 @@ Real GlobalLanguage::getResolutionFontSizeAdjustment() const
 Real GlobalLanguage::getResolutionFontSizeScale(ResolutionFontSizeMethod method, Real scaler)
 {
 	Real adjustFactor;
+
+	if (DisplayRuntime::modern())
+	{
+		// X64.33 Modern Experience: text follows the same uniform UI scale as the layout, so a widescreen surface
+		// never changes the proportions of a label inside its panel.
+		adjustFactor = (Real)DisplayRuntime::uiScale();
+		return adjustFactor < 0.5f ? 0.5f : adjustFactor;
+	}
 
 	switch (method)
 	{

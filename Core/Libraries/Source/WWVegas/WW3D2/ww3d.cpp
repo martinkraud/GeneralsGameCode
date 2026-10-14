@@ -277,11 +277,13 @@ void WW3D::Set_NPatches_Level(unsigned level)
 void WW3D::Init_Native_Presentation(const PresentationConfiguration &configuration) {
     if(NativePresentation || RenderBackend || IsInitted || IsRendering)
         throw std::runtime_error("Cannot mix native presentation and legacy WW3D lifecycles");
-    if(!configuration.window || configuration.width!=800 || configuration.height!=600)
-        throw std::runtime_error("Native presentation requires the fixed diagnostic window");
+    // X64.33: any valid size; the diagnostic profiles still pass 800x600 and are validated by their own gates.
+    if(!configuration.window || configuration.width<1 || configuration.height<1 ||
+       configuration.width>16384 || configuration.height>16384)
+        throw std::runtime_error("Native presentation requires a window and a valid size");
     D3D11Backend::Configuration config;
     config.window=configuration.window;config.width=configuration.width;config.height=configuration.height;
-    config.software=false;config.diagnostic_windowed=true;
+    config.software=false;config.diagnostic_windowed=true;config.vsync=configuration.vsync;
     config.diagnostic=configuration.diagnostic;config.diagnostic_context=configuration.context;
     auto backend=D3D11Backend::Create_For_W3D(config);
     auto lifecycle=std::make_unique<PresentationLifecycle>(std::move(backend),
@@ -290,6 +292,14 @@ void WW3D::Init_Native_Presentation(const PresentationConfiguration &configurati
         });
     NativePresentation=std::move(lifecycle);
     RenderBackend=NativePresentation->Backend(); // WW3D owns the lifecycle; borrowed active alias
+}
+void WW3D::Resize_Native_Presentation(unsigned width,unsigned height) {
+    if(!NativePresentation) throw std::runtime_error("No native presentation to resize");
+    static_cast<D3D11Backend *>(NativePresentation->Backend())->Resize(width,height);
+    NativePresentation->Resize(PresentationSize{width,height});
+}
+void WW3D::Set_Native_Vsync(bool enabled) {
+    if(NativePresentation) static_cast<D3D11Backend *>(NativePresentation->Backend())->Set_Vsync(enabled);
 }
 void WW3D::Shutdown_Native_Presentation() {
     if(!NativePresentation) return; // idempotent partial-init cleanup only

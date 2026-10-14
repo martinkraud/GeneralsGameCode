@@ -4,6 +4,7 @@
 // (-nativeOrdinaryHost). Deliberately usable from tests without engine state.
 #include <windows.h>
 #include <cstdlib>
+#include "Common/DisplayRuntime.h"
 
 namespace NativeOrdinaryHost {
 
@@ -62,6 +63,11 @@ inline bool computeWindowGeometry(int screenWidth, int screenHeight, WindowGeome
 // scale, which DXGI stretches).
 inline bool clientIsExact(HWND window) {
     RECT client = {};
+    // Modern Experience (X64.33): the client is the configured display size, the swap chain is not stretched.
+    const DisplayGeometry::Size modern = DisplayRuntime::expectedClient();
+    if (modern.valid())
+        return window && GetClientRect(window, &client) &&
+            client.left == 0 && client.top == 0 && client.right == modern.width && client.bottom == modern.height;
     const int percent = activeScalePercent();
     return window && GetClientRect(window, &client) &&
         client.left == 0 && client.top == 0 &&

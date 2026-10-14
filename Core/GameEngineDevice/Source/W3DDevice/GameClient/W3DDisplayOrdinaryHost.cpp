@@ -7,6 +7,11 @@
 #include "Common/Errors.h"
 #include "Common/StartupDiagnostics.h"
 #include "Common/NativeOrdinaryHost.h"
+#include "Common/DisplayRuntime.h"
+#include "Common/DisplaySettings.h"
+#include "Common/DisplayModes.h"
+#include "Common/ModernExperience.h"
+#include "Common/OptionPreferences.h"
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
 #include "WW3D2/ww3d.h"
@@ -67,19 +72,160 @@ void HostLog(void *, const char *stage, const char *status, const char *detail, 
 }
 extern HWND ApplicationHWnd;
 
+// ---------------------------------------------------------------------------------------------------------------
+// X64.33 Modern Experience display. The accepted classic path (fixed 800x600 logical display, review scale, stretched
+// swap chain) is left as it was; this path makes the window client, the swap chain and the logical display the same
+// configured size, so 4:3, 16:9, 21:9 and 32:9 are ordinary sizes.
+// ---------------------------------------------------------------------------------------------------------------
+namespace {
+bool modernRequested()
+{
+    return StartupDiagnostics::normalLaunch() && !ModernExperience::classic();
+}
+
+DisplayConfig::Environment enumerateEnvironment()
+{
+    DisplayConfig::Environment env;
+    env.monitors = DisplayModes::enumerateMonitors();
+    RECT frame = { 0, 0, 100, 100 };
+    if (AdjustWindowRect(&frame, NativeOrdinaryHost::WindowedStyle, FALSE)) {
+        env.frameWidth = (frame.right - frame.left) - 100;
+        env.frameHeight = (frame.bottom - frame.top) - 100;
+    }
+    return env;
+}
+
+DisplayConfig::KeyValues readOptionKeyValues()
+{
+    DisplayConfig::KeyValues kv;
+    OptionPreferences prefs;
+    for (OptionPreferences::const_iterator it = prefs.begin(); it != prefs.end(); ++it)
+        kv[it->first.str()] = it->second.str();
+    return kv;
+}
+
+// Position/style/size of the window for a resolved configuration. WinMain creates the window hidden in the modern
+// path so the player never sees the provisional size.
+void placeWindow(HWND window, const DisplayConfig::Resolved &r)
+{
+    const bool borderless = r.mode != DisplayConfig::WindowMode::Windowed;
+    const DWORD style = borderless ? (WS_POPUP | WS_VISIBLE) : NativeOrdinaryHost::WindowedStyle;
+    RECT outer = { 0, 0, r.client.width, r.client.height };
+    if (!borderless && !AdjustWindowRect(&outer, style, FALSE))
+        throw std::runtime_error("AdjustWindowRect failed for the modern display");
+    const int width = outer.right - outer.left, height = outer.bottom - outer.top;
+    int x = r.monitorBounds.x, y = r.monitorBounds.y;
+    if (!borderless) {
+        x = r.monitorWork.x + (r.monitorWork.width - width) / 2;
+        y = r.monitorWork.y + (r.monitorWork.height - height) / 2;
+        if (x < r.monitorWork.x) x = r.monitorWork.x;
+        if (y < r.monitorWork.y) y = r.monitorWork.y;
+    }
+    SetWindowLongPtr(window, GWL_STYLE, static_cast<LONG_PTR>(style));
+    if (!SetWindowPos(window, HWND_TOP, x, y, width, height, SWP_FRAMECHANGED | SWP_SHOWWINDOW))
+        throw std::runtime_error("SetWindowPos failed for the modern display");
+    SetForegroundWindow(window);
+    SetFocus(window);
+}
+}
+
+// Runtime change of the display (Options): same window, same swap chain, new size/mode. Returns false (state
+// unchanged) when it cannot be applied; the persisted preference is written by the caller either way.
+bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless)
+{
+    if (!DisplayRuntime::modern() || !ApplicationHWnd || !TheDisplay) return false;
+    DisplayConfig::Settings wanted = DisplayRuntime::state().settings;
+    wanted.explicitSettings = true;
+    wanted.mode = borderless ? DisplayConfig::WindowMode::Borderless : DisplayConfig::WindowMode::Windowed;
+    wanted.resolution = { static_cast<int>(width), static_cast<int>(height) };
+    wanted.monitor = DisplayRuntime::state().resolved.monitorIndex;
+    const DisplayConfig::Environment env = enumerateEnvironment();
+    const DisplayConfig::Resolved r = DisplayConfig::resolve(wanted, env);
+    if (!r.client.valid()) return false;
+    try {
+        placeWindow(ApplicationHWnd, r);
+        DisplayRuntime::State &state = DisplayRuntime::state();
+        const DisplayGeometry::Size previous = state.resolved.client;
+        state.settings = wanted;
+        state.resolved = r;
+        DisplayRuntime::setClient(r.client);
+        if (previous != r.client) {
+            WW3D::Resize_Native_Presentation(r.client.width, r.client.height);
+            Render2DClass::Set_Screen_Resolution(RectClass(0, 0, r.client.width, r.client.height));
+        }
+        char detail[160];
+        sprintf_s(detail, "client=%dx%d mode=%s monitor=%d ui_scale=%d%%", r.client.width, r.client.height,
+            DisplayConfig::modeName(r.mode), r.monitorIndex, DisplayRuntime::layout().uiScalePercent);
+        StartupDiagnostics::checkpoint("display_apply", "complete", detail);
+        return true;
+    } catch (const std::exception &error) {
+        StartupDiagnostics::checkpoint("display_apply", "fail", error.what(), 1);
+        return false;
+    }
+}
+
+// Resolution list for the Options screen (Modern Experience only): real, fitting sizes for the active monitor/mode.
+void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out)
+{
+    out.clear();
+    if (!DisplayRuntime::modern()) return;
+    const DisplayConfig::Environment env = enumerateEnvironment();
+    const DisplayRuntime::State &state = DisplayRuntime::state();
+    DisplayModes::Monitor monitor;
+    if (env.monitors.empty()) {
+        monitor.bounds = { 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
+        monitor.work = monitor.bounds;
+    } else {
+        size_t index = static_cast<size_t>(state.resolved.monitorIndex);
+        if (index >= env.monitors.size()) index = 0;
+        monitor = env.monitors[index];
+    }
+    out = DisplayConfig::sizeChoices(monitor, state.resolved.mode, env.frameWidth, env.frameHeight,
+        state.resolved.client);
+}
+
 void W3DDisplay::initOrdinaryHostPresentation()
 {
     StartupDiagnostics::Phase phase("display_ordinary_init");
     if (!TheGlobalData->m_headless || m_2DRender)
         throw std::runtime_error("Ordinary host display requires the headless world selection and no prior 2D helper");
-    if (StartupDiagnostics::normalLaunch()) {
-        // Normal launch: the resolution/fullscreen architecture is a later milestone. Whatever Options.ini or the
-        // command line asked for, the native runtime presents the original 800x600 logical display in a window.
+    const bool modern = modernRequested();
+    DisplayGeometry::Size displaySize = { 800, 600 };
+    bool vsync = false;
+    if (modern) {
+        // X64.33: resolve the persisted display settings against the attached monitors and shape the (hidden)
+        // window to match before any swap chain exists.
+        const DisplayConfig::Settings settings = DisplayConfig::load(readOptionKeyValues(), false);
+        const DisplayConfig::Environment env = enumerateEnvironment();
+        const DisplayConfig::Resolved resolved = DisplayConfig::resolve(settings, env,
+            { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) });
+        DisplayRuntime::State &state = DisplayRuntime::state();
+        state.modern = true;
+        state.settings = settings;
+        state.resolved = resolved;
+        DisplayRuntime::setClient(resolved.client);
+        placeWindow(ApplicationHWnd, resolved);
+        displaySize = resolved.client;
+        vsync = resolved.vsync;
+        TheWritableGlobalData->m_windowed = TRUE;
+        TheWritableGlobalData->m_xResolution = displaySize.width;
+        TheWritableGlobalData->m_yResolution = displaySize.height;
+        char detail[320];
+        sprintf_s(detail, "client=%dx%d mode=%s monitor=%d/%d desktop_refresh=%dHz vsync=%d ui_scale=%d%% (%s) aspect=%s settings=%s",
+            displaySize.width, displaySize.height, DisplayConfig::modeName(resolved.mode),
+            resolved.monitorIndex, static_cast<int>(env.monitors.size()), resolved.refreshHz, vsync ? 1 : 0,
+            resolved.layout.uiScalePercent, settings.uiScalePercent > 0 ? "fixed" : "auto",
+            DisplayModes::aspectFamily(displaySize), settings.explicitSettings ? "stored" : "migrated-defaults");
+        StartupDiagnostics::checkpoint("display_modern", "complete", detail);
+        for (const std::string &note : resolved.notes)
+            StartupDiagnostics::checkpoint("display_modern_note", "observed", note.c_str());
+    } else if (StartupDiagnostics::normalLaunch()) {
+        // Classic normal launch: the native runtime presents the original 800x600 logical display in a window.
         TheWritableGlobalData->m_windowed = TRUE;
         TheWritableGlobalData->m_xResolution = 800;
         TheWritableGlobalData->m_yResolution = 600;
     }
-    if (!TheGlobalData->m_windowed || TheGlobalData->m_xResolution != 800 || TheGlobalData->m_yResolution != 600) {
+    if (!modern && (!TheGlobalData->m_windowed || TheGlobalData->m_xResolution != 800 || TheGlobalData->m_yResolution != 600)) {
         char detail[160];
         sprintf_s(detail, "windowed=%d xres=%d yres=%d; only windowed 800x600 is supported",
             TheGlobalData->m_windowed ? 1 : 0, (int)TheGlobalData->m_xResolution, (int)TheGlobalData->m_yResolution);
@@ -87,10 +233,14 @@ void W3DDisplay::initOrdinaryHostPresentation()
         throw std::runtime_error(detail);
     }
     if (!NativeOrdinaryHost::clientIsExact(ApplicationHWnd)) {
-        StartupDiagnostics::checkpoint("display_config", "fail", "ApplicationHWnd client is not 800x600", 1);
-        throw std::runtime_error("ApplicationHWnd client is not 800x600");
+        StartupDiagnostics::checkpoint("display_config", "fail", "ApplicationHWnd client is not the expected size", 1);
+        throw std::runtime_error("ApplicationHWnd client is not the expected size");
     }
-    StartupDiagnostics::checkpoint("display_config", "complete", "windowed=1 800x600x32 ApplicationHWnd");
+    {
+        char detail[96];
+        sprintf_s(detail, "windowed=1 %dx%dx32 ApplicationHWnd", displaySize.width, displaySize.height);
+        StartupDiagnostics::checkpoint("display_config", "complete", detail);
+    }
     // Receipted decisions: each legacy DX8-only initializer this profile does not run.
     static const char *const bypass[] = {
         "legacy_ww3d_init: WW3D::Init/DX8Backend/DX8Wrapper::Init (D3D8.DLL) not entered",
@@ -114,23 +264,26 @@ void W3DDisplay::initOrdinaryHostPresentation()
     PresentationConfiguration configuration;
     configuration.window = ApplicationHWnd;
     configuration.diagnostic = HostLog;
+    configuration.width = static_cast<unsigned>(displaySize.width);
+    configuration.height = static_cast<unsigned>(displaySize.height);
+    configuration.vsync = vsync;
     WW3D::Init_Native_Presentation(configuration);
 
     m_2DRender = NEW Render2DClass;
-    setWidth(800);
-    setHeight(600);
+    setWidth(displaySize.width);
+    setHeight(displaySize.height);
     setBitDepth(32);
     setWindowed(TRUE);
-    Render2DClass::Set_Screen_Resolution(RectClass(0, 0, 800, 600));
+    Render2DClass::Set_Screen_Resolution(RectClass(0, 0, displaySize.width, displaySize.height));
     // Same pixel-center policy the legacy non-headless init selects.
     WW3D::Set_Screen_UV_Bias(true);
 
     int w = 0, h = 0, b = 0; bool windowed = false;
     WW3D::Get_Device_Resolution(w, h, b, windowed);
-    if (w != 800 || h != 600 || b != 32 || !windowed)
+    if (w != displaySize.width || h != displaySize.height || b != 32 || !windowed)
         throw std::runtime_error("Ordinary host device dimensions disagree");
     WW3D::Get_Render_Target_Resolution(w, h, b, windowed);
-    if (w != 800 || h != 600 || b != 32)
+    if (w != displaySize.width || h != displaySize.height || b != 32)
         throw std::runtime_error("Ordinary host target dimensions disagree");
     const NativeOrdinaryHost::ModuleAudit audit = NativeOrdinaryHost::auditLoadedModules();
     char detail[160];
@@ -140,7 +293,12 @@ void W3DDisplay::initOrdinaryHostPresentation()
         throw std::runtime_error("Legacy D3D8 module loaded under the ordinary host profile");
     }
     StartupDiagnostics::checkpoint("display_module_audit", "complete", detail);
-    StartupDiagnostics::checkpoint("display_size", "complete", "device=800x600 target=800x600 bits=32 windowed=1");
+    {
+        char sizeDetail[96];
+        sprintf_s(sizeDetail, "device=%dx%d target=%dx%d bits=32 windowed=1", displaySize.width, displaySize.height,
+            displaySize.width, displaySize.height);
+        StartupDiagnostics::checkpoint("display_size", "complete", sizeDetail);
+    }
     if (StartupDiagnostics::normalLaunch()) {
         // Normal launch has no host loop to do the play profile's one-time setup: the decal / planar shadow
         // manager is installed with the display and removed by releaseAll() at shutdown.
@@ -265,7 +423,7 @@ int W3DDisplay::runOrdinaryHostGate()
                 TheMessageStream->containsMessageOfType(GameMessage::MSG_META_DEMO_INSTANT_QUIT);
             const bool iconic = IsIconic(ApplicationHWnd) != FALSE;
             if (!iconic && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
-                throw std::runtime_error("Unsupported resize: client is not 800x600");
+                throw std::runtime_error("Unsupported resize: client is not the configured size");
             elapsed = static_cast<unsigned>(GetTickCount64() - start);
             const bool visible = IsWindowVisible(ApplicationHWnd) && !iconic;
             const Decision decision = NativeGraphicsSmoke::Evaluate(elapsed, frames, visibleFrames,
@@ -667,7 +825,7 @@ int W3DDisplay::runOrdinaryMenuHost()
             if (!IsWindow(ApplicationHWnd)) throw std::runtime_error("Application window destroyed");
             const bool iconic = IsIconic(ApplicationHWnd) != FALSE;
             if (!iconic && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
-                throw std::runtime_error("Unsupported resize: client is not 800x600");
+                throw std::runtime_error("Unsupported resize: client is not the configured size");
 
             TheKeyboard->UPDATE(); TheKeyboard->createStreamMessages();
             TheMouse->UPDATE(); TheMouse->createStreamMessages();
@@ -880,7 +1038,7 @@ int W3DDisplay::runOrdinaryGameHost()
             ++updates;
             if (!IsWindow(ApplicationHWnd)) throw std::runtime_error("Application window destroyed");
             if (!IsIconic(ApplicationHWnd) && !NativeOrdinaryHost::clientIsExact(ApplicationHWnd))
-                throw std::runtime_error("Unsupported resize: client is not 800x600");
+                throw std::runtime_error("Unsupported resize: client is not the configured size");
             if (m_hostPresentResult != 0) {
                 sprintf_s(detail, "Present HRESULT=0x%08X frame=%u", m_hostPresentResult, m_hostPresents);
                 throw std::runtime_error(detail);
@@ -940,7 +1098,7 @@ int W3DDisplay::runOrdinaryGameHost()
                         if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
                             char name[48];
                             sprintf_s(name, "play_frame_%u.bmp", ++playImages);
-                            if (!WriteBmp(name, backend->Readback_RGBA8(), 800, 600))
+                            if (!WriteBmp(name, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight()))
                                 StartupDiagnostics::checkpoint("play_image", "observed", "image not written");
                         }
                     }
@@ -1071,7 +1229,7 @@ bool saveNativeScreenshot()
         char path[MAX_PATH];
         sprintf_s(path, "%s\Generals64_%04u.bmp", directory, n);
         if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) continue;
-        return WriteBmpFile(path, backend->Readback_RGBA8(), 800, 600);
+        return WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
     }
     return false;
 }

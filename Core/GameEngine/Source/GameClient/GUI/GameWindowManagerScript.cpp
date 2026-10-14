@@ -47,6 +47,8 @@
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
+#include "Common/DisplayRuntime.h"
+
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Common/Debug.h"
 #include "Common/file.h"
@@ -554,16 +556,42 @@ static Bool parseScreenRect( const char *token, char *buffer,
 	c = strtok( nullptr, seps );  // y creation resolution
 	scanInt( c, createRes.y );
 
-	//
-	// shrink or expand the screen region by the ratio of the current
-	// resolution divided by the creation resolution
-	//
-	Real xScale = (Real)TheDisplay->getWidth() / (Real)createRes.x;
-	Real yScale = (Real)TheDisplay->getHeight() / (Real)createRes.y;
-	screenRegion.lo.x = (Int)((Real)screenRegion.lo.x * xScale);
-	screenRegion.lo.y = (Int)((Real)screenRegion.lo.y * yScale);
-	screenRegion.hi.x = (Int)((Real)screenRegion.hi.x * xScale);
-	screenRegion.hi.y = (Int)((Real)screenRegion.hi.y * yScale);
+	if( DisplayRuntime::modern() && createRes.x > 0 && createRes.y > 0 )
+	{
+		//
+		// X64.33 Modern Experience: uniform UI scale plus edge anchoring instead of the anisotropic stretch.
+		// The layout (WND) is first expressed on the 800x600 reference canvas; a top-level window picks its
+		// anchor from the edges it touches and every descendant keeps its root's anchor, so a bar that hugs the
+		// right or bottom edge keeps hugging it on a 21:9 or 32:9 surface instead of drifting to the middle.
+		//
+		static DisplayGeometry::Anchor layoutAnchor = DisplayGeometry::Anchor::Center;
+		DisplayGeometry::Rect reference;
+		reference.x = screenRegion.lo.x * DisplayGeometry::kReferenceSize.width / createRes.x;
+		reference.y = screenRegion.lo.y * DisplayGeometry::kReferenceSize.height / createRes.y;
+		reference.width = screenRegion.hi.x * DisplayGeometry::kReferenceSize.width / createRes.x - reference.x;
+		reference.height = screenRegion.hi.y * DisplayGeometry::kReferenceSize.height / createRes.y - reference.y;
+		if( parent == nullptr )
+			layoutAnchor = DisplayGeometry::inferAnchor( reference );
+		const DisplayGeometry::Rect physical =
+			DisplayGeometry::referenceToPhysical( DisplayRuntime::layout(), reference, layoutAnchor );
+		screenRegion.lo.x = physical.x;
+		screenRegion.lo.y = physical.y;
+		screenRegion.hi.x = physical.right();
+		screenRegion.hi.y = physical.bottom();
+	}
+	else
+	{
+		//
+		// shrink or expand the screen region by the ratio of the current
+		// resolution divided by the creation resolution
+		//
+		Real xScale = (Real)TheDisplay->getWidth() / (Real)createRes.x;
+		Real yScale = (Real)TheDisplay->getHeight() / (Real)createRes.y;
+		screenRegion.lo.x = (Int)((Real)screenRegion.lo.x * xScale);
+		screenRegion.lo.y = (Int)((Real)screenRegion.lo.y * yScale);
+		screenRegion.hi.x = (Int)((Real)screenRegion.hi.x * xScale);
+		screenRegion.hi.y = (Int)((Real)screenRegion.hi.y * yScale);
+	}
 
 	//
 	// given the screen region upper left compute the upper left that we

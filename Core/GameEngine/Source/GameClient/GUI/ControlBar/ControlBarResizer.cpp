@@ -47,6 +47,7 @@
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/DisplayRuntime.h"
 //-----------------------------------------------------------------------------
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
@@ -180,8 +181,8 @@ void ControlBarResizer::sizeWindowsAlt()
 {
 	ResizerWindowList::iterator it = m_resizerWindowsList.begin();
 	GameWindow *win = nullptr;
-	Real x = (Real)TheDisplay->getWidth() / DEFAULT_DISPLAY_WIDTH;
-	Real y = (Real)TheDisplay->getHeight() / DEFAULT_DISPLAY_HEIGHT;
+	Real x = (Real)DisplayRuntime::referenceScaleX(TheDisplay->getWidth());
+	Real y = (Real)DisplayRuntime::referenceScaleY(TheDisplay->getHeight());
 	while (it != m_resizerWindowsList.end())
 	{
 		ResizerWindow *rWin = *it;

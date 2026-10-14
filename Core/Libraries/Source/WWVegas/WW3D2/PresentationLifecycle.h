@@ -8,6 +8,7 @@ struct PresentationSize { unsigned width, height; };
 struct PresentationConfiguration {
     void *window=nullptr;
     unsigned width=800,height=600;
+    bool vsync=false; // X64.33: present with sync interval 1 (Options > VSync)
     void (*diagnostic)(void *,const char *,const char *,const char *,unsigned)=nullptr;
     void *context=nullptr;
 };
@@ -26,6 +27,7 @@ public:
     void Begin(bool clear, bool depth, const Vector3 &, float alpha);
     void End(bool present);
     unsigned Frames() const;
+    void Resize(PresentationSize dimensions); // X64.33: after the backend swap chain was resized
 private:
     std::unique_ptr<IRenderBackend> backend;
     PresentationSize size;

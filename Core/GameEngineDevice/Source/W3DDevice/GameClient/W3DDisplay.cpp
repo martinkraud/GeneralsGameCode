@@ -37,6 +37,8 @@ static void drawFramerateBar();
 #include "Common/PerformanceProfile.h"
 #if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
+#include "Common/DisplayRuntime.h"
+#include <vector>
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/NativeWorldEffects.h"
 #endif
@@ -492,6 +494,12 @@ W3DDisplay::~W3DDisplay()
 
 }
 
+#if defined(_WIN64)
+// X64.33 Modern Experience (W3DDisplayOrdinaryHost.cpp)
+extern bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless);
+extern void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out);
+#endif
+
 // TheSuperHackers @tweak valeronm 20/03/2025 No longer filters resolutions by a 4:3 aspect ratio.
 inline Bool isResolutionSupported(const ResolutionDescClass &res)
 {
@@ -507,7 +515,13 @@ Int W3DDisplay::getDisplayModeCount()
 	// Native runtime: one presentation mode (the original 800x600 logical display in a window). The resolution
 	// architecture is a later milestone; nothing here may touch the DX8 device enumeration.
 	if (StartupDiagnostics::nativeRuntime())
-		return 1;
+	{
+		if (!DisplayRuntime::modern())
+			return 1;
+		std::vector<DisplayGeometry::Size> sizes;
+		NativeModernSizeChoices(sizes);
+		return sizes.empty() ? 1 : static_cast<Int>(sizes.size());
+	}
 #endif
 	const RenderDeviceDescClass &devDesc=WW3D::Get_Render_Device_Desc(0);
 	const DynamicVectorClass <ResolutionDescClass> &resolutions=devDesc.Enumerate_Resolutions();
@@ -546,6 +560,16 @@ void W3DDisplay::getDisplayModeDescription(Int modeIndex, Int *xres, Int *yres, 
 		*xres = 800;
 		*yres = 600;
 		*bitDepth = 32;
+		if (DisplayRuntime::modern())
+		{
+			std::vector<DisplayGeometry::Size> sizes;
+			NativeModernSizeChoices(sizes);
+			if (modeIndex >= 0 && modeIndex < static_cast<Int>(sizes.size()))
+			{
+				*xres = sizes[modeIndex].width;
+				*yres = sizes[modeIndex].height;
+			}
+		}
 		return;
 	}
 #endif
@@ -589,7 +613,21 @@ Bool W3DDisplay::setDisplayMode( UnsignedInt xres, UnsignedInt yres, UnsignedInt
 {
 #if defined(_WIN64)
 	if (StartupDiagnostics::nativeRuntime())
-		return xres == 800 && yres == 600;	// the only mode; nothing to change
+	{
+		if (!DisplayRuntime::modern())
+			return xres == 800 && yres == 600;	// classic: the only mode; nothing to change
+		if (xres == getWidth() && yres == getHeight())
+			return TRUE;
+		// A running match keeps its display; the preference is persisted and applies from the menus/next launch.
+		if (TheGameLogic && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame())
+			return FALSE;
+		const bool borderless = DisplayRuntime::state().resolved.mode != DisplayConfig::WindowMode::Windowed;
+		if (!NativeApplyDisplayMode(xres, yres, borderless))
+			return FALSE;
+		Display::setDisplayMode(DisplayRuntime::state().resolved.client.width,
+			DisplayRuntime::state().resolved.client.height, 32, TRUE);
+		return TRUE;
+	}
 #endif
 	const UnsignedInt oldWidth = getWidth();
 	const UnsignedInt oldHeight = getHeight();

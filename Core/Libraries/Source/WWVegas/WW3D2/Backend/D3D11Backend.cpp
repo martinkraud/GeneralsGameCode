@@ -721,7 +721,7 @@ void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene =
 void D3D11Backend::End_Scene(bool flip) { if (!impl->scene) Unsupported(); impl->scene = false; if (flip) Flip_To_Primary(); }
 void D3D11Backend::Flip_To_Primary() {
     if (!impl->swapchain) Unsupported();
-    const HRESULT result = impl->swapchain->Present(0, 0);
+    const HRESULT result = impl->swapchain->Present(impl->config.vsync ? 1 : 0, 0);
     impl->lastPresent = {static_cast<unsigned>(result),
         FAILED(result) ? static_cast<unsigned>(impl->device->GetDeviceRemovedReason()) : 0u,
         result == DXGI_STATUS_OCCLUDED};
@@ -746,6 +746,7 @@ void D3D11Backend::Set_Viewport(const RenderBackendViewport &v)
         static_cast<float>(v.width), static_cast<float>(v.height), v.min_z, v.max_z};
     impl->context->RSSetViewports(1, &viewport);
 }
+void D3D11Backend::Set_Vsync(bool enabled) { impl->config.vsync = enabled; }
 void D3D11Backend::Resize(unsigned width, unsigned height)
 {
     if (impl->scene || !width || !height || width > 16384 || height > 16384) Unsupported();

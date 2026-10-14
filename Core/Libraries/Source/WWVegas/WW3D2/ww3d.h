@@ -120,6 +120,8 @@ public:
     // Explicit presentation-only lifecycle; does not initialize world rendering.
     static void Init_Native_Presentation(const PresentationConfiguration &);
     static void Shutdown_Native_Presentation();
+    static void Resize_Native_Presentation(unsigned width,unsigned height); // X64.33
+    static void Set_Native_Vsync(bool enabled);                               // X64.33
     static PresentationStatus Native_Presentation_Status();
 #endif
 

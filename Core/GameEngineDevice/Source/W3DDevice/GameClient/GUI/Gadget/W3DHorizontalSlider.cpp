@@ -50,6 +50,7 @@
 #include "GameClient/GameWindowGlobal.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GadgetSlider.h"
+#include "Common/DisplayRuntime.h"
 #include "W3DDevice/GameClient/W3DGadget.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 
@@ -150,7 +151,7 @@ void W3DGadgetHorizontalSliderImageDraw( GameWindow *window,
 
 	SliderData *s = (SliderData *)window->winGetUserData();
 
-	Real xMulti = INT_TO_REAL(TheDisplay->getWidth()) / DEFAULT_DISPLAY_WIDTH;
+	Real xMulti = (Real)DisplayRuntime::referenceScaleX(TheDisplay->getWidth());
 
 	// figure out how many boxes we draw for this slider
 	Int numBoxes = 0;
@@ -229,8 +230,8 @@ void W3DGadgetHorizontalSliderImageDrawB( GameWindow *window,
 
 	SliderData *s = (SliderData *)window->winGetUserData();
 
-	Real xMulti = INT_TO_REAL(TheDisplay->getWidth()) / DEFAULT_DISPLAY_WIDTH;
-	Real yMulti = INT_TO_REAL(TheDisplay->getHeight()) / DEFAULT_DISPLAY_HEIGHT;
+	Real xMulti = (Real)DisplayRuntime::referenceScaleX(TheDisplay->getWidth());
+	Real yMulti = (Real)DisplayRuntime::referenceScaleY(TheDisplay->getHeight());
 	// get image offset
 	xOffset = instData->m_imageOffset.x;
 	yOffset = instData->m_imageOffset.y;

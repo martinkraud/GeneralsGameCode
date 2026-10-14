@@ -30,6 +30,8 @@
 // USER INCLUDES //////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+
+#include "Common/DisplayRuntime.h"
 #define DEFINE_GUI_COMMAND_NAMES
 #define DEFINE_COMMAND_OPTION_NAMES
 #define DEFINE_WEAPONSLOTTYPE_NAMES
@@ -3878,5 +3880,14 @@ void ControlBar::setFullViewportHeight()
 
 void ControlBar::setScaledViewportHeight()
 {
+	if (DisplayRuntime::modern())
+	{
+		// X64.33: the bar is a bottom-anchored block of (1 - scale) x 600 reference pixels at the UI scale, so the
+		// world viewport ends the same distance above the bottom edge no matter the surface or the UI scale.
+		const Real referenceBarOverlap = (1.0f - TheGlobalData->m_viewportHeightScale) * (Real)DisplayGeometry::kReferenceSize.height;
+		const Int height = TheDisplay->getHeight() - (Int)(referenceBarOverlap * (Real)DisplayRuntime::uiScale() + 0.5f);
+		TheTacticalView->setHeight(height > 0 ? height : TheDisplay->getHeight());
+		return;
+	}
 	TheTacticalView->setHeight(TheDisplay->getHeight() * TheGlobalData->m_viewportHeightScale);
 }

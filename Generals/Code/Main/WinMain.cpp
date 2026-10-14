@@ -35,6 +35,7 @@
 #include "Common/StartupDiagnostics.h"
 #include "Common/NativeShutdownDiagnostics.h"
 #include "Common/NativeOrdinaryHost.h"
+#include "Common/ModernExperience.h"
 #include <stdexcept>
 #include <stdlib.h>
 #include <crtdbg.h>
@@ -800,9 +801,13 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 	StartupDiagnostics::checkpoint( "app_window_class", "complete", "Game Window" );
 
 	NativeOrdinaryHost::WindowGeometry geometry = {};
+	// X64.33 Modern Experience: the window is created hidden at a provisional 800x600 client; the display
+	// (W3DDisplay::initOrdinaryHostPresentation) resolves the persisted settings, shapes and shows the window.
+	// Classic and the diagnostic profiles keep the accepted review window below.
+	const bool modernDisplay = StartupDiagnostics::normalLaunch() && !ModernExperience::classic();
 	// Developer-review window (play profile): the same 800x600 logical display shown larger.
 	int reviewPercent = 100;
-	if( StartupDiagnostics::ordinaryPlay() )
+	if( StartupDiagnostics::ordinaryPlay() && !modernDisplay )
 	{
 		RECT work = { 0, 0, GetSystemMetrics( SM_CXSCREEN ), GetSystemMetrics( SM_CYSCREEN ) };
 		SystemParametersInfo( SPI_GETWORKAREA, 0, &work, 0 );
@@ -814,6 +819,8 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 	}
 	if( !NativeOrdinaryHost::computeWindowGeometry( GetSystemMetrics( SM_CXSCREEN ), GetSystemMetrics( SM_CYSCREEN ), geometry, reviewPercent ) )
 		hostFail( "AdjustWindowRect" );
+	if( modernDisplay )
+		geometry.style &= ~static_cast<DWORD>(WS_VISIBLE);
 
 	gInitializing = true;
 	HWND hWnd = CreateWindow( TEXT("Game Window"), TEXT("Command and Conquer Generals"), geometry.style,
@@ -826,10 +833,13 @@ static void initializeOrdinaryHostWindow( HINSTANCE hInstance, int nCmdShow )
 		hostFail( "Client area is not 800x600 (or its review scale)" );
 
 	SetWindowPos( hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
-	SetFocus( hWnd );
-	SetForegroundWindow( hWnd );
-	ShowWindow( hWnd, nCmdShow );
-	UpdateWindow( hWnd );
+	if( !modernDisplay )
+	{
+		SetFocus( hWnd );
+		SetForegroundWindow( hWnd );
+		ShowWindow( hWnd, nCmdShow );
+		UpdateWindow( hWnd );
+	}
 	if( !NativeOrdinaryHost::clientIsExact( hWnd ) )
 		hostFail( "Client area changed while showing" );
 	gInitializing = false;

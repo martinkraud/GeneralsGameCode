@@ -19,6 +19,7 @@
 #include "Common/DisplayGeometry.h"
 #include "Common/DisplayModes.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -26,7 +27,7 @@
 #include <string>
 #include <vector>
 
-namespace DisplaySettings
+namespace DisplayConfig
 {
 using DisplayGeometry::Size;
 using DisplayGeometry::Rect;
@@ -228,6 +229,39 @@ inline Size autoWindowedSize(const DisplayModes::Monitor &monitor, int frameW, i
 	return DisplayGeometry::kReferenceSize;
 }
 
+// Sizes offered in the Resolution list. Windowed: standard sizes (and sizes the driver reports) that fit the
+// work area, the current size always included. Borderless/Exclusive: the desktop size only (no fake modes).
+inline std::vector<Size> sizeChoices(const DisplayModes::Monitor &monitor, WindowMode mode, int frameW, int frameH,
+                                     Size current = {0, 0})
+{
+	std::vector<Size> out;
+	auto add = [&](Size s) {
+		if (!s.valid()) return;
+		for (const Size &e : out) if (e == s) return;
+		out.push_back(s);
+	};
+	if (mode != WindowMode::Windowed)
+	{
+		add({monitor.bounds.width, monitor.bounds.height});
+		return out;
+	}
+	static const Size standard[] = {
+		{800, 600}, {1024, 768}, {1280, 720}, {1280, 800}, {1280, 960}, {1280, 1024}, {1366, 768}, {1440, 900},
+		{1600, 900}, {1600, 1200}, {1680, 1050}, {1920, 1080}, {1920, 1200}, {2560, 1080}, {2560, 1440}, {2560, 1600},
+		{3440, 1440}, {3840, 1080}, {3840, 1600}, {3840, 2160}, {5120, 1440},
+	};
+	const int maxW = monitor.work.width - frameW, maxH = monitor.work.height - frameH;
+	for (const Size &s : standard)
+		if (s.width <= maxW && s.height <= maxH) add(s);
+	for (const Size &s : DisplayModes::resolutionsOf(monitor.modes))
+		if (s.width <= maxW && s.height <= maxH) add(s);
+	add(current);
+	std::sort(out.begin(), out.end(), [](const Size &a, const Size &b) {
+		return a.width != b.width ? a.width < b.width : a.height < b.height;
+	});
+	return out;
+}
+
 inline Resolved resolve(const Settings &s, const Environment &env, Size fallbackDesktop = {1920, 1080})
 {
 	Resolved r;
@@ -293,4 +327,4 @@ inline Resolved resolve(const Settings &s, const Environment &env, Size fallback
 	return r;
 }
 
-}  // namespace DisplaySettings
+}  // namespace DisplayConfig

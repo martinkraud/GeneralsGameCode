@@ -28,6 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/DisplayRuntime.h"
 #include "Common/StartupDiagnostics.h"
 
 #define DEFINE_SHADOW_NAMES
@@ -4343,8 +4344,9 @@ void InGameUI::militarySubtitle( const AsciiString& label, Int duration )
 
 	// calculate where this screen position should be since the position being passed in is based off 8x6
 	Coord2D multiplier;
-	multiplier.x = TheDisplay->getWidth() / (Real)DEFAULT_DISPLAY_WIDTH;
-	multiplier.y = TheDisplay->getHeight() / (Real)DEFAULT_DISPLAY_HEIGHT;
+	multiplier.x = (Real)DisplayRuntime::referenceScaleX(TheDisplay->getWidth());
+	multiplier.y = (Real)DisplayRuntime::referenceScaleY(TheDisplay->getHeight());
+	const DisplayGeometry::Point referenceOrigin = DisplayRuntime::referenceOrigin();
 
 	// lets bring out the data structure!
 	m_militarySubtitle = NEW MilitarySubtitleData;
@@ -4353,8 +4355,8 @@ void InGameUI::militarySubtitle( const AsciiString& label, Int duration )
 	m_militarySubtitle->blockDrawn = TRUE;
 	m_militarySubtitle->blockBeginFrame = currLogicFrame;
 	m_militarySubtitle->lifetime = messageTimeout;
-	m_militarySubtitle->blockPos.x =  m_militarySubtitle->position.x = m_militaryCaptionPosition.x * multiplier.x;
-	m_militarySubtitle->blockPos.y =  m_militarySubtitle->position.y = m_militaryCaptionPosition.y * multiplier.y;
+	m_militarySubtitle->blockPos.x =  m_militarySubtitle->position.x = referenceOrigin.x + m_militaryCaptionPosition.x * multiplier.x;
+	m_militarySubtitle->blockPos.y =  m_militarySubtitle->position.y = referenceOrigin.y + m_militaryCaptionPosition.y * multiplier.y;
 	m_militarySubtitle->incrementOnFrame = currLogicFrame + (Int)(((Real)LOGICFRAMES_PER_SECOND * m_militaryCaptionDelayMS)/1000.0f);
 	m_militarySubtitle->index = 0;
 	for (int i = 1; i < MAX_SUBTITLE_LINES; i ++)

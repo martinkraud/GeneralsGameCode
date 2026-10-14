@@ -21,7 +21,7 @@
 
 #include "Common/DisplaySettings.h"
 
-using namespace DisplaySettings;
+using namespace DisplayConfig;
 using DisplayGeometry::Size;
 using DisplayModes::Monitor;
 
@@ -205,4 +205,29 @@ TEST(DisplaySettings, UiScaleResolvesThroughTheSameLayoutAtEveryReviewSize)
 			EXPECT_GE(r.layout.uiScalePercent, 50);
 		}
 	}
+}
+
+TEST(DisplaySettings, SizeChoicesAreRealAndFit)
+{
+	Monitor m = makeMonitor(0, 3440, 1440, true, 100);
+	m.modes = DisplayModes::filterModes({[]{ DisplayModes::Mode x; x.width = 3440; x.height = 1440; x.refreshHz = 100; return x; }(),
+	                                     []{ DisplayModes::Mode x; x.width = 2560; x.height = 1080; x.refreshHz = 100; return x; }()});
+	const auto windowed = sizeChoices(m, WindowMode::Windowed, 16, 39, {1111, 777});
+	ASSERT_FALSE(windowed.empty());
+	bool hasCurrent = false, hasWide = false;
+	for (const Size &s : windowed)
+	{
+		EXPECT_LE(s.width + 16, m.work.width);
+		EXPECT_LE(s.height + 39, m.work.height);
+		hasCurrent |= s == Size{1111, 777};
+		hasWide |= s == Size{2560, 1080};
+	}
+	EXPECT_TRUE(hasCurrent);
+	EXPECT_TRUE(hasWide);
+	for (size_t i = 1; i < windowed.size(); ++i)
+		EXPECT_TRUE(windowed[i - 1].width < windowed[i].width ||
+		            (windowed[i - 1].width == windowed[i].width && windowed[i - 1].height < windowed[i].height));
+	const auto borderless = sizeChoices(m, WindowMode::Borderless, 16, 39);
+	ASSERT_EQ(borderless.size(), 1u);
+	EXPECT_EQ(borderless[0], (Size{3440, 1440}));
 }

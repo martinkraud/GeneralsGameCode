@@ -51,6 +51,7 @@
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/DisplayRuntime.h"
 
 #include "GameClient/ProcessAnimateWindow.h"
 #include "GameClient/AnimateWindowManager.h"
@@ -70,12 +71,12 @@
 
 static Real getDisplayWidthScaler()
 {
-	return static_cast<Real>(TheDisplay->getWidth()) / DEFAULT_DISPLAY_WIDTH;
+	return static_cast<Real>(DisplayRuntime::referenceScaleX(TheDisplay->getWidth()));
 }
 
 static Real getDisplayHeightScaler()
 {
-	return static_cast<Real>(TheDisplay->getHeight()) / DEFAULT_DISPLAY_HEIGHT;
+	return static_cast<Real>(DisplayRuntime::referenceScaleY(TheDisplay->getHeight()));
 }
 
 // TheSuperHackers @tweak bobtista 04/08/2026 The animated position is tracked with sub pixel

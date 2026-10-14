@@ -13,6 +13,11 @@ IRenderBackend *PresentationLifecycle::Backend() const {return backend.get();}
 PresentationSize PresentationLifecycle::Size() const {return size;}
 PresentationStatus PresentationLifecycle::Status() const {return readStatus(*backend);}
 unsigned PresentationLifecycle::Frames() const {return frames;}
+void PresentationLifecycle::Resize(PresentationSize dimensions) {
+    if(active || !dimensions.width || !dimensions.height || dimensions.width>16384 || dimensions.height>16384)
+        throw std::runtime_error("Invalid presentation resize");
+    size=dimensions;
+}
 void PresentationLifecycle::Begin(bool clear,bool depth,const Vector3 &color,float alpha) {
     if(active || depth) throw std::runtime_error("Presentation lifecycle requires paired color-only frames");
     backend->Set_Viewport({0,0,size.width,size.height,0,1});

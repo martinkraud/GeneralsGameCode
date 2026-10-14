@@ -22,6 +22,7 @@ public:
         bool software = false; // explicit WARP selection for automated validation
         bool diagnostic_windowed = false; // opt-in: suppress DXGI Alt-Enter
         bool depth_buffer = false; // opt-in D24S8 depth/stencil for world submissions (R0)
+        bool vsync = false; // X64.33: Present(1) instead of Present(0)
         DiagnosticSink diagnostic = nullptr;
         void *diagnostic_context = nullptr;
         TextureFilterClass::TextureFilterMode ui_filter = TextureFilterClass::TEXTURE_FILTER_BILINEAR;
@@ -50,6 +51,7 @@ public:
     // Bounded validation readback, not an engine screenshot/readback migration.
     std::vector<unsigned char> Readback_RGBA8();
     void Resize(unsigned width, unsigned height);
+    void Set_Vsync(bool enabled); // X64.33; takes effect on the next Present
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;
     unsigned Draw_Count() const;

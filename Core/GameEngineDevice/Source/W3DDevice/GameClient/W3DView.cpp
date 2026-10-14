@@ -90,6 +90,7 @@
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DView.h"
+#include "Common/DisplayRuntime.h"
 #include "d3dx8math.h"
 #include "W3DDevice/GameClient/W3DShaderManager.h"
 #include "W3DDevice/GameClient/Module/W3DModelDraw.h"
@@ -241,7 +242,14 @@ void W3DView::setWidth(Int width)
 
 	//we want to maintain the same scale, so we'll need to adjust the fov.
 	//default W3D fov for full-screen is 50 degrees.
-	m_3DCamera->Set_View_Plane((Real)width/(Real)TheDisplay->getWidth()*DEG_TO_RADF(50.0f),-1);
+	// X64.33 Modern Experience: Hor+ -- the classic 4:3 vertical field of view is preserved at every aspect, so a
+	// 16:9, 21:9 or 32:9 surface sees more to the sides (no stretch, no 4:3 crop). Classic keeps 50 degrees
+	// horizontal at any aspect, which crops the world vertically on wide surfaces.
+	Real baseHorizontalFov = DEG_TO_RADF(50.0f);
+	if (DisplayRuntime::modern() && TheDisplay->getHeight() > 0)
+		baseHorizontalFov = (Real)DisplayGeometry::horizontalFovForAspect(baseHorizontalFov,
+			(double)TheDisplay->getWidth() / (double)TheDisplay->getHeight());
+	m_3DCamera->Set_View_Plane((Real)width/(Real)TheDisplay->getWidth()*baseHorizontalFov,-1);
 
 	m_cameraAreaConstraintsValid = false;
 	m_recalcCamera = true;
