@@ -413,3 +413,9 @@ value, and nothing guaranteed that "caption + padding" fits the tab.
 Caption containment (`safeCaption + 2 x pad <= tab width`) for all six captions at 75-300 %; minimum gap; content-sized
 tabs; oversized captions shrink without overlap and report `captionsFit = false`; the panel is centred, inside the
 canvas/surface and its bands do not overlap at 13 surface sizes x 6 UI scales (800x600 ... 5120x1440, 1111x777, 1777x999).
+
+### Final2 candidate
+`build/dev-runtimes/native/Generals/x64-33-final2-options` (staged and preflighted, not run), built from `a96092049`:
+* `generalsv.exe` SHA256 `288BE8FC23982948A82DC898E6921F2C49B0278B6173686174499A3B303C6428`
+* `generalsv.pdb` SHA256 `58B84E8DC86F7A071A9C92B30F55AF33DAABF6423814347E894F07B3D052CDA9`
+X64.33 is NOT accepted yet.
