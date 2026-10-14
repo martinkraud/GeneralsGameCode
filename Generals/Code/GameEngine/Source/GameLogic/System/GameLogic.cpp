@@ -995,7 +995,7 @@ void GameLogic::deleteLoadScreen()
 void GameLogic::updateDisplayBusyState()
 {
 	const Bool busySystem = isInInteractiveGame() && !isGamePaused();
-	const Bool busyDisplay = busySystem && !TheGlobalData->m_headless;
+	const Bool busyDisplay = busySystem && !(TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch());
 
 	OSDisplaySetBusyState(busyDisplay, busySystem);
 }
@@ -1186,7 +1186,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 	if(!m_loadScreen && !(TheRecorder && TheRecorder->getMode() == RECORDERMODETYPE_SIMULATION_PLAYBACK))
 	{
 		m_loadScreen = getLoadScreen( loadingSaveGame );
-		if(m_loadScreen && !TheGlobalData->m_headless)
+		if(m_loadScreen && !(TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch()))
 		{
 			TheMouse->setVisibility(FALSE);
 			m_loadScreen->init(TheGameInfo);
@@ -2007,7 +2007,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 
 	if(m_gameMode == GAME_SHELL)
 	{
-		if (!TheGlobalData->m_headless)
+		if (!(TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch()))
 		{
 			if(TheShell->getScreenCount() == 0)
 				TheShell->push( "Menus/MainMenu.wnd" );

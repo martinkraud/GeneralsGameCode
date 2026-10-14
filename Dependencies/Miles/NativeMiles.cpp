@@ -13,8 +13,6 @@
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include <mferror.h>
-#include <shlwapi.h>
-#include <propvarutil.h>
 
 #include <algorithm>
 #include <atomic>
@@ -307,17 +305,50 @@ struct Mp3Source
 
 bool g_mfStarted = false;
 
+// Media Foundation is resolved at run time: Windows "N" editions ship without it, and the executable must
+// keep starting there (music then plays silently).
+struct MfApi
+{
+    HRESULT(WINAPI *Startup)(ULONG, DWORD) = nullptr;
+    HRESULT(WINAPI *CreateMediaType)(IMFMediaType **) = nullptr;
+    HRESULT(WINAPI *CreateByteStream)(IUnknown *, IMFByteStream **) = nullptr;
+    HRESULT(WINAPI *CreateReader)(IMFByteStream *, IMFAttributes *, IMFSourceReader **) = nullptr;
+    bool ok = false;
+};
+MfApi &Mf()
+{
+    static MfApi api;
+    static bool tried = false;
+    if (!tried) {
+        tried = true;
+        HMODULE plat = LoadLibraryA("mfplat.dll");
+        HMODULE rw = LoadLibraryA("mfreadwrite.dll");
+        if (plat && rw) {
+            api.Startup = reinterpret_cast<decltype(api.Startup)>(GetProcAddress(plat, "MFStartup"));
+            api.CreateMediaType = reinterpret_cast<decltype(api.CreateMediaType)>(GetProcAddress(plat, "MFCreateMediaType"));
+            api.CreateByteStream = reinterpret_cast<decltype(api.CreateByteStream)>(GetProcAddress(plat, "MFCreateMFByteStreamOnStream"));
+            api.CreateReader = reinterpret_cast<decltype(api.CreateReader)>(GetProcAddress(rw, "MFCreateSourceReaderFromByteStream"));
+            api.ok = api.Startup && api.CreateMediaType && api.CreateByteStream && api.CreateReader;
+        }
+    }
+    return api;
+}
+
 bool OpenMp3(const std::vector<uint8_t> &file, Mp3Source &out)
 {
+    MfApi &mf = Mf();
+    if (!mf.ok) return false;
     if (!g_mfStarted) {
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        if (FAILED(MFStartup(MF_VERSION, MFSTARTUP_LITE))) return false;
+        if (FAILED(mf.Startup(MF_VERSION, MFSTARTUP_LITE))) return false;
         g_mfStarted = true;
     }
-    out.stream = SHCreateMemStream(file.data(), static_cast<UINT>(file.size()));
-    if (!out.stream) return false;
-    if (FAILED(MFCreateMFByteStreamOnStream(out.stream, &out.bytes))) return false;
-    if (FAILED(MFCreateSourceReaderFromByteStream(out.bytes, nullptr, &out.reader))) return false;
+    HGLOBAL mem = GlobalAlloc(GMEM_MOVEABLE, file.size());
+    if (!mem) return false;
+    if (void *p = GlobalLock(mem)) { std::memcpy(p, file.data(), file.size()); GlobalUnlock(mem); }
+    if (FAILED(CreateStreamOnHGlobal(mem, TRUE, &out.stream))) { GlobalFree(mem); return false; }
+    if (FAILED(mf.CreateByteStream(out.stream, &out.bytes))) return false;
+    if (FAILED(mf.CreateReader(out.bytes, nullptr, &out.reader))) return false;
     out.reader->SetStreamSelection(static_cast<DWORD>(MF_SOURCE_READER_ALL_STREAMS), FALSE);
     out.reader->SetStreamSelection(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), TRUE);
     IMFMediaType *native = nullptr;
@@ -328,7 +359,7 @@ bool OpenMp3(const std::vector<uint8_t> &file, Mp3Source &out)
         native->Release();
     }
     IMFMediaType *wanted = nullptr;
-    if (FAILED(MFCreateMediaType(&wanted))) return false;
+    if (FAILED(mf.CreateMediaType(&wanted))) return false;
     wanted->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
     wanted->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
     wanted->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);

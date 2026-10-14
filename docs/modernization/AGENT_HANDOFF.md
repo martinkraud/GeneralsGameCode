@@ -125,6 +125,18 @@ Both titles link AMD64. External D3DX helper count is zero; this does not remove
 
 ## Current primary objective and next task
 
+**X64.31 (2026-10-14) — ORIGINAL GAME EXPERIENCE / NORMAL LAUNCH: offline batch complete, candidate staged,
+awaiting human run.** Authoritative report: `NORMAL_LAUNCH.md`. X64.30 is accepted (evidence preserved under
+`evidence/x64-30-world-ui-completeness/`). Summary: `generalsv.exe` with no diagnostic token is a normal launch
+(`StartupDiagnostics::normalLaunch()`): ordinary host/menu/game/terrain/play predicates all true, original
+`GameEngine::execute()` loop, lightweight `generals64.log`; original audio via `Dependencies/Miles/NativeMiles`
+(software mixer + waveOut + Media Foundation MP3 + IMA ADPCM) bound behind `MilesLoader`; load/score screens,
+return-to-shell and movie entry points no longer gated by headless; edge scrolling default includes windowed on
+AMD64; video (Bink) is genuinely unavailable on AMD64 and is not faked. Launch with
+`scripts/native-runtime/Invoke-NativeNormalLaunch.ps1 -Title Generals -Name <stage> -RunNormalLaunch`.
+Do not run it automatically; frontend/audio/Skirmish/return-to-frontend review is the developer's.
+The sections below describe the earlier reviewed-profile history.
+
 **NORMAL GENERALS AMD64/D3D11 STARTUP -> ORIGINAL INTERACTIVE MAIN MENU.**
 
 Static composition is now demonstrated. Do not indefinitely expand synthetic

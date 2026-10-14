@@ -65,7 +65,7 @@ class OrdinaryPlayContract(unittest.TestCase):
         self.assertIn("if (StartupDiagnostics::ordinaryTerrain() && !play && inGame && !exiting && TheTacticalView && TheTerrainLogic)", host)
         self.assertIn("exitReason = \"game_ended\";", host)
         # The in-game UI draw replaces the plain window repaint only for play with a drawn world.
-        self.assertIn("if (StartupDiagnostics::ordinaryPlay() && terrainDraws && TheInGameUI) {", host)
+        self.assertIn("if (StartupDiagnostics::ordinaryPlay() && terrainDraws && TheInGameUI && !shellGameActive()) {", host)
         self.assertIn("view->drawNativeWorldOverlays();", host)
         self.assertIn("TheInGameUI->DRAW();", host)
 

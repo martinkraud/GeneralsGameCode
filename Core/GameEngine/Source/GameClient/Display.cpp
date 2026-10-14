@@ -27,6 +27,7 @@
 // Author: Michael S. Booth, March 2001
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #include "GameClient/Display.h"
 #include "GameClient/Mouse.h"
@@ -201,7 +202,7 @@ void Display::setHeight( UnsignedInt height )
 
 void Display::playMovie( AsciiString movieName)
 {
-	if (TheGlobalData->m_headless)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch())
 		return;
 
 	stopMovie();

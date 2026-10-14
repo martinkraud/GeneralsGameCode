@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <string>
 #include <cstring>
 #include <vector>
 
@@ -206,4 +208,71 @@ TEST_F(Fixture, DecompressAdpcmProducesPcmWav)
     ASSERT_EQ(NativeMiles::AIL_decompress_ADPCM(&info, &out, &size), 1);
     EXPECT_EQ(size, 44u + 64u);
     NativeMiles::AIL_mem_free_lock(out);
+}
+
+// Opt-in retail check: GENERALS_GAME_DIR names the directory with Music.big/Audio.big. Reads the archives
+// directly, so it exercises Media Foundation MP3 decode and the retail WAV encodings without the engine.
+namespace
+{
+bool ReadBigEntry(const std::string &archive, const char *wantedSuffix, std::vector<uint8_t> &out)
+{
+    FILE *f = nullptr;
+    if (fopen_s(&f, archive.c_str(), "rb") != 0 || !f) { std::fprintf(stderr, "open fail %s\n", archive.c_str()); return false; }
+    uint8_t head[16];
+    if (fread(head, 1, 16, f) != 16 || (std::memcmp(head, "BIGF", 4) && std::memcmp(head, "BIG4", 4))) { fclose(f); return false; }
+    auto be32 = [](const uint8_t *p) { return (uint32_t(p[0]) << 24) | (p[1] << 16) | (p[2] << 8) | p[3]; };
+    const uint32_t count = be32(head + 8);
+    std::vector<uint8_t> dir(0x200000);
+    dir.resize(fread(dir.data(), 1, dir.size(), f));
+    size_t at = 0;
+    const size_t wantedLen = std::strlen(wantedSuffix);
+    for (uint32_t i = 0; i < count && at + 9 <= dir.size(); ++i) {
+        const uint32_t off = be32(&dir[at]), size = be32(&dir[at + 4]);
+        at += 8;
+        const char *name = reinterpret_cast<const char *>(&dir[at]);
+        const size_t len = std::strlen(name);
+        at += len + 1;
+        if (len >= wantedLen && _stricmp(name + len - wantedLen, wantedSuffix) == 0) {
+            out.resize(size);
+            _fseeki64(f, off, SEEK_SET);
+            const bool ok = fread(out.data(), 1, size, f) == size;
+            fclose(f);
+            return ok;
+        }
+    }
+    fclose(f);
+    return false;
+}
+}
+
+TEST_F(Fixture, RetailMusicMp3DecodesProgressively)
+{
+    const char *dir = std::getenv("GENERALS_GAME_DIR");
+    if (!dir) GTEST_SKIP() << "GENERALS_GAME_DIR not set";
+    std::vector<uint8_t> mp3;
+    if (!ReadBigEntry(std::string(dir) + "\\Music.big", ".mp3", mp3)) GTEST_SKIP() << "no mp3 in Music.big";
+    char path[MAX_PATH];
+    GetTempPathA(MAX_PATH, path);
+    std::strcat(path, "nativemiles_retail.mp3");
+    FILE *f = nullptr;
+    fopen_s(&f, path, "wb");
+    ASSERT_NE(f, nullptr);
+    fwrite(mp3.data(), 1, mp3.size(), f);
+    fclose(f);
+    HSTREAM st = NativeMiles::AIL_open_stream(nullptr, path, 0);
+    ASSERT_NE(st, nullptr) << "Media Foundation could not open the retail MP3";
+    S32 total = 0, cur = 0;
+    NativeMiles::AIL_stream_ms_position(st, &total, &cur);
+    EXPECT_GT(total, 5000);
+    NativeMiles::AIL_start_stream(st);
+    std::vector<int16_t> out(4096 * 2);
+    long long energy = 0;
+    for (int i = 0; i < 40; ++i) {
+        Sleep(10);
+        NativeMiles::Render(out.data(), 4096);
+        for (int16_t v : out) energy += std::abs(v);
+    }
+    EXPECT_GT(energy, 1000);
+    NativeMiles::AIL_close_stream(st);
+    DeleteFileA(path);
 }

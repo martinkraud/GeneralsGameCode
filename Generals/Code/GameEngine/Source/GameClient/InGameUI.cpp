@@ -28,6 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #define DEFINE_SHADOW_NAMES
 
@@ -4150,7 +4151,7 @@ void InGameUI::createReplayControl()
 // ------------------------------------------------------------------------------------------------
 void InGameUI::playMovie( const AsciiString& movieName )
 {
-	if (TheGlobalData->m_headless)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch())
 		return;
 
 	stopMovie();
@@ -4207,7 +4208,7 @@ VideoBuffer* InGameUI::videoBuffer()
 // ------------------------------------------------------------------------------------------------
 void InGameUI::playCameoMovie( const AsciiString& movieName )
 {
-	if (TheGlobalData->m_headless)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch())
 		return;
 
 	stopCameoMovie();

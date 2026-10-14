@@ -503,6 +503,12 @@ inline Bool isResolutionSupported(const ResolutionDescClass &res)
 /*Return number of screen modes supported by the current device*/
 Int W3DDisplay::getDisplayModeCount()
 {
+#if defined(_WIN64)
+	// Native runtime: one presentation mode (the original 800x600 logical display in a window). The resolution
+	// architecture is a later milestone; nothing here may touch the DX8 device enumeration.
+	if (StartupDiagnostics::nativeRuntime())
+		return 1;
+#endif
 	const RenderDeviceDescClass &devDesc=WW3D::Get_Render_Device_Desc(0);
 	const DynamicVectorClass <ResolutionDescClass> &resolutions=devDesc.Enumerate_Resolutions();
 
@@ -534,6 +540,15 @@ Int W3DDisplay::getDisplayModeCount()
 
 void W3DDisplay::getDisplayModeDescription(Int modeIndex, Int *xres, Int *yres, Int *bitDepth)
 {
+#if defined(_WIN64)
+	if (StartupDiagnostics::nativeRuntime())
+	{
+		*xres = 800;
+		*yres = 600;
+		*bitDepth = 32;
+		return;
+	}
+#endif
 	Int numResolutions=0;
 	const RenderDeviceDescClass &devDesc=WW3D::Get_Render_Device_Desc(0);
 	const DynamicVectorClass <ResolutionDescClass> &resolutions=devDesc.Enumerate_Resolutions();
@@ -558,6 +573,10 @@ void W3DDisplay::getDisplayModeDescription(Int modeIndex, Int *xres, Int *yres, 
 
 void W3DDisplay::setGamma(Real gamma, Real bright, Real contrast, Bool calibrate)
 {
+#if defined(_WIN64)
+	if (StartupDiagnostics::nativeRuntime())
+		return;	// windowed presentation: gamma never touches the desktop (same rule as the legacy windowed path)
+#endif
 	if (m_windowed)
 		return;	//we don't allow gamma to change in window because it would affect desktop.
 
@@ -568,6 +587,10 @@ void W3DDisplay::setGamma(Real gamma, Real bright, Real contrast, Bool calibrate
 //=============================================================================
 Bool W3DDisplay::setDisplayMode( UnsignedInt xres, UnsignedInt yres, UnsignedInt bitdepth, Bool windowed )
 {
+#if defined(_WIN64)
+	if (StartupDiagnostics::nativeRuntime())
+		return xres == 800 && yres == 600;	// the only mode; nothing to change
+#endif
 	const UnsignedInt oldWidth = getWidth();
 	const UnsignedInt oldHeight = getHeight();
 	const UnsignedInt oldBitDepth = getBitDepth();
@@ -1814,7 +1837,9 @@ void W3DDisplay::update()
 	// Native terrain profile: advance the real camera state (scripted movement, terrain draw
 	// window) so the terrain pass has a valid view. No scene, drawables or tracks.
 	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryTerrain() && TheGameLogic &&
-		TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap() &&
+		TheGameLogic->isInGame() && !TheGameLogic->isLoadingMap() &&
+		(!TheGameLogic->isInShellGame() ||
+		 (StartupDiagnostics::normalLaunch() && StartupDiagnostics::nativeFeature("shellmap"))) &&
 		TheTerrainRenderObject)
 	{
 		// Cloud scrolling reads the logic frame time exactly like the non-headless update.
@@ -3161,13 +3186,28 @@ void W3DDisplay::setShroudLevel( Int x, Int y, CellShroudStatus setting )
 }
 
 /** Start/Stop capturing an AVI movie*/
+#if defined(_WIN64)
+bool saveNativeScreenshot();   // W3DDisplayOrdinaryHost.cpp
+#endif
+
 void W3DDisplay::toggleMovieCapture()
 {
+#if defined(_WIN64)
+	if (StartupDiagnostics::nativeRuntime())
+		return;	// AVI capture reads DX8 surfaces; not available natively
+#endif
 	WW3D::Toggle_Movie_Capture("Movie",30);
 }
 
 void W3DDisplay::takeScreenShot(ScreenshotFormat format, Int jpegQuality)
 {
+#if defined(_WIN64)
+	if (StartupDiagnostics::nativeRuntime())
+	{
+		saveNativeScreenshot();
+		return;
+	}
+#endif
 	W3D_TakeCompressedScreenshot(format, jpegQuality);
 }
 

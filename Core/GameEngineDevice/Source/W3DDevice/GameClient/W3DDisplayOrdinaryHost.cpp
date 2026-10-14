@@ -72,6 +72,13 @@ void W3DDisplay::initOrdinaryHostPresentation()
     StartupDiagnostics::Phase phase("display_ordinary_init");
     if (!TheGlobalData->m_headless || m_2DRender)
         throw std::runtime_error("Ordinary host display requires the headless world selection and no prior 2D helper");
+    if (StartupDiagnostics::normalLaunch()) {
+        // Normal launch: the resolution/fullscreen architecture is a later milestone. Whatever Options.ini or the
+        // command line asked for, the native runtime presents the original 800x600 logical display in a window.
+        TheWritableGlobalData->m_windowed = TRUE;
+        TheWritableGlobalData->m_xResolution = 800;
+        TheWritableGlobalData->m_yResolution = 600;
+    }
     if (!TheGlobalData->m_windowed || TheGlobalData->m_xResolution != 800 || TheGlobalData->m_yResolution != 600) {
         char detail[160];
         sprintf_s(detail, "windowed=%d xres=%d yres=%d; only windowed 800x600 is supported",
@@ -134,6 +141,11 @@ void W3DDisplay::initOrdinaryHostPresentation()
     }
     StartupDiagnostics::checkpoint("display_module_audit", "complete", detail);
     StartupDiagnostics::checkpoint("display_size", "complete", "device=800x600 target=800x600 bits=32 windowed=1");
+    if (StartupDiagnostics::normalLaunch()) {
+        // Normal launch has no host loop to do the play profile's one-time setup: the decal / planar shadow
+        // manager is installed with the display and removed by releaseAll() at shutdown.
+        NativeWorldEffects::install();
+    }
 }
 
 struct W3DDisplay::OrdinaryHostContent {
@@ -395,11 +407,9 @@ PixelStats MeasurePixels(const std::vector<unsigned char> &pixels)
 
 // Evidence image next to the startup log (the isolated run directory). 32-bit BGRA top-down BMP
 // from the backend's RGBA readback; failures are reported, never fatal.
-bool WriteBmp(const char *name, const std::vector<unsigned char> &rgba, unsigned width, unsigned height)
+bool WriteBmpFile(const char *path, const std::vector<unsigned char> &rgba, unsigned width, unsigned height)
 {
     if (rgba.size() != static_cast<size_t>(width) * height * 4) return false;
-    char path[MAX_PATH];
-    sprintf_s(path, "%s\\%s", StartupDiagnostics::state().root, name);
     HANDLE file = CreateFileA(path, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file == INVALID_HANDLE_VALUE) return false;
     unsigned char header[54] = {'B', 'M'};
@@ -421,6 +431,13 @@ bool WriteBmp(const char *name, const std::vector<unsigned char> &rgba, unsigned
         WriteFile(file, bgra.data(), static_cast<DWORD>(bgra.size()), &written, nullptr) && written == bgra.size();
     CloseHandle(file);
     return ok;
+}
+
+bool WriteBmp(const char *name, const std::vector<unsigned char> &rgba, unsigned width, unsigned height)
+{
+    char path[MAX_PATH];
+    sprintf_s(path, "%s\\%s", StartupDiagnostics::state().root, name);
+    return WriteBmpFile(path, rgba, width, height);
 }
 
 // Bounded Control Bar / HUD review facts (UI investigation, not a world feature).
@@ -456,11 +473,20 @@ static bool g_worldObjectsFirstPending = false;
 
 // Terrain-only native world pass (profile ordinaryTerrain, in game, map loaded). Returns the
 // number of draws; zero when there is nothing to draw yet (shell, loading, no camera).
+static bool shellGameActive()
+{
+    return TheGameLogic && TheGameLogic->isInShellGame();
+}
+
 static int drawNativeTerrainPass()
 {
     if (!StartupDiagnostics::ordinaryTerrain() || !TheGameLogic || !TheGameLogic->isInGame() ||
-        TheGameLogic->isInShellGame() || TheGameLogic->isLoadingMap() || !TheTerrainRenderObject ||
-        !TheTacticalView)
+        TheGameLogic->isLoadingMap() || !TheTerrainRenderObject || !TheTacticalView)
+        return 0;
+    // The shell map (the animated 3D background of the original main menu) is a normal-launch feature;
+    // the evidence profiles keep their accepted shell-off behavior.
+    if (TheGameLogic->isInShellGame() &&
+        !(StartupDiagnostics::normalLaunch() && StartupDiagnostics::nativeFeature("shellmap")))
         return 0;
     auto *terrain = dynamic_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject);
     auto *view = dynamic_cast<W3DView *>(TheTacticalView);
@@ -512,7 +538,7 @@ void W3DDisplay::drawOrdinaryMenuFrame()
                 g_worldObjectsFirstPending = false;
                 StartupDiagnostics::checkpoint("world_objects_first_frame", "complete", g_worldObjectsFirstDetail);
             }
-            const bool firstProbe = (g_terrainFrames == 29);
+            const bool firstProbe = (g_terrainFrames == 29) && StartupDiagnostics::enabled();
             if (firstProbe || g_motionStepRequest) {
                 // One-time / per-camera-step evidence: what the terrain pass left in the target
                 // before the UI is drawn (separates "not visible" from "covered by the UI").
@@ -549,7 +575,7 @@ void W3DDisplay::drawOrdinaryMenuFrame()
             g_terrainDraws += static_cast<unsigned>(terrainDraws);
             g_terrainStats = static_cast<HeightMapRenderObjClass *>(TheTerrainRenderObject)->nativeStats();
         }
-        if (StartupDiagnostics::ordinaryPlay() && terrainDraws && TheInGameUI) {
+        if (StartupDiagnostics::ordinaryPlay() && terrainDraws && TheInGameUI && !shellGameActive()) {
             // Native play profile: the legacy in-game composition after the 3D scene - per-drawable
             // icon UI (health bars, veterancy, names), then InGameUI::DRAW which draws the selection
             // region, move/placement hints, messages and repaints every window (Control Bar included).
@@ -559,7 +585,7 @@ void W3DDisplay::drawOrdinaryMenuFrame()
             TheWindowManager->winRepaint();
         }
         if (TheMouse) TheMouse->DRAW();
-        if (StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 240) {
+        if (StartupDiagnostics::enabled() && StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 240) {
             // Bounded Control Bar review: composed frame after the UI (bottom 20% = outside the
             // 0.80 world viewport) with per-third non-black statistics and an evidence image.
             g_uiProbesDone = 1;
@@ -1032,4 +1058,22 @@ int W3DDisplay::runOrdinaryGameHost()
     return result;
 #endif
 }
+// Normal-launch screenshot (the legacy path reads DX8 surfaces): the composed target of the native backend
+// written as BMP under <UserData>\Screenshots. Returns false when nothing could be written.
+bool saveNativeScreenshot()
+{
+    auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend());
+    if (!backend || !TheGlobalData) return false;
+    char directory[MAX_PATH];
+    sprintf_s(directory, "%sScreenshots", TheGlobalData->getPath_UserData().str());
+    CreateDirectoryA(directory, nullptr);
+    for (unsigned n = 0; n < 10000; ++n) {
+        char path[MAX_PATH];
+        sprintf_s(path, "%s\Generals64_%04u.bmp", directory, n);
+        if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) continue;
+        return WriteBmpFile(path, backend->Readback_RGBA8(), 800, 600);
+    }
+    return false;
+}
+
 #endif

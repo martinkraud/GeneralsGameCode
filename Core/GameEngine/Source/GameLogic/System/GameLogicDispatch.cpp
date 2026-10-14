@@ -29,6 +29,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #include "Common/CRCDebug.h"
 #include "Common/FramePacer.h"
@@ -270,7 +271,7 @@ void GameLogic::clearGameData( Bool showScoreScreen )
 	TheScriptActions->closeWindows(FALSE); // Close victory or defeat windows.
 
 	Bool shellGame = FALSE;
-	if ((!isInShellGame() || !isInGame()) && showScoreScreen && !TheGlobalData->m_headless)
+	if ((!isInShellGame() || !isInGame()) && showScoreScreen && !(TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch()))
 	{
 		shellGame = TRUE;
 		TheTransitionHandler->setGroup("FadeWholeScreen");

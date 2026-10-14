@@ -27,6 +27,13 @@ struct State {
     // Control Bar update, with user-driven play (no scripted camera, no logic-frame bound).
     // Implies ordinaryTerrain and everything below it.
     bool ordinaryPlay;
+    // X64.31 normal launch: the AMD64 executable started without any diagnostic option. The native
+    // runtime selection of the ordinary play profile applies (real display, window manager, native world,
+    // radar, effects, ...), but the engine runs its own main loop (GameEngine::execute) and no evidence
+    // harness is involved. Every ordinary predicate below is true in this mode.
+    bool normal;
+    // Lightweight launch log (generals64.log next to the executable); capped, never fatal.
+    bool normalLog;
     HANDLE file;
     unsigned records;
     char root[MAX_PATH], userData[MAX_PATH];
@@ -39,11 +46,14 @@ inline bool uiImageSmoke() { return enabled() && state().uiImageSmoke; }
 inline bool uiSentenceSmoke() { return enabled() && state().uiSentenceSmoke; }
 inline bool uiMenuSmoke() { return enabled() && state().uiMenuSmoke; }
 inline bool uiPanelSmoke() { return enabled() && state().uiPanelSmoke; }
-inline bool ordinaryHost() { return enabled() && state().ordinaryHost; }
-inline bool ordinaryMenu() { return enabled() && state().ordinaryMenu; }
-inline bool ordinaryGame() { return enabled() && state().ordinaryGame; }
-inline bool ordinaryTerrain() { return enabled() && state().ordinaryTerrain; }
-inline bool ordinaryPlay() { return enabled() && state().ordinaryPlay; }
+inline bool normalLaunch() { return state().normal; }
+inline bool ordinaryHost() { return (enabled() && state().ordinaryHost) || state().normal; }
+inline bool ordinaryMenu() { return (enabled() && state().ordinaryMenu) || state().normal; }
+inline bool ordinaryGame() { return (enabled() && state().ordinaryGame) || state().normal; }
+inline bool ordinaryTerrain() { return (enabled() && state().ordinaryTerrain) || state().normal; }
+inline bool ordinaryPlay() { return (enabled() && state().ordinaryPlay) || state().normal; }
+// True when the modern native runtime is selected by any route (diagnostic profile or normal launch).
+inline bool nativeRuntime() { return ordinaryHost(); }
 // Developer fallback for the native play profile: GENERALS_NATIVE_DISABLE="particles,shadows,water,shroud,
 // ghosts,lines,scorches,mappers" turns individual native presentation features off without a rebuild (a
 // crash isolation aid). Unset = every feature on. Consulted only by the play profile's own code paths.
@@ -130,8 +140,13 @@ inline bool validOrdinaryPlayArguments(int argc, char **argv) {
 inline void checkpoint(const char *stage, const char *status,
                        const char *detail = "", unsigned code = 0) {
     State &s = state();
-    if (!enabled() || !s.healthy) return;
-    if (s.records >= 2048) { s.healthy = false; return; }
+    if (s.normalLog && !enabled()) {
+        // Normal launch: bounded log, never a failure condition.
+        if (s.file == nullptr || s.file == INVALID_HANDLE_VALUE || s.records >= 4096) return;
+    } else {
+        if (!enabled() || !s.healthy) return;
+        if (s.records >= 2048) { s.healthy = false; return; }
+    }
     char clean[768]; unsigned i = 0;
     for (; detail[i] && i < sizeof(clean)-1; ++i)
         clean[i] = detail[i] == '\t' || detail[i] == '\n' || detail[i] == '\r' ? ' ' : detail[i];
@@ -144,7 +159,10 @@ inline void checkpoint(const char *stage, const char *status,
         GetCurrentProcessId(), GetCurrentThreadId(), stage, status, code, clean);
     DWORD written = 0;
     if (size <= 0 || !WriteFile(s.file, line, size, &written, nullptr) ||
-        written != static_cast<DWORD>(size) || !FlushFileBuffers(s.file)) s.healthy = false;
+        written != static_cast<DWORD>(size) || !FlushFileBuffers(s.file)) {
+        if (s.normalLog && !enabled()) { s.normalLog = false; return; }   // log trouble never stops the game
+        s.healthy = false;
+    }
 }
 inline bool configure(int argc, char **argv) {
     State &s = state();
@@ -163,7 +181,31 @@ inline bool configure(int argc, char **argv) {
         else if (!_stricmp(argv[i], "-nativeOrdinaryPlay")) { s.requested = true; s.ordinaryHost = s.ordinaryMenu = s.ordinaryGame = s.ordinaryTerrain = s.ordinaryPlay = true; }
         else if (!_stricmp(argv[i], "-nativeOrdinaryTerrain")) { s.requested = true; s.ordinaryHost = s.ordinaryMenu = s.ordinaryGame = s.ordinaryTerrain = true; }
         else if (!_stricmp(argv[i], "-nativeOrdinaryGame")) { s.requested = true; s.ordinaryHost = s.ordinaryMenu = s.ordinaryGame = true; }
-    if (!s.requested) return true;
+    if (!s.requested) {
+#if defined(_WIN64)
+        // Normal launch (X64.31): no diagnostic option on the AMD64 executable selects the modern runtime.
+        char module[MAX_PATH] = {};
+        if (GetModuleFileNameA(nullptr, module, MAX_PATH)) {
+            char *slash = std::strrchr(module, '\\');
+            // Only the game executables are a normal launch; test hosts and tools include this header too.
+            const char *base = slash ? slash + 1 : module;
+            const bool gameExe = !_strnicmp(base, "generalsv", 9) || !_strnicmp(base, "generalszh", 10);
+            if (slash && gameExe) {
+                s.normal = true;
+                *slash = 0;
+                char log[MAX_PATH];
+                if (sprintf_s(log, "%s\\generals64.log", module) > 0) {
+                    s.file = CreateFileA(log, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+                                         FILE_ATTRIBUTE_NORMAL, nullptr);
+                    s.normalLog = s.file != INVALID_HANDLE_VALUE;
+                    if (s.normalLog) s.healthy = true;
+                }
+            }
+        }
+        checkpoint("WinMain", "normal_launch", s.normalLog ? "generals64.log" : "no log");
+#endif
+        return true;
+    }
 #if !defined(_WIN64)
     return false; // Native diagnostic option must never change the Win32 route.
 #else
@@ -207,8 +249,8 @@ inline bool configure(int argc, char **argv) {
 }
 inline void close() {
     State &s = state();
-    if (s.valid && s.file && s.file != INVALID_HANDLE_VALUE) {
-        CloseHandle(s.file); s.file = nullptr; s.healthy = false;
+    if ((s.valid || s.normalLog) && s.file && s.file != INVALID_HANDLE_VALUE) {
+        CloseHandle(s.file); s.file = nullptr; s.healthy = false; s.normalLog = false;
     }
 }
 // Bounded admission for per-call/per-frame receipts. The 2048-record log is a
@@ -224,9 +266,9 @@ struct RepeatGate {
 struct Phase {
     const char *name;
     int exceptions;
-    explicit Phase(const char *value) : name(value), exceptions(enabled() ? std::uncaught_exceptions() : 0) {
+    explicit Phase(const char *value) : name(value), exceptions(std::uncaught_exceptions()) {
         checkpoint(name, "begin");
     }
-    ~Phase() { if (enabled()) checkpoint(name, std::uncaught_exceptions() > exceptions ? "fail" : "complete"); }
+    ~Phase() { checkpoint(name, std::uncaught_exceptions() > exceptions ? "fail" : "complete"); }
 };
 }

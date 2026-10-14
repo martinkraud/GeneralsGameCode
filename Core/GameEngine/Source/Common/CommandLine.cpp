@@ -1503,6 +1503,10 @@ void CommandLine::parseCommandLineForStartup()
 		TheWritableGlobalData->m_commandLineData.m_parsedArguments);
 
 	if(StartupDiagnostics::enabled()) { parseHeadless(nullptr, 0); TheWritableGlobalData->m_shellMapOn=FALSE; }
+	// Normal launch (X64.31): the same headless world/device selection the native profiles use, with the
+	// original intro/shell settings left to GameData.ini and the command line (no movies exist natively,
+	// so the intro stages that need them are skipped by parseHeadless).
+	if(StartupDiagnostics::normalLaunch()) parseHeadless(nullptr, 0);
 	// Ordinary-host profile: Windows cursors are an explicit profile requirement,
 	// independent of whether this build's table exposes -winCursors.
 	if(StartupDiagnostics::ordinaryHost()) TheWritableGlobalData->m_winCursors = TRUE;
@@ -1527,10 +1531,12 @@ void CommandLine::parseCommandLineForEngineInit()
     // GlobalData INI loading follows startup parsing; honor the opt-in request
     // after that load without changing defaults or persistent configuration.
     if(StartupDiagnostics::enabled()) { parseHeadless(nullptr, 0); TheWritableGlobalData->m_shellMapOn=FALSE; }
+    if(StartupDiagnostics::normalLaunch()) parseHeadless(nullptr, 0);
     // Ordinary-game profile: audio is unavailable on AMD64 (Miles loader is Win32 only).
     // Re-asserted after the GameData INI load so the live engine loop never queues
-    // playback requests; same reason the headless request is honored here.
-    if(StartupDiagnostics::ordinaryGame()) TheWritableGlobalData->m_audioOn = FALSE;
+    // playback requests; same reason the headless request is honored here. Normal launch keeps the
+    // user's audio setting: the native audio manager (or the dummy fallback) services it.
+    if(StartupDiagnostics::ordinaryGame() && !StartupDiagnostics::normalLaunch()) TheWritableGlobalData->m_audioOn = FALSE;
     if(skipStartupIntro)parseSkipIntro(nullptr,0);
     if(DeveloperTools::quickGameEnabled())TheWritableGlobalData->m_shellMapOn=FALSE;
 }

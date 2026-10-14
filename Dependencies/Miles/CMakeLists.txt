@@ -21,5 +21,5 @@ target_link_libraries(deps_miles PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(deps_miles PUBLIC winmm mfplat mfreadwrite mfuuid shlwapi ole32 propsys)
+    target_link_libraries(deps_miles PUBLIC winmm mfuuid ole32)
 endif()
