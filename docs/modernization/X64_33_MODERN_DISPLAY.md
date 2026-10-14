@@ -138,4 +138,14 @@ is not the old DX8/32-bit engine.
 
 ## 13. Native review (candidate `x64-33-modern-display`)
 
-See the end-of-batch report for the exact sequence and hashes.
+Staged and preflighted, not run: `build/dev-runtimes/native/Generals/x64-33-modern-display`
+
+* `generalsv.exe` SHA256 `B9BBACFE03F39958722A11D392391DD24E991D2D4D7C696E0216C52199A0670F`
+* `generalsv.pdb` SHA256 `DF2B99ECD853561CF7A285556F6B03F3D65F8B0EE7BAF0F2B2D2D7C104819F68`
+* built from `d99142fdf` (docs-only commits follow); staged with the shortcut-sidebar overlay.
+
+Review sequence (one session): launch normally; check `generals64.log` for `display_modern` (client/mode/monitor/
+scale/aspect); frontend centred and clickable; Options > Resolution row > `Display Options...` (Monitor, Display
+Mode, UI Scale, VSync, Unit Motion); change Resolution and Accept; switch Borderless; change UI Scale; VSync on/off
+with the FPS counter; start a Skirmish and check wide world, bottom bar, radar, shortcut sidebar at the right edge,
+edge scrolling and selection boxes; `-classic` launch for the unchanged 800x600 presentation.
