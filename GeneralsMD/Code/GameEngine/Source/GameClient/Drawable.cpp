@@ -28,6 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/PerformanceProfile.h"
 
 #include "Common/AudioEventInfo.h"
 #include "Common/DynamicAudioEventInfo.h"
@@ -2624,6 +2625,23 @@ Bool Drawable::isGroundPresentationEligible() const
 	const Object* obj = getObject();
 	if (!GroundTranslation::isEnabled() || !obj)
 		return FALSE;
+	// X64.34 Smooth presentation: aircraft and projectiles follow their own (airborne) policy. They never use the
+	// ground locomotor/AI-state rules; everything is client-side, the authoritative transform is untouched.
+	if (obj->isKindOf(KINDOF_AIRCRAFT) || obj->isKindOf(KINDOF_PROJECTILE))
+	{
+		if (m_hidden || m_hiddenByStealth || m_drawableFullyObscuredByShroud || obj->isEffectivelyDead())
+			return FALSE;
+		if (obj->getContainedBy() || obj->isDisabled() || obj->getStatusBits().test(OBJECT_STATUS_PARACHUTING)
+			|| (TheTacticalView && TheTacticalView->isDoingScriptedCamera()))
+			return FALSE;
+		const DrawModule* const* airModules = (const DrawModule* const*)getModuleList(MODULETYPE_DRAW);
+		if (!airModules || !*airModules)
+			return FALSE;
+		for (; *airModules; ++airModules)
+			if (!(*airModules)->supportsGroundTranslation())
+				return FALSE;
+		return TRUE;
+	}
 	GroundTranslation::Eligibility c = {};
 	c.boundVisibleAlive = !m_hidden && !m_hiddenByStealth && !m_drawableFullyObscuredByShroud
 		&& !obj->isEffectivelyDead();
@@ -2663,6 +2681,15 @@ Bool Drawable::isGroundOrientationEligible() const
 {
 	// Caller has already established the full translation policy.
 	const Object* obj = getObject();
+	if (obj && (obj->isKindOf(KINDOF_AIRCRAFT) || obj->isKindOf(KINDOF_PROJECTILE)))
+	{
+		// X64.34: airborne roots may turn freely (shortest-path yaw); every module must support root orientation.
+		const DrawModule* const* airModules = (const DrawModule* const*)getModuleList(MODULETYPE_DRAW);
+		if (!airModules || !*airModules) return FALSE;
+		for (; *airModules; ++airModules)
+			if (!(*airModules)->supportsGroundRootOrientation()) return FALSE;
+		return GroundTranslation::supportsHeadingBasis(*getTransformMatrix());
+	}
 	if (!obj || obj->isKindOf(KINDOF_STICK_TO_TERRAIN_SLOPE)) return FALSE;
 	const AIUpdateInterface* ai = obj->getAIUpdateInterface();
 	const Bool aiming = obj->getStatusBits().test(OBJECT_STATUS_IS_ATTACKING)
@@ -2691,8 +2718,13 @@ void Drawable::captureGroundPresentation()
 	{
 		const Matrix3D& canonical = *getTransformMatrix();
 		const Bool orientationEligible = isGroundOrientationEligible();
+		const Object* captureObj = getObject();
+		const float maxStep = captureObj && captureObj->isKindOf(KINDOF_PROJECTILE)
+			? GroundTranslation::MaxProjectileSampleDistance
+			: (captureObj && captureObj->isKindOf(KINDOF_AIRCRAFT) ? GroundTranslation::MaxAircraftSampleDistance
+				: GroundTranslation::MaxSampleDistance);
 		m_groundTranslation.capture(canonical.Get_Translation(), timing.generation, timing.epoch,
-			orientationEligible ? canonical.Get_Z_Rotation() : 0, orientationEligible);
+			orientationEligible ? canonical.Get_Z_Rotation() : 0, orientationEligible, maxStep);
 	}
 }
 
@@ -2739,6 +2771,8 @@ void Drawable::draw()
 
 	if (m_hidden || m_hiddenByStealth || getFullyObscuredByShroud())
 		return;	// my, that was easy
+
+	PerformanceProfile::count(PerformanceProfile::Counter::DrawablesDrawn);
 
 	if ( getObject() && !getObject()->isEffectivelyDead() )
 		setShadowsEnabled( m_stealthLook != STEALTHLOOK_VISIBLE_DETECTED );

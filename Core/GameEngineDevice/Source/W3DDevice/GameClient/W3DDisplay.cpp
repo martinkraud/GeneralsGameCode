@@ -495,6 +495,8 @@ W3DDisplay::~W3DDisplay()
 }
 
 #if defined(_WIN64)
+// X64.34 performance receipt: per-frame renderer/world counters (W3DDisplayOrdinaryHost.cpp)
+extern void NativeSampleRenderCounters();
 // X64.33 Modern Experience (W3DDisplayOrdinaryHost.cpp)
 extern bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, int monitorIndex);
 extern void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out);
@@ -1948,6 +1950,9 @@ void W3DDisplay::step()
 void W3DDisplay::draw()
 {
 	PERFORMANCE_PROFILE_SCOPE(DisplayDraw);
+#if defined(_WIN64)
+	NativeSampleRenderCounters();   // X64.34: no-op unless a profiler capture is running
+#endif
 	//USE_PERF_TIMER(W3DDisplay_draw)
 
 	extern HWND ApplicationHWnd;

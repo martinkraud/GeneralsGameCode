@@ -40,6 +40,7 @@
 #include "Common/CRCDebug.h"
 #include "Common/GameState.h"
 #include "Common/GlobalData.h"
+#include "Common/FramePacer.h"
 #include "Common/PerfTimer.h"
 #include "Common/RandomValue.h"
 #include "Common/ThingTemplate.h"
@@ -2456,6 +2457,27 @@ void W3DModelDraw::handleClientTurretPositioning()
 				const AIUpdateInterface* ai = obj->getAIUpdateInterface();
 				if (ai)
 					ai->getTurretRotAndPitch((WhichTurretType)tslot, &turretAngle, &turretPitch);
+
+				// X64.34 Smooth Unit Motion: show the turret between the previous and current completed simulation
+				// samples. Presentation only: the canonical AI angles above are unchanged and still drive aiming,
+				// firing and bone queries; any gap/epoch/implausible step shows the canonical value.
+				if (GroundTranslation::isEnabled() && TheFramePacer && ai)
+				{
+					const PresentationTiming& timing = TheFramePacer->getPresentationTiming();
+					AnglePairHistory& history = m_turretPresentation[tslot];
+					if (timing.valid && !obj->isEffectivelyDead())
+					{
+						history.observe(turretAngle, turretPitch, timing.generation, timing.epoch);
+						float presentedYaw = turretAngle, presentedPitch = turretPitch;
+						if (history.present(timing, turretAngle, turretPitch, presentedYaw, presentedPitch))
+						{
+							turretAngle = presentedYaw;
+							turretPitch = presentedPitch;
+						}
+					}
+					else
+						history.reset();
+				}
 			}
 
 			// do turret, if any

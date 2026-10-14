@@ -12,6 +12,8 @@
 #include "Common/DisplayModes.h"
 #include "Common/ModernExperience.h"
 #include "Common/GroundTranslation.h"
+#include "Common/PerformanceProfile.h"
+#include "GameClient/ParticleSys.h"
 #include "Common/OptionPreferences.h"
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
@@ -163,6 +165,27 @@ bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, in
         StartupDiagnostics::checkpoint("display_apply", "fail", error.what(), 1);
         return false;
     }
+}
+
+// X64.34: per-frame deltas of the native backend's cumulative counters plus two world gauges, attributed to the
+// current outer frame of an active profiler capture (the sample point is the start of the display draw, so a frame's
+// numbers describe the preceding draw pass). Free when no capture is running.
+void NativeSampleRenderCounters()
+{
+    if (!PerformanceProfile::activeRecorder)
+        return;
+    static unsigned lastDraws = 0, lastTextures = 0, lastBuffers = 0;
+    if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+        const unsigned draws = backend->Draw_Count(), textures = backend->Texture_Creations(), buffers = backend->Buffer_Creations();
+        PerformanceProfile::count(PerformanceProfile::Counter::DrawCalls, draws - lastDraws);
+        PerformanceProfile::count(PerformanceProfile::Counter::TexturesCreated, textures - lastTextures);
+        PerformanceProfile::count(PerformanceProfile::Counter::BuffersCreated, buffers - lastBuffers);
+        lastDraws = draws; lastTextures = textures; lastBuffers = buffers;
+    }
+    if (TheGameLogic)
+        PerformanceProfile::count(PerformanceProfile::Counter::ObjectsLive, TheGameLogic->getObjectCount());
+    if (TheParticleSystemManager)
+        PerformanceProfile::count(PerformanceProfile::Counter::ParticlesLive, TheParticleSystemManager->getParticleCount());
 }
 
 // Resolution list for the Options screen (Modern Experience only): real, fitting sizes for the active monitor/mode.

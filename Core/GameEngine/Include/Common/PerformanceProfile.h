@@ -19,7 +19,11 @@ enum class Category : unsigned int
 	Missile, DrawableUpdates, Terrain, DisplayUpdate, Particles, DisplayDraw, SceneView,
 	RenderEnd, Network, Messages, Count
 };
-enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisited, DrawablesUpdated, QueuedPaths, QueueCells, Count };
+// X64.34: DrawCalls/TexturesCreated/BuffersCreated are per-frame deltas of the native backend's cumulative counters;
+// DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame
+// GAUGES (sampled once per outer frame, so their per-frame values are levels, not rates).
+enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisited, DrawablesUpdated, QueuedPaths, QueueCells,
+	DrawCalls, TexturesCreated, BuffersCreated, DrawablesDrawn, ParticlesLive, ObjectsLive, Count };
 constexpr unsigned int CategoryCount = static_cast<unsigned int>(Category::Count);
 constexpr unsigned int CounterCount = static_cast<unsigned int>(Counter::Count);
 constexpr unsigned int MaxFrames = 16384, MaxDepth = 64;

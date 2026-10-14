@@ -30,7 +30,8 @@ const char* name(Category c)
 const char* name(Counter c)
 {
 	static const char* names[]={"completed_logic_ticks","update_modules_invoked","objects_visited_disabled_loop",
-		"drawables_updated","queued_paths_processed","queue_cells_allocated"};
+		"drawables_updated","queued_paths_processed","queue_cells_allocated",
+		"draw_calls","textures_created","buffers_created","drawables_drawn","particles_live_gauge","objects_live_gauge"};
 	static_assert(sizeof(names)/sizeof(*names)==CounterCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -223,6 +224,46 @@ std::vector<std::size_t> Recorder::slowest(Category category,std::size_t limit,b
 	std::stable_sort(order.begin(),order.end(),[&](std::size_t a,std::size_t b){return m_frames[a].metrics[static_cast<unsigned int>(category)].inclusive>m_frames[b].metrics[static_cast<unsigned int>(category)].inclusive;});
 	if(order.size()>limit)order.resize(limit);return order;
 }
+// X64.34 bounded developer receipt: the numbers X64.35 compares before/after a change. CPU wall time only.
+void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
+{
+	const double ticksPerMs=static_cast<double>(std::max<Tick>(meta.frequency,1))/1000.0;
+	const auto& frames=r.frames();
+	const double seconds=r.elapsed()/ticksPerMs/1000.0;
+	std::vector<Tick> frameTicks,logicTicks;
+	Tick catchUpFrames=0,longLogicFrames=0,ticksTotal=0;
+	std::array<Tick,CounterCount> sum{},peak{};
+	for(const auto& f:frames)
+	{
+		frameTicks.push_back(f.metrics[static_cast<unsigned>(Category::Outer)].inclusive);
+		const Tick done=f.counters[static_cast<unsigned>(Counter::CompletedTicks)];
+		ticksTotal+=done;
+		if(done>1)++catchUpFrames;
+		if(done)
+		{
+			const Tick logic=f.metrics[static_cast<unsigned>(Category::Logic)].inclusive;
+			logicTicks.push_back(logic);
+			if(logic>static_cast<Tick>(ticksPerMs*1000.0/30.0))++longLogicFrames;   // longer than one 30 Hz period
+		}
+		for(unsigned c=0;c<CounterCount;++c){sum[c]+=f.counters[c];peak[c]=std::max(peak[c],f.counters[c]);}
+	}
+	const auto frame=statistics(frameTicks),logic=statistics(logicTicks);
+	const double n=static_cast<double>(std::max<std::size_t>(frames.size(),1));
+	out<<"\n=== Generals Performance Receipt ===\n"
+	   <<"duration_s: "<<seconds<<"\nframes: "<<frames.size()<<"\navg_fps: "<<(seconds>0?frames.size()/seconds:0.0)<<"\n"
+	   <<"frame_ms: avg "<<frame.mean/ticksPerMs<<" p95 "<<frame.p95/ticksPerMs<<" p99 "<<frame.p99/ticksPerMs<<" max "<<frame.maximum/ticksPerMs<<"\n"
+	   <<"logic_ms (per frame with a tick): avg "<<logic.mean/ticksPerMs<<" p95 "<<logic.p95/ticksPerMs<<" p99 "<<logic.p99/ticksPerMs<<" max "<<logic.maximum/ticksPerMs<<"\n"
+	   <<"logic_ticks: "<<ticksTotal<<" catch_up_frames: "<<catchUpFrames<<" long_logic_frames(>33.3ms): "<<longLogicFrames<<"\n"
+	   <<"render: avg_draw_calls "<<sum[static_cast<unsigned>(Counter::DrawCalls)]/n
+	   <<" peak_draw_calls "<<peak[static_cast<unsigned>(Counter::DrawCalls)]
+	   <<" avg_drawables_drawn "<<sum[static_cast<unsigned>(Counter::DrawablesDrawn)]/n
+	   <<" textures_created "<<sum[static_cast<unsigned>(Counter::TexturesCreated)]
+	   <<" buffers_created "<<sum[static_cast<unsigned>(Counter::BuffersCreated)]<<"\n"
+	   <<"world: avg_objects "<<sum[static_cast<unsigned>(Counter::ObjectsLive)]/n<<" peak_objects "<<peak[static_cast<unsigned>(Counter::ObjectsLive)]
+	   <<" avg_particles "<<sum[static_cast<unsigned>(Counter::ParticlesLive)]/n<<" peak_particles "<<peak[static_cast<unsigned>(Counter::ParticlesLive)]<<"\n"
+	   <<"interpolation(smooth): "<<meta.interpolation<<"\nnote: CPU wall time incl. pacer waits; GPU time is not measured.\n"
+	   <<"=== end receipt ===\n";
+}
 void report(const Recorder& r,const Metadata& meta,std::ostream& summary,std::ostream& frames,std::ostream& categories,std::ostream& slow)
 {
 	const double ticksPerMs=static_cast<double>(std::max<Tick>(meta.frequency,1))/1000.0;
@@ -243,6 +284,7 @@ void report(const Recorder& r,const Metadata& meta,std::ostream& summary,std::os
 		<<"Logic calls include early returns; top logic rows require completed ticks.\n"
 		<<"Control polling, buffer start and report I/O are outside measured outer frames.\n";
 	for(unsigned int c=0;c<CounterCount;++c)summary<<name(static_cast<Counter>(c))<<"="<<counters[c]<<"\n";
+	writeReceipt(r,meta,summary);
 	frames<<"outer_index,capture_offset_ms,logic_before,logic_after,requested_fps,effective_fps";
 	for(unsigned int c=0;c<CounterCount;++c)frames<<","<<name(static_cast<Counter>(c));
 	for(unsigned int c=0;c<CategoryCount;++c)frames<<","<<name(static_cast<Category>(c))<<"_inclusive_ms,"<<name(static_cast<Category>(c))<<"_exclusive_ms,"<<name(static_cast<Category>(c))<<"_calls";

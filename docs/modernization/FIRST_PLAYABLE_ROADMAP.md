@@ -36,6 +36,7 @@ visual acceptance by the agent, no weakened gates, immutable failed-run evidence
 | CP5 = X64.31 | Original Game Experience / Normal Launch (`NORMAL_LAUNCH.md`) | **ACCEPTED 2026-10-14 (x64-31-fix5, evidence `evidence/x64-31-accepted/`)** |
 | CP6 = X64.32 | Original experience completion + frontend/QoL audit (`X64_32_ORIGINAL_EXPERIENCE_AUDIT.md`) | **ACCEPTED 2026-10-14 (x64-32-fix1: Save A, Load A, frontend A)** |
 | CP7 = X64.33 | Modern Experience foundation: display/window/aspect/UI scale/Options/HUD (`X64_33_MODERN_DISPLAY.md`) | **ACCEPTED 2026-10-14 (x64-33-final2-options)** |
+| CP8 = X64.34 | Smooth presentation completion + performance instrumentation (`X64_34_SMOOTH_PRESENTATION_PERFORMANCE.md`) | candidate `x64-34-smooth-presentation` staged/preflighted; awaiting native review |
 | CP4 | Full skirmish acceptance (AI, clean end) | planned |
 
 ## 3. Dependency graph from accepted terrain to First Playable

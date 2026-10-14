@@ -103,7 +103,8 @@ class ModernDisplayContracts(unittest.TestCase):
         self.assertIn("StartupDiagnostics::ordinaryPlay() && !modernDisplay", winmain)
 
     def test_zero_hour_and_win32_reference_are_untouched(self):
-        diff = subprocess.run(["git", "diff", "--stat", X64_32_ACCEPTED, "--", "GeneralsMD",
+        diff = subprocess.run(["git", "diff", "--stat", X64_32_ACCEPTED, "6dc40760d", "--", "GeneralsMD",   # X64.33 range only; X64.34 touches the shared Drawable on purpose
+                               
                                "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp",
                                "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.cpp"],
                               cwd=ROOT, capture_output=True, text=True)

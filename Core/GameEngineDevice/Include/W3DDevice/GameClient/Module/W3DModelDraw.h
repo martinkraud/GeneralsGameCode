@@ -30,6 +30,7 @@
 #pragma once
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
+#include "Common/GroundTranslation.h"
 #include "Common/ModelState.h"
 #include "Common/DrawModule.h"
 #ifdef BRUTAL_TIMING_HACK // hack for collecting model timing info.  jba.
@@ -508,6 +509,7 @@ private:
 	std::vector<ModelConditionInfo::HideShowSubObjInfo>		m_subObjectVec;
 	Bool													m_hideHeadlights;
 	Bool													m_pauseAnimation;
+	AnglePairHistory									m_turretPresentation[MAX_TURRETS];	///< X64.34 Smooth: presentation-only turret yaw/pitch history
 	Int														m_animationMode;
 
 	void adjustAnimation(const ModelConditionInfo* prevState, Real prevAnimFraction);
