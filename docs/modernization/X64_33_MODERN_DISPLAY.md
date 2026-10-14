@@ -419,3 +419,20 @@ canvas/surface and its bands do not overlap at 13 surface sizes x 6 UI scales (8
 * `generalsv.exe` SHA256 `288BE8FC23982948A82DC898E6921F2C49B0278B6173686174499A3B303C6428`
 * `generalsv.pdb` SHA256 `58B84E8DC86F7A071A9C92B30F55AF33DAABF6423814347E894F07B3D052CDA9`
 X64.33 is NOT accepted yet.
+
+## 19. X64.33 ACCEPTED AND CLOSED (2026-10-14)
+
+Native review of `x64-33-final2-options` (generalsv.exe SHA256 `288BE8FC23982948A82DC898E6921F2C49B0278B6173686174499A3B303C6428`):
+the wider Modern Options composition, tab layout, controls and footer are accepted.
+
+Accepted in X64.33 (native-verified across the review series):
+* Modern display foundation: native resolution, Windowed/Borderless, Hor+ world, UI scale + anchors, VSync, display
+  enumeration and persisted settings, Classic fallback.
+* Modern Options: tabbed categories (Display / Graphics / Audio / Controls / Gameplay / Network), whole-tree page
+  ownership, clean combos and dropdown layering, wide runtime-composed frame with measured content-sized tabs.
+* Skirmish Match Options (Starting Cash on one line, reserved row, Slower/Faster removed).
+* Centred coherent HUD with full-width world, side-world input, backing lifecycle (black pre-flash fixed).
+* Understated Modern footer / plain window caption; Modern main menu presentation.
+
+Deferred beyond X64.33 (unchanged): exclusive fullscreen and refresh-rate control, key rebinding, superweapon match
+option, Network page re-flow, frontend side art, smooth unit motion acceptance (opt-in).
