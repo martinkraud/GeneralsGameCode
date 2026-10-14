@@ -436,3 +436,8 @@ Accepted in X64.33 (native-verified across the review series):
 
 Deferred beyond X64.33 (unchanged): exclusive fullscreen and refresh-rate control, key rebinding, superweapon match
 option, Network page re-flow, frontend side art, smooth unit motion acceptance (opt-in).
+
+### Design direction recorded at X64.34 closeout
+The centred HUD island is retained. A later Modern HUD pass may rebuild/redesign the control panel for modern
+displays while keeping the Generals visual identity; Classic stays the preservation path; the HUD is not to be
+stretched across ultrawide displays just to fill horizontal space.

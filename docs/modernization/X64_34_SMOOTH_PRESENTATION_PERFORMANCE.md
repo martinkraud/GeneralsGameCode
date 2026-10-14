@@ -121,3 +121,25 @@ object counts, instancing/batching, pathfinding hot paths (existing Stage 4B dat
 * `generalsv.exe` SHA256 `64EB4D7250B42F0723DB8E24F60906AEE62B0B00A0C794B27EF91366CBD0C297`
 * `generalsv.pdb` SHA256 `C2BCEA54DBB3F2D7845622843C6878C59CD39A4A9A0AD36CEF3492B057B28E20`
 Steam untouched. X64.34 is NOT accepted before the human native review.
+
+## 11. X64.34 ACCEPTED AND CLOSED (2026-10-15)
+
+Native review of `x64-34-smooth-presentation` (generalsv.exe SHA256
+`64EB4D7250B42F0723DB8E24F60906AEE62B0B00A0C794B27EF91366CBD0C297`): Smooth is visibly much smoother, the presentation
+looks good, and no notable visual or gameplay-speed regressions were found.
+
+**Accepted:** Smooth presentation (ground units, turrets/barrels, aircraft, projectiles; camera unchanged) as an
+opt-in Modern Experience feature; presentation-only interpolation with the documented snap/reset rules.
+
+**Performance instrumentation:** implemented, unit-tested and native-ready (counters + Generals Performance Receipt).
+The first *baseline receipt* needs a native run, which is a human gate the agent may not perform; it is therefore
+recorded as **the first X64.35 task** (scenarios A-C of section 6, 60 s each, 3 repeats, Smooth fixed, recorded with
+cap/VSync/resolution/UI scale). No benchmark number is claimed here.
+
+**Not yet proven:** multiplayer/replay determinism with Smooth enabled (needs replay/CRC and LAN validation).
+Smooth remains opt-in; promoting it to a default is a separate decision.
+
+### Future Modern Experience design direction (recorded, NOT implemented)
+The centred HUD-island architecture (X64.33) is retained. A later Modern HUD pass may rebuild/redesign the control
+panel for modern displays while preserving the recognizable Generals visual identity. Classic remains the
+preservation path. The HUD must not be stretched across ultrawide displays simply to fill horizontal space.
