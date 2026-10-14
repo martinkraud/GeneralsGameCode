@@ -276,3 +276,9 @@ named timers, player-info list and popup messages keep the core-relative `hudX/h
 * The tab strip uses the Defaults button art; a dedicated tab frame would be new art.
 * Network page is a moved retail block (not re-flowed).
 * Live resolution switching still reuses `recreateWindowLayouts`.
+
+### FIX2 candidate
+`build/dev-runtimes/native/Generals/x64-33-fix2-modern-ui` (staged and preflighted, not run), built from `bd9953100`:
+* `generalsv.exe` SHA256 `2EC09BF3F24656F8EE26779B094ABA518C13F27A783444B9EE38BA0986406008`
+* `generalsv.pdb` SHA256 `5365DAF8E385505CD70D1922C1C54848A7209D246970CABD743EE2C6D1B2ABD3`
+X64.33 is NOT accepted yet.
