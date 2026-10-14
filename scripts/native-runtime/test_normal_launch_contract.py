@@ -65,6 +65,16 @@ class NormalLaunchContract(unittest.TestCase):
         self.assertIn("saveNativeScreenshot", w)
         self.assertIn("xres == 800 && yres == 600", w.replace("static_cast<int>(", "").replace("(Int)", ""))
 
+    def test_launcher_preserves_log_and_reverifies_strictly(self):
+        inv = read("scripts/native-runtime/Invoke-NativeNormalLaunch.ps1")
+        self.assertIn("Restore-NativeRuntimeGeneratedFiles", inv)
+        # strict re-read (no allowance) after cleanup
+        self.assertIn("Read-NativeOrdinaryPlayStage $Title $Name }", inv)
+        common = read("scripts/native-runtime/Common.ps1")
+        self.assertIn("$script:NativeNormalLaunchGenerated=@('generals64.log')", common)
+        # default Read-NativeStage still allows nothing
+        self.assertIn("[string[]]$AllowAdded=@()", common)
+
 
 if __name__ == "__main__":
     unittest.main()

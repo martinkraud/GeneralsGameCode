@@ -65,12 +65,39 @@ function Assert-NativeDependencies([string]$Executable, [string]$GamePath) {
     return $result
 }
 
-function Read-NativeStage([string]$Title,[string]$Name) {
+# Files a normal launch is expected to create next to the executable. Only an *added* file with exactly
+# one of these root-level names is tolerated; any other added/changed/removed file still fails.
+$script:NativeNormalLaunchGenerated=@('generals64.log')
+
+function Get-NativeRuntimeDifferences($Expected,$Actual,[string[]]$AllowAdded=@()) {
+    $allowed=@($AllowAdded | ForEach-Object { "Added: $_" })
+    @(Get-ZHInventoryDifferences $Expected $Actual | Where-Object { $_ -notin $allowed })
+}
+
+# Preserves expected runtime-generated files into the evidence directory, then removes them from the stage so
+# the staged candidate is byte-identical to its manifest again. Returns the preserved paths.
+function Restore-NativeRuntimeGeneratedFiles([string]$GamePath,[string[]]$Names,[string]$EvidenceDirectory,[string]$Stamp) {
+    $kept=@()
+    foreach ($name in $Names) {
+        if ($name -notmatch '^[A-Za-z0-9_.-]+$') { throw "Invalid generated file name: $name" }
+        $source=Join-Path $GamePath $name
+        if (!(Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+        New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
+        $target=Join-Path $EvidenceDirectory "$Stamp.$name"
+        Copy-Item -LiteralPath $source -Destination $target
+        if ((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $target).Hash) { throw "Evidence copy mismatch: $name" }
+        Remove-Item -LiteralPath $source -Force
+        $kept+=$target
+    }
+    return $kept
+}
+
+function Read-NativeStage([string]$Title,[string]$Name,[string[]]$AllowAdded=@()) {
     $stage=Get-NativeStage $Title $Name
     $manifest=Get-Content -LiteralPath (Join-Path $stage 'manifest.json') -Raw | ConvertFrom-Json
     if ($manifest.Schema -ne 1 -or $manifest.Title -ne $Title -or $manifest.StagePath -ne $stage -or
         $manifest.GamePath -ne (Join-Path $stage 'game')) { throw 'Stage identity mismatch' }
-    $diff=@(Get-ZHInventoryDifferences $manifest.Inventory @(Get-ZHInventory $manifest.GamePath))
+    $diff=@(Get-NativeRuntimeDifferences $manifest.Inventory @(Get-ZHInventory $manifest.GamePath) $AllowAdded)
     if ($diff.Count) { throw "Runtime changed: $($diff -join '; ')" }
     $current=Get-NativeBuild $Title
     if ($current.ExecutableSHA256 -ne $manifest.Build.ExecutableSHA256 -or $current.PdbSHA256 -ne $manifest.Build.PdbSHA256) {

@@ -107,3 +107,7 @@ radar navigation use unchanged code. Verified offline (contract + mapping test);
    plays that track silently and the game continues (the failure is not logged by the audio layer yet).
 4. Load screen / Campaign briefing without video.
 5. Save/Load/Replay never run natively.
+
+## 9. First native run and workflow fix
+
+The developer's first normal launch (evidence: `evidence/x64-31-first-normal-launch/`) exited 0 after about 35 s with a clean shutdown; the wrapper then failed on `Runtime changed: Added: generals64.log`. `Invoke-NativeNormalLaunch.ps1` now archives any stale log, preserves the new one into `<stage>/normal-launch/`, removes it from the stage and re-verifies the stage strictly. Only an added root-level `generals64.log` is tolerated; `Test-NativeNormalLaunchWorkflow.ps1` proves added/changed/removed other files, subdirectory copies and path-like names still fail. Fix candidate: `x64-31-fix1`.
