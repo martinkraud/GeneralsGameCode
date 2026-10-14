@@ -91,4 +91,7 @@ State caching and draw sorting by texture/shader, constant-buffer update batchin
 GPU timestamp queries, allocation counters - all evidence first.
 
 ## 14. Candidate
-`build/dev-runtimes/native/Generals/x64-35-baseline` - see the delivery report for hashes. Not run by the agent.
+`build/dev-runtimes/native/Generals/x64-35-baseline` (built from `b320513d0`, staged and preflighted, not run by the agent).
+* `game/generalsv.exe` SHA256 `69AA86EF1648932B5B71F327BE68D3A198C0C5BAF30319C5D8412E8CD5D6869C`
+* `game/generalsv.pdb` SHA256 `F968F22F1363AE4E405283E1A38FF61D63CC61BBFA0A986D8A705E88FA8353C0`
+Steam untouched.
