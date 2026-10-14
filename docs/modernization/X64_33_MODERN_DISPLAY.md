@@ -208,3 +208,71 @@ Review sequence: Options (open every dropdown, Resolution row, Display Options p
 them); start a match and check both sides of the control bar (continuous console, clicking the extension must not give
 orders), radar and shortcut sidebar, superweapon timer position; repeat at a second aspect (borderless on an ultrawide
 and a 16:9 window); `-classic` launch for the unchanged 800x600 presentation. X64.33 is NOT accepted yet.
+
+## 15. FIX1 native findings and FIX2 Modern UI Composition (x64-33-fix2-modern-ui)
+
+### FIX1 screenshot findings
+Borderless/windowed presentation and the frontend composition are good: the display foundation stays. But
+* **Options** still looked crowded: text left its controls, the Display Options entry was squeezed into the Video
+  block next to Frame Rate Limit; the human asked for category tabs.
+* **Skirmish**: Match Options is the right direction; "Starting Cash" wrapped onto two lines.
+* **HUD**: the stretched console extension was technically filled but visually wrong: the bar looked pulled apart,
+  the band dominated the lower quarter of the screen, and on 16:9 it already looked absurd.
+
+### Decision
+Stop stretching the 2003 composition. Keep the identity, the assets, the interaction concepts and the original
+proportions of every *functional* group, and compose them for a wide surface.
+
+### Text/control metrics root cause
+Beyond fonts, the window system carries unscaled pixel constants. `W3DStaticText` wrapped text at `width - 10` and
+placed it with fixed left/top margins while the window and its font were scaled by the UI scale, so labels wrapped
+and ran out of their controls (the two-line "Starting Cash"). Wrap width and margins now follow the UI scale (Classic
+unchanged: the scale is 1.0 there). New labels are also left-aligned and sized from the page layout, not from the
+retail label rectangles.
+
+### Options: categories
+Modern Experience only (Classic keeps the retail page). A Generals-styled tab strip (the retail button art,
+check-like selected state) over one content rectangle; every category is a column of label + control rows:
+
+| Category | Contents | Source |
+|---|---|---|
+| DISPLAY | Resolution, Display Mode, Monitor (only with >1 monitor), UI Scale, VSync, Frame Rate Limit | retail Resolution combo + new gadgets + existing FrameRateOptions |
+| GRAPHICS | Detail (Custom opens the retail Advanced panel), Gamma | retail |
+| AUDIO | SFX, Music, Voice volume | retail |
+| CONTROLS | Alternate Mouse, Scroll Speed | retail (key rebinding is a later milestone) |
+| GAMEPLAY | Unit Motion (Original / Smooth) | new gadget (presentation preference; default off) |
+| NETWORK | the retail IP / firewall / proxy rows, moved as a block | retail |
+
+No renderer feature is faked: Refresh Rate and Exclusive stay deferred; no render scale, no DLSS. Match rules
+(Starting Cash, future superweapon rule) are Skirmish creation settings and are not on the Gameplay tab.
+Geometry is `Common/OptionsPageLayout.h` (reference units x UI scale; rows 24 on a 44 pitch; label 200 / control 225;
+content 485 x 408 - the page never grows with the surface). Upper rows are brought to the front last, so a dropdown
+always opens over the rows below it.
+
+### Skirmish
+Match Options keeps FIX1's structure (header, row 0 Starting Cash, row 1 reserved, honors shift as in Zero Hour).
+The label column is 100 reference units (Zero Hour gave its caption 93) and the combo 130, so "Starting Cash" fits one
+line at supported scales. Superweapon rule: still deferred (no GameLogic restriction state in base Generals).
+
+### HUD composition: alternatives considered
+* **A. Centred core** (chosen): the original control bar, scaled by the UI scale, centred; world on both sides.
+* **B. Edge-anchored groups** (radar left / commands centre / info right with a maximum separation): needs the bar art
+  cut into three pieces and new filler art; the art is one 800 unit band with silhouette overlaps, so cutting is lossy and
+  the radar/commands relationship (which the game teaches) is broken. Rejected.
+* **C. Hybrid / Zero Hour**: Zero Hour does not solve wide aspect ratios (it stays 4:3 with a taller sidebar); it only
+  informs the sidebar and timer placement, which are already used.
+* **FIX1 stretched extension**: rejected by native review.
+
+### HUD: selected model
+`Common/HudComposition.h`: core = 800 x scale wide, centred, bottom-anchored; the world uses the whole surface and
+the tactical view is full height; under the core an opaque backing reproduces the retail black below the 80 % viewport
+line; nothing outside the core blocks input (the FIX1 input walls are gone); timers/notices have named regions above
+the core inside its width; the shortcut sidebar keeps its right-edge anchor (accepted X64.32) and the superweapon /
+named timers, player-info list and popup messages keep the core-relative `hudX/hudY` anchors (stable at any aspect).
+
+### Known limitations / native-unverified
+* Everything visual; in particular the tab art (button images scaled to tab size), the Options pages at all scales,
+  the 16:9 / 21:9 / 32:9 look of a centred core with the world beside it, and whether a subtle side treatment is wanted.
+* The tab strip uses the Defaults button art; a dedicated tab frame would be new art.
+* Network page is a moved retail block (not re-flowed).
+* Live resolution switching still reuses `recreateWindowLayouts`.

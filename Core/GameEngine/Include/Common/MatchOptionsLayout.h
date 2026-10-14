@@ -8,7 +8,7 @@
 // captions were, once the honors statistics sit 7 reference px lower, which is also what Zero Hour did:
 //
 //   header  (57,315) 156x24   "Match Options"
-//   row 0   (57,339)          Starting Cash   [ combo ]
+//   row 0   (57,339)          Starting Cash (100 wide)  [ combo, 130 wide ]
 //   row 1   (57,363)          reserved: match rules the player explicitly chooses (e.g. a superweapon limit)
 //   honors  statistics block starts at y = 387 (retail 380)
 //
@@ -41,9 +41,10 @@ inline Layout compute(int headerX, int headerY, int headerW, int headerH, double
 	Layout l;
 	l.header = {headerX, headerY, headerW, headerH};
 	const int rowH = scaled(24, scale);
-	const int labelW = scaled(72, scale);
+	// "Starting Cash" must stay on one line: Zero Hour gave its caption 93 units; the label column is 100 here.
+	const int labelW = scaled(100, scale);
 	const int gap = scaled(2, scale);
-	const int controlW = scaled(158, scale);
+	const int controlW = scaled(130, scale);
 	for (int i = 0; i < kRowCapacity; ++i)
 	{
 		const int y = headerY + headerH + rowH * i;

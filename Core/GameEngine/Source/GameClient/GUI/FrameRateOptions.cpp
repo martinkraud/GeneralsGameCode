@@ -41,7 +41,7 @@ static void selectFrameRate(GameWindow *combo, Int fps)
 			GadgetComboBoxSetSelectedPos(combo, i);
 }
 
-GameWindow *createFrameRateOptions(GameWindow *detail, const OptionPreferences &preferences)
+GameWindow *createFrameRateOptions(GameWindow *detail, const OptionPreferences &preferences, bool tabbed)
 {
 	// TheSuperHackers @feature Extend the packaged Options layout using native gadgets, without asset overrides.
 	GameWindow *combo = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("OptionsMenu.wnd:ComboBoxFrameRateLimit"));
@@ -57,10 +57,15 @@ GameWindow *createFrameRateOptions(GameWindow *detail, const OptionPreferences &
 		parent->winGetSize(&parentWidth, &parentHeight);
 		label->winGetPosition(&labelX, &labelY);
 		label->winGetSize(&labelWidth, &labelHeight);
-		const Int gap = max(2, height / 4);
-		const Int columnWidth = (parentWidth - 2 * x - gap) / 2;
-		if (columnWidth < height * 3)
+		Int gap = max(2, height / 4);
+		Int columnWidth = (parentWidth - 2 * x - gap) / 2;
+		if (!tabbed && columnWidth < height * 3)
 			return nullptr; // Do not overlap controls in an incompatible mod layout.
+		// Tabbed pages: the new gadgets take the Detail row's own rectangle (the page layout moves them), the Detail
+		// combo and its label keep their size and the row is not split.
+		const Int newX = tabbed ? x : x + columnWidth + gap;
+		const Int newColumnWidth = tabbed ? width : columnWidth;
+		const Int newCaptionWidth = tabbed ? labelWidth : columnWidth;
 
 		WinInstanceData instance;
 		instance.m_font = detail->winGetFont();
@@ -70,8 +75,9 @@ GameWindow *createFrameRateOptions(GameWindow *detail, const OptionPreferences &
 		instance.m_style = GWS_STATIC_TEXT;
 		TextData text = {};
 		text.centeredVertically = TRUE;
+		instance.m_id = tabbed ? NAMEKEY("OptionsMenu.wnd:FrameRateLimitLabel") : instance.m_id;
 		GameWindow *caption = TheWindowManager->gogoGadgetStaticText(parent, WIN_STATUS_ENABLED,
-			x + columnWidth + gap, labelY, columnWidth, labelHeight, &instance, &text, instance.m_font, FALSE);
+			newX, labelY, newCaptionWidth, labelHeight, &instance, &text, instance.m_font, FALSE);
 		copyAppearance(caption, label);
 		caption->winSetFont(detail->winGetFont()); // Keep the longer caption within the split column in both titles.
 		GadgetStaticTextSetText(caption, TheGameText->FETCH_OR_SUBSTITUTE("GUI:FrameRateLimit", L"Frame Rate Limit"));
@@ -90,18 +96,24 @@ GameWindow *createFrameRateOptions(GameWindow *detail, const OptionPreferences &
 		data.listboxData->forceSelect = TRUE;
 		data.listboxData->columns = 1;
 		combo = TheWindowManager->gogoGadgetComboBox(parent, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
-			x + columnWidth + gap, y, columnWidth, height, &instance, &data, instance.m_font, FALSE);
+			newX, y, newColumnWidth, height, &instance, &data, instance.m_font, FALSE);
 		copyAppearance(combo, detail);
 		copyAppearance(GadgetComboBoxGetEditBox(combo), GadgetComboBoxGetEditBox(detail));
 		copyAppearance(GadgetComboBoxGetDropDownButton(combo), GadgetComboBoxGetDropDownButton(detail));
 		copyAppearance(GadgetComboBoxGetListBox(combo), GadgetComboBoxGetListBox(detail));
-		detail->winSetSize(columnWidth, height);
-		label->winSetSize(columnWidth, labelHeight);
+		if (!tabbed)
+		{
+			detail->winSetSize(columnWidth, height);
+			label->winSetSize(columnWidth, labelHeight);
+		}
 		// Runtime gadgets are created at the front of the draw order. The original dropdowns open over the controls
 		// below them because the layout file creates lower controls earlier; keep that relationship: the new combo
 		// sits directly behind the Detail combo, the caption directly behind the new combo.
-		GadgetLayering::placeBehind(combo, detail);
-		GadgetLayering::placeBehind(caption, combo);
+		if (!tabbed)
+		{
+			GadgetLayering::placeBehind(combo, detail);
+			GadgetLayering::placeBehind(caption, combo);
+		}
 	}
 	GadgetComboBoxReset(combo);
 	for (Int i = 0; i < RenderFpsPreset::OptionCount; ++i)

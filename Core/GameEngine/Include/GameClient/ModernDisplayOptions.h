@@ -8,10 +8,13 @@ class OptionPreferences;
 
 namespace ModernDisplayOptions
 {
-// Splits the Resolution row of the Video panel and adds the "Display..." entry button plus the popup panel. Returns
-// false (and adds nothing) in Classic, in diagnostic profiles and when a mod layout leaves no room.
-bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *buttonTemplate,
-            const OptionPreferences &preferences, bool inMatch);
+// Creates the Modern Experience display/gameplay controls as plain gadgets next to the retail Resolution combo
+// (same panel, same draw data): Display Mode, Monitor, UI Scale, VSync and Unit Motion. They are positioned by the
+// Options pages (OptionsTabs). Returns false (and adds nothing) in Classic and in diagnostic profiles.
+bool create(GameWindow *resolutionCombo, const OptionPreferences &preferences, bool inMatch);
+
+// True when more than one monitor is attached (the Monitor row is only shown then).
+bool hasMultipleMonitors();
 
 // Button routing from OptionsMenuSystem: true when `controlId` belonged to this feature.
 bool onButton(int controlId);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// X64.33 Options > Display popup (Modern Experience). See ModernDisplayOptions.h.
+// X64.33 Options > Display / Gameplay page gadgets (Modern Experience). See ModernDisplayOptions.h.
 #include "PreRTS.h"
 
 #include "GameClient/ModernDisplayOptions.h"
@@ -12,7 +12,6 @@
 #include "Common/ModernExperience.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionPreferences.h"
-#include "Common/OptionsPanelLayout.h"
 #include "Common/StartupDiagnostics.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetLayering.h"
@@ -32,16 +31,12 @@ using DisplayConfig::WindowMode;
 const int kUiScaleChoices[] = { 0, 75, 100, 125, 150, 175, 200, 250, 300 };   // 0 = Auto
 constexpr int kUiScaleCount = sizeof(kUiScaleChoices) / sizeof(kUiScaleChoices[0]);
 
-GameWindow *s_popup = nullptr;
-GameWindow *s_entry = nullptr;
+GameWindow *s_panelHost = nullptr;          // the Video panel that owns the runtime gadgets (X64.33 FIX2: Options pages)
 GameWindow *s_monitor = nullptr;
 GameWindow *s_mode = nullptr;
 GameWindow *s_uiScale = nullptr;
 GameWindow *s_vsync = nullptr;
 GameWindow *s_motion = nullptr;
-NameKeyType s_entryId = NAMEKEY_INVALID;
-NameKeyType s_acceptId = NAMEKEY_INVALID;
-NameKeyType s_backId = NAMEKEY_INVALID;
 bool s_inMatch = false;
 std::vector<DisplayModes::Monitor> s_monitors;
 
@@ -146,136 +141,55 @@ void syncFromRuntime()
 	select(s_motion, GroundTranslation::isEnabled() ? 1 : 0);
 }
 
-WindowMsgHandledType popupSystem(GameWindow *window, UnsignedInt msg, WindowMsgData mData1, WindowMsgData mData2)
-{
-	if (msg == GBM_SELECTED)
-	{
-		GameWindow *control = (GameWindow *)mData1;
-		const NameKeyType id = control ? static_cast<NameKeyType>(control->winGetWindowId()) : NAMEKEY_INVALID;
-		if (id == s_acceptId)
-		{
-			if (s_popup) s_popup->winHide(TRUE);
-			return MSG_HANDLED;
-		}
-		if (id == s_backId)
-		{
-			syncFromRuntime();
-			if (s_popup) s_popup->winHide(TRUE);
-			return MSG_HANDLED;
-		}
-	}
-	return MSG_IGNORED;
-}
 }  // namespace
 
 namespace ModernDisplayOptions
 {
 
-bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *buttonTemplate,
-            const OptionPreferences &, bool inMatch)
+bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch)
 {
 	forget();
-	if (!DisplayRuntime::modern() || ModernExperience::classic() || !resolutionCombo || !popupTemplate || !buttonTemplate)
+	if (!DisplayRuntime::modern() || ModernExperience::classic() || !resolutionCombo)
 		return false;
 	GameWindow *label = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("OptionsMenu.wnd:ResolutionLabel"));
-	GameWindow *backTemplate = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("OptionsMenu.wnd:ButtonAdvanceBack"));
-	GameWindow *rowParent = resolutionCombo->winGetParent();
-	GameWindow *popupParent = popupTemplate->winGetParent();
-	if (!label || !backTemplate || !rowParent || label->winGetParent() != rowParent)
+	GameWindow *host = resolutionCombo->winGetParent();
+	if (!label || !host)
 		return false;
+	s_panelHost = host;
+	s_inMatch = inMatch;
+	s_monitors = DisplayModes::enumerateMonitors();
 
-	// --- entry button: right half of the Resolution row --------------------------------------------------
-	Int x, y, width, height, parentWidth, parentHeight, labelX, labelY, labelWidth, labelHeight;
+	// Provisional rectangles: the Options pages (OptionsTabs) position every control. Creation is bottom-up in the
+	// page order so a row's dropdown is already in front of the rows below it.
+	Int x, y, width, height;
 	resolutionCombo->winGetPosition(&x, &y);
 	resolutionCombo->winGetSize(&width, &height);
-	rowParent->winGetSize(&parentWidth, &parentHeight);
-	label->winGetPosition(&labelX, &labelY);
-	label->winGetSize(&labelWidth, &labelHeight);
-	const Int gap = max(2, height / 4);
-	const Int columnWidth = (parentWidth - 2 * x - gap) / 2;
-	if (columnWidth < height * 3)
-		return false;   // incompatible mod layout: leave the original controls alone
-
-	s_entryId = NAMEKEY("OptionsMenu.wnd:ButtonModernDisplay");
-	s_acceptId = NAMEKEY("OptionsMenu.wnd:ModernDisplay.Accept");
-	s_backId = NAMEKEY("OptionsMenu.wnd:ModernDisplay.Back");
-	s_inMatch = inMatch;
-
-	WinInstanceData entry;
-	entry.m_font = resolutionCombo->winGetFont();
-	entry.m_style = GWS_PUSH_BUTTON | GWS_MOUSE_TRACK;
-	entry.m_id = s_entryId;
-	s_entry = TheWindowManager->gogoGadgetPushButton(rowParent, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
-		x + columnWidth + gap, y, columnWidth, height, &entry, entry.m_font, FALSE);
-	copyAppearance(s_entry, buttonTemplate);
-	GadgetButtonSetText(s_entry, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayOptions", L"Display Options..."));
-	GameWindow *entryCaption = makeCaption(rowParent, label, resolutionCombo, x + columnWidth + gap, labelY, columnWidth,
-		labelHeight, L"Window, Scale, VSync", "GUI:DisplayOptionsCaption");
-	resolutionCombo->winSetSize(columnWidth, height);
-	label->winSetSize(columnWidth, labelHeight);
-	// Behind the Resolution combo (whose dropdown opens over the Detail row below) but in front of the rows beneath.
-	GadgetLayering::placeBehind(s_entry, resolutionCombo);
-	GadgetLayering::placeBehind(entryCaption, s_entry);
-
-	// --- popup panel (same footprint and draw data as the Advanced Display Options panel) -------------
-	Int px, py, pw, ph;
-	popupTemplate->winGetPosition(&px, &py);
-	popupTemplate->winGetSize(&pw, &ph);
-	WinInstanceData panel;
-	panel.m_style = GWS_USER_WINDOW;
-	panel.m_id = NAMEKEY("OptionsMenu.wnd:ModernDisplayPopup");
-	s_popup = TheWindowManager->winCreate(popupParent, WIN_STATUS_ENABLED | WIN_STATUS_HIDDEN | WIN_STATUS_NO_FOCUS,
-		px, py, pw, ph, popupSystem, &panel);
-	if (!s_popup)
-		return false;
-	copyAppearance(s_popup, popupTemplate);
-	s_popup->winSetDrawFunc(popupTemplate->winGetDrawFunc());
-
-	// monitor list
-	s_monitors = DisplayModes::enumerateMonitors();
 	GameWindow *comboTemplate = resolutionCombo;
-
-	// Geometry comes from OptionsPanelLayout (reference units x the live UI scale, rows below the title, notes
-	// above the button zone); nothing here is a fixed pixel number.
-	Int bx0, by0, bw0, bh0;
-	buttonTemplate->winGetPosition(&bx0, &by0);
-	buttonTemplate->winGetSize(&bw0, &bh0);
-	const int rowCount = 5;
-	const OptionsPanelLayout::Panel layout = OptionsPanelLayout::compute(pw, ph, height, DisplayRuntime::uiScale(),
-		rowCount, by0 - py);
-	if (!layout.fits)
-		StartupDiagnostics::checkpoint("display_options", "observed", "panel rows exceed the button zone; compact layout");
-
-	makeCaption(s_popup, label, comboTemplate, layout.title.x, layout.title.y, layout.title.w, layout.title.h,
-		L"DISPLAY OPTIONS", "GUI:DisplayOptionsTitle");
-
-	// Rows are created BOTTOM TO TOP: a later-created sibling is drawn in front, and an upper row's dropdown must
-	// open over the rows below it (see GadgetLayering.h).
-	auto caption = [&](int row, const WideChar *fallback, const char *key) {
-		makeCaption(s_popup, label, comboTemplate, layout.label[row].x, layout.label[row].y, layout.label[row].w,
-			layout.label[row].h, fallback, key);
+	auto caption = [&](const char *id, const WideChar *fallback, const char *key) {
+		GameWindow *c = makeCaption(host, label, comboTemplate, x, y, width, height, fallback, key);
+		if (c)
+			c->winSetWindowId(NAMEKEY(id));
+		return c;
 	};
-	auto combo = [&](int row, Int entries) {
-		return makeCombo(s_popup, comboTemplate, layout.control[row].x, layout.control[row].y, layout.control[row].w,
-			layout.control[row].h, entries);
+	auto combo = [&](const char *id, Int entries) {
+		GameWindow *c = makeCombo(host, comboTemplate, x, y, width, height, entries);
+		if (c)
+			c->winSetWindowId(NAMEKEY(id));
+		return c;
 	};
 
-	makeCaption(s_popup, label, comboTemplate, layout.note.x, layout.note.y, layout.note.w, layout.note.h,
-		L"Window, monitor and UI scale changes apply from the menus. Frame Rate Limit is on the Options screen.",
-		"GUI:DisplayOptionsNote");
-
-	caption(4, L"Unit Motion", "GUI:UnitMotion");
-	s_motion = combo(4, 2);
+	caption("OptionsMenu.wnd:ModernMotionLabel", L"Unit Motion", "GUI:UnitMotion");
+	s_motion = combo("OptionsMenu.wnd:ModernMotion", 2);
 	addEntry(s_motion, TheGameText->FETCH_OR_SUBSTITUTE("GUI:UnitMotionOriginal", L"Original (30 Hz steps)"));
 	addEntry(s_motion, TheGameText->FETCH_OR_SUBSTITUTE("GUI:UnitMotionSmooth", L"Smooth (experimental)"));
 
-	caption(3, L"VSync", "GUI:VSync");
-	s_vsync = combo(3, 2);
+	caption("OptionsMenu.wnd:ModernVsyncLabel", L"VSync", "GUI:VSync");
+	s_vsync = combo("OptionsMenu.wnd:ModernVsync", 2);
 	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:Off", L"Off"));
 	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:On", L"On"));
 
-	caption(2, L"UI Scale", "GUI:UIScale");
-	s_uiScale = combo(2, kUiScaleCount);
+	caption("OptionsMenu.wnd:ModernUiScaleLabel", L"UI Scale", "GUI:UIScale");
+	s_uiScale = combo("OptionsMenu.wnd:ModernUiScale", kUiScaleCount);
 	for (int i = 0; i < kUiScaleCount; ++i)
 	{
 		UnicodeString text;
@@ -286,13 +200,8 @@ bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *
 		addEntry(s_uiScale, text);
 	}
 
-	caption(1, L"Display Mode", "GUI:DisplayMode");
-	s_mode = combo(1, 2);
-	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeWindowed", L"Windowed"));
-	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeBorderless", L"Borderless Fullscreen"));
-
-	caption(0, L"Monitor", "GUI:DisplayMonitor");
-	s_monitor = combo(0, s_monitors.empty() ? 1 : static_cast<Int>(s_monitors.size()));
+	caption("OptionsMenu.wnd:ModernMonitorLabel", L"Monitor", "GUI:DisplayMonitor");
+	s_monitor = combo("OptionsMenu.wnd:ModernMonitor", s_monitors.empty() ? 1 : static_cast<Int>(s_monitors.size()));
 	if (s_monitors.empty())
 		addEntry(s_monitor, UnicodeString(L"1"));
 	for (size_t i = 0; i < s_monitors.size(); ++i)
@@ -303,28 +212,10 @@ bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *
 		addEntry(s_monitor, text);
 	}
 
-	// accept / back buttons, same art as the Advanced panel's
-	Int bx, by, bw, bh, cx, cy, cw, ch;
-	buttonTemplate->winGetPosition(&bx, &by);
-	buttonTemplate->winGetSize(&bw, &bh);
-	backTemplate->winGetPosition(&cx, &cy);
-	backTemplate->winGetSize(&cw, &ch);
-	WinInstanceData accept;
-	accept.m_font = buttonTemplate->winGetFont();
-	accept.m_style = GWS_PUSH_BUTTON | GWS_MOUSE_TRACK;
-	accept.m_id = s_acceptId;
-	GameWindow *acceptButton = TheWindowManager->gogoGadgetPushButton(s_popup, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
-		bx - px, by - py, bw, bh, &accept, accept.m_font, FALSE);
-	copyAppearance(acceptButton, buttonTemplate);
-	GadgetButtonSetText(acceptButton, TheGameText->FETCH_OR_SUBSTITUTE("GUI:OK", L"OK"));
-	WinInstanceData back;
-	back.m_font = backTemplate->winGetFont();
-	back.m_style = GWS_PUSH_BUTTON | GWS_MOUSE_TRACK;
-	back.m_id = s_backId;
-	GameWindow *backButton = TheWindowManager->gogoGadgetPushButton(s_popup, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
-		cx - px, cy - py, cw, ch, &back, back.m_font, FALSE);
-	copyAppearance(backButton, backTemplate);
-	GadgetButtonSetText(backButton, TheGameText->FETCH_OR_SUBSTITUTE("GUI:Cancel", L"Cancel"));
+	caption("OptionsMenu.wnd:ModernModeLabel", L"Display Mode", "GUI:DisplayMode");
+	s_mode = combo("OptionsMenu.wnd:ModernMode", 2);
+	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeWindowed", L"Windowed"));
+	addEntry(s_mode, TheGameText->FETCH_OR_SUBSTITUTE("GUI:DisplayModeBorderless", L"Borderless Fullscreen"));
 
 	syncFromRuntime();
 	if (s_monitors.size() < 2 && s_monitor)
@@ -338,15 +229,14 @@ bool create(GameWindow *resolutionCombo, GameWindow *popupTemplate, GameWindow *
 	return true;
 }
 
-bool onButton(int controlId)
+bool hasMultipleMonitors()
 {
-	if (s_entry && controlId == static_cast<int>(s_entryId) && s_popup)
-	{
-		syncFromRuntime();
-		s_popup->winHide(FALSE);
-		return true;
-	}
-	return false;
+	return s_monitors.size() > 1;
+}
+
+bool onButton(int)
+{
+	return false;   // the display controls are plain page gadgets (see OptionsTabs); nothing opens a sub-panel
 }
 
 void reset()
@@ -359,7 +249,7 @@ void reset()
 
 bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 {
-	if (!DisplayRuntime::modern() || !s_popup)
+	if (!DisplayRuntime::modern() || !s_panelHost)
 		return false;
 	DisplayRuntime::State &state = DisplayRuntime::state();
 	Settings next = state.settings;
@@ -440,7 +330,7 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 
 void forget()
 {
-	s_popup = s_entry = s_monitor = s_mode = s_uiScale = s_vsync = s_motion = nullptr;
+	s_panelHost = s_monitor = s_mode = s_uiScale = s_vsync = s_motion = nullptr;
 	s_monitors.clear();
 	s_inMatch = false;
 }

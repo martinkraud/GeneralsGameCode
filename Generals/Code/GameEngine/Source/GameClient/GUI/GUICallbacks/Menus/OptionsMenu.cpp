@@ -54,6 +54,7 @@
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/FrameRateOptions.h"
 #include "GameClient/ModernDisplayOptions.h"
+#include "GameClient/OptionsTabs.h"
 #include "Common/DisplayRuntime.h"
 #include "GameClient/GadgetRadioButton.h"
 #include "GameClient/GadgetSlider.h"
@@ -883,6 +884,7 @@ static void DestroyOptionsLayout() {
 	SignalUIInteraction(SHELL_SCRIPT_HOOK_OPTIONS_CLOSED);
 
 	ModernDisplayOptions::forget();
+	OptionsTabs::forget();
 	TheShell->destroyOptionsLayout();
 	OptionsLayout = nullptr;
 }
@@ -955,7 +957,7 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 	comboBoxResolution     = TheWindowManager->winGetWindowFromId( nullptr, comboBoxResolutionID );
 	comboBoxDetailID			 = TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ComboBoxDetail" );
 	comboBoxDetail		   = TheWindowManager->winGetWindowFromId( nullptr, comboBoxDetailID );
-	comboBoxFrameRateLimit = createFrameRateOptions(comboBoxDetail, *pref);
+	comboBoxFrameRateLimit = createFrameRateOptions(comboBoxDetail, *pref, DisplayRuntime::modern());
 
 	checkLanguageFilterID  = TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:CheckLanguageFilter" );
 	checkLanguageFilter    = TheWindowManager->winGetWindowFromId( nullptr, checkLanguageFilterID );
@@ -1002,10 +1004,11 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	WinAdvancedDisplayID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:WinAdvancedDisplayOptions" );
 	WinAdvancedDisplay      = TheWindowManager->winGetWindowFromId( nullptr, WinAdvancedDisplayID );
-	// X64.33 Modern Experience: Display Options entry on the Resolution row (no-op in Classic).
-	ModernDisplayOptions::create( comboBoxResolution, WinAdvancedDisplay,
-		TheWindowManager->winGetWindowFromId( nullptr, TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ButtonAdvanceAccept" ) ),
-		*pref, ((TheGameLogic->isInGame() && TheGameLogic->getGameMode() != GAME_SHELL) || TheGameSpyInfo) ? true : false );
+	// X64.33 Modern Experience (no-ops in Classic): display/gameplay gadgets, then the category pages that arrange
+	// them together with the retail controls.
+	ModernDisplayOptions::create( comboBoxResolution, *pref,
+		((TheGameLogic->isInGame() && TheGameLogic->getGameMode() != GAME_SHELL) || TheGameSpyInfo) ? true : false );
+	OptionsTabs::create();
 
 	ButtonAdvancedAcceptID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ButtonAdvanceAccept" );
 	ButtonAdvancedAccept      = TheWindowManager->winGetWindowFromId( nullptr, ButtonAdvancedAcceptID );
@@ -1630,9 +1633,9 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 			{
 				setDefaults();
 			}
-			else if (ModernDisplayOptions::onButton(controlID))
+			else if (OptionsTabs::onButton(controlID))
 			{
-				// X64.33: Display Options popup opened
+				// X64.33 FIX2: category tab selected
 			}
 			else if (controlID == ButtonAdvancedAcceptID )
 			{

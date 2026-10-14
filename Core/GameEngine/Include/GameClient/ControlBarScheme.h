@@ -53,7 +53,7 @@
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 #include "GameClient/Color.h"
-#include "Common/HudExtensionLayout.h"
+#include "Common/HudComposition.h"
 
 //-----------------------------------------------------------------------------
 // FORWARD REFERENCES /////////////////////////////////////////////////////////
@@ -132,7 +132,7 @@ public:
 	void update();
 	void drawForeground( Coord2D multi, ICoord2D offset );	///< draw function to be called within a w3d draw procedure for the foreground
 	void drawBackground( Coord2D multi, ICoord2D offset );	///< draw function to be called within a w3d draw procedure for the background
-	Bool getExtensionLayout( Coord2D multi, ICoord2D offset, HudExtensionLayout::Layout &out, const Image **bandImage ) const; ///< X64.33 FIX1 widescreen extension rectangles
+	Bool getComposition( Coord2D multi, ICoord2D offset, HudComposition::Composition &out ) const; ///< X64.33 FIX2 widescreen HUD composition
 	void reset();
 
 	void addAnimation( ControlBarSchemeAnimation *schemeAnim );
@@ -254,7 +254,6 @@ public:
 
 	void init();						///< Initialize from the INI files
 	void update();					///< move the animations if we have any
-	void updateExtensionBlockers();	///< X64.33 FIX1: keep the widescreen extension solid for input
 	void drawForeground( ICoord2D offset );	///< draw function to be called within a w3d draw procedure for the foreground
 	void drawBackground( ICoord2D offset );	///< draw function to be called within a w3d draw procedure for the background
 

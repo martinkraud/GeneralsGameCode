@@ -110,14 +110,21 @@ class ModernDisplayContracts(unittest.TestCase):
         self.assertEqual(diff.returncode, 0, diff.stderr)
         self.assertEqual(diff.stdout.strip(), "", diff.stdout)
 
-    def test_options_popup_is_runtime_gadgets_not_a_new_toolkit(self):
-        popup = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
-        for token in ("gogoGadgetComboBox", "gogoGadgetPushButton", "gogoGadgetStaticText", "copyAppearance"):
-            self.assertIn(token, popup)
-        for forbidden in ("imgui", "ImGui", "Qt", "CreateWindowEx", "MessageBox"):
-            self.assertNotIn(forbidden, popup)
+    def test_options_are_runtime_gadgets_not_a_new_toolkit(self):
+        for path in ("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp",
+                     "Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp"):
+            text = read(path)
+            for forbidden in ("imgui", "ImGui", "Qt", "CreateWindowEx", "MessageBox"):
+                self.assertNotIn(forbidden, text)
+        display = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
+        for token in ("gogoGadgetComboBox", "gogoGadgetStaticText", "copyAppearance"):
+            self.assertIn(token, display)
+        tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
+        for token in ("gogoGadgetPushButton", "GadgetButtonEnableCheckLike", "copyAppearance"):
+            self.assertIn(token, tabs)
         cmake = read("Core/GameEngine/CMakeLists.txt")
         self.assertIn("ModernDisplayOptions.cpp", cmake)
+        self.assertIn("OptionsTabs.cpp", cmake)
 
     def test_deltas_module_lists_only_reviewed_files(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -129,44 +136,67 @@ class ModernDisplayContracts(unittest.TestCase):
         ])
 
 class FixOneContracts(unittest.TestCase):
-    """x64-33-fix1-ui: first native review findings."""
+    """x64-33-fix1-ui / fix2 native review findings."""
 
     def test_runtime_gadgets_are_placed_in_the_draw_order_not_left_at_the_front(self):
         layering = read("Core/GameEngine/Include/GameClient/GadgetLayering.h")
         self.assertIn("insertWindowAheadOf", layering)
         self.assertIn("HEAD is the front", layering)
         rate = read("Core/GameEngine/Source/GameClient/GUI/FrameRateOptions.cpp")
-        self.assertIn("GadgetLayering::placeBehind(combo, detail);", rate)
-        popup = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
-        self.assertIn("GadgetLayering::placeBehind(s_entry, resolutionCombo);", popup)
-        # rows are created bottom to top so an upper row's dropdown opens over the rows below it
-        order = [popup.index("caption(%d," % row) for row in (4, 3, 2, 1, 0)]
-        self.assertEqual(order, sorted(order))
+        self.assertIn("GadgetLayering::placeBehind(combo, detail);", rate)       # retail split (Classic, Zero Hour)
+        tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
+        # pages: upper rows are brought to the front last, so a dropdown opens over the rows below it
+        self.assertIn("for (int i = page.count - 1; i >= 0; --i)", tabs)
+        self.assertIn("control->winBringToTop();", tabs)
 
-    def test_options_panel_geometry_is_scale_derived(self):
-        popup = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
-        self.assertIn("OptionsPanelLayout::compute(", popup)
-        for stale in ("rowY0", "pitch = 52", "const Int pad = 24"):
-            self.assertNotIn(stale, popup)
-        layout = read("Core/GameEngine/Include/Common/OptionsPanelLayout.h")
-        self.assertIn("scaled(52, scale)", layout)
+    def test_options_pages_geometry_is_scale_derived(self):
+        layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        self.assertIn("scaled(44, scale)", layout)
+        self.assertIn("kContent", layout)
+        display = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
+        for stale in ("rowY0", "pitch = 52", "const Int pad = 24", "popup"):
+            self.assertNotIn(stale, display)
 
-    def test_control_bar_extension_is_general_and_solid(self):
+    def test_hud_is_a_centred_core_not_a_stretched_band(self):
         scheme = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp")
-        self.assertIn("HudExtensionLayout::compute(", scheme)
-        self.assertIn("GameWinBlockInput", scheme)
-        self.assertIn("winHide( TRUE )", scheme)
-        layout = read("Core/GameEngine/Include/Common/HudExtensionLayout.h")
-        for path_text in (scheme, layout, read("Core/GameEngine/Include/Common/DisplayRuntime.h"),
-                          read("Core/GameEngine/Include/Common/DisplayGeometry.h")):
+        self.assertIn("HudComposition::compute(", scheme)
+        self.assertIn("drawFillRect", scheme)
+        for gone in ("GameWinBlockInput", "extensionSlices", "HudExtensionLayout", "updateExtensionBlockers"):
+            self.assertNotIn(gone, scheme)       # the world beside the core is the world: no input wall, no stretch
+        bar = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp")
+        self.assertIn("TheTacticalView->setHeight(TheDisplay->getHeight());", bar)
+        layout = read("Core/GameEngine/Include/Common/HudComposition.h")
+        for text in (scheme, layout, read("Core/GameEngine/Include/Common/DisplayRuntime.h"),
+                     read("Core/GameEngine/Include/Common/DisplayGeometry.h")):
             for literal in ("5120", "3440", "2560", "3840", "1920", "1440"):
-                self.assertNotIn(literal, path_text)       # no monitor-specific branch anywhere in the layout code
+                self.assertNotIn(literal, text)       # no monitor-specific branch anywhere in the layout code
+
+    def test_static_text_margins_follow_the_ui_scale(self):
+        text = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DStaticText.cpp")
+        self.assertIn("DisplayRuntime::uiScale()", text)
+        self.assertIn("wordWrap = size.x - (Int)(10 * marginScale + 0.5f);", text)
 
     def test_timers_use_the_hud_anchor_helpers(self):
         ui = read("Generals/Code/GameEngine/Source/GameClient/InGameUI.cpp")
         self.assertIn("DisplayRuntime::hudX(m_superweaponPosition.x, TheDisplay->getWidth())", ui)
         self.assertIn("DisplayRuntime::hudX(m_namedTimerPosition.x, TheDisplay->getWidth())", ui)
         self.assertNotIn("m_superweaponPosition.x * TheDisplay->getWidth()", ui)
+
+    def test_options_categories_hook_up_only_in_modern(self):
+        menu = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp")
+        self.assertIn("createFrameRateOptions(comboBoxDetail, *pref, DisplayRuntime::modern())", menu)
+        self.assertIn("OptionsTabs::create();", menu)
+        self.assertIn("OptionsTabs::onButton(controlID)", menu)
+        tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
+        self.assertIn("if (!DisplayRuntime::modern() || ModernExperience::classic())", tabs)
+        for category in ("kDisplay", "kGraphics", "kAudio", "kControls", "kGameplay", "NetworkParent"):
+            self.assertIn(category, tabs)
+        # no fake controls: every listed control is a retail control or a gadget ModernDisplayOptions/FrameRateOptions creates
+        known = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp") +             read("Core/GameEngine/Source/GameClient/GUI/FrameRateOptions.cpp")
+        for control in ("ModernMode", "ModernMonitor", "ModernUiScale", "ModernVsync", "ModernMotion", "ComboBoxFrameRateLimit"):
+            self.assertIn(control, known)
+        for fake in ("RefreshRate", "Exclusive", "RenderScale", "DLSS", "RayTrac"):
+            self.assertNotIn(fake, tabs)
 
 
 if __name__ == "__main__":

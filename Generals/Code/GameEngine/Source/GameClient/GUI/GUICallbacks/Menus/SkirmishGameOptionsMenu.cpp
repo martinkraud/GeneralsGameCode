@@ -287,6 +287,11 @@ static GameWindow *createStartingCashControl(GameWindow *slot, GameWindow *capti
 				if (donor)
 					copyStartingCashAppearance(labelWindow, donor);
 				labelWindow->winSetFont(appearance->winGetFont());
+				if (TextData *labelData = (TextData *)labelWindow->winGetUserData())
+				{
+					labelData->centered = FALSE;               // left aligned like the grid's own captions
+					labelData->centeredVertically = TRUE;
+				}
 				GadgetStaticTextSetText(labelWindow, TheGameText->FETCH_OR_SUBSTITUTE("GUI:StartingCash", L"Starting Cash"));
 			}
 		}

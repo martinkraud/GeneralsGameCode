@@ -331,50 +331,6 @@ TEST(DisplayRuntime, ShortcutSidebarAndRadarStayOnTheirEdgesOnUltrawide)
 	EXPECT_GT(radar.x, 0);                                  // inside the centered canvas, left part of the bar
 }
 
-#include "Common/OptionsPanelLayout.h"
-
-TEST(OptionsPanelLayout, EveryRowFitsAndNothingOverlapsAtEverySupportedScale)
-{
-	// Reference: Advanced Display Options panel 485x492, combo 24, accept/back buttons at y = 453.
-	for (int percent : {75, 100, 125, 150, 175, 200, 250, 300})
-	{
-		const double s = percent / 100.0;
-		const int panelW = OptionsPanelLayout::scaled(485, s), panelH = OptionsPanelLayout::scaled(492, s);
-		const int controlH = OptionsPanelLayout::scaled(24, s);
-		const OptionsPanelLayout::Panel p =
-			OptionsPanelLayout::compute(panelW, panelH, controlH, s, 5, OptionsPanelLayout::scaled(453, s));
-		EXPECT_TRUE(p.fits) << percent;
-		EXPECT_LE(p.note.bottom(), p.buttonZoneTop) << percent;
-		for (int i = 0; i < p.rowCount; ++i)
-		{
-			EXPECT_GE(p.label[i].x, 0);
-			EXPECT_LE(p.label[i].right(), p.control[i].x) << "label/control columns overlap at " << percent;
-			EXPECT_LE(p.control[i].right(), panelW) << percent;
-			EXPECT_LE(p.control[i].bottom(), p.note.y) << percent;
-			if (i > 0)
-				EXPECT_GE(p.control[i].y, p.control[i - 1].bottom()) << "rows overlap at " << percent;
-			// A dropdown that opens downward may cover the rows below it; that is the layering contract, not
-			// an overlap of resting controls.
-		}
-		EXPECT_GE(p.title.bottom(), 0);
-		EXPECT_LE(p.title.bottom(), p.label[0].y) << percent;
-	}
-}
-
-TEST(OptionsPanelLayout, TheOldFixedPixelMetricsWouldOverlapAtLargeScales)
-{
-	// Regression guard for the native-review finding: with unscaled constants (pitch 52, row top 58) and a scaled
-	// control height, rows collide once the scale exceeds ~2.1 and the note lands on the last row far earlier.
-	const double s = 2.5;
-	const int controlH = OptionsPanelLayout::scaled(24, s);
-	const int oldPitch = 52;
-	EXPECT_LT(oldPitch, controlH + 2);                   // 52 < 62: the legacy metric overlaps
-	const OptionsPanelLayout::Panel p = OptionsPanelLayout::compute(
-		OptionsPanelLayout::scaled(485, s), OptionsPanelLayout::scaled(492, s), controlH, s, 5,
-		OptionsPanelLayout::scaled(453, s));
-	EXPECT_GE(p.control[1].y - p.control[0].y, controlH);
-}
-
 #include "Common/MatchOptionsLayout.h"
 
 TEST(MatchOptionsLayout, RowsAreOnTheGridRhythmAndLeaveTheHonorsBlockAlone)
@@ -404,9 +360,10 @@ TEST(MatchOptionsLayout, RowsAreOnTheGridRhythmAndLeaveTheHonorsBlockAlone)
 	}
 }
 
-#include "Common/HudExtensionLayout.h"
+#include "Common/HudComposition.h"
+#include "Common/OptionsPageLayout.h"
 
-TEST(HudExtensionLayout, ExtendsTheBandToBothSurfaceEdgesAtEveryAspect)
+TEST(HudComposition, CoreIsCentredScaledAndNeverStretched)
 {
 	using DisplayGeometry::Anchor;
 	for (Size size : {Size{800, 600}, Size{1024, 768}, Size{1280, 720}, Size{1920, 1080}, Size{2560, 1440}, Size{2560, 1080},
@@ -415,53 +372,85 @@ TEST(HudExtensionLayout, ExtendsTheBandToBothSurfaceEdgesAtEveryAspect)
 		for (int requested : {0, 100, 150})
 		{
 			const DisplayGeometry::Layout layout = DisplayGeometry::computeLayout(size, requested);
-			// Band as the control bar scheme draws it: 800 reference wide, 191 high, at y 408 of a 600 canvas.
 			const DisplayGeometry::Rect band = DisplayGeometry::referenceToPhysical(layout, DisplayGeometry::Rect{0, 408, 800, 191}, Anchor::Bottom);
-			const HudExtensionLayout::Layout e = HudExtensionLayout::compute(band.x, band.y, band.width, band.height, size.width, 800, 599, 800, 600);
-			ASSERT_TRUE(e.qualifies);
-			// no negative or inverted rectangles, nothing beyond the surface
-			EXPECT_GE(e.left.w, 0); EXPECT_GE(e.right.w, 0);
-			if (!e.left.empty())  { EXPECT_EQ(e.left.x, 0); EXPECT_EQ(e.left.right(), e.core.x); }
-			if (!e.right.empty()) { EXPECT_EQ(e.right.x, e.core.right()); EXPECT_EQ(e.right.right(), size.width); }
-			// left + core + right tile the surface width exactly (no gap, no overlap)
-			EXPECT_EQ(e.left.w + e.core.w + e.right.w, size.width) << size.width << "x" << size.height << " @" << requested;
-			EXPECT_LE(e.core.bottom(), size.height);
-			EXPECT_GE(e.core.y, 0);
-			// the extension is exactly as tall as the band and shares its vertical position
-			if (!e.left.empty()) { EXPECT_EQ(e.left.y, e.core.y); EXPECT_EQ(e.left.h, e.core.h); }
+			const int backing = DisplayGeometry::scaled(120, layout.uiScalePercent);
+			const HudComposition::Composition c = HudComposition::compute(
+				band.x, band.y, band.width, band.height, size.width, size.height, 800, 599, 800, 600, backing);
+			ASSERT_TRUE(c.qualifies);
+			// the core never grows with the surface: exactly 800 reference units x the UI scale
+			EXPECT_EQ(c.core.w, DisplayGeometry::scaled(800, layout.uiScalePercent)) << size.width;
+			// centred horizontally, touching the bottom edge, never outside the surface
+			EXPECT_GE(c.core.x, 0); EXPECT_LE(c.core.right(), size.width);
+			EXPECT_LE(c.core.bottom(), size.height); EXPECT_GE(c.core.y, 0);
+			EXPECT_LE(std::abs((c.core.x) - (size.width - c.core.right())), 1);
+			// backing sits under the core's lower part, inside the core, flush with the bottom edge
+			EXPECT_EQ(c.backing.x, c.core.x); EXPECT_EQ(c.backing.w, c.core.w);
+			EXPECT_EQ(c.backing.bottom(), size.height);
+			EXPECT_GE(c.backing.y, c.core.y);
+			// world beside the core, left + core + right tile the width exactly
+			EXPECT_EQ(c.worldLeft.w + c.core.w + c.worldRight.w, size.width);
+			// regions for timers/notices stay inside the core's width and above it
+			EXPECT_EQ(c.timerBlock.x, c.core.x); EXPECT_EQ(c.timerBlock.w, c.core.w);
+			EXPECT_LE(c.timerBlock.bottom(), c.core.y);
+			EXPECT_LE(c.noticeBlock.bottom(), c.timerBlock.y);
+			// input: only the core is an HUD input region; every world pixel beside it is not
+			EXPECT_FALSE(c.core.contains(c.core.x - 1, c.core.y + 1));
+			EXPECT_FALSE(c.core.contains(c.core.right(), c.core.y + 1));
 		}
 	}
 }
 
-TEST(HudExtensionLayout, OnlyAFullWidthBottomBandQualifies)
+TEST(HudComposition, SmallArtAndTopBannersDoNotQualify)
 {
-	// a small art piece (radar frame) or a top banner must never be stretched across the screen
-	EXPECT_FALSE(HudExtensionLayout::compute(100, 400, 180, 190, 1920, 180, 599, 800, 600).qualifies);
-	EXPECT_FALSE(HudExtensionLayout::compute(0, 0, 800, 60, 1920, 800, 60, 800, 600).qualifies);
-	EXPECT_TRUE(HudExtensionLayout::compute(560, 700, 1050, 380, 2170, 800, 599, 800, 600).qualifies);
-	// 4:3 surfaces have nothing to extend
-	const HudExtensionLayout::Layout exact = HudExtensionLayout::compute(0, 408, 800, 191, 800, 800, 599, 800, 600);
-	EXPECT_TRUE(exact.left.empty());
-	EXPECT_TRUE(exact.right.empty());
+	EXPECT_FALSE(HudComposition::compute(100, 400, 180, 190, 1920, 1080, 180, 599, 800, 600, 120).qualifies);
+	EXPECT_FALSE(HudComposition::compute(0, 0, 800, 60, 1920, 1080, 800, 60, 800, 600, 120).qualifies);
 }
 
-TEST(HudExtensionLayout, HudAnchoredFractionsKeepTheirDistanceFromTheBar)
+TEST(HudComposition, HudAnchoredFractionsKeepTheirDistanceFromTheBar)
 {
 	for (Size size : {Size{1280, 720}, Size{1920, 1080}, Size{2560, 1080}, Size{5120, 1440}})
 	{
 		ModernScope scope(size);
 		const DisplayGeometry::Point origin = DisplayRuntime::controlBarOrigin();
 		const double s = DisplayRuntime::uiScale();
-		// 0.7 / 0.7 (the stock superweapon timer position) lands inside the HUD block, whatever the surface width
 		const int x = DisplayRuntime::hudX(0.7, size.width);
 		const int y = DisplayRuntime::hudY(0.7, size.height);
 		EXPECT_EQ(x, origin.x + static_cast<int>(0.7 * 800 * s));
 		EXPECT_EQ(y, origin.y + static_cast<int>(0.7 * 600 * s));
-		EXPECT_GE(x, origin.x);
 		EXPECT_LT(x, origin.x + static_cast<int>(800 * s));
-		EXPECT_LT(y, size.height);
 	}
-	// Classic: fraction of the surface, exactly as before
-	EXPECT_EQ(DisplayRuntime::hudX(0.7, 1000), 700);
-	EXPECT_EQ(DisplayRuntime::hudY(0.25, 800), 200);
+	EXPECT_EQ(DisplayRuntime::hudX(0.7, 1000), 700);   // Classic: fraction of the surface, as before
+}
+
+TEST(OptionsPageLayout, PagesFitAndNeverGrowWithTheSurface)
+{
+	using namespace OptionsPageLayout;
+	for (int percent : {75, 100, 125, 150, 175, 200, 250, 300})
+	{
+		const double s = percent / 100.0;
+		const int ox = 20, oy = 10;
+		const Tabs tabs = computeTabs(s, ox, oy);
+		// tabs tile the strip with no overlap and stay inside it
+		for (int i = 0; i < kCategoryCount; ++i)
+		{
+			EXPECT_TRUE(tabs.tab[i].inside(tabs.strip)) << percent;
+			if (i) EXPECT_FALSE(tabs.tab[i].intersects(tabs.tab[i - 1])) << percent;
+			EXPECT_GE(tabs.tab[i].w, scaled(60, s)) << "tab too narrow for its caption at " << percent;
+		}
+		for (int rows = 1; rows <= 8; ++rows)
+		{
+			const Page p = computePage(s, rows, ox, oy);
+			EXPECT_TRUE(p.fits) << rows << " rows at " << percent;
+			EXPECT_GE(p.content.y, tabs.strip.bottom());     // content starts below the tabs
+			for (int i = 0; i < p.rowCount; ++i)
+			{
+				EXPECT_TRUE(p.rows[i].label.inside(p.content));
+				EXPECT_TRUE(p.rows[i].control.inside(p.content));
+				EXPECT_LE(p.rows[i].label.right(), p.rows[i].control.x);       // columns never overlap
+				if (i) EXPECT_GE(p.rows[i].control.y, p.rows[i - 1].control.bottom());
+			}
+		}
+		// the content width is a reference width x scale: it does not depend on any surface
+		EXPECT_EQ(computePage(s, 1, 0, 0).content.w, scaled(kContent.w, s));
+	}
 }

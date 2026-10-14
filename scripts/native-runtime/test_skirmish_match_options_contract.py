@@ -44,7 +44,7 @@ def scaled(reference, scale):
 
 def layout(hx, hy, hw, hh, scale):
     """Python mirror of Common/MatchOptionsLayout.h (kept in sync by the source contract below)."""
-    row, label_w, gap, control_w = scaled(24, scale), scaled(72, scale), scaled(2, scale), scaled(158, scale)
+    row, label_w, gap, control_w = scaled(24, scale), scaled(100, scale), scaled(2, scale), scaled(130, scale)
     rows = []
     for i in range(2):
         y = hy + hh + row * i

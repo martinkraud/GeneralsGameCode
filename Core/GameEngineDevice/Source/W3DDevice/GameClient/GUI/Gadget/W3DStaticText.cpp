@@ -48,6 +48,7 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Common/GlobalData.h"
+#include "Common/DisplayRuntime.h"
 #include "GameClient/GameWindowGlobal.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GadgetStaticText.h"
@@ -90,8 +91,11 @@ static void drawStaticTextText( GameWindow *window, WinInstanceData *instData,
 	window->winGetScreenPosition( &origin.x, &origin.y );
 	window->winGetSize( &size.x, &size.y );
 
-	// Set the text Wrap width
-	wordWrap = size.x - 10;
+	// Set the text Wrap width. X64.33 FIX2: the 10 px wrap margin and the gadget margins are authored for the
+	// 800x600 reference; under the modern UI scale the fonts are scaled, so they must scale too (first native
+	// review: labels wrapped and ran outside their controls because only the font had scaled).
+	const Real marginScale = (Real)DisplayRuntime::uiScale();
+	wordWrap = size.x - (Int)(10 * marginScale + 0.5f);
 	//if(wordWrap == 89)
 	//	wordWrap = 95;
 	text->setWordWrap(wordWrap);
@@ -121,7 +125,7 @@ static void drawStaticTextText( GameWindow *window, WinInstanceData *instData,
 	}
 	else
 	{
-		textPos.x = origin.x + tData->leftMargin;
+		textPos.x = origin.x + (Int)(tData->leftMargin * marginScale + 0.5f);
 	}
 
 	// vertical centering?
@@ -131,7 +135,7 @@ static void drawStaticTextText( GameWindow *window, WinInstanceData *instData,
 	}
 	else
 	{
-		textPos.y = origin.y + tData->topMargin;
+		textPos.y = origin.y + (Int)(tData->topMargin * marginScale + 0.5f);
 	}
 
 	// draw the text
