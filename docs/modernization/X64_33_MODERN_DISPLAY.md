@@ -344,3 +344,9 @@ them where the retail viewport used to end.
 ### Still native-unverified
 Tab look and hit areas, every page at several scales, dropdown stacking inside pages, the HUD slide-in with the
 backing, the Network page as a moved retail block.
+
+### FIX3 candidate
+`build/dev-runtimes/native/Generals/x64-33-fix3-ui-polish` (staged and preflighted, not run), built from `e79c2989f`:
+* `generalsv.exe` SHA256 `DAD2FA18DC6311E05893142AC4432D02A2891EE91232AA1417CBD72ECC978FFA`
+* `generalsv.pdb` SHA256 `F5615485892A2C70CF88C2DDBEFA3896773C88C31B5BBCD8B99A5244B1A04D9A`
+X64.33 is NOT accepted yet.
