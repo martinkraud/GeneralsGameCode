@@ -50,6 +50,7 @@ NameKeyType s_tabKeys[kCategoryCount] = {};
 int s_active = -1;
 double s_scale = 1.0;
 int s_originX = 0, s_originY = 0;      // physical position of reference (0,0) of the Options canvas
+PanelGeometry s_geom;                   // the composed Modern Options panel (physical pixels)
 GameWindow *s_canvas = nullptr;
 GameWindow *s_root = nullptr;
 GameWindow *s_popup = nullptr;          // retail Advanced Display panel: its subtree is never touched
@@ -126,7 +127,7 @@ bool isTitle(GameWindow *w)
 		return false;
 	Int x, y;
 	w->winGetScreenPosition(&x, &y);
-	return (y - s_originY) < scaled(kTabStrip.y, s_scale);
+	return y < s_geom.tabs.strip.y;
 }
 
 // returns true when `w` (or a descendant) stays visible
@@ -210,7 +211,7 @@ void showCategory(int category)
 	for (int i = 0; i < table.count; ++i)
 		if (itemShown(table.items[i]))
 			++rows;
-	const OptionsPageLayout::Page layout = computePage(s_scale, rows, s_originX, s_originY);
+	const OptionsPageLayout::Page layout = computePageIn(s_geom.content, s_scale, rows);
 
 	// 1. geometry: the hosting panels cover the content rectangle; every item goes to its row (relative to its own
 	//    parent, whichever panel that is)
@@ -218,7 +219,7 @@ void showCategory(int category)
 		if (GameWindow *panel = byName(name))
 			placePanel(panel, layout.content, true);
 	if (s_network)
-		placePanel(s_network, layout.content, false);
+		placePanel(s_network, layout.content, false);   // the retail Network rows are placed from the content origin
 	std::vector<GameWindow *> frontToBack;
 	int row = 0;
 	for (int i = 0; i < table.count; ++i)
@@ -302,6 +303,50 @@ void tabDraw(GameWindow *window, WinInstanceData *instData)
 	label->draw(x + (w - tw) / 2, y + (h - th) / 2, enabled ? text : GameMakeColor(120, 120, 120, 255), GameMakeColor(0, 0, 0, 255));
 }
 
+// Width of the caption exactly as the tab draws it (its own display string, its own font).
+int measureTab(GameWindow *tab, const UnicodeString &text, double fallbackPerChar)
+{
+	int width = static_cast<int>(text.getLength() * fallbackPerChar);
+	if (WinInstanceData *instData = tab->winGetInstanceData())
+	{
+		if (DisplayString *ds = instData->getTextDisplayString())
+		{
+			if (ds->getFont() != tab->winGetFont())
+				ds->setFont(tab->winGetFont());
+			ds->setWordWrap(0);
+			Int w = 0, h = 0;
+			ds->getSize(&w, &h);
+			if (w > 0)
+				width = w;
+		}
+	}
+	return width;
+}
+
+// retail static texts above the tab strip (the OPTIONS title); found by position in the untouched retail layout
+void collectTitles(GameWindow *w, int stripY, std::vector<GameWindow *> &out)
+{
+	for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext())
+	{
+		if (BitIsSet(c->winGetStyle(), GWS_STATIC_TEXT))
+		{
+			Int x, y;
+			c->winGetScreenPosition(&x, &y);
+			if (y < stripY && !c->winIsHidden())
+				out.push_back(c);
+		}
+		else if (BitIsSet(c->winGetStyle(), GWS_USER_WINDOW))
+			collectTitles(c, stripY, out);
+	}
+}
+
+std::vector<GameWindow *> findTitles(GameWindow *root)
+{
+	std::vector<GameWindow *> out;
+	collectTitles(root, s_originY + scaled(64, s_scale), out);
+	return out;
+}
+
 int measure(GameWindow *donor, const UnicodeString &text, double fallbackPerChar)
 {
 	int width = static_cast<int>(text.getLength() * fallbackPerChar);
@@ -350,42 +395,81 @@ bool create()
 
 	recordHidden(s_root);
 
-	// tab strip: measured caption widths (retail Arial at the live scale), padding, slack shared so the strip
-	// aligns with the page content on both edges
+	// 1. tabs are created first (provisional rectangle) so the caption is measured exactly as the tab draws it
 	UnicodeString captions[kCategoryCount];
 	int measured[kCategoryCount];
+	Int tx, ty;
+	s_canvas->winGetScreenPosition(&tx, &ty);
+	const int donorW = scaled(80, s_scale), donorH = scaled(30, s_scale);
 	for (int i = 0; i < kCategoryCount; ++i)
 	{
 		captions[i] = TheGameText->FETCH_OR_SUBSTITUTE(categoryTextKey(static_cast<Category>(i)), kFallbackWide[i]);
-		measured[i] = measure(donor, captions[i], 7.0 * s_scale);
-	}
-	const TabStrip strip = computeTabStrip(measured, s_scale, s_originX + scaled(kTabStrip.x, s_scale),
-		s_originY + scaled(kTabStrip.y, s_scale), scaled(kTabStrip.w, s_scale), scaled(kTabStrip.h, s_scale));
-
-	Int tx, ty;
-	s_canvas->winGetScreenPosition(&tx, &ty);
-	for (int i = 0; i < kCategoryCount; ++i)
-	{
 		WinInstanceData instance;
 		instance.m_font = donor->winGetFont();
 		instance.m_style = GWS_PUSH_BUTTON | GWS_MOUSE_TRACK;
 		s_tabKeys[i] = TheNameKeyGenerator->nameToKey(kTabIds[i]);
 		instance.m_id = s_tabKeys[i];
 		GameWindow *tab = TheWindowManager->gogoGadgetPushButton(s_canvas, WIN_STATUS_ENABLED | WIN_STATUS_TAB_STOP,
-			strip.tab[i].x - tx, strip.tab[i].y - ty, strip.tab[i].w, strip.tab[i].h, &instance, instance.m_font, FALSE);
+			0, 0, donorW, donorH, &instance, instance.m_font, FALSE);
 		if (!tab)
+		{
+			measured[i] = measure(donor, captions[i], 7.0 * s_scale);
 			continue;
+		}
 		tab->winSetFont(donor->winGetFont());
 		tab->winSetDrawFunc(tabDraw);
 		GadgetButtonSetText(tab, captions[i]);
 		GadgetButtonSetData(tab, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
 		s_tabs[i] = tab;
+		measured[i] = measureTab(tab, captions[i], 7.0 * s_scale);
 	}
 
+	// 2. the composition: panel width derives from the measured captions (plus padding, gaps, margins)
+	s_geom = computePanel(measured, s_scale, s_originX + scaled(400, s_scale), s_originY);
+
+	// 3. frame (the retail frame is a plain colour rectangle with a gold border, so any width is safe), the
+	//    hit-test container, the title and the retail chrome
+	GameWindow *frame = byName("OptionsMenuParentOld");
+	place(s_canvas, s_geom.container);
+	if (frame)
+		place(frame, s_geom.panel);
+	if (GameWindow *line = byName("Line"))
+		place(line, s_geom.line);
+	for (GameWindow *title : findTitles(s_root))
+	{
+		place(title, s_geom.title);
+		leftAlign(title);
+	}
+	if (GameWindow *w = byName("ButtonDefaults")) place(w, s_geom.defaults);
+	if (GameWindow *w = byName("ButtonAccept")) place(w, s_geom.accept);
+	if (GameWindow *w = byName("ButtonBack")) place(w, s_geom.back);
+	if (GameWindow *w = byName("LabelVersion"))
+	{
+		place(w, s_geom.footer);
+		leftAlign(w);
+	}
+	if (s_popup)
+	{
+		// the retail Advanced Display panel keeps its size and is centred in the panel
+		Int pw, ph;
+		s_popup->winGetSize(&pw, &ph);
+		GameWindow *pp = s_popup->winGetParent();
+		Int px = 0, py = 0;
+		if (pp)
+			pp->winGetScreenPosition(&px, &py);
+		s_popup->winSetPosition(s_geom.panel.x + (s_geom.panel.w - pw) / 2 - px, s_geom.panel.y + (s_geom.panel.h - ph) / 2 - py);
+	}
+
+	// 4. tabs to their final rectangles
+	for (int i = 0; i < kCategoryCount; ++i)
+		if (s_tabs[i])
+			place(s_tabs[i], s_geom.tabs.tab[i]);
+
 	showCategory(static_cast<int>(Category::Display));
-	char detail[200];
-	snprintf(detail, sizeof(detail), "tabs=%d scale=%.2f content=%dx%d strip=%dx%d padded=%d", kCategoryCount, s_scale,
-		scaled(kContent.w, s_scale), scaled(kContent.h, s_scale), strip.strip.w, strip.strip.h, strip.padded ? 1 : 0);
+	char detail[260];
+	snprintf(detail, sizeof(detail), "tabs=%d scale=%.2f panel=%dx%d content=%dx%d strip=%dx%d captions_fit=%d", kCategoryCount,
+		s_scale, s_geom.panel.w, s_geom.panel.h, s_geom.content.w, s_geom.content.h, s_geom.tabs.strip.w, s_geom.tabs.strip.h,
+		s_geom.captionsFit ? 1 : 0);
 	StartupDiagnostics::checkpoint("options_tabs", "complete", detail);
 	return true;
 }

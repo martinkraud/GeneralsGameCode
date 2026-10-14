@@ -378,3 +378,38 @@ smooth unit motion remains opt-in until accepted.
 * `generalsv.exe` SHA256 `0E05C2A6A25903EB7C90AD31CD8AF956BCCD5B65245CE63C31DADE88EB98976C`
 * `generalsv.pdb` SHA256 `C0847976487F1B935FFD33EE808A7376B6FB49C5561F85D66817496BAD94229D`
 Pending only the human check of tab spacing and footer; X64.33 is not marked accepted before that.
+
+## 18. x64-33-final review and the final Options geometry pass (x64-33-final2-options)
+
+### Native finding (x64-33-final)
+Footer accepted (`Modern Experience by MKRaudstein | 64-bit • DirectX 11`). Options functionality correct, but the tab
+strip was still visually crowded: CONTROLS and GAMEPLAY pressed against / exceeded their tab rectangles and adjacent
+captions collided, while the panel had unused vertical space and too little horizontal room. A geometry problem, not
+ownership. Design clarification from the human: preserve Generals *identity* (palette, translucent panels, gold line
+work, typography, sounds), not the 2003 dialog geometry; a larger redesigned Modern Options is preferred.
+
+### Root cause of the overflow
+Tabs were sized from caption widths measured with a separate display string and a non-budgeted padding, inside a strip
+fixed to the retail frame width; the drawn caption (own display string, own font) could be wider than its measured
+value, and nothing guaranteed that "caption + padding" fits the tab.
+
+### New composition (`OptionsPageLayout.h::computePanel`)
+* **Frame strategy: A+runtime geometry.** The retail Options frame is not art: `OptionsMenuParentOld` is a plain colour
+  rectangle with a gold border over a dim full-screen fill. Modern simply resizes it, so any width is safe; no stretching
+  of proprietary art. (Classic keeps retail geometry.)
+* **Width is derived**: `need = sum(max(safeCaption + 2 x 14, 72)) + 5 x 14` gaps; panel width = `max(need + 2 x 36 margins,
+  760)` capped at 780 reference units (retail: 541). Height 568 (retail 585), centred on the reference canvas, so the
+  panel fits the surface at every UI scale (the canvas does).
+* **Captions fit by construction**: each caption is measured from the tab's own display string and budgeted
+  `measured + 6 % + 2 units`; padding 14 units each side; gap 14 units; widths are content sized (AUDIO is narrower than
+  CONTROLS/GAMEPLAY), slack is shared so both strip edges meet the content edges. `captionsFit` is reported in the log
+  (`options_tabs ... captions_fit=`).
+* **Reflow**: content 688 x 380 units; label column 38 % of the content width, control column up to 300 units; rows 24 on
+  a 44 pitch (drop-down room below the last row stays inside the hit area). Defaults / Accept / Cancel, the footer, the
+  title and rule line are placed from the same geometry; the retail Advanced Display panel is centred in the frame.
+* Selected tab, hit rectangles (== drawn), page ownership: unchanged from FIX3.
+
+### Tests
+Caption containment (`safeCaption + 2 x pad <= tab width`) for all six captions at 75-300 %; minimum gap; content-sized
+tabs; oversized captions shrink without overlap and report `captionsFit = false`; the panel is centred, inside the
+canvas/surface and its bands do not overlap at 13 surface sizes x 6 UI scales (800x600 ... 5120x1440, 1111x777, 1777x999).

@@ -152,7 +152,7 @@ class FixOneContracts(unittest.TestCase):
     def test_options_pages_geometry_is_scale_derived(self):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
         self.assertIn("scaled(44, scale)", layout)
-        self.assertIn("kContent", layout)
+        self.assertIn("computePageIn(", layout)
         display = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
         for stale in ("rowY0", "pitch = 52", "const Int pad = 24", "popup"):
             self.assertNotIn(stale, display)
@@ -227,7 +227,7 @@ class FixThreeContracts(unittest.TestCase):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
         self.assertIn("inline TabStrip computeTabStrip(", layout)
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
-        self.assertIn("computeTabStrip(measured,", tabs)
+        self.assertIn("computePanel(measured, s_scale,", tabs)
         self.assertIn("tab->winSetDrawFunc(tabDraw);", tabs)
         self.assertIn("drawFillRect(x, y, w, h, fill)", tabs)          # opaque dark fill: nothing shows through a tab
         self.assertNotIn("copyAppearance(tab, donor)", tabs)           # no more large retail button art
@@ -262,9 +262,24 @@ class FinalPolishContracts(unittest.TestCase):
 
     def test_tab_gap_and_padding_constants(self):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
-        self.assertIn("pad = scaled(8, scale)", layout)
-        self.assertIn("gap = std::max(scaled(10, scale), 2)", layout)
-        self.assertIn("kTabStrip = {141, 64, 505, 28}", layout)
+        self.assertIn("constexpr int kTabPad = 14;", layout)
+        self.assertIn("constexpr int kTabGap = 14;", layout)
+        self.assertIn("inline PanelGeometry computePanel(", layout)
+        self.assertIn("inline int safeCaptionWidth(", layout)
+
+
+class FinalGeometryContracts(unittest.TestCase):
+    def test_modern_options_is_its_own_composition(self):
+        tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
+        # the retail frame is a plain colour rectangle (OptionsMenuParentOld): resized, not stretched art
+        self.assertIn('byName("OptionsMenuParentOld")', tabs)
+        self.assertIn("place(frame, s_geom.panel);", tabs)
+        self.assertIn("measureTab(tab, captions[i]", tabs)           # measured from the tab's own display string
+        layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        self.assertIn("kPanelRefW = 760", layout)
+        self.assertIn("kPanelMaxW = 780", layout)
+        for literal in ("1920", "2560", "3440", "5120"):
+            self.assertNotIn(literal, layout)
 
 
 if __name__ == "__main__":

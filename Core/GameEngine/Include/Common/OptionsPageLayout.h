@@ -4,8 +4,8 @@
 // The retail Options screen is one dense 800x600 page. Modern settings do not fit it: native review of FIX1 showed
 // text leaving its controls and a crowded Video block. Options is now organised in categories; every category is a
 // column of label + control rows in one content rectangle below a row of tabs. All numbers are reference units
-// multiplied by the live UI scale; a page never grows with the surface (a settings panel does not need to be 5120 px
-// wide) and nothing here knows a monitor.
+// multiplied by the live UI scale; a page never grows with the surface (a settings panel does not need to span the whole
+// surface) and nothing here knows a monitor.
 #pragma once
 
 #include <algorithm>
@@ -27,11 +27,19 @@ struct Rect
 	bool inside(const Rect &o) const { return x >= o.x && y >= o.y && right() <= o.right() && bottom() <= o.bottom(); }
 };
 
-// Reference rectangles on the Options canvas (the retail 800x600 frame).
-// The strip is centred on the content (151..636) and 10 units wider on each side (still inside the frame art, which
-// spans 120..661), so six padded captions get a visible gap between them instead of touching.
-constexpr Rect kTabStrip = {141, 64, 505, 28};
-constexpr Rect kContent = {151, 104, 485, 408};      // above the Defaults / Accept / Cancel buttons at y 528
+// Modern Options is its own composition (FIX4): a centred panel whose width is derived from what its tab strip
+// needs, not the 2003 frame. Reference units, panel-relative. The frame itself is a plain filled/bordered window
+// (the retail OptionsMenuParentOld is a colour rectangle with a gold border), so any width is safe.
+constexpr int kPanelRefW = 760;      // preferred width (a deliberately wide modern dialog); grows to kPanelMaxW if captions need more
+constexpr int kPanelMaxW = 780;      // canvas is 800 wide
+constexpr int kPanelRefH = 568;
+constexpr int kPanelMargin = 36;
+constexpr int kTabPad = 14;          // horizontal padding inside a tab (each side)
+constexpr int kTabGap = 14;          // gap between tabs
+constexpr int kTabMinW = 72;
+// panel-relative reference rectangles at the preferred width
+constexpr Rect kTabStrip = {36, 66, 688, 30};
+constexpr Rect kContent = {36, 108, 688, 380};
 
 inline int scaled(int reference, double scale) { return static_cast<int>(std::floor(reference * scale + 0.5)); }
 
@@ -134,6 +142,13 @@ inline int ownerOf(const char *name)
 // ---- tab strip: measured widths ---------------------------------------------------------------------------------
 // Every tab is as wide as its caption plus padding (minimum width), the slack is shared so the strip aligns with the
 // content on both edges; if the captions cannot fit, widths shrink proportionally. Pure: the caller measures text.
+// Real font metrics differ a little between the measuring string and the drawn one (hinting, drop shadow): every
+// caption is budgeted 6 % plus 2 reference units more than measured, so a glyph can never reach the tab border.
+inline int safeCaptionWidth(int measured, double scale)
+{
+	return measured + measured * 6 / 100 + std::max(scaled(2, scale), 1);
+}
+
 struct TabStrip
 {
 	Rect strip;
@@ -145,12 +160,12 @@ inline TabStrip computeTabStrip(const int measured[kCategoryCount], double scale
 {
 	TabStrip t;
 	t.strip = {stripX, stripY, stripW, stripH};
-	const int pad = scaled(8, scale), minW = scaled(56, scale), gap = std::max(scaled(10, scale), 2);
+	const int pad = scaled(kTabPad, scale), minW = scaled(kTabMinW, scale), gap = std::max(scaled(kTabGap, scale), 2);
 	int want[kCategoryCount];
 	int total = gap * (kCategoryCount - 1);
 	for (int i = 0; i < kCategoryCount; ++i)
 	{
-		want[i] = std::max(measured[i] + 2 * pad, minW);
+		want[i] = std::max(safeCaptionWidth(measured[i], scale) + 2 * pad, minW);
 		total += want[i];
 	}
 	const int available = stripW - gap * (kCategoryCount - 1);
@@ -189,45 +204,32 @@ inline TabStrip computeTabStrip(const int measured[kCategoryCount], double scale
 	return t;
 }
 
-// Rows are 24 reference units tall on a 44 unit pitch: 8 rows fit with room for the dropdown of the last row to
-// open inside the content area. Label column 200, control column 225, 20 unit margins.
-inline Page computePage(double scale, int rowCount, int originX, int originY)
+// Rows are 24 reference units tall on a 44 unit pitch. Label column 38 % of the content width, control column
+// next to it (at most 300 units): stable columns with room for "Borderless Fullscreen" or a long resolution string.
+inline Page computePageIn(const Rect &content, double scale, int rowCount)
 {
 	Page p;
-	p.content = {originX + scaled(kContent.x, scale), originY + scaled(kContent.y, scale),
-	             scaled(kContent.w, scale), scaled(kContent.h, scale)};
+	p.content = content;
 	p.rowCount = std::min(std::max(rowCount, 0), kMaxRows);
-	const int pad = scaled(20, scale), labelW = scaled(200, scale), controlX = scaled(240, scale);
-	const int controlW = scaled(225, scale), rowH = scaled(24, scale), pitch = scaled(44, scale), top = scaled(20, scale);
+	const int pad = scaled(24, scale), rowH = scaled(24, scale), pitch = scaled(44, scale), top = scaled(20, scale);
+	const int labelW = content.w * 38 / 100;
+	const int controlX = pad + labelW + scaled(24, scale);
+	const int controlW = std::min(scaled(300, scale), content.w - controlX - pad);
 	for (int i = 0; i < p.rowCount; ++i)
 	{
-		const int y = p.content.y + top + pitch * i;
-		p.rows[i].label = {p.content.x + pad, y, labelW, rowH};
-		p.rows[i].control = {p.content.x + controlX, y, controlW, rowH};
+		const int y = content.y + top + pitch * i;
+		p.rows[i].label = {content.x + pad, y, labelW, rowH};
+		p.rows[i].control = {content.x + controlX, y, controlW, rowH};
 	}
-	// a dropdown of the last row opens downward by up to ~6 entries of (row height): it must stay inside the content
-	const int lastBottom = p.rowCount ? p.rows[p.rowCount - 1].control.bottom() + rowH * 6 : p.content.y;
-	p.fits = p.rowCount == 0 || p.rows[p.rowCount - 1].control.bottom() <= p.content.bottom();
-	(void)lastBottom;
+	p.fits = p.rowCount == 0 || p.rows[p.rowCount - 1].control.bottom() <= content.bottom();
 	return p;
 }
 
-inline Tabs computeTabs(double scale, int originX, int originY)
+inline Page computePage(double scale, int rowCount, int panelX, int panelY)
 {
-	Tabs t;
-	t.strip = {originX + scaled(kTabStrip.x, scale), originY + scaled(kTabStrip.y, scale),
-	           scaled(kTabStrip.w, scale), scaled(kTabStrip.h, scale)};
-	const int gap = std::max(scaled(3, scale), 1);
-	const int total = t.strip.w - gap * (kCategoryCount - 1);
-	const int each = total / kCategoryCount;
-	int x = t.strip.x;
-	for (int i = 0; i < kCategoryCount; ++i)
-	{
-		const int w = (i == kCategoryCount - 1) ? t.strip.right() - x : each;
-		t.tab[i] = {x, t.strip.y, w, t.strip.h};
-		x += w + gap;
-	}
-	return t;
+	const Rect content = {panelX + scaled(kContent.x, scale), panelY + scaled(kContent.y, scale),
+	                      scaled(kContent.w, scale), scaled(kContent.h, scale)};
+	return computePageIn(content, scale, rowCount);
 }
 
 // Tab captions are short, upper-case words of the original Generals vocabulary.
@@ -242,6 +244,46 @@ inline const char *categoryTextKey(Category c)
 	case Category::Gameplay: return "GUI:OptionsTabGameplay";
 	default: return "GUI:OptionsTabNetwork";
 	}
+}
+
+// ---- the panel: everything panel-relative derives from the measured captions ------------------------------------
+struct PanelGeometry
+{
+	Rect panel;           // the frame
+	Rect container;       // the see-thru parent that owns the page windows (hit testing): the frame inflated
+	Rect title, line, content;
+	TabStrip tabs;
+	Rect defaults, accept, back;   // bottom buttons
+	Rect footer;
+	bool captionsFit = false;      // every caption (with its safety budget and padding) fits its tab
+};
+
+// canvasCenterX/canvasTopY: the centre line and top of the 800x600 reference canvas on the surface.
+inline PanelGeometry computePanel(const int measured[kCategoryCount], double scale, int canvasCenterX, int canvasTopY)
+{
+	PanelGeometry g;
+	const int pad = scaled(kTabPad, scale), gap = std::max(scaled(kTabGap, scale), 2), margin = scaled(kPanelMargin, scale);
+	int need = gap * (kCategoryCount - 1);
+	for (int i = 0; i < kCategoryCount; ++i)
+		need += std::max(safeCaptionWidth(measured[i], scale) + 2 * pad, scaled(kTabMinW, scale));
+	int width = std::max(need + 2 * margin, scaled(kPanelRefW, scale));
+	width = std::min(width, scaled(kPanelMaxW, scale));
+	const int height = scaled(kPanelRefH, scale);
+	g.panel = {canvasCenterX - width / 2, canvasTopY + scaled(600 - kPanelRefH, scale) / 2, width, height};
+	const int inner = width - 2 * margin;
+	g.title = {g.panel.x + margin, g.panel.y + scaled(16, scale), inner, scaled(34, scale)};
+	g.line = {g.panel.x + margin, g.panel.y + scaled(54, scale), inner, std::max(scaled(2, scale), 1)};
+	g.content = {g.panel.x + margin, g.panel.y + scaled(108, scale), inner, scaled(380, scale)};
+	g.tabs = computeTabStrip(measured, scale, g.panel.x + margin, g.panel.y + scaled(66, scale), inner, scaled(30, scale));
+	g.captionsFit = g.tabs.padded;
+	const int bw = scaled(156, scale), bh = scaled(32, scale), by = g.content.bottom() + scaled(14, scale);
+	g.back = {g.panel.right() - margin - bw, by, bw, bh};
+	g.accept = {g.back.x - scaled(16, scale) - bw, by, bw, bh};
+	g.defaults = {g.panel.x + margin, by, bw, bh};
+	g.footer = {g.panel.x + margin, by + bh + scaled(8, scale), inner, scaled(20, scale)};
+	const int inflate = scaled(8, scale);
+	g.container = {g.panel.x - inflate, g.panel.y - inflate, g.panel.w + 2 * inflate, g.panel.h + 2 * inflate};
+	return g;
 }
 
 }  // namespace OptionsPageLayout

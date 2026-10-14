@@ -422,39 +422,6 @@ TEST(HudComposition, HudAnchoredFractionsKeepTheirDistanceFromTheBar)
 	EXPECT_EQ(DisplayRuntime::hudX(0.7, 1000), 700);   // Classic: fraction of the surface, as before
 }
 
-TEST(OptionsPageLayout, PagesFitAndNeverGrowWithTheSurface)
-{
-	using namespace OptionsPageLayout;
-	for (int percent : {75, 100, 125, 150, 175, 200, 250, 300})
-	{
-		const double s = percent / 100.0;
-		const int ox = 20, oy = 10;
-		const Tabs tabs = computeTabs(s, ox, oy);
-		// tabs tile the strip with no overlap and stay inside it
-		for (int i = 0; i < kCategoryCount; ++i)
-		{
-			EXPECT_TRUE(tabs.tab[i].inside(tabs.strip)) << percent;
-			if (i) EXPECT_FALSE(tabs.tab[i].intersects(tabs.tab[i - 1])) << percent;
-			EXPECT_GE(tabs.tab[i].w, scaled(60, s)) << "tab too narrow for its caption at " << percent;
-		}
-		for (int rows = 1; rows <= 8; ++rows)
-		{
-			const Page p = computePage(s, rows, ox, oy);
-			EXPECT_TRUE(p.fits) << rows << " rows at " << percent;
-			EXPECT_GE(p.content.y, tabs.strip.bottom());     // content starts below the tabs
-			for (int i = 0; i < p.rowCount; ++i)
-			{
-				EXPECT_TRUE(p.rows[i].label.inside(p.content));
-				EXPECT_TRUE(p.rows[i].control.inside(p.content));
-				EXPECT_LE(p.rows[i].label.right(), p.rows[i].control.x);       // columns never overlap
-				if (i) EXPECT_GE(p.rows[i].control.y, p.rows[i - 1].control.bottom());
-			}
-		}
-		// the content width is a reference width x scale: it does not depend on any surface
-		EXPECT_EQ(computePage(s, 1, 0, 0).content.w, scaled(kContent.w, s));
-	}
-}
-
 TEST(HudComposition, BackingFollowsTheBandWhileTheBarSlidesIn)
 {
 	// FIX2 anchored the backing to the surface bottom: while the bar slid in the black backing was already at its final
@@ -538,37 +505,95 @@ TEST(OptionsPageLayout, SlidersOnlyLiveOnTheirOwnPages)
 TEST(OptionsPageLayout, TabStripUsesMeasuredWidthsWithPaddingAndNeverOverlaps)
 {
 	using namespace OptionsPageLayout;
-	// representative caption widths in reference pixels at 100 % (Arial 10 bold-ish), then scaled with the UI scale
-	const int base[kCategoryCount] = {47, 55, 36, 56, 59, 52};
+	const int base[kCategoryCount] = {47, 55, 36, 56, 59, 52};   // caption widths at 100 %
 	for (int percent : {75, 100, 125, 150, 175, 200, 250, 300})
 	{
 		const double s = percent / 100.0;
 		int measured[kCategoryCount];
 		for (int i = 0; i < kCategoryCount; ++i)
 			measured[i] = static_cast<int>(base[i] * s + 0.5);
-		const int stripX = 50, stripY = 20, stripW = scaled(kTabStrip.w, s), stripH = scaled(kTabStrip.h, s);
-		const TabStrip t = computeTabStrip(measured, s, stripX, stripY, stripW, stripH);
-		EXPECT_TRUE(t.padded) << percent;
-		int previousRight = stripX - 1;
+		const PanelGeometry g = computePanel(measured, s, 400, 0);
+		EXPECT_TRUE(g.captionsFit) << percent;
+		int previousRight = g.tabs.strip.x - 1;
 		for (int i = 0; i < kCategoryCount; ++i)
 		{
-			EXPECT_GT(t.tab[i].w, 0);
-			EXPECT_GE(t.tab[i].w, measured[i] + 2 * scaled(8, s)) << "padding at " << percent << " tab " << i;
-			EXPECT_GE(t.tab[i].x - previousRight, i ? scaled(10, s) : 0) << "visible gap at " << percent << " tab " << i;
-			EXPECT_TRUE(t.tab[i].inside(t.strip)) << percent;
-			previousRight = t.tab[i].right();
+			const OptionsPageLayout::Rect &t = g.tabs.tab[i];
+			EXPECT_GT(t.w, 0);
+			// glyphs, not only rectangles: caption + safety budget + padding on both sides fit the tab
+			EXPECT_LE(safeCaptionWidth(measured[i], s) + 2 * scaled(kTabPad, s), t.w) << "caption escapes tab " << i << " at " << percent;
+			EXPECT_GE(t.x - previousRight, i ? scaled(kTabGap, s) : 0) << "gap at " << percent << " tab " << i;
+			EXPECT_TRUE(t.inside(g.tabs.strip));
+			previousRight = t.right();
 		}
-		EXPECT_EQ(t.tab[kCategoryCount - 1].right(), t.strip.right());   // aligned with the content on both edges
-		EXPECT_EQ(t.tab[0].x, t.strip.x);
+		EXPECT_EQ(g.tabs.tab[kCategoryCount - 1].right(), g.tabs.strip.right());
+		EXPECT_EQ(g.tabs.tab[0].x, g.tabs.strip.x);
+		// tabs are content sized: a short caption is narrower than a long one (equal-width is not forced)
+		EXPECT_LT(g.tabs.tab[2].w, g.tabs.tab[4].w) << percent;
 	}
-	// captions that cannot fit shrink proportionally and still never overlap or leave the strip
+	// oversized captions: widths shrink, never overlap, never leave the strip, and captionsFit reports it
 	const int huge[kCategoryCount] = {400, 400, 400, 400, 400, 400};
-	const TabStrip t = computeTabStrip(huge, 1.0, 0, 0, 485, 28);
-	EXPECT_FALSE(t.padded);
+	const PanelGeometry h = computePanel(huge, 1.0, 400, 0);
+	EXPECT_FALSE(h.captionsFit);
+	EXPECT_LE(h.panel.w, scaled(kPanelMaxW, 1.0));
 	for (int i = 0; i < kCategoryCount; ++i)
 	{
-		EXPECT_GT(t.tab[i].w, 0);
-		EXPECT_TRUE(t.tab[i].inside(t.strip));
-		if (i) EXPECT_GT(t.tab[i].x, t.tab[i - 1].right() - 1);
+		EXPECT_GT(h.tabs.tab[i].w, 0);
+		EXPECT_TRUE(h.tabs.tab[i].inside(h.tabs.strip));
+		if (i) EXPECT_GE(h.tabs.tab[i].x, h.tabs.tab[i - 1].right());
+	}
+}
+
+TEST(OptionsPageLayout, ModernPanelIsCentredContainedAndFitsEverySurface)
+{
+	using namespace OptionsPageLayout;
+	const int base[kCategoryCount] = {47, 55, 36, 56, 59, 52};
+	for (Size size : {Size{800, 600}, Size{1024, 768}, Size{1280, 720}, Size{1920, 1080}, Size{1920, 1200}, Size{2560, 1440},
+	                  Size{2560, 1080}, Size{3440, 1440}, Size{3840, 2160}, Size{3840, 1080}, Size{5120, 1440}, Size{1111, 777},
+	                  Size{1777, 999}})
+	{
+		for (int requested : {0, 75, 100, 150, 200, 300})
+		{
+			const DisplayGeometry::Layout layout = DisplayGeometry::computeLayout(size, requested);
+			const double s = layout.scale();
+			int measured[kCategoryCount];
+			for (int i = 0; i < kCategoryCount; ++i)
+				measured[i] = static_cast<int>(base[i] * s + 0.5);
+			const int centerX = layout.canvas.x + layout.canvas.width / 2;
+			const PanelGeometry g = computePanel(measured, s, centerX, layout.canvas.y);
+			// centred on the canvas, inside it (hence inside the surface), at every scale and aspect
+			EXPECT_LE(std::abs((g.panel.x + g.panel.w / 2) - centerX), 1);
+			EXPECT_GE(g.panel.x, layout.canvas.x);
+			EXPECT_LE(g.panel.right(), layout.canvas.right());
+			EXPECT_GE(g.panel.y, layout.canvas.y);
+			EXPECT_LE(g.panel.bottom(), layout.canvas.bottom());
+			EXPECT_LE(g.panel.right(), size.width);
+			EXPECT_LE(g.panel.bottom(), size.height);
+			// everything inside the frame
+			for (const OptionsPageLayout::Rect *r : {&g.title, &g.line, &g.content, &g.tabs.strip, &g.defaults, &g.accept, &g.back, &g.footer})
+			{
+				EXPECT_GT(r->w, 0); EXPECT_GT(r->h, 0);
+				EXPECT_TRUE(r->inside(g.panel));
+			}
+			// no overlap between the stacked bands and the buttons
+			EXPECT_LE(g.title.bottom(), g.tabs.strip.y);
+			EXPECT_LE(g.tabs.strip.bottom(), g.content.y);
+			EXPECT_LE(g.content.bottom(), g.defaults.y);
+			EXPECT_LE(g.defaults.bottom(), g.footer.y);
+			EXPECT_FALSE(g.defaults.intersects(g.accept));
+			EXPECT_FALSE(g.accept.intersects(g.back));
+			// the page rows (up to 8) fit the content area with the drop-down room below the last one
+			for (int rows = 1; rows <= 8; ++rows)
+			{
+				const Page p = computePageIn(g.content, s, rows);
+				EXPECT_TRUE(p.fits) << rows;
+				for (int i = 0; i < p.rowCount; ++i)
+				{
+					EXPECT_TRUE(p.rows[i].label.inside(g.content));
+					EXPECT_TRUE(p.rows[i].control.inside(g.content));
+					EXPECT_LE(p.rows[i].label.right(), p.rows[i].control.x);
+				}
+			}
+			EXPECT_TRUE(g.captionsFit) << size.width << "x" << size.height << " @" << requested;
+		}
 	}
 }
