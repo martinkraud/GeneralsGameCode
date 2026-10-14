@@ -1270,9 +1270,9 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 		cellHeight = shroud->getCellHeight();
 	}
 #if defined(_WIN64)
-	else if (StartupDiagnostics::ordinaryPlay())
+	else
 	{
-		// Native play profile: no W3DShroud; the logic cell size is the partition cell size W3DShroud
+		// Native backend: there is no W3DShroud; the logic cell size is the partition cell size W3DShroud
 		// would have been initialized with.
 		cellWidth = cellHeight = REAL_TO_INT( NativeWorldEffects::shroudCellWorldSize() );
 	}

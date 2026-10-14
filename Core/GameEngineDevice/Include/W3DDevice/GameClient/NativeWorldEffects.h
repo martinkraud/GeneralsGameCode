@@ -73,6 +73,7 @@ struct Stats
     unsigned scorches;            // scorch marks emitted
     unsigned tracks;              // terrain track strips emitted (vehicle tread marks)
     unsigned bibs;                // building bibs emitted (normal + highlighted)
+    unsigned skyBoxFrames;        // frames the sky box was handed to the object pass
     unsigned waterSparkles;       // standing-water patches drawn with the sparkle/noise pixel shader
     unsigned waterRivers;         // river strips drawn with the river pixel shader (alpha edge on the GPU)
     unsigned groundLines;         // waypoint / rally lines emitted on the ground layer
@@ -120,6 +121,12 @@ void setShroudFilter(bool enable);
 // Multiplier (r,g,b in 0..1) the shroud applies at a world position (objects that are fogged or shrouded are
 // drawn through the shroud like the legacy shroud material pass). 1,1,1 when no shroud is active.
 void shroudMultiplierAt(float x, float y, float rgb[3]);
+// Sky box (WaterRenderObjClass::m_skyBox, GameData DrawSkyBox / SkyBoxPositionZ / SkyBoxScale): the legacy water
+// render object owns it and does not exist in the play profile. The same "new_skybox" model is created lazily,
+// centered on the camera each frame, and handed to the object pass as a frame object (visible beyond the map
+// edge only, like the original). `replaceSkyboxTexture` mirrors WaterRenderObjClass::replaceSkyboxTexture.
+void addFrameObjects(CameraClass &camera);
+void replaceSkyboxTexture(const char *oldTexture, const char *newTexture);
 // World size of one logic shroud cell (the partition cell the logic sends levels for); the radar maps
 // logic cells to radar pixels with it where the legacy code asks W3DShroud::getCellWidth().
 float shroudCellWorldSize();

@@ -1146,6 +1146,7 @@ void addFrameObject(RenderObjClass *object)
 int render(D3D11Backend &backend, CameraClass &camera)
 {
     State &s = S();
+    NativeWorldEffects::addFrameObjects(camera);   // sky box
     std::vector<RenderObjClass *> frameObjects;
     frameObjects.swap(g_frameObjects);   // valid for this frame only
     if (s.entries.empty()) return 0;

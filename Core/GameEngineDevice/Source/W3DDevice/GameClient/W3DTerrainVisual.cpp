@@ -56,6 +56,7 @@
 #include "W3DDevice/GameClient/W3DTerrainTracks.h"
 #if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
 #endif
 #include "W3DDevice/GameClient/W3DShadow.h"
 #include "W3DDevice/GameClient/HeightMap.h"
@@ -1132,6 +1133,25 @@ void W3DTerrainVisual::setShoreLineDetail()
 /// Replace the skybox texture
 void W3DTerrainVisual::replaceSkyboxTextures(const AsciiString *oldTexName[5], const AsciiString *newTexName[5])
 {
+#if defined(_WIN64)
+	if (!m_waterRenderObject && StartupDiagnostics::ordinaryPlay())
+	{
+		// Native play profile: the sky box is owned by NativeWorldEffects (same per-face bookkeeping).
+		for (Int i=0; i<5; i++)
+		{
+			if (m_initialSkyboxTexNames[i].isEmpty())
+			{	m_initialSkyboxTexNames[i]=*oldTexName[i];
+				m_currentSkyboxTexNames[i]=*oldTexName[i];
+			}
+
+			if (m_currentSkyboxTexNames[i] != *newTexName[i])
+			{	NativeWorldEffects::replaceSkyboxTexture(m_currentSkyboxTexNames[i].str(), newTexName[i]->str());
+				m_currentSkyboxTexNames[i]=*newTexName[i];
+			}
+		}
+		return;
+	}
+#endif
 	if (m_waterRenderObject)
 	{
 		for (Int i=0; i<5; i++)

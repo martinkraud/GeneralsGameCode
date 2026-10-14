@@ -4,7 +4,12 @@
 // the real TextureClass -> CPU content -> D3D11 residency path on WARP, with deterministic scenes.
 #include <gtest/gtest.h>
 #if defined(_WIN64)
+#include "Common/GlobalData.h"
 #include "Common/Radar.h"
+#include "GameClient/TerrainVisual.h"
+#include "GameClient/Water.h"
+#include "GameLogic/TerrainLogic.h"
+#include "W3DDevice/Common/W3DRadar.h"
 #include "W3DDevice/Common/W3DRadarRaster.h"
 #include "WW3D2/Backend/D3D11Backend.h"
 #include "WW3D2/Render2DSubmission.h"
@@ -349,4 +354,151 @@ TEST(NativeRadarTest, FindDrawPositionsPreservesTheMapAspectRatio)
     EXPECT_EQ(ul.y, 0); EXPECT_EQ(lr.y, 180);
     EXPECT_NEAR(lr.x - ul.x, 60, 1);
 }
+namespace
+{
+// A flat map with a lake in the lower-left corner and a height ramp along x for the radar to shade.
+class RadarMapLogic : public TerrainLogic
+{
+public:
+    void getExtent(Region3D *extent) const override
+    {
+        extent->lo.x = 0; extent->lo.y = 0; extent->lo.z = 0;
+        extent->hi.x = 1280; extent->hi.y = 1280; extent->hi.z = 100;
+    }
+    Real getGroundHeight(Real x, Real, Coord3D *normal = nullptr) const override
+    {
+        if (normal) { normal->x = 0; normal->y = 0; normal->z = 1; }
+        return x / 12.8f;   // 0 .. 100
+    }
+    Bool isUnderwater(Real x, Real y, Real *waterZ = nullptr, Real *terrainZ = nullptr) override
+    {
+        const Bool lake = x < 320.0f && y < 320.0f;
+        if (waterZ) *waterZ = 10.0f;
+        if (terrainZ) *terrainZ = lake ? 2.0f : getGroundHeight(x, y);
+        return lake;
+    }
+};
+
+class RadarTerrainVisual : public TerrainVisual
+{
+public:
+    void getTerrainColorAt(Real, Real, RGBColor *c) override { c->red = 0.4f; c->green = 0.5f; c->blue = 0.2f; }
+    TerrainType *getTerrainTile(Real, Real) override { return nullptr; }
+    void enableWaterGrid(Bool) override {}
+    void setWaterGridHeightClamps(const WaterHandle *, Real, Real) override {}
+    void setWaterAttenuationFactors(const WaterHandle *, Real, Real, Real, Real) override {}
+    void setWaterTransform(const WaterHandle *, Real, Real, Real, Real) override {}
+    void setWaterTransform(const Matrix3D *) override {}
+    void getWaterTransform(const WaterHandle *, Matrix3D *) override {}
+    void setWaterGridResolution(const WaterHandle *, Real, Real, Real) override {}
+    void getWaterGridResolution(const WaterHandle *, Real *, Real *, Real *) override {}
+    void changeWaterHeight(Real, Real, Real) override {}
+    void addWaterVelocity(Real, Real, Real, Real) override {}
+    Bool getWaterGridHeight(Real, Real, Real *) override { return FALSE; }
+    void setTerrainTracksDetail() override {}
+    void setShoreLineDetail() override {}
+    void addFactionBib(Object *, Bool, Real) override {}
+    void removeFactionBib(Object *) override {}
+    void addFactionBibDrawable(Drawable *, Bool, Real) override {}
+    void removeFactionBibDrawable(Drawable *) override {}
+    void removeAllBibs() override {}
+    void removeBibHighlighting() override {}
+    void removeTreesAndPropsForConstruction(const Coord3D *, const GeometryInfo &, Real) override {}
+    void addProp(const ThingTemplate *, const Coord3D *, Real) override {}
+    void setRawMapHeight(const ICoord2D *, Int) override {}
+    Int getRawMapHeight(const ICoord2D *) override { return 0; }
+    void replaceSkyboxTextures(const AsciiString *[5], const AsciiString *[5]) override {}
+};
+
+// The real W3DRadar with its protected build step reachable and the map extent set the way Radar::newMap does
+// (newMap itself needs the window manager and the Control Bar window).
+class RealRadar : public W3DRadar
+{
+public:
+    void setMap(TerrainLogic *terrain)
+    {
+        terrain->getExtent(&m_mapExtent);
+        m_xSample = m_mapExtent.width() / RADAR_CELL_WIDTH;
+        m_ySample = m_mapExtent.height() / RADAR_CELL_HEIGHT;
+        m_terrainAverageZ = 40.0f;
+        buildTerrainTexture(terrain);
+    }
+    TextureClass *terrainTexture() const { return m_terrainTexture; }
+    TextureClass *overlayTexture() const { return m_overlayTexture; }
+    TextureClass *shroudTexture() const { return m_shroudTexture; }
+};
+
+struct Pixel8 { unsigned char b, g, r, a; };
+Pixel8 PixelAt(TextureClass *texture, unsigned x, unsigned y)
+{
+    SurfaceClass *surface = texture->Get_Surface_Level();
+    int pitch = 0;
+    const unsigned char *bits = static_cast<const unsigned char *>(surface->Lock(&pitch));
+    const unsigned char *p = bits + static_cast<size_t>(y) * pitch + x * 4;
+    Pixel8 out = {p[0], p[1], p[2], p[3]};
+    surface->Unlock();
+    REF_PTR_RELEASE(surface);
+    return out;
+}
+}
+
+TEST(NativeRadarTest, RealW3DRadarBuildsTheTerrainTextureAndMapsLogicShroudCellsOnTheDynamicPath)
+{
+    Rig rig;
+    GlobalData *previousData = TheWritableGlobalData;
+    GlobalData data;
+    TheWritableGlobalData = &data;
+    data.m_partitionCellSize = 40.0f;
+    data.m_shroudOn = TRUE;
+    TerrainLogic *previousLogic = TheTerrainLogic;
+    RadarMapLogic logic;
+    TheTerrainLogic = &logic;
+    TerrainVisual *previousVisual = TheTerrainVisual;
+    RadarTerrainVisual visual;
+    TheTerrainVisual = &visual;
+    OVERRIDE<WaterTransparencySetting> previousWater = TheWaterTransparency;
+    WaterTransparencySetting *water = newInstance(WaterTransparencySetting);
+    water->m_radarColor.red = 0.0f; water->m_radarColor.green = 0.0f; water->m_radarColor.blue = 1.0f;
+    TheWaterTransparency = water;
+
+    {
+        RealRadar radar;
+        radar.init();                       // the real texture/image creation through the dynamic path
+        ASSERT_NE(radar.terrainTexture(), nullptr);
+        EXPECT_TRUE(radar.terrainTexture()->Is_Render2D_Dynamic());
+        EXPECT_TRUE(radar.overlayTexture()->Is_Render2D_Dynamic());
+        EXPECT_TRUE(radar.shroudTexture()->Is_Render2D_Dynamic());
+        radar.setMap(&logic);
+
+        // Land: the terrain color shaded by height (above/below the average); water: the radar water color.
+        const Pixel8 land = PixelAt(radar.terrainTexture(), 100, 100);
+        EXPECT_EQ(land.a, 255);
+        const Pixel8 lake = PixelAt(radar.terrainTexture(), 10, 10);   // world (<320, <320): underwater
+        EXPECT_GT(lake.b, lake.r);                                      // blue water, not the green land
+        EXPECT_GT(lake.b, lake.g);
+        const Pixel8 landLow = PixelAt(radar.terrainTexture(), 40, 100);
+        const Pixel8 landHigh = PixelAt(radar.terrainTexture(), 120, 100);
+        EXPECT_LT(landLow.g, landHigh.g);                               // higher ground is lighter
+
+        // Logic shroud cells (40 world units = 4 radar cells of 10): shrouded and fogged rectangles.
+        radar.clearShroud();
+        radar.beginSetShroudLevel();
+        radar.setShroudLevel(2, 3, CELLSHROUD_SHROUDED);
+        radar.setShroudLevel(5, 5, CELLSHROUD_FOGGED);
+        radar.endSetShroudLevel();
+        EXPECT_EQ(PixelAt(radar.shroudTexture(), 9, 13).a, 255);        // inside logic cell (2,3): cells 8..12 x 12..16
+        EXPECT_EQ(PixelAt(radar.shroudTexture(), 12, 16).a, 255);
+        EXPECT_EQ(PixelAt(radar.shroudTexture(), 7, 13).a, 0);          // outside
+        EXPECT_EQ(PixelAt(radar.shroudTexture(), 21, 21).a, 127);       // fogged cell (5,5): cells 20..24
+        // A cell that becomes clear is transparent again after the next single-cell update.
+        radar.setShroudLevel(2, 3, CELLSHROUD_CLEAR);
+        EXPECT_EQ(PixelAt(radar.shroudTexture(), 9, 13).a, 0);
+    }
+
+    TheWaterTransparency = previousWater;
+    TheTerrainVisual = previousVisual;
+    TheTerrainLogic = previousLogic;
+    TheWritableGlobalData = previousData;
+}
+
 #endif

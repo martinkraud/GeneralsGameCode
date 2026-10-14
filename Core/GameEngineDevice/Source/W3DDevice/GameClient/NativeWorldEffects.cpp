@@ -4,6 +4,8 @@
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/NativeWorldEffects.h"
 #include "W3DDevice/GameClient/W3DTerrainTracks.h"
+#include "W3DDevice/GameClient/W3DAssetManager.h"
+#include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "Common/GlobalData.h"
 #include "Common/StartupDiagnostics.h"
@@ -19,6 +21,7 @@
 #include <WW3D2/hlod.h>
 #include <WW3D2/mesh.h>
 #include <WW3D2/meshmdl.h>
+#include <WW3D2/matinfo.h>
 #include <cstdio>
 #include <cstring>
 #include <deque>
@@ -33,6 +36,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace NativeWorldEffects
@@ -1231,8 +1236,71 @@ void install()
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// Sky box
+// ---------------------------------------------------------------------------------------------
+namespace
+{
+RenderObjClass *g_skyBox = nullptr;
+std::vector<std::pair<std::string, std::string>> g_skyReplacements;
+
+void ClampSkyTextures(RenderObjClass *object)
+{
+    // WaterRenderObjClass::init / replaceSkyboxTexture: clamp every sky texture (fewer corner seams).
+    if (!object || object->Class_ID() != RenderObjClass::CLASSID_MESH) return;
+    MaterialInfoClass *material = static_cast<MeshClass *>(object)->Get_Material_Info();
+    if (!material) return;
+    for (int i = 0; i < material->Texture_Count(); ++i) {
+        if (TextureClass *texture = material->Peek_Texture(i)) {
+            texture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
+            texture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
+        }
+    }
+    material->Release_Ref();
+}
+
+void ReleaseSkyBox()
+{
+    if (g_skyBox) { g_skyBox->Release_Ref(); g_skyBox = nullptr; }
+}
+}
+
+void replaceSkyboxTexture(const char *oldTexture, const char *newTexture)
+{
+    if (!oldTexture || !newTexture || !*oldTexture || !*newTexture) return;
+    g_skyReplacements.emplace_back(oldTexture, newTexture);
+    if (g_skyBox && W3DDisplay::m_assetManager) {
+        W3DDisplay::m_assetManager->replacePrototypeTexture(g_skyBox, oldTexture, newTexture);
+        ClampSkyTextures(g_skyBox);
+    }
+}
+
+void addFrameObjects(CameraClass &camera)
+{
+    if (!TheGlobalData || !TheGlobalData->m_drawSkyBox || !StartupDiagnostics::nativeFeature("skybox")) return;
+    if (!g_skyBox) {
+        if (!W3DDisplay::m_assetManager) return;
+        static bool attempted = false;
+        if (attempted) return;
+        attempted = true;   // a missing model is tried once
+        g_skyBox = W3DDisplay::m_assetManager->Create_Render_Obj("new_skybox", TheGlobalData->m_skyBoxScale, 0);
+        if (!g_skyBox) return;
+        g_skyBox->Set_Collision_Type(0);
+        for (const auto &pair : g_skyReplacements)
+            W3DDisplay::m_assetManager->replacePrototypeTexture(g_skyBox, pair.first.c_str(), pair.second.c_str());
+        ClampSkyTextures(g_skyBox);
+    }
+    Vector3 position = camera.Get_Position();
+    position.Z = TheGlobalData->m_skyBoxPositionZ;
+    g_skyBox->Set_Position(position);
+    NativeWorldObjects::addFrameObject(g_skyBox);
+    ++g_stats.skyBoxFrames;
+}
+
 void uninstall()
 {
+    ReleaseSkyBox();
+    g_skyReplacements.clear();
     if (g_shadowManager) {
         if (TheProjectedShadowManager == g_shadowManager) TheProjectedShadowManager = nullptr;
         delete g_shadowManager;
