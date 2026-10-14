@@ -11,6 +11,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/PerformanceProfileBenchmark.cpp
     GameEngine/Common/PresentationClockTest.cpp
     GameEngine/Common/DisplayGeometryTest.cpp
+    GameEngine/Common/DisplaySettingsTest.cpp
     GameEngine/Common/GroundTranslationTest.cpp
     GameEngine/Common/GroundOrientationTest.cpp
     GameEngine/Common/GroundTranslationPolicyTest.cpp
