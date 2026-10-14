@@ -197,3 +197,14 @@ In-game special-power sidebar (accepted X64.32), ground interpolation (still opt
 ### Still native-unverified
 Everything visual: the dropdown stacking in the real Options screen, the extension art seam at the bar edges for all
 three factions, input blocking over the extension, the Match Options rows, the honors shift, timer positions.
+
+### FIX1 candidate
+`build/dev-runtimes/native/Generals/x64-33-fix1-ui` (staged and preflighted, not run), built from `ffdb66083`:
+* `generalsv.exe` SHA256 `8F54838FA1C160B019DE30C737DE11AB763CAF968498C7C3F43C386BEEA10BBE`
+* `generalsv.pdb` SHA256 `46BCFB582A49D948678A639FF16FCAA6B5ABD8F467859D9E3B95385CC95CB5AF`
+
+Review sequence: Options (open every dropdown, Resolution row, Display Options panel at UI scales Auto / 100 / 150 /
+200 %); Skirmish (Match Options header and Starting Cash row, no Slower/Faster, honors statistics intact, dropdown over
+them); start a match and check both sides of the control bar (continuous console, clicking the extension must not give
+orders), radar and shortcut sidebar, superweapon timer position; repeat at a second aspect (borderless on an ultrawide
+and a 16:9 window); `-classic` launch for the unchanged 800x600 presentation. X64.33 is NOT accepted yet.
