@@ -372,3 +372,9 @@ X64.33 is NOT accepted yet.
 Exclusive fullscreen and refresh-rate control (deferred); Network page is the retail block moved; frontend side art
 is not extended; live resolution change reuses `recreateWindowLayouts`; superweapon match option deferred (rules state);
 smooth unit motion remains opt-in until accepted.
+
+### Final candidate
+`build/dev-runtimes/native/Generals/x64-33-final` (staged and preflighted, not run), built from `2f5ead36e`:
+* `generalsv.exe` SHA256 `0E05C2A6A25903EB7C90AD31CD8AF956BCCD5B65245CE63C31DADE88EB98976C`
+* `generalsv.pdb` SHA256 `C0847976487F1B935FFD33EE808A7376B6FB49C5561F85D66817496BAD94229D`
+Pending only the human check of tab spacing and footer; X64.33 is not marked accepted before that.
