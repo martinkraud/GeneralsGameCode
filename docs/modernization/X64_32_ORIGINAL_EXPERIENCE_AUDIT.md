@@ -226,3 +226,9 @@ aircraft root interpolation; projectile/missile path smoothing; native verificat
 ## First native run and fix
 
 `x64-32-original-experience` failed at engine init: the overlay used Zero Hour's `SPECIAL_POWER_FROM_SHORTCUT` spelling, which a Generals build does not accept (it is `SPECIAL_POWER_FROM_COMMAND_CENTER`), so `CommandButton.ini` failed to parse (evidence: `evidence/x64-32-first-run-ini-parse/`). Fixed in `modern_extensions.py`; `test_modern_extensions_vocabulary.py` checks every generated field, Options bit and Command token against the engine's own tables. Fix candidate `x64-32-fix1` (generalsv.exe SHA256 `CC306D1C1544AC2C0E0DCB984C5E7ABA593509B243540F2736227B53E1EA122B`).
+
+## Closeout (2026-10-14): x64-32-fix1 accepted
+
+Native review of `x64-32-fix1` result: **Save = A, Load = A, startup/frontend remains A, no new known-broken item.**
+Other "B" items of the audit were *not* exercised in that run and are **not** claimed proven; they stay open exactly as
+listed above. X64.32 is closed; follow-on work is X64.33 (`X64_33_MODERN_DISPLAY.md`).

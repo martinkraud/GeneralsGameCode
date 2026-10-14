@@ -34,7 +34,8 @@ visual acceptance by the agent, no weakened gates, immutable failed-run evidence
 | CP2 = X64.29 | Gameplay + Rendering Completeness (see `GAMEPLAY_RENDERING_COMPLETENESS.md`): water, shroud/fog, ghosts, particles, lines, shadows, decals, scorches, material families | **ACCEPTED 2026-10-13 (fix2, run `20261013T2148410437663Z`, evidence `evidence/x64-29-gameplay-render-completeness-fix2/`)** - regression baseline with X64.28 |
 | CP3 = X64.30 | World/UI Completeness (`WORLD_UI_COMPLETENESS.md`) | **ACCEPTED 2026-10-14 (run `20261014T0518489306297Z`, evidence `evidence/x64-30-world-ui-completeness/`)** |
 | CP5 = X64.31 | Original Game Experience / Normal Launch (`NORMAL_LAUNCH.md`) | **ACCEPTED 2026-10-14 (x64-31-fix5, evidence `evidence/x64-31-accepted/`)** |
-| CP6 = X64.32 | Original experience completion + frontend/QoL audit (`X64_32_ORIGINAL_EXPERIENCE_AUDIT.md`) | in progress: audit, shortcut-sidebar overlay, Save/Load fixes, classic switch; candidate awaiting native review |
+| CP6 = X64.32 | Original experience completion + frontend/QoL audit (`X64_32_ORIGINAL_EXPERIENCE_AUDIT.md`) | **ACCEPTED 2026-10-14 (x64-32-fix1: Save A, Load A, frontend A)** |
+| CP7 = X64.33 | Modern Experience foundation: display/window/aspect/UI scale (`X64_33_MODERN_DISPLAY.md`) | in progress: geometry + enumeration foundation committed |
 | CP4 | Full skirmish acceptance (AI, clean end) | planned |
 
 ## 3. Dependency graph from accepted terrain to First Playable
