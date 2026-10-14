@@ -115,3 +115,9 @@ time-based; follow/shake camera stays partial.
 ## 9. Deferred (X64.35 candidates, evidence first)
 Renderer state-change/texture-bind counters (needs per-draw hooks), GPU timing queries, shadow-pass counters, culled
 object counts, instancing/batching, pathfinding hot paths (existing Stage 4B data), allocation counters.
+
+## 10. Candidate
+`build/dev-runtimes/native/Generals/x64-34-smooth-presentation` (staged and preflighted, not run), built from `99078f585`:
+* `generalsv.exe` SHA256 `64EB4D7250B42F0723DB8E24F60906AEE62B0B00A0C794B27EF91366CBD0C297`
+* `generalsv.pdb` SHA256 `C2BCEA54DBB3F2D7845622843C6878C59CD39A4A9A0AD36CEF3492B057B28E20`
+Steam untouched. X64.34 is NOT accepted before the human native review.
