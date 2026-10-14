@@ -121,7 +121,13 @@ inline Radar *Win32GameEngine::createRadar(Bool dummy)
 inline WebBrowser *Win32GameEngine::createWebBrowser() { return NEW CComObject<W3DWebBrowser>; }
 inline AudioManager *Win32GameEngine::createAudioManager(Bool dummy)
 {
+#if defined(_WIN64)
+	// Normal launch: the original MilesAudioManager runs on the native AIL implementation (NativeMiles).
+	if (dummy && !StartupDiagnostics::normalLaunch())
+		return NEW MilesAudioManagerDummy;
+#else
 	if (dummy)
 		return NEW MilesAudioManagerDummy;
+#endif
 	return NEW MilesAudioManager;
 }

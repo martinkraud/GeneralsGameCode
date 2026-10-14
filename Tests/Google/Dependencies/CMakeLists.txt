@@ -53,6 +53,15 @@ if(MSVC)
     add_test(NAME native_startup_fp_test COMMAND native_startup_fp_test)
 endif()
 
+# Native AMD64 Miles (AIL) mixer: deviceless, deterministic.
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_executable(native_miles_test Utility/NativeMilesTest.cpp)
+    target_compile_features(native_miles_test PRIVATE cxx_std_17)
+    target_link_libraries(native_miles_test PRIVATE deps_miles GTest::gtest_main)
+    add_test(NAME native_miles_test COMMAND native_miles_test)
+    set_tests_properties(native_miles_test PROPERTIES TIMEOUT 60)
+endif()
+
 add_executable(legacy_error_string_test ../Core/Libraries/LegacyErrorStringTest.cpp)
 target_include_directories(legacy_error_string_test PRIVATE ${PROJECT_SOURCE_DIR}/Core/Libraries/Source/WWVegas)
 target_link_libraries(legacy_error_string_test PRIVATE GTest::gtest_main)

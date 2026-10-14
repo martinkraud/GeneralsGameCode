@@ -430,10 +430,112 @@ static void freeResources()
 } // namespace
 
 
+#if defined(_WIN64)
+#include "NativeMiles.h"
+static bool NativeBound = false;
+
+static void bindNative()
+{
+	AIL_3D_sample_volumePtr = &NativeMiles::AIL_3D_sample_volume;
+	AIL_set_3D_sample_volumePtr = &NativeMiles::AIL_set_3D_sample_volume;
+	AIL_end_3D_samplePtr = &NativeMiles::AIL_end_3D_sample;
+	AIL_resume_3D_samplePtr = &NativeMiles::AIL_resume_3D_sample;
+	AIL_stop_3D_samplePtr = &NativeMiles::AIL_stop_3D_sample;
+	AIL_start_3D_samplePtr = &NativeMiles::AIL_start_3D_sample;
+	AIL_3D_sample_loop_countPtr = &NativeMiles::AIL_3D_sample_loop_count;
+	AIL_set_3D_sample_offsetPtr = &NativeMiles::AIL_set_3D_sample_offset;
+	AIL_3D_sample_lengthPtr = &NativeMiles::AIL_3D_sample_length;
+	AIL_3D_sample_offsetPtr = &NativeMiles::AIL_3D_sample_offset;
+	AIL_3D_sample_playback_ratePtr = &NativeMiles::AIL_3D_sample_playback_rate;
+	AIL_set_3D_sample_playback_ratePtr = &NativeMiles::AIL_set_3D_sample_playback_rate;
+	AIL_set_3D_sample_filePtr = &NativeMiles::AIL_set_3D_sample_file;
+	AIL_set_sample_processorPtr = &NativeMiles::AIL_set_sample_processor;
+	AIL_set_filter_sample_preferencePtr = &NativeMiles::AIL_set_filter_sample_preference;
+	AIL_release_sample_handlePtr = &NativeMiles::AIL_release_sample_handle;
+	AIL_close_3D_providerPtr = &NativeMiles::AIL_close_3D_provider;
+	AIL_set_preferencePtr = &NativeMiles::AIL_set_preference;
+	AIL_set_3D_sample_loop_countPtr = &NativeMiles::AIL_set_3D_sample_loop_count;
+	AIL_set_stream_playback_ratePtr = &NativeMiles::AIL_set_stream_playback_rate;
+	AIL_stream_playback_ratePtr = &NativeMiles::AIL_stream_playback_rate;
+	AIL_stream_ms_positionPtr = &NativeMiles::AIL_stream_ms_position;
+	AIL_set_stream_ms_positionPtr = &NativeMiles::AIL_set_stream_ms_position;
+	AIL_stream_loop_countPtr = &NativeMiles::AIL_stream_loop_count;
+	AIL_set_stream_loop_blockPtr = &NativeMiles::AIL_set_stream_loop_block;
+	AIL_set_stream_loop_countPtr = &NativeMiles::AIL_set_stream_loop_count;
+	AIL_close_streamPtr = &NativeMiles::AIL_close_stream;
+	AIL_pause_streamPtr = &NativeMiles::AIL_pause_stream;
+	AIL_register_stream_callbackPtr = &NativeMiles::AIL_register_stream_callback;
+	AIL_register_3D_EOS_callbackPtr = &NativeMiles::AIL_register_3D_EOS_callback;
+	AIL_register_EOS_callbackPtr = &NativeMiles::AIL_register_EOS_callback;
+	AIL_start_streamPtr = &NativeMiles::AIL_start_stream;
+	AIL_set_sample_playback_ratePtr = &NativeMiles::AIL_set_sample_playback_rate;
+	AIL_sample_playback_ratePtr = &NativeMiles::AIL_sample_playback_rate;
+	AIL_sample_ms_positionPtr = &NativeMiles::AIL_sample_ms_position;
+	AIL_set_sample_ms_positionPtr = &NativeMiles::AIL_set_sample_ms_position;
+	AIL_sample_loop_countPtr = &NativeMiles::AIL_sample_loop_count;
+	AIL_set_sample_loop_countPtr = &NativeMiles::AIL_set_sample_loop_count;
+	AIL_end_samplePtr = &NativeMiles::AIL_end_sample;
+	AIL_resume_samplePtr = &NativeMiles::AIL_resume_sample;
+	AIL_stop_samplePtr = &NativeMiles::AIL_stop_sample;
+	AIL_start_samplePtr = &NativeMiles::AIL_start_sample;
+	AIL_init_samplePtr = &NativeMiles::AIL_init_sample;
+	AIL_set_named_sample_filePtr = &NativeMiles::AIL_set_named_sample_file;
+	AIL_set_3D_sample_effects_levelPtr = &NativeMiles::AIL_set_3D_sample_effects_level;
+	AIL_set_3D_sample_distancesPtr = &NativeMiles::AIL_set_3D_sample_distances;
+	AIL_set_3D_velocity_vectorPtr = &NativeMiles::AIL_set_3D_velocity_vector;
+	AIL_set_3D_positionPtr = &NativeMiles::AIL_set_3D_position;
+	AIL_set_3D_orientationPtr = &NativeMiles::AIL_set_3D_orientation;
+	AIL_WAV_infoPtr = &NativeMiles::AIL_WAV_info;
+	AIL_stop_timerPtr = &NativeMiles::AIL_stop_timer;
+	AIL_release_timer_handlePtr = &NativeMiles::AIL_release_timer_handle;
+	AIL_shutdownPtr = &NativeMiles::AIL_shutdown;
+	AIL_enumerate_filtersPtr = &NativeMiles::AIL_enumerate_filters;
+	AIL_set_file_callbacksPtr = &NativeMiles::AIL_set_file_callbacks;
+	AIL_release_3D_sample_handlePtr = &NativeMiles::AIL_release_3D_sample_handle;
+	AIL_allocate_3D_sample_handlePtr = &NativeMiles::AIL_allocate_3D_sample_handle;
+	AIL_set_3D_user_dataPtr = &NativeMiles::AIL_set_3D_user_data;
+	AIL_unlockPtr = &NativeMiles::AIL_unlock;
+	AIL_unlock_mutexPtr = &NativeMiles::AIL_unlock_mutex;
+	AIL_lockPtr = &NativeMiles::AIL_lock;
+	AIL_lock_mutexPtr = &NativeMiles::AIL_lock_mutex;
+	AIL_set_3D_speaker_typePtr = &NativeMiles::AIL_set_3D_speaker_type;
+	AIL_close_3D_listenerPtr = &NativeMiles::AIL_close_3D_listener;
+	AIL_enumerate_3D_providersPtr = &NativeMiles::AIL_enumerate_3D_providers;
+	AIL_open_3D_providerPtr = &NativeMiles::AIL_open_3D_provider;
+	AIL_last_errorPtr = &NativeMiles::AIL_last_error;
+	AIL_open_3D_listenerPtr = &NativeMiles::AIL_open_3D_listener;
+	AIL_3D_user_dataPtr = &NativeMiles::AIL_3D_user_data;
+	AIL_sample_user_dataPtr = &NativeMiles::AIL_sample_user_data;
+	AIL_allocate_sample_handlePtr = &NativeMiles::AIL_allocate_sample_handle;
+	AIL_set_sample_user_dataPtr = &NativeMiles::AIL_set_sample_user_data;
+	AIL_decompress_ADPCMPtr = &NativeMiles::AIL_decompress_ADPCM;
+	AIL_get_DirectSound_infoPtr = &NativeMiles::AIL_get_DirectSound_info;
+	AIL_mem_free_lockPtr = &NativeMiles::AIL_mem_free_lock;
+	AIL_open_streamPtr = &NativeMiles::AIL_open_stream;
+	AIL_startupPtr = &NativeMiles::AIL_startup;
+	AIL_quick_unloadPtr = &NativeMiles::AIL_quick_unload;
+	AIL_quick_load_and_playPtr = &NativeMiles::AIL_quick_load_and_play;
+	AIL_quick_set_volumePtr = &NativeMiles::AIL_quick_set_volume;
+	AIL_quick_startupPtr = &NativeMiles::AIL_quick_startup;
+	AIL_quick_handlesPtr = &NativeMiles::AIL_quick_handles;
+	AIL_sample_volume_panPtr = &NativeMiles::AIL_sample_volume_pan;
+	AIL_set_3D_sample_occlusionPtr = &NativeMiles::AIL_set_3D_sample_occlusion;
+	AIL_set_redist_directoryPtr = &NativeMiles::AIL_set_redist_directory;
+	AIL_set_sample_filePtr = &NativeMiles::AIL_set_sample_file;
+	AIL_set_sample_volume_panPtr = &NativeMiles::AIL_set_sample_volume_pan;
+	AIL_set_stream_volume_panPtr = &NativeMiles::AIL_set_stream_volume_pan;
+	AIL_stream_volume_panPtr = &NativeMiles::AIL_stream_volume_pan;
+	AIL_get_timer_highest_delayPtr = &NativeMiles::AIL_get_timer_highest_delay;
+	NativeBound = true;
+}
+#endif
+
 bool MilesLoader::isLoaded()
 {
 #if MILES_LOADER_SUPPORTED
 	return Module != HMODULE(nullptr);
+#elif defined(_WIN64)
+	return NativeBound;
 #else
 	return false;
 #endif
@@ -476,6 +578,9 @@ bool MilesLoader::load()
 
 	resolveAll();
 	return true;
+#elif defined(_WIN64)
+	bindNative();
+	return true;
 #else
 	Failed = true;
 	return false;
@@ -493,6 +598,8 @@ void MilesLoader::unload()
 
 #if MILES_LOADER_SUPPORTED
 	freeResources();
+#elif defined(_WIN64)
+	NativeBound = false;
 #endif
 	Failed = false;
 	LastError = 0;
