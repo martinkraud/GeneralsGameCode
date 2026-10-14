@@ -71,7 +71,8 @@ class ModernDisplayContracts(unittest.TestCase):
         text = read("Core/GameEngine/Source/GameClient/GUI/GameWindowManagerScript.cpp")
         body = function_body(text, "static Bool parseScreenRect(")
         self.assertIn("DisplayRuntime::modern()", body)
-        self.assertIn("DisplayGeometry::inferAnchor", body)
+        self.assertIn("DisplayGeometry::anchorFor", body)
+        self.assertIn("layoutKindForFile", body)
         self.assertIn("referenceToPhysical", body)
         # The original anisotropic stretch is still the else branch.
         self.assertIn("Real xScale = (Real)TheDisplay->getWidth() / (Real)createRes.x;", body)

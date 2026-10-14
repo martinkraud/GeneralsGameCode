@@ -185,6 +185,37 @@ inline Anchor inferAnchor(Rect reference, int touchTolerance = 4)
 	return Anchor::Center;
 }
 
+// The two layout families. Frontend (menus, dialogs, popups) lives on the centered reference canvas. Hud is the
+// in-match overlay set: the control bar block hugs the bottom edge, the special-power sidebar hugs the right edge,
+// and everything keeps one consistent vertical origin (the bottom), so the bar, its tooltip popup, the chat line and
+// the sidebar never drift apart on a surface taller than the scaled canvas.
+enum class LayoutKind { Frontend, Hud };
+
+inline LayoutKind layoutKindForFile(const char *path)
+{
+	if (!path) return LayoutKind::Frontend;
+	const char *name = path;
+	for (const char *p = path; *p; ++p)
+		if (*p == '\\' || *p == '/') name = p + 1;
+	static const char *const hudPrefixes[] = {"controlbar", "genpowersshortcutbar", "ingamechat", "replaycontrol"};
+	for (const char *prefix : hudPrefixes)
+	{
+		const char *n = name;
+		const char *q = prefix;
+		while (*q && *n && (*n | 0x20) == *q) { ++n; ++q; }
+		if (*q == '\0') return LayoutKind::Hud;
+	}
+	return LayoutKind::Frontend;
+}
+
+inline Anchor anchorFor(LayoutKind kind, Rect reference, int touchTolerance = 4)
+{
+	if (kind == LayoutKind::Frontend)
+		return Anchor::Center;
+	const bool right = reference.right() >= kReferenceSize.width - touchTolerance && reference.x > kReferenceSize.width / 2;
+	return right ? Anchor::BottomRight : Anchor::Bottom;
+}
+
 // Horizontal field of view that keeps the 4:3 vertical field of view at any aspect ratio ("Hor+").
 // W3D's CameraClass::Set_View_Plane takes the horizontal angle and derives the vertical one from the aspect, so
 // leaving the 4:3 horizontal angle in place on a wider surface would crop the world vertically.

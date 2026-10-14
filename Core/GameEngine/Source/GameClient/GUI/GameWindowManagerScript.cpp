@@ -523,6 +523,9 @@ static Bool parseTooltip( const char *token, WinInstanceData *instData,
 
 }
 
+// File being parsed by winCreateFromScript (layout family for the modern UI anchoring policy).
+static const char *s_scriptFileName = nullptr;
+
 // parseScreenRect ============================================================
 /** Parse the screen rect entry which tells us the position and size
 	* of window.  Note we scale for the current resolution if needed
@@ -565,13 +568,14 @@ static Bool parseScreenRect( const char *token, char *buffer,
 		// right or bottom edge keeps hugging it on a 21:9 or 32:9 surface instead of drifting to the middle.
 		//
 		static DisplayGeometry::Anchor layoutAnchor = DisplayGeometry::Anchor::Center;
+		const DisplayGeometry::LayoutKind layoutKind = DisplayGeometry::layoutKindForFile( s_scriptFileName );
 		DisplayGeometry::Rect reference;
 		reference.x = screenRegion.lo.x * DisplayGeometry::kReferenceSize.width / createRes.x;
 		reference.y = screenRegion.lo.y * DisplayGeometry::kReferenceSize.height / createRes.y;
 		reference.width = screenRegion.hi.x * DisplayGeometry::kReferenceSize.width / createRes.x - reference.x;
 		reference.height = screenRegion.hi.y * DisplayGeometry::kReferenceSize.height / createRes.y - reference.y;
 		if( parent == nullptr )
-			layoutAnchor = DisplayGeometry::inferAnchor( reference );
+			layoutAnchor = DisplayGeometry::anchorFor( layoutKind, reference );
 		const DisplayGeometry::Rect physical =
 			DisplayGeometry::referenceToPhysical( DisplayRuntime::layout(), reference, layoutAnchor );
 		screenRegion.lo.x = physical.x;
@@ -2760,6 +2764,12 @@ GameWindow *GameWindowManager::winCreateFromScript( AsciiString filenameString,
 																										WindowLayoutInfo *info )
 {
 	const char* filename = filenameString.str();
+	struct ScriptFileScope
+	{
+		const char *previous;
+		explicit ScriptFileScope( const char *name ) : previous( s_scriptFileName ) { s_scriptFileName = name; }
+		~ScriptFileScope() { s_scriptFileName = previous; }
+	} scriptFileScope( filename );
 	static char buffer[ WIN_BUFFER_LENGTH ]; 		// input buffer for reading
 	GameWindow *firstWindow = nullptr;
   GameWindow *window;

@@ -194,3 +194,22 @@ TEST(DisplayModes, LabelsAndFamilies)
 	EXPECT_STREQ(aspectFamily({5120, 1440}), "32:9");
 	EXPECT_STREQ(aspectFamily({1920, 1200}), "16:10");
 }
+
+TEST(DisplayGeometry, LayoutFamiliesAndAnchorPolicy)
+{
+	EXPECT_EQ(layoutKindForFile("Window\\ControlBar.wnd"), LayoutKind::Hud);
+	EXPECT_EQ(layoutKindForFile("ControlBarPopupDescription.wnd"), LayoutKind::Hud);
+	EXPECT_EQ(layoutKindForFile("Window\\GenPowersShortcutBarUS.wnd"), LayoutKind::Hud);
+	EXPECT_EQ(layoutKindForFile("window/ReplayControl.wnd"), LayoutKind::Hud);
+	EXPECT_EQ(layoutKindForFile("Window\\InGameChat.wnd"), LayoutKind::Hud);
+	EXPECT_EQ(layoutKindForFile("Window\\Menus\\MainMenu.wnd"), LayoutKind::Frontend);
+	EXPECT_EQ(layoutKindForFile("Window\\Menus\\SkirmishGameOptionsMenu.wnd"), LayoutKind::Frontend);
+	EXPECT_EQ(layoutKindForFile(nullptr), LayoutKind::Frontend);
+	// Frontend: everything on the centered canvas, whatever it touches.
+	EXPECT_EQ(anchorFor(LayoutKind::Frontend, Rect{595, 546, 200, 49}), Anchor::Center);
+	// Hud: one vertical origin (the bottom) for the bar, its popup, the chat line and the sidebar; the sidebar
+	// additionally hugs the right edge.
+	EXPECT_EQ(anchorFor(LayoutKind::Hud, Rect{0, 416, 800, 184}), Anchor::Bottom);
+	EXPECT_EQ(anchorFor(LayoutKind::Hud, Rect{8, 376, 648, 40}), Anchor::Bottom);
+	EXPECT_EQ(anchorFor(LayoutKind::Hud, Rect{740, 159, 60, 270}), Anchor::BottomRight);
+}

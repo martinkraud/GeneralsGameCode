@@ -49,6 +49,18 @@ void WW3D::Set_Native_Vsync(bool enabled) {
 
 GAME_WINDOW_MANAGER_SCRIPT = "Core/GameEngine/Source/GameClient/GUI/GameWindowManagerScript.cpp"
 
+_SCRIPT_FILE_DECL = """// File being parsed by winCreateFromScript (layout family for the modern UI anchoring policy).
+static const char *s_scriptFileName = nullptr;
+
+"""
+_SCRIPT_FILE_SCOPE = """	struct ScriptFileScope
+	{
+		const char *previous;
+		explicit ScriptFileScope( const char *name ) : previous( s_scriptFileName ) { s_scriptFileName = name; }
+		~ScriptFileScope() { s_scriptFileName = previous; }
+	} scriptFileScope( filename );
+"""
+
 _MODERN_BLOCK_START = "\tif( DisplayRuntime::modern() && createRes.x > 0 && createRes.y > 0 )\n"
 _MODERN_ELSE = "\telse\n\t{\n"
 
@@ -61,6 +73,10 @@ def revert(path, text):
             raise AssertionError("expected X64.33 hunk missing from %s: %r" % (path, new[:60]))
         text = text.replace(new, old, 1)
     if path == GAME_WINDOW_MANAGER_SCRIPT:
+        for chunk in (_SCRIPT_FILE_DECL, _SCRIPT_FILE_SCOPE):
+            if chunk not in text:
+                raise AssertionError("expected X64.33 script-file hunk missing from %s" % path)
+            text = text.replace(chunk, "", 1)
         # include line
         include = '\n#include "Common/DisplayRuntime.h"\n'
         if include not in text:
