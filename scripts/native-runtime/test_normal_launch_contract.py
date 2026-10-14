@@ -166,20 +166,21 @@ class NormalLaunchContract(unittest.TestCase):
                       read("Core/GameEngineDevice/Include/Win32Device/Common/Win32GameEngine.h"))
 
 
-    def test_starting_cash_layout_is_on_the_setup_grid(self):
+    def test_starting_cash_layout_follows_the_setup_grid_and_hides_every_game_speed_remnant(self):
         c = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp")
-        # parented to the slider's own parent (the inset sub-panel), not the menu root: the fix3 control landed ~41 px
-        # up/left of its slot, over the last Players row
-        self.assertIn("GameWindow *parent = slot->winGetParent();", c)
+        # parented to the header's own parent (the inset sub-panel); the fix3 control landed ~41 px off
+        self.assertIn("GameWindow *parent = caption->winGetParent();", c)
         self.assertNotIn("createStartingCashControl(parentSkirmishGameOptions", c)
-        # on the Players column's left edge and width, one grid row tall, centred in the slider slot
-        self.assertIn("column->winGetPosition(&x, &ax);", c)
-        self.assertIn("y = sy + (sh - height) / 2;", c)
+        # header-aligned (same left edge and width), flush under the header, one 24 px grid row tall
+        self.assertIn("x = cx;", c)
+        self.assertIn("y = cy + ch;", c)
+        self.assertIn("width = cw;", c)
         self.assertIn("createStartingCashControl(sliderGameSpeed, speedLabel, comboBoxTeam[0], comboBoxPlayer[1])", c)
-        # the Slower/Faster captions of the hidden slider go away with it
-        self.assertIn("hideGameSpeedCaptions(sliderGameSpeed->winGetParent());", c)
-        self.assertIn('"GUI:Slower"', c)
-        self.assertIn('"GUI:Faster"', c)
+        # remnants are identified geometrically (unnamed static texts), never by localized text
+        self.assertIn("static Int hideGameSpeedRemnants(", c)
+        self.assertIn("hideGameSpeedRemnants(parentSkirmishGameOptions, speedLabel, sliderGameSpeed, comboBoxStartingCash)", c)
+        self.assertNotIn("text == slower", c)
+        self.assertIn('checkpoint("skirmish_ui", "layout"', c)
 
     def test_listener_orientation_convention_is_documented_and_used(self):
         n = read("Dependencies/Miles/NativeMiles.cpp")
@@ -192,7 +193,7 @@ class NormalLaunchContract(unittest.TestCase):
         d = read("Generals/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/DeliverPayloadAIUpdate.cpp")
         self.assertIn('checkpoint("delivery", "trace"', d)
         self.assertIn('checkpoint("delivery", "start"', d)
-        self.assertIn("traced < 160", d)
+        self.assertIn("traced < 600", d)  # fix5: per-aircraft budget of 40 inside a 600 record ceiling
         a = read("Generals/Code/GameEngine/Source/GameLogic/AI/AIGroup.cpp")
         self.assertIn('checkpoint("special_power", "dispatch"', a)
 

@@ -139,6 +139,8 @@ Do not run it automatically; frontend/audio/Skirmish/return-to-frontend review i
 
 **fix3 native review: audio lifecycle fixed (audio_stats: starved=0, completions==delivered), Starting Cash works.** fix4 (`NORMAL_LAUNCH.md` section 12): mirrored stereo (listener right = up x forward), Starting Cash layout repaired (parent/coordinate-space bug), Daisy Cutter delivery instrumented (`special_power`/`delivery` checkpoints; root cause not provable offline - read `generals64.log` first).
 
+**fix4 native review: stereo fixed; Daisy Cutter root cause = special-power shortcut source picked an in-flight cargo plane (`KINDOF_IGNORED_IN_GUI`) instead of the Command Center; fix5 filters it (`NORMAL_LAUNCH.md` section 13). Starting Cash remnants hidden geometrically, layout aligned to the setup-grid header rule.**
+
 The sections below describe the earlier reviewed-profile history.
 
 **NORMAL GENERALS AMD64/D3D11 STARTUP -> ORIGINAL INTERACTIVE MAIN MENU.**

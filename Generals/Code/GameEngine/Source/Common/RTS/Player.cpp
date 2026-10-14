@@ -1177,6 +1177,19 @@ static void doFindCommandCenter(Object* obj, void* userData)
 // Iterator function
 // Find first object capable of firing specified special power right now.
 //-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+// Objects flagged KINDOF_IGNORED_IN_GUI (cargo planes, B-52s: "as in, Angry Mob Members, Cargo Planes" - see
+// ActionManager) carry duplicated scripted copies of special powers (SuperweaponDaisyCutter, Paradrop,
+// CarpetBomb ... with CreateLocation = USE_OWNER_OBJECT) so that scripts can have a plane deliver them. They
+// are never a player-facing source. The newest object of a team is iterated first, so a transient supply-drop
+// cargo plane in flight was picked ahead of the Command Center as the "most ready" source of the shortcut,
+// which turned a player's Daisy Cutter into a re-tasking of that plane (no B-52 is ever created).
+//-------------------------------------------------------------------------------------------------
+static Bool isShortcutSourceCandidate( const Object *obj )
+{
+	return !obj->isKindOf( KINDOF_IGNORED_IN_GUI );
+}
+
 static void doFindSpecialPowerSourceObject( Object *obj, void *userData )
 {
 	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
@@ -1186,7 +1199,8 @@ static void doFindSpecialPowerSourceObject( Object *obj, void *userData )
 		//We already found the best case scenario, so no need to iterate any more.
 		return;
 	}
-	if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION ) &&
+	if( isShortcutSourceCandidate( obj ) &&
+			!obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION ) &&
 			!obj->testStatus( OBJECT_STATUS_SOLD ) &&
 			!obj->isEffectivelyDead() )
 	{
@@ -1248,7 +1262,8 @@ static void doCountSpecialPowersReady( Object *obj, void *userData )
 {
 	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
 
-	if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION ) &&
+	if( isShortcutSourceCandidate( obj ) &&
+			!obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION ) &&
 			!obj->testStatus( OBJECT_STATUS_SOLD ) &&
 			!obj->isEffectivelyDead() )
 	{

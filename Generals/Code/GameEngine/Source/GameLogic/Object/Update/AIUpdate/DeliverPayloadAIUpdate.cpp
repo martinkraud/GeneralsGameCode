@@ -30,6 +30,7 @@
 #define DEFINE_WEAPONSLOTTYPE_NAMES
 
 #include "Common/Player.h"
+#include <map>
 #include "Common/StartupDiagnostics.h"
 #include "Common/RandomValue.h"
 #include "Common/ThingFactory.h"
@@ -164,9 +165,12 @@ UpdateSleepTime DeliverPayloadAIUpdate::update()
 	// which state machine states it is in and how many payload items it still carries.
 	if (StartupDiagnostics::normalLaunch())
 	{
+		// 40 records per aircraft (fix5: one global budget was exhausted by supply-drop planes before the Daisy
+		// Cutter aircraft was traced) and a 600 record ceiling for the run.
 		static unsigned traced = 0;
+		static std::map<unsigned, unsigned> perObject;
 		const UnsignedInt frame = TheGameLogic->getFrame();
-		if (traced < 160 && (frame % LOGICFRAMES_PER_SECOND) == 0)
+		if (traced < 600 && (frame % LOGICFRAMES_PER_SECOND) == 0 && perObject[(unsigned)getObject()->getID()]++ < 40)
 		{
 			++traced;
 			const Coord3D *pos = getObject()->getPosition();

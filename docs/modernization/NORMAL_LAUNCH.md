@@ -254,3 +254,66 @@ Cash"). The unnamed "Slower"/"Faster" captions of the hidden slider are hidden a
 `Skirmish.ini` persistence, human/AI propagation, Campaign isolation and the single extension gate are unchanged.
 
 Fix candidate `x64-31-fix4` (generalsv.exe SHA256 `93DDC0B22FDD4453F3D58458C7CE57B98A63077B58904DD97ADB54E705D8833E`).
+
+## 13. fix5 (x64-31-fix5): Daisy Cutter source selection, Starting Cash presentation
+
+Evidence: `evidence/x64-31-fix4-review/generals64.log`.
+
+### Fuel Air Bomb / Daisy Cutter — answers from the trace
+
+| # | Question | Answer from the log |
+|---|---|---|
+| 1 | Reaches dispatch? | Yes: `dispatch id=2 power=SuperweaponDaisyCutter` |
+| 2 | `canDo`? | `canDo=1` |
+| 3 | `OCLSpecialPower` activates `SUPERWEAPON_DaisyCutter`? | Yes: `activate ... ocl=1 createLoc=3` (`USE_OWNER_OBJECT`) |
+| 4 | `AmericaJetB52` created? | **No** — and it never could have been: the **source object was `AmericaJetCargoPlane`**, not the Command Center. `USE_OWNER_OBJECT` re-tasks the source itself (`createOwner = false`); no `AmericaJetB52` appears anywhere in the log |
+| 5 | `DeliverPayloadAIUpdate` exists? | Yes — on that cargo plane: `delivery start obj=5214 ... move=(370,1786) deliveryDistance=140 maxAttempts=1` (obj 5214 had started a supply-drop delivery two records earlier) |
+| 6-8 | position/state/approach/payload | Not recorded: the global 160-record trace budget was exhausted by supply-drop planes before obj 5214's records. Budget is now per aircraft (40, ceiling 600) |
+| 9 | Why does the marker stay? | The red delivery decal is owned by the re-tasked plane's AI and lives as long as that plane's delivery does |
+
+For comparison, the working A-10 power was dispatched with `source=AmericaCommandCenter createLoc=0` and the
+supply drops are created by the Supply Drop Zone, not by a player power.
+
+**Root cause.** `Player::findMostReadyShortcutSpecialPowerOfType` (the UI's source for every shortcut special
+power) returns the first ready object while iterating the team's member list, which is newest-first
+(`prependTo_TeamMemberList`). `AmericaJetCargoPlane` and `AmericaJetB52` carry duplicated *scripted* copies of
+SuperweaponDaisyCutter / Paradrop / CarpetBomb (`CreateLocation = USE_OWNER_OBJECT`, no
+`ScriptedSpecialPowerOnly`). A cargo plane in flight (a supply drop, a crate drop) was therefore chosen ahead of
+the Command Center, and the player's Daisy Cutter became "plane X carries a bomb to the target" instead of "a
+B-52 is created at the far edge". It is not a 32/64 bit defect: the selection code is identical in retail and
+Zero Hour. It surfaces in this runtime because supply-drop planes are routinely in flight when the power is
+used. Why the re-tasked plane's delivery did not complete is not visible in this log (its trace records were
+cut off by the old global budget); the source selection is the proven wrong step and the one that is removed.
+
+**Fix.** The shortcut source selection and ready-count (`doFindSpecialPowerSourceObject`,
+`doCountSpecialPowersReady`) skip `KINDOF_IGNORED_IN_GUI` objects — the engine's own marker for cargo planes
+("as in, Angry Mob Members, Cargo Planes", `ActionManager`). Selection is a client/UI decision carried in the
+command's source id, so replays and CRC are unaffected. Adjacent powers (Carpet Bomb, Paradrop 1-3, Crate
+Drop, A-10 strikes) used the same selection and are covered by the same rule.
+
+Regression coverage: `test_special_power_sources_contract.py` — source pins, plus (with `GENERALS_GAME_DIR`) a
+data audit proving every aircraft in retail `Object/*.ini` that carries `USE_OWNER_OBJECT` special powers is
+`IGNORED_IN_GUI` (so the rule covers all of them), while selectable ground units such as
+`ConvoyTruckArmedWithNuke` are not excluded.
+
+### Starting Cash presentation
+
+Identification (retail `ZH_Generals/Window.big`, `SkirmishGameOptionsMenu.wnd`, hierarchy flat under `SubParent`):
+
+* "Game Speed" header: `StaticTextBattleHonors1` (57,315 156x24, MinorTitle) — reused as the Starting Cash header
+* slider `SliderGameSpeed` (114,340 90x27) and read-out `StaticTextGameSpeed` (215,334 32x21) — hidden
+* **unnamed** static texts `GUI:Slower` (57,357 78x22) and `GUI:Faster` (198,357 90x22) — the remnants seen in
+  fix4: the previous code compared their text with the localized strings, which did not match (the same reason the
+  original label hide failed), and looked only at direct children. They are now found geometrically (static texts
+  inside the block rectangle, below the slider and left of the Battle Honors column) in the whole layout tree, and
+  the number hidden is logged as `skirmish_ui layout` in `generals64.log`.
+
+Layout, from Zero Hour's retail WND: ZH solved the same need with one 24 px row of controls (label 93 px +
+`ComboBoxStartingCash` 104x24, Arial 10, `TextEntry` label / `ComboBoxEntry` combo templates), moved its Battle
+Honors block down 7 px, and uses no section header. Generals keeps its section-header idiom instead: every
+setup column is a MinorTitle header flush on top of 24 px rows that share its left edge. The combo now follows
+that rule exactly: header's left edge (57) and width (156), directly under the header (y 339-363), same
+`ComboBoxEntry` appearance as the grid; 21 px of clear space remain above the Battle Honors rows (384).
+`test_skirmish_layout_contract.py` checks these facts against the actual retail WND (opt-in).
+
+Fix candidate `x64-31-fix5` (generalsv.exe SHA256 `69656ECA145F7204B10EFCD8DBF1DE22D1F5A6F54169F13CD2AF9A7E989F925A`).

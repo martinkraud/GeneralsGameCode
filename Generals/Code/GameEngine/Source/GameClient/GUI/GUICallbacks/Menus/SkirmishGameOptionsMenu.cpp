@@ -29,6 +29,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 
 #include "Common/BattleHonors.h"
@@ -165,55 +166,75 @@ static void copyStartingCashAppearance(GameWindow *target, GameWindow *source)
 	target->winSetFont(source->winGetFont());
 }
 
-// The "Slower" / "Faster" captions of the hidden Game Speed slider are unnamed static texts in the retail layout.
-static void hideGameSpeedCaptions(GameWindow *parent)
+// The retail Skirmish layout's Game Speed block: header caption "Game Speed" (StaticTextBattleHonors1), the
+// slider (SliderGameSpeed) with its numeric read-out (StaticTextGameSpeed), and two UNNAMED static texts
+// "Slower" (57,357 78x22) and "Faster" (198,357 90x22) on the row below the slider. They carry no name, and their
+// strings do not reliably compare equal to the localized ones, so they are identified by what they are: static
+// texts inside the block's rectangle (between the header's left edge and the Battle Honors column, from the
+// slider's top down to the next section) - never by text. Everything else (Battle Honors header, the honors
+// statistics rows, the setup grid) lies outside that rectangle and is not touched.
+static Int hideGameSpeedRemnants(GameWindow *root, GameWindow *header, GameWindow *slider, GameWindow *keep)
 {
-	if (!parent)
-		return;
-	const UnicodeString slower = TheGameText->FETCH_OR_SUBSTITUTE("GUI:Slower", L"Slower");
-	const UnicodeString faster = TheGameText->FETCH_OR_SUBSTITUTE("GUI:Faster", L"Faster");
-	for (GameWindow *child = parent->winGetChild(); child; child = child->winGetNext())
+	if (!root || !header || !slider)
+		return 0;
+	Int hx, hy, hw, hh, sx, sy, sw, sh;
+	header->winGetScreenPosition(&hx, &hy);
+	header->winGetSize(&hw, &hh);
+	slider->winGetScreenPosition(&sx, &sy);
+	slider->winGetSize(&sw, &sh);
+	const Int left = hx - 4;
+	const Int right = hx + hw + 140;       // the Faster caption ends 75 px right of the header
+	const Int top = sy;                    // slider's top
+	const Int bottom = sy + sh + 14;       // retail captions end 12 px below the slider; honors rows start 17 px lower
+	Int hidden = 0;
+	for (GameWindow *w = root->winGetChild(); w; w = w->winGetNext())
 	{
-		if (BitIsSet(child->winGetStyle(), GWS_STATIC_TEXT))
+		if (w != header && w != keep && w != slider && BitIsSet(w->winGetStyle(), GWS_STATIC_TEXT) && !w->winIsHidden())
 		{
-			const UnicodeString text = child->winGetText();
-			if (text == slower || text == faster)
-				child->winHide(TRUE);
+			Int wx, wy, ww, wh;
+			w->winGetScreenPosition(&wx, &wy);
+			w->winGetSize(&ww, &wh);
+			if (wx >= left && wx + ww <= right && wy >= top && wy + wh <= bottom)
+			{
+				w->winHide(TRUE);
+				++hidden;
+			}
 		}
+		if (w->winGetChild())
+			hidden += hideGameSpeedRemnants(w, header, slider, keep);
 	}
+	return hidden;
 }
 
-// Builds the combo box under the "Game Speed" section header (whose caption window is reused for the label),
-// on the Players column's left edge and width, one row of the setup grid tall, vertically centered in the slot
-// of the intentionally hidden slider. Parenting it to the slider's own parent keeps the retail layout's
-// coordinate space (the sub-panel is inset from the menu root). Returns nullptr when the layout cannot host it.
+// Builds the combo box directly under the reused "Game Speed" section header (relabelled "Starting Cash"),
+// following the setup grid's own rhythm: a MinorTitle header sits flush on top of its column of 24 px rows and
+// shares its left edge (Players header x=72 over combos x=72, Faction 316/316, Color 224/224). Zero Hour solved
+// the same problem with a label + 24 px combo pair on one row, 24 px tall controls, Arial 10 / ComboBoxEntry
+// styling; here the control takes the header's left edge and width (156) and the grid's row height, which keeps
+// "$10,000 (Default)" readable and leaves the Battle Honors block below untouched. It is parented to the
+// header's own parent (the inset sub-panel) so retail coordinates apply. Returns nullptr when the layout cannot
+// host it.
 static GameWindow *createStartingCashControl(GameWindow *slot, GameWindow *caption, GameWindow *appearance, GameWindow *column)
 {
-	if (!startingCashExtensionEnabled() || !slot || !appearance)
+	if (!startingCashExtensionEnabled() || !slot || !caption || !appearance)
 		return nullptr;
-	GameWindow *parent = slot->winGetParent();
-	if (!parent)
+	GameWindow *parent = caption->winGetParent();
+	if (!parent || parent != slot->winGetParent())
 		return nullptr;
 	GameWindow *combo = TheWindowManager->winGetWindowFromId(parent, comboBoxStartingCashID);
 	if (!combo)
 	{
 		Int x, y, width, height;
-		Int sx, sy, sw, sh;
-		slot->winGetPosition(&sx, &sy);
-		slot->winGetSize(&sw, &sh);
-		Int ax, ay, aw, ah;
+		Int cx, cy, cw, ch;
+		caption->winGetPosition(&cx, &cy);
+		caption->winGetSize(&cw, &ch);
+		Int aw, ah;
 		appearance->winGetSize(&aw, &ah);
 		height = ah;                          // one grid row, like every other combo on this screen
-		y = sy + (sh - height) / 2;           // centered in the slider's slot
-		x = sx; width = max(sw, 96);
-		if (column && column->winGetParent() == parent)
-		{
-			// Same left edge and width as the Players column above, so the control sits on the setup grid.
-			Int cw, ch;
-			column->winGetPosition(&x, &ax);
-			column->winGetSize(&cw, &ch);
-			width = cw;
-		}
+		x = cx;                               // header's left edge
+		y = cy + ch;                          // flush under the header, like the grid's first row under its header
+		width = cw;                           // header's width
+		(void)column;
 
 		WinInstanceData instance;
 		instance.m_font = appearance->winGetFont();
@@ -243,7 +264,6 @@ static GameWindow *createStartingCashControl(GameWindow *slot, GameWindow *capti
 		copyStartingCashAppearance(GadgetComboBoxGetEditBox(combo), GadgetComboBoxGetEditBox(appearance));
 		copyStartingCashAppearance(GadgetComboBoxGetDropDownButton(combo), GadgetComboBoxGetDropDownButton(appearance));
 		copyStartingCashAppearance(GadgetComboBoxGetListBox(combo), GadgetComboBoxGetListBox(appearance));
-		(void)ay;
 	}
 	GadgetComboBoxReset(combo);
 	std::vector<Int> values;
@@ -1464,7 +1484,15 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	comboBoxStartingCashID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash");
 	comboBoxStartingCash = createStartingCashControl(sliderGameSpeed, speedLabel, comboBoxTeam[0], comboBoxPlayer[1]);
 	if (comboBoxStartingCash)
-		hideGameSpeedCaptions(sliderGameSpeed->winGetParent());
+	{
+		const Int hidden = hideGameSpeedRemnants(parentSkirmishGameOptions, speedLabel, sliderGameSpeed, comboBoxStartingCash);
+		Int cx, cy, cw, ch;
+		comboBoxStartingCash->winGetScreenPosition(&cx, &cy);
+		comboBoxStartingCash->winGetSize(&cw, &ch);
+		char detail[160];
+		sprintf(detail, "starting_cash combo=(%d,%d %dx%d) game_speed_remnants_hidden=%d", cx, cy, cw, ch, hidden);
+		StartupDiagnostics::checkpoint("skirmish_ui", "layout", detail);
+	}
 	selectStartingCashInCombo();
 	// The retail WND names this label StaticTextBattleHonors1 and gives it the GUI:GameSpeed text; it goes
 	// away with the slider it labels. Matching the text alone left the label visible without its slider when the
