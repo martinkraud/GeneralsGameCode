@@ -148,7 +148,7 @@ TEST_F(Fixture, PositionalAttenuationAndPan)
 {
     H3DPOBJECT listener = NativeMiles::AIL_open_3D_listener(nullptr);
     NativeMiles::AIL_set_3D_position(listener, 0, 0, 0);
-    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, 1);
+    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, -1);
     H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
     auto wav = MakeWav(Square(8820, 20000), 44100);
     ASSERT_EQ(NativeMiles::AIL_set_3D_sample_file(s, wav.data()), 1);
@@ -558,7 +558,7 @@ int PeakAt(float x, float y, float minDist, float maxDist, H3DPOBJECT listener, 
 TEST_F(Fixture, AttenuationFollowsMinDistanceAndNeverSilencesPastMax)
 {
     H3DPOBJECT listener = NativeMiles::AIL_open_3D_listener(nullptr);
-    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, 1);
+    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, -1);
     const int inside = PeakAt(0, 5, 10, 200, listener);      // inside the minimum distance: full
     const int mid = PeakAt(0, 40, 10, 200, listener);        // 10/40 = quarter
     const int atMax = PeakAt(0, 200, 10, 200, listener);     // 10/200
@@ -573,7 +573,7 @@ TEST_F(Fixture, AttenuationFollowsMinDistanceAndNeverSilencesPastMax)
 TEST_F(Fixture, ListenerMovementChangesGainAndPan)
 {
     H3DPOBJECT listener = NativeMiles::AIL_open_3D_listener(nullptr);
-    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, 1);
+    NativeMiles::AIL_set_3D_orientation(listener, 0, 1, 0, 0, 0, -1);
     const int farAway = PeakAt(100, 0, 10, 1000, listener, 0.0f);
     const int close = PeakAt(100, 0, 10, 1000, listener, 80.0f);   // listener moved 80 units toward the source
     EXPECT_GT(close, farAway * 3);
@@ -589,4 +589,55 @@ TEST_F(Fixture, ListenerMovementChangesGainAndPan)
     NativeMiles::Render(out.data(), 64);
     EXPECT_GT(out[20], out[21]);
     NativeMiles::AIL_release_3D_sample_handle(s);
+}
+
+// ---- listener orientation (x64-31 fix4: left/right were reversed) -----------------------------------------------
+namespace
+{
+// Returns (left, right) peak amplitudes for a source at (x, y, 0) with the listener at the origin. The engine's
+// listener convention is used verbatim: MilesAudioManager passes up = (0, 0, -1) with the camera's forward vector
+// (Miles is left-handed, so right = up x forward).
+struct Pair { int left, right; };
+Pair PanFor(float fx, float fy, float x, float y)
+{
+    H3DPOBJECT listener = NativeMiles::AIL_open_3D_listener(nullptr);
+    NativeMiles::AIL_set_3D_position(listener, 0, 0, 0);
+    NativeMiles::AIL_set_3D_orientation(listener, fx, fy, 0, 0, 0, -1);
+    H3DSAMPLE s = NativeMiles::AIL_allocate_3D_sample_handle(nullptr);
+    auto wav = MakeWav(Square(8820, 20000), 44100);
+    NativeMiles::AIL_set_3D_sample_file(s, wav.data());
+    NativeMiles::AIL_set_3D_sample_distances(s, 1000, 50);
+    NativeMiles::AIL_set_3D_position(reinterpret_cast<H3DPOBJECT>(s), x, y, 0);
+    NativeMiles::AIL_start_3D_sample(s);
+    std::vector<int16_t> out(32 * 2);
+    NativeMiles::Render(out.data(), 32);
+    NativeMiles::AIL_release_3D_sample_handle(s);
+    return {std::abs(static_cast<int>(out[20])), std::abs(static_cast<int>(out[21]))};
+}
+}
+
+TEST_F(Fixture, PanFollowsTheEnginesListenerOrientationConvention)
+{
+    // Camera looking north (+y): east is right, west is left, north/south are centered.
+    Pair east = PanFor(0, 1, 40, 0), west = PanFor(0, 1, -40, 0), north = PanFor(0, 1, 0, 40), south = PanFor(0, 1, 0, -40);
+    EXPECT_GT(east.right, east.left);
+    EXPECT_GT(west.left, west.right);
+    EXPECT_EQ(north.left, north.right);
+    EXPECT_EQ(south.left, south.right);
+    EXPECT_EQ(north.left, south.left);                       // front and rear are the same loudness
+
+    // Rotated listener looking east (+x): north is now left, south is right.
+    Pair n2 = PanFor(1, 0, 0, 40), s2 = PanFor(1, 0, 0, -40), e2 = PanFor(1, 0, 40, 0);
+    EXPECT_GT(n2.left, n2.right);
+    EXPECT_GT(s2.right, s2.left);
+    EXPECT_EQ(e2.left, e2.right);
+
+    // Looking south (-y): the world's east is on the left.
+    Pair e3 = PanFor(0, -1, 40, 0), w3 = PanFor(0, -1, -40, 0);
+    EXPECT_GT(e3.left, e3.right);
+    EXPECT_GT(w3.right, w3.left);
+
+    // Looking west (-x): north is on the right.
+    Pair n4 = PanFor(-1, 0, 0, 40);
+    EXPECT_GT(n4.right, n4.left);
 }

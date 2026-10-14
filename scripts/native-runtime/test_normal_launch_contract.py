@@ -166,5 +166,36 @@ class NormalLaunchContract(unittest.TestCase):
                       read("Core/GameEngineDevice/Include/Win32Device/Common/Win32GameEngine.h"))
 
 
+    def test_starting_cash_layout_is_on_the_setup_grid(self):
+        c = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp")
+        # parented to the slider's own parent (the inset sub-panel), not the menu root: the fix3 control landed ~41 px
+        # up/left of its slot, over the last Players row
+        self.assertIn("GameWindow *parent = slot->winGetParent();", c)
+        self.assertNotIn("createStartingCashControl(parentSkirmishGameOptions", c)
+        # on the Players column's left edge and width, one grid row tall, centred in the slider slot
+        self.assertIn("column->winGetPosition(&x, &ax);", c)
+        self.assertIn("y = sy + (sh - height) / 2;", c)
+        self.assertIn("createStartingCashControl(sliderGameSpeed, speedLabel, comboBoxTeam[0], comboBoxPlayer[1])", c)
+        # the Slower/Faster captions of the hidden slider go away with it
+        self.assertIn("hideGameSpeedCaptions(sliderGameSpeed->winGetParent());", c)
+        self.assertIn('"GUI:Slower"', c)
+        self.assertIn('"GUI:Faster"', c)
+
+    def test_listener_orientation_convention_is_documented_and_used(self):
+        n = read("Dependencies/Miles/NativeMiles.cpp")
+        self.assertIn("right = up x forward", n)
+        self.assertIn("float r[3] = {u[1] * f[2] - u[2] * f[1], u[2] * f[0] - u[0] * f[2], u[0] * f[1] - u[1] * f[0]};", n)
+        m = read("Core/GameEngineDevice/Source/MilesAudioDevice/MilesAudioManager.cpp")
+        self.assertIn("m_listenerOrientation.z, 0, 0, -1)", m)  # engine passes up = (0,0,-1)
+
+    def test_delivery_is_traced_for_diagnosis(self):
+        d = read("Generals/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/DeliverPayloadAIUpdate.cpp")
+        self.assertIn('checkpoint("delivery", "trace"', d)
+        self.assertIn('checkpoint("delivery", "start"', d)
+        self.assertIn("traced < 160", d)
+        a = read("Generals/Code/GameEngine/Source/GameLogic/AI/AIGroup.cpp")
+        self.assertIn('checkpoint("special_power", "dispatch"', a)
+
+
 if __name__ == "__main__":
     unittest.main()

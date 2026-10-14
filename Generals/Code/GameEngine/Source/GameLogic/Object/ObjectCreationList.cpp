@@ -29,6 +29,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 #define DEFINE_SHADOW_NAMES								// for TheShadowNames[]
 #define DEFINE_WEAPONSLOTTYPE_NAMES
@@ -493,6 +494,8 @@ public:
 			else
 			{
 				DEBUG_CRASH(("You should really have a DeliverPayloadAIUpdate here"));
+				if (StartupDiagnostics::normalLaunch())
+					StartupDiagnostics::checkpoint("delivery", "no_ai", transport->getTemplate()->getName().str());
 			}
 		}
 		return firstTransport;

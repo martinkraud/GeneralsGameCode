@@ -195,3 +195,62 @@ projection and its blend are not identifiable without an in-game reference compa
 fidelity backlog with this correction.
 
 Fix candidate `x64-31-fix3` (generalsv.exe SHA256 `E4E33FBBE67DFCFD60F27FBA1B2E38391CA5ACD49804A9A9E78536E5D2456067`).
+
+## 12. fix4 (x64-31-fix4): positional stereo, Fuel Air Bomb diagnosis, Starting Cash layout
+
+### Evidence from the fix3 run (`audio_stats`, 43 reports over ~21 minutes)
+
+Pools behaved as designed: `free2d`/`free3d` fell to 0 only transiently during heavy combat (peak 30 voices,
+25 simultaneous 3D samples) and recovered every time; `completions == delivered` (5989 each, lag 0);
+`starved = 0` in every report; `underruns` reached 1 (a single music-decode wait). The 64 bit completion-handle
+fix, the callback thread and decode-outside-lock changes are therefore confirmed by the run: no starvation and no
+leak. No change to the audio output path was made for crackle; nothing in the evidence calls for one.
+
+### Reversed left/right (root cause)
+
+`MilesAudioManager::setDeviceListenerPosition` passes the camera forward vector with `up = (0, 0, -1)`. Miles is
+left-handed (x right, y up, z forward), so its listener right vector is `up x forward`; the `-Z` up is the engine's
+explicit compensation for Generals' right-handed Z-up world. NativeMiles computed `forward x up`, i.e. the opposite
+vector, so every source was mirrored. Fix: right = `up x forward` (no output channel swap). Front/rear are
+unaffected by pan and measure equal loudness. Test `PanFollowsTheEnginesListenerOrientationConvention` covers east/west/
+north/south for a listener facing north, east, south and west with the engine's up vector.
+
+### Fuel Air Bomb (Daisy Cutter): not proven offline
+
+Retail Generals' "Fuel Air Bomb" is `SpecialPower SuperweaponDaisyCutter` -> `OCLSpecialPower` ->
+`SUPERWEAPON_DaisyCutter` (DeliverPayload: `AmericaJetB52`, payload `DaisyCutterBomb`, delivery distance 140).
+What was established statically:
+
+* Whole-engine compile scan for pointer/size truncation (C4311/C4302/C4312) over the Generals and Core game-engine
+  and game-engine-device sources (3,024 translation units). 194 distinct hits; every one in the activation ->
+  OCL -> DeliverPayload -> locomotor path is a small integer stored in a `void*` user-data slot (module type, bit
+  mask, player index) that round-trips; nothing truncates an object, module, handle or callback pointer there.
+  The remaining hits are LAN/GameSpy/UI list-box item data.
+* The path itself (`onDoSpecialPowerAtLocation` -> `AIGroup::groupDoSpecialPowerAtLocation` ->
+  `OCLSpecialPower::doSpecialPowerAtLocation` -> `DeliverPayloadNugget::create` ->
+  `DeliverPayloadAIUpdate` states) was read end to end; no 32/64 bit sensitive construct was found, and
+  `B52Locomotor` (`Appearance = WINGS`, `Surfaces = AIR`) uses the generic move-towards path.
+* Adjacent aircraft-delivered powers share the same nugget/AI/locomotor code (18 DeliverPayload OCLs: Daisy
+  Cutter, Carpet Bomb, Paradrop 1-3, Crate Drop, A-10 strikes, Napalm, Artillery Barrage, GLA/China
+  cargo planes). A defect in the shared path would affect all of them; one in the B-52/DaisyCutterBomb data only
+  the two B-52 powers. The review only exercised one.
+
+The first native review of the statement "the aircraft is created in GameLogic or not" cannot be answered without
+running the game, so this build records it: in normal launch `generals64.log` receives bounded `special_power`
+and `delivery` checkpoints (command dispatch with science/module/can-do result, OCL activation, aircraft start
+data, and a once-a-second trace of position, speed, distance, AI/state-machine state, payload count, disabled/dead
+flags, up to 160 records). The next review decides between: command never reaches the module (`dispatch`
+missing / `canDo=0`), OCL has no transport/AI (`no_ai`), aircraft exists but does not move or is disabled
+(`trace`), or it flies and completes (then the defect is presentation/payload effects, not logic). No gameplay
+timers or logic were changed.
+
+### Starting Cash layout (root cause of the "inserted in the Team column" look)
+
+The fix3 combo was parented to the menu root with coordinates read from the slider, which lives in the inset
+`SubParent` (origin 42,41): it landed ~41 px up and left of its slot, over the last Players rows. It is now created
+under the slider's own parent, one setup-grid row tall (24), on the Players column's left edge and width (x 72,
+w 144), vertically centred in the slider's slot under the reused "Game Speed" section header (relabelled "Starting
+Cash"). The unnamed "Slower"/"Faster" captions of the hidden slider are hidden as well. Values, default marking,
+`Skirmish.ini` persistence, human/AI propagation, Campaign isolation and the single extension gate are unchanged.
+
+Fix candidate `x64-31-fix4` (generalsv.exe SHA256 `93DDC0B22FDD4453F3D58458C7CE57B98A63077B58904DD97ADB54E705D8833E`).

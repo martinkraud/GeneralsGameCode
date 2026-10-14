@@ -29,6 +29,9 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
+#include "Common/ThingTemplate.h"
+#include "Common/SpecialPower.h"
 
 #include "Common/Player.h"
 #include "Common/RandomValue.h"
@@ -143,6 +146,15 @@ OCLSpecialPower::~OCLSpecialPower()
 //-------------------------------------------------------------------------------------------------
 void OCLSpecialPower::doSpecialPowerAtLocation( const Coord3D *loc, Real angle, UnsignedInt commandOptions )
 {
+	if (StartupDiagnostics::normalLaunch())
+	{
+		char detail[240];
+		sprintf(detail, "src=%s power=%s loc=%s disabled=%d ocl=%d createLoc=%d",
+			getObject()->getTemplate()->getName().str(),
+			getSpecialPowerTemplate() ? getSpecialPowerTemplate()->getName().str() : "?",
+			loc ? "yes" : "no", getObject()->isDisabled() ? 1 : 0, findOCL() ? 1 : 0, (int)getOCLSpecialPowerModuleData()->m_createLoc);
+		StartupDiagnostics::checkpoint("special_power", "activate", detail);
+	}
 	if (getObject()->isDisabled())
 		return;
 

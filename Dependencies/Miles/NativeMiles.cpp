@@ -558,10 +558,13 @@ void Gains(const Voice &v, float &left, float &right)
         const float effective = (dist > v.maxDist && v.maxDist > v.minDist) ? v.maxDist : dist;
         if (effective > v.minDist) attenuation = v.minDist > 0.0f ? v.minDist / effective : 0.0f;
         volume *= attenuation * (1.0f - Clamp(v.occlusion, 0.0f, 1.0f));
-        // Pan from the listener's right vector (face x up).
+        // Pan from the listener's right vector. Miles uses a left-handed system (x right, y up, z forward), where
+        // right = up x forward. Generals feeds world vectors (x east, y north, z up) and compensates by passing
+        // up = (0, 0, -1) (MilesAudioManager::setDeviceListenerPosition): with forward (0,1,0) that gives
+        // right = (1,0,0), so a source to the east of a north-facing camera is heard on the right.
         const float f[3] = {l.face[0], l.face[1], l.face[2]};
         const float u[3] = {l.up[0], l.up[1], l.up[2]};
-        float r[3] = {f[1] * u[2] - f[2] * u[1], f[2] * u[0] - f[0] * u[2], f[0] * u[1] - f[1] * u[0]};
+        float r[3] = {u[1] * f[2] - u[2] * f[1], u[2] * f[0] - u[0] * f[2], u[0] * f[1] - u[1] * f[0]};
         const float rl = std::sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
         if (dist > 1e-4f && rl > 1e-6f) {
             const float side = (d[0] * r[0] + d[1] * r[1] + d[2] * r[2]) / (dist * rl);

@@ -30,6 +30,7 @@
 #define DEFINE_WEAPONSLOTTYPE_NAMES
 
 #include "Common/Player.h"
+#include "Common/StartupDiagnostics.h"
 #include "Common/RandomValue.h"
 #include "Common/ThingFactory.h"
 #include "Common/ThingTemplate.h"
@@ -158,6 +159,33 @@ UpdateSleepTime DeliverPayloadAIUpdate::update()
 {
 	m_deliveryDecal.update();
 
+	// Normal launch: a bounded once-a-second trace of an aircraft delivery (at most 160 records per run) so that a
+	// delivery that never completes can be diagnosed from generals64.log: where the aircraft is, how fast it moves,
+	// which state machine states it is in and how many payload items it still carries.
+	if (StartupDiagnostics::normalLaunch())
+	{
+		static unsigned traced = 0;
+		const UnsignedInt frame = TheGameLogic->getFrame();
+		if (traced < 160 && (frame % LOGICFRAMES_PER_SECOND) == 0)
+		{
+			++traced;
+			const Coord3D *pos = getObject()->getPosition();
+			const PhysicsBehavior *physics = getObject()->getPhysics();
+			const Real speed = physics ? physics->getForwardSpeed2D() : -1.0f;
+			Real dx = pos->x - m_targetPos.x, dy = pos->y - m_targetPos.y;
+			const ContainedItemsList *items = getObject()->getContain() ? getObject()->getContain()->getContainedItemsList() : nullptr;
+			char detail[320];
+			sprintf(detail, "frame=%u obj=%u %s pos=(%.0f,%.0f,%.0f) target=(%.0f,%.0f) dist2d=%.0f speed=%.1f ai=%d sm=%d "
+				"items=%u disabled=%d dead=%d locomotor=%d",
+				frame, (unsigned)getObject()->getID(), getObject()->getTemplate()->getName().str(), pos->x, pos->y, pos->z,
+				m_targetPos.x, m_targetPos.y, sqrt(dx * dx + dy * dy), speed, (int)getAIStateType(),
+				m_deliverPayloadStateMachine ? (int)m_deliverPayloadStateMachine->getCurrentStateID() : -1,
+				items ? (unsigned)items->size() : 0u, getObject()->isDisabled() ? 1 : 0, isAiInDeadState() ? 1 : 0,
+				getCurLocomotor() ? 1 : 0);
+			StartupDiagnostics::checkpoint("delivery", "trace", detail);
+		}
+	}
+
 	if(!(isAiInDeadState()) && m_deliverPayloadStateMachine)
 		m_deliverPayloadStateMachine->updateStateMachine();
 
@@ -269,6 +297,16 @@ void DeliverPayloadAIUpdate::deliverPayload(
 	}
 
 	m_visibleItemsDelivered = 0;
+
+	if (StartupDiagnostics::normalLaunch())
+	{
+		char detail[256];
+		sprintf(detail, "obj=%u %s move=(%.0f,%.0f) target=(%.0f,%.0f) deliveryDistance=%.0f maxAttempts=%d dropDelay=%u fire=%d",
+			(unsigned)getObject()->getID(), getObject()->getTemplate()->getName().str(), moveToPos->x, moveToPos->y,
+			targetPos->x, targetPos->y, m_data.m_distToTarget, m_data.m_maxAttempts, m_data.m_dropDelay,
+			m_data.m_fireWeapon ? 1 : 0);
+		StartupDiagnostics::checkpoint("delivery", "start", detail);
+	}
 
 	//If we have visible bones, then show each of those subobjects.
 	Drawable *draw = getObject()->getDrawable();

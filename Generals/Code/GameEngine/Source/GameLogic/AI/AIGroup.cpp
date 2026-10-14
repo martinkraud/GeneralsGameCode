@@ -26,6 +26,7 @@
 // Encapsulation of a simple group of AI agents
 // Author: Michael S. Booth, January 2002
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/StartupDiagnostics.h"
 
 
 #include "Common/ActionManager.h"
@@ -2670,10 +2671,22 @@ void AIGroup::groupDoSpecialPowerAtLocation( UnsignedInt specialPowerID, const C
 			if( (spTemplate->getRequiredScience() != SCIENCE_INVALID) && object->getControllingPlayer() )
 			{
 				if( !object->getControllingPlayer()->hasScience(spTemplate->getRequiredScience()) )
+				{
+					if (StartupDiagnostics::normalLaunch())
+						StartupDiagnostics::checkpoint("special_power", "missing_science", spTemplate->getName().str());
 					continue;// Nice try, smacktard.
+				}
 			}
 
 			SpecialPowerModuleInterface *mod = object->getSpecialPowerModule( spTemplate );
+			if (StartupDiagnostics::normalLaunch())
+			{
+				char detail[200];
+				const Bool canDo = mod ? TheActionManager->canDoSpecialPowerAtLocation( object, location, CMD_FROM_PLAYER, spTemplate, objectInWay, commandOptions ) : FALSE;
+				sprintf(detail, "id=%u power=%s source=%s module=%d canDo=%d", specialPowerID, spTemplate->getName().str(),
+					object->getTemplate()->getName().str(), mod ? 1 : 0, canDo ? 1 : 0);
+				StartupDiagnostics::checkpoint("special_power", "dispatch", detail);
+			}
 			if( mod )
 			{
 				if( TheActionManager->canDoSpecialPowerAtLocation( object, location, CMD_FROM_PLAYER, spTemplate, objectInWay, commandOptions ) )
