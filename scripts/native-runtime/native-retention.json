@@ -1,0 +1,10 @@
+{
+  "_comment": "Native candidate retention policy (see docs/modernization/NATIVE_CANDIDATE_RETENTION.md). Names listed here are never removed by Cleanup-NativeCandidates.ps1.",
+  "keepNewestPerTitle": 2,
+  "protect": [
+    "x64-34-smooth-presentation",
+    "x64-35-baseline",
+    "Generals\\x64-35-baseline2",
+    "ZeroHour\\x64-20-fix1"
+  ]
+}
