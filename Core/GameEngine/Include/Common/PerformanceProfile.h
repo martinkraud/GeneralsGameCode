@@ -23,8 +23,9 @@ enum class Category : unsigned int
 	// in NativeTerrain; NativeObjGather/NativeObjProcess/NativeFx*/NativeGeomUpload/NativeSubmit in NativeObjects;
 	// NativeDevOverlay in NativeUi; ZoneCalc in PathQueue. Use exclusive time to avoid double counting.
 	NativeBeginRender, NativeTerrain, NativeTerrainOverlays, NativeObjects, NativeObjGather, NativeObjProcess, NativeFxGround, NativeFxShadows, NativeFxWater, NativeFxShroud, NativeFxParticles, NativeGeomUpload, NativeSubmit, NativeOverlays, NativeUi, NativeDevOverlay, NativeMouse, NativeEndRender, ZoneCalc,
-	// X64.35 shadow reuse (nested in NativeFxShadows): gather posed geometry / project + cache lookup / emit batch.
-	NativeShadowGather, NativeShadowProject, NativeShadowEmit, Count
+	// X64.35 shadow attribution, nested in NativeFxShadows: volume casters (gather the posed geometry / project / emit the
+	// batch) and decal shadows (EmitDecal). The remainder (exclusive time of NativeFxShadows) is the CollectShadows loop.
+	NativeShadowGather, NativeShadowProject, NativeShadowEmit, NativeShadowDecal, Count
 };
 // X64.34: DrawCalls/TexturesCreated/BuffersCreated are per-frame deltas of the native backend's cumulative counters;
 // DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame
@@ -40,9 +41,9 @@ enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisite
 	// TexturesLive/WorkingSetMb/PrivateMb are gauges; PageFaults is a per-frame delta of the process fault counter.
 	PresentTicks, SubmitTicks, UploadTicks, GpuMicros, GpuFrames, TexturesDestroyed, TextureUpdates, TextureUpdateKb,
 	TexturesLive, PageFaults, WorkingSetMb, PrivateMb,
-	// X64.35 shadow-volume reuse: per-frame counts (hit = reused exactly, miss = recomputed, uncached = structures and
-	// other casters that keep the canonical path).
-	ShadowCacheHits, ShadowCacheMisses, ShadowUncached, ShadowEvictions, Count };
+	// X64.35 shadow counts per frame: registered shadows visited, shadows skipped by an early-out, decal shadows emitted,
+	// volume casters emitted.
+	ShadowsSeen, ShadowsSkipped, ShadowDecals, ShadowVolumes, Count };
 constexpr unsigned int CategoryCount = static_cast<unsigned int>(Category::Count);
 constexpr unsigned int CounterCount = static_cast<unsigned int>(Counter::Count);
 constexpr unsigned int MaxFrames = 16384, MaxDepth = 64;

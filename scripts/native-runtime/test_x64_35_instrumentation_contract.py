@@ -71,21 +71,15 @@ class Baseline2Contracts(unittest.TestCase):
         # the original statement sequence is unchanged: calculate, then return
         self.assertRegex(ai, r"calculateZones\(m_map, m_layers, m_extent\);\s*\}\s*return;")
 
-    def test_shadow_volume_reuse_is_render_only_and_exact(self):
-        header = text("Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeShadowVolumeCache.h")
-        # no simulation includes or mutation: the cache only sees const input pointers
-        for forbidden in ("GameLogic", "TheGameLogic", "RandomValue", "XferCRC", "Xfer.h"):
-            self.assertNotIn(forbidden, header)
-        self.assertIn("const Vector3 *positions", header)
-        self.assertIn("std::memcmp(e.positions.data(), in.positions", header)   # bit-exact key, no version counters
-        self.assertIn("std::memcmp(e.triangles.data(), in.triangles", header)
+    def test_shadow_attribution_scopes_and_cache_reverted(self):
         fx = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp")
-        # cache only for planar casters; structures keep the canonical per-vertex terrain refinement
-        self.assertIn("if (planar) {", fx)
-        self.assertIn("g_volumeCache.get(&shadow, in)", fx)
-        self.assertIn("g_volumeCache.forget(this)", fx)                        # entry cannot outlive its shadow
-        self.assertIn("g_volumeCache.clear();", fx)                            # uninstall
-        self.assertNotIn("TheGameLogic->set", fx)
+        for scope in ("NativeShadowGather", "NativeShadowProject", "NativeShadowEmit", "NativeShadowDecal"):
+            self.assertIn("PerformanceProfile::Category::" + scope + ")" if scope == "NativeShadowProject" else scope, fx)
+        # the rejected shadow-volume cache (C-S1: no benefit) is gone
+        self.assertNotIn("g_volumeCache", fx)
+        self.assertNotIn("NativeShadowVolumeCache", fx)
+        import pathlib
+        self.assertFalse((ROOT / "Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeShadowVolumeCache.h").exists())
 
 
 if __name__ == "__main__":

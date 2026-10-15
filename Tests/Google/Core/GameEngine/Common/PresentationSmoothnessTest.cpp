@@ -405,3 +405,43 @@ TEST(PerformanceReceipt, NativePhaseTableSplitsDisplayDrawWithoutDoubleCounting)
 	// display_draw 40 ms - NativeObjects 20 - NativeUi 10 = 10 ms unattributed
 	EXPECT_NE(text.find("display_draw_unattributed   10.0000"), std::string::npos) << text;
 }
+
+TEST(PerformanceReceipt, ShadowPhaseIsDecomposedIntoVolumeDecalAndLoopRemainder)
+{
+	using namespace PerformanceProfile;
+	activeRecorder = nullptr;
+	Recorder r(8);
+	r.start(0);
+	for (int i = 0; i < 4; ++i)
+	{
+		const Tick t = i * 100;
+		ASSERT_TRUE(r.beginFrame(t, i, 120, 120));
+		activeRecorder = &r;
+		r.push(Category::DisplayDraw, t + 1);
+		r.push(Category::NativeObjects, t + 2);
+		r.push(Category::NativeFxShadows, t + 3);           // 20 ms inclusive
+		r.push(Category::NativeShadowGather, t + 4); r.pop(t + 6);        // 2
+		r.push(Category::NativeShadowProject, t + 6); r.pop(t + 9);       // 3
+		r.push(Category::NativeShadowEmit, t + 9); r.pop(t + 11);         // 2
+		r.push(Category::NativeShadowDecal, t + 11); r.pop(t + 19);       // 8
+		r.pop(t + 23);                                       // NativeFxShadows 20 ms
+		r.pop(t + 25);
+		r.pop(t + 30);
+		r.add(Counter::ShadowsSeen, 100);
+		r.add(Counter::ShadowsSkipped, 40);
+		r.add(Counter::ShadowDecals, 30);
+		r.add(Counter::ShadowVolumes, 29);
+		activeRecorder = nullptr;
+		r.endFrame(t + 50, i);
+	}
+	r.stop();
+	Metadata meta;
+	meta.frequency = 1000;
+	std::ostringstream summary, frames, categories, slow;
+	report(r, meta, summary, frames, categories, slow);
+	const std::string text = summary.str();
+	// 20 ms inclusive; 2 + 3 + 2 + 8 = 15 in children; the loop remainder is the exclusive 5 ms
+	EXPECT_NE(text.find("native_fx_shadows          incl  20.0000  excl   5.0000"), std::string::npos) << text;
+	EXPECT_NE(text.find("native_shadow_decal        incl   8.0000"), std::string::npos) << text;
+	EXPECT_NE(text.find("shadows (per frame): seen 100 skipped 40 decals 30 volumes 29"), std::string::npos) << text;
+}

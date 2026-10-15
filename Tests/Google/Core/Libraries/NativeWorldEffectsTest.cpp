@@ -536,40 +536,6 @@ TEST(NativeWorldEffectsTest, PlanarVolumeShadowIsBlendedOncePerPixel)
                     NativeWorldEffects::stats().volumeShadows);
         EXPECT_GT(changed, 150u);
         EXPECT_GE(NativeWorldEffects::stats().volumeShadows, 1u);
-        std::printf("shadow reuse: hits=%u misses=%u uncached=%u radius=%.1f\n", NativeWorldEffects::stats().shadowCacheHits, NativeWorldEffects::stats().shadowCacheMisses, NativeWorldEffects::stats().shadowUncached, tank->Get_Bounding_Sphere().Radius);
-
-        // X64.35 shadow-volume reuse: an unchanged caster is served from the cache on the next frame and the image is
-        // bit-identical; moving the caster recomputes the silhouette (the image changes) and a return restores it.
-        // (1) The full-size tank has a bounding radius above 30: it keeps the canonical path (counted as uncached).
-        const unsigned uncachedBefore = NativeWorldEffects::stats().shadowUncached;
-        const std::vector<unsigned char> sameFrame = rig.render(&input, 1);
-        EXPECT_GT(NativeWorldEffects::stats().shadowUncached, uncachedBefore);
-        EXPECT_EQ(Differing(oneShadow, sameFrame), 0u);
-        // (2) Scaled to a planar caster (radius <= 30) the shadow is cached: miss, then exact hits.
-        tank->Scale(0.5f);
-        ASSERT_LE(tank->Get_Bounding_Sphere().Radius, 30.0f);
-        const unsigned hitsBefore = NativeWorldEffects::stats().shadowCacheHits;
-        const unsigned missesBefore = NativeWorldEffects::stats().shadowCacheMisses;
-        const std::vector<unsigned char> planarFirst = rig.render(&input, 1);
-        EXPECT_GT(NativeWorldEffects::stats().shadowCacheMisses, missesBefore);
-        const std::vector<unsigned char> planarReused = rig.render(&input, 1);
-        EXPECT_GT(NativeWorldEffects::stats().shadowCacheHits, hitsBefore);
-        EXPECT_EQ(Differing(planarFirst, planarReused), 0u);   // the reused frame is bit-identical to the fresh one
-        EXPECT_GT(Differing(noShadow, planarFirst), 0u);
-        // (3) Moving the caster recomputes (new silhouette position); moving it back restores the earlier image.
-        Matrix3D moved(1);
-        moved.Set_Translation(Vector3(3.0f, 0.0f, 12.0f));
-        tank->Set_Transform(moved);
-        const unsigned missesBeforeMove = NativeWorldEffects::stats().shadowCacheMisses;
-        const std::vector<unsigned char> movedImage = rig.render(&input, 1);
-        EXPECT_GT(NativeWorldEffects::stats().shadowCacheMisses, missesBeforeMove);
-        EXPECT_GT(Differing(planarFirst, movedImage), 0u);
-        tank->Set_Transform(tm);
-        const std::vector<unsigned char> restored = rig.render(&input, 1);
-        EXPECT_EQ(Differing(planarFirst, restored), 0u);
-        tank->Scale(2.0f);   // back to full size for the remaining assertions
-        const std::vector<unsigned char> fullAgain = rig.render(&input, 1);
-        EXPECT_EQ(Differing(oneShadow, fullAgain), 0u);
 
         // A second shadow of the same object covers the same pixels; the stencil lets each pixel blend once,
         // so the image is identical to the single-shadow image.

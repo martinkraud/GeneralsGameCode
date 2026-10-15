@@ -8,7 +8,6 @@
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
-#include "W3DDevice/GameClient/NativeShadowVolumeCache.h"
 #include "Common/GlobalData.h"
 #include "Common/StartupDiagnostics.h"
 #include "GameClient/ParticleSys.h"
@@ -25,6 +24,7 @@
 #include <WW3D2/meshmdl.h>
 #include <WW3D2/matinfo.h>
 #include <cstdio>
+#include <optional>
 #include <cstring>
 #include <deque>
 #include <WW3D2/camera.h>
@@ -536,12 +536,9 @@ public:
 
 NativeShadowManager *g_shadowManager = nullptr;
 unsigned g_shadowColor = 0x7fa0a0a0;
-// X64.35: exact reuse of planar shadow-volume geometry (see NativeShadowVolumeCache.h). Render-only.
-NativeShadowVolume::Cache g_volumeCache;
 
 void NativeShadow::release()
 {
-    g_volumeCache.forget(this);   // an entry can never outlive its shadow (or be matched by a reused address)
     if (g_shadowManager) g_shadowManager->Remove(this);
     delete this;
 }
@@ -575,6 +572,7 @@ bool TerrainLatticeFlip(int lx, int ly)
 // Terrain-conforming textured grid (SHADOW_DECAL, ALPHA_DECAL, ADDITIVE_DECAL and radius decals).
 void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, float cy, float yaw, float distance)
 {
+    PERFORMANCE_PROFILE_SCOPE(NativeShadowDecal);   // X64.35 attribution only
     float sx = shadow.sizeX(), sy = shadow.sizeY();
     if (!(sx > 0.0f) || !(sy > 0.0f)) {
         if (const RenderObjClass *object = shadow.object()) {
@@ -637,6 +635,7 @@ void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, floa
     b.layer = NativeWorldObjects::EffectLayerDecal;
     if (NativeWorldObjects::emitEffect(backend, b)) {
         if (shadow.object()) ++g_stats.shadowDecals; else ++g_stats.decals;
+        PerformanceProfile::count(PerformanceProfile::Counter::ShadowDecals);
     } else ++g_stats.dropped;
 }
 
@@ -705,10 +704,8 @@ void EmitVolumeShadow(D3D11Backend &backend, const NativeShadow &shadow, const V
 
     static std::vector<WorldVertexXYZDUV2> vertices;
     static std::vector<unsigned short> indices;
-    const WorldVertexXYZDUV2 *emitVertices = nullptr;
-    unsigned emitVertexCount = 0;
-    const unsigned short *emitIndices = nullptr;
-    unsigned emitIndexCount = 0;
+    std::optional<PerformanceProfile::Scope> project;
+    project.emplace(PerformanceProfile::Category::NativeShadowProject);
     vertices.resize(positions.size());
     // renderStencilShadows: SRCBLEND = DESTCOLOR, DESTBLEND = ZERO with the shadow color: the framebuffer is
     // multiplied by the shadow color (its alpha is not used) wherever the stencil is set.
@@ -721,23 +718,6 @@ void EmitVolumeShadow(D3D11Backend &backend, const NativeShadow &shadow, const V
     const float g0 = GroundHeight(center.X, center.Y);
     const float gx = planar ? (GroundHeight(center.X + 5.0f, center.Y) - g0) / 5.0f : 0.0f;
     const float gy = planar ? (GroundHeight(center.X, center.Y + 5.0f) - g0) / 5.0f : 0.0f;
-    if (planar) {
-        // Planar casters (units, trees, props): exact reuse when every input of the projection is bit-identical.
-        PERFORMANCE_PROFILE_SCOPE(NativeShadowProject);
-        NativeShadowVolume::Inputs in;
-        in.positions = positions.data(); in.positionCount = static_cast<unsigned>(positions.size());
-        in.triangles = triangles.data(); in.indexCount = static_cast<unsigned>(triangles.size());
-        in.light = lightDirection; in.color = color; in.center = center; in.g0 = g0; in.gx = gx; in.gy = gy;
-        const unsigned long long evictionsBefore = g_volumeCache.statistics().evictions;
-        const NativeShadowVolume::Cache::Result r = g_volumeCache.get(&shadow, in);
-        emitVertices = r.vertices; emitVertexCount = r.vertexCount; emitIndices = r.indices; emitIndexCount = r.indexCount;
-        if (r.hit) { ++g_stats.shadowCacheHits; PerformanceProfile::count(PerformanceProfile::Counter::ShadowCacheHits); }
-        else { ++g_stats.shadowCacheMisses; PerformanceProfile::count(PerformanceProfile::Counter::ShadowCacheMisses); }
-        const unsigned long long evicted = g_volumeCache.statistics().evictions - evictionsBefore;
-        if (evicted) PerformanceProfile::count(PerformanceProfile::Counter::ShadowEvictions, static_cast<PerformanceProfile::Tick>(evicted));
-    } else {
-        ++g_stats.shadowUncached;
-        PerformanceProfile::count(PerformanceProfile::Counter::ShadowUncached);
     for (size_t i = 0; i < positions.size(); ++i) {
         const Vector3 &p = positions[i];
         float x = p.X, y = p.Y, ground = g0;
@@ -764,22 +744,22 @@ void EmitVolumeShadow(D3D11Backend &backend, const NativeShadow &shadow, const V
     }
     indices.resize(triangles.size());
     for (size_t i = 0; i < triangles.size(); ++i) indices[i] = static_cast<unsigned short>(triangles[i]);
-        emitVertices = vertices.data(); emitVertexCount = static_cast<unsigned>(vertices.size());
-        emitIndices = indices.data(); emitIndexCount = static_cast<unsigned>(indices.size());
-    }
+    project.reset();
 
     PERFORMANCE_PROFILE_SCOPE(NativeShadowEmit);
     NativeWorldObjects::EffectBatch b = {};
-    b.vertices = emitVertices; b.vertexCount = emitVertexCount;
-    b.indices = emitIndices; b.indexCount = emitIndexCount;
+    b.vertices = vertices.data(); b.vertexCount = static_cast<unsigned>(vertices.size());
+    b.indices = indices.data(); b.indexCount = static_cast<unsigned>(indices.size());
     b.blend = WorldBlend::Multiply;
     b.depthWrite = false;
     b.doubleSided = true;
     b.stencilOnce = true;
     b.distance = distance;
     b.layer = NativeWorldObjects::EffectLayerDecal;
-    if (NativeWorldObjects::emitEffect(backend, b)) ++g_stats.volumeShadows;
-    else ++g_stats.dropped;
+    if (NativeWorldObjects::emitEffect(backend, b)) {
+        ++g_stats.volumeShadows;
+        PerformanceProfile::count(PerformanceProfile::Counter::ShadowVolumes);
+    } else ++g_stats.dropped;
 }
 
 void CollectShadows(D3D11Backend &backend, CameraClass &camera)
@@ -797,17 +777,19 @@ void CollectShadows(D3D11Backend &backend, CameraClass &camera)
     const Vector3 cameraPosition = camera.Get_Position();
     const bool volumes = !TheGlobalData || TheGlobalData->m_useShadowVolumes;
     const bool decals = !TheGlobalData || TheGlobalData->m_useShadowDecals;
+    unsigned loopSeen = 0, loopSkipped = 0;
     for (NativeShadow *shadow : g_shadowManager->shadows) {
         ++g_stats.shadowsSeen;
-        if (!shadow->isRenderEnabled() || shadow->isInvisibleEnabled()) { ++g_stats.shadowCulled; continue; }
+        ++loopSeen;
+        if (!shadow->isRenderEnabled() || shadow->isInvisibleEnabled()) { ++g_stats.shadowCulled; ++loopSkipped; continue; }
         const ShadowType type = shadow->shadowType();
         float x, y, z;
         shadow->position(x, y, z);
         float yaw = shadow->angle();
         RenderObjClass *object = shadow->object();
         if (object) {
-            if (!object->Is_Not_Hidden_At_All()) continue;
-            if (camera.Cull_Sphere(object->Get_Bounding_Sphere())) continue;
+            if (!object->Is_Not_Hidden_At_All()) { ++loopSkipped; continue; }
+            if (camera.Cull_Sphere(object->Get_Bounding_Sphere())) { ++loopSkipped; continue; }
             const Vector3 p = object->Get_Position();
             x = p.X; y = p.Y; z = p.Z;
             yaw = object->Get_Transform().Get_Z_Rotation();
@@ -827,6 +809,8 @@ void CollectShadows(D3D11Backend &backend, CameraClass &camera)
             EmitVolumeShadow(backend, *shadow, light, distance, triangleBudget);
         }
     }
+    PerformanceProfile::count(PerformanceProfile::Counter::ShadowsSeen, loopSeen);
+    PerformanceProfile::count(PerformanceProfile::Counter::ShadowsSkipped, loopSkipped);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1340,7 +1324,6 @@ void uninstall()
         g_shadowManager = nullptr;
     }
     g_shroud = ShroudState{};
-    g_volumeCache.clear();
     g_scorches.clear();
     g_staticScorches.clear();
 }
