@@ -642,3 +642,53 @@ is that the cached work is ~0.13 ms of the 1.0 ms.
 counter, and add a scope + count around `EmitDecal` and the loop so that the 0.88 ms remainder is attributed
 (a measurement step, not an optimization) before choosing the next target. Nothing is implemented in this analysis and the
 radius cut-off is unchanged.
+
+
+---
+
+# 22. Human observation during C-S1: helicopter shadows pop in/out (suspected pre-existing; not fixed here)
+
+**Status of C-S1 visual acceptance: NOT performed.** The reviewer did not inspect shadow fidelity during the capture, so
+`x64-35-shadow-reuse` has no human visual shadow acceptance. (The performance decision in section 21 does not depend on it.)
+
+## 22.1 Observation
+A helicopter can be visible at the right edge of the screen while its shadow is absent; the shadow appears suddenly when the
+helicopter moves further in, and can disappear again while the helicopter is still clearly inside the view.
+
+## 22.2 Does it touch the cache path? Evidence says no
+1. **The visibility/culling code was not changed by the batch.** `git diff f10c8a0eb..HEAD` of `NativeWorldEffects.cpp`
+   touches only `EmitVolumeShadow` (projection/emit), `NativeShadow::release`, `uninstall` and the new scopes; the lines
+   `isRenderEnabled()`, `isInvisibleEnabled()`, `Is_Not_Hidden_At_All()`, `camera.Cull_Sphere(object->Get_Bounding_Sphere())`
+   and the `shadowCulled` accounting in `CollectShadows` have no added or removed lines (0 matches in the diff). The cull
+   originates from X64.29 (`ee13ca8c6`).
+2. **Ordering:** the cache is consulted last, after every early-out (render-enabled, not invisible, not hidden, frustum
+   test, gather non-empty, triangle budget). A shadow that is skipped by an early-out never reaches the cache; the symptom
+   "no shadow drawn" is an early-out symptom.
+3. **The cache cannot produce absence or a stale pose:** for a given set of inputs it returns the geometry the canonical
+   loop would produce (bit-exact key over positions, topology, light, colour, center, ground samples); a moving helicopter
+   changes the positions every frame, so it always misses and is computed fresh. A first-sight shadow has no entry.
+4. The behavior is described for a helicopter at altitude: the helicopter bounding radius may exceed 30 (then it is not
+   cached at all) and the observed pop-in happens on first appearance, before any cache entry exists.
+Conclusion: **independent of the cache; treated as a pre-existing (suspected) shadow correctness issue.** It cannot yet be
+proven pre-existing by an old binary run (no one has compared x64-34 or earlier), only that the code path was not touched.
+
+## 22.3 Suspects (from reading the current code; not verified)
+| # | suspect | where | how it would look |
+|---|---|---|---|
+| 1 | **Caster-sphere culling instead of shadow-bounds culling**: the volume/decal shadow is skipped when the *caster's* bounding sphere is outside the frustum, although a shadow is located elsewhere (projected along the light, `altitude x light slope` away, or straight below for decals). | `CollectShadows`: `camera.Cull_Sphere(object->Get_Bounding_Sphere())` | shadow missing while the ground region it would cover is visible, or (mirror case) absent/late appearance relative to the aircraft; pops when the caster sphere crosses the frustum |
+| 2 | **Frame triangle budget** `triangleBudget = 200000` shared by all volume shadows in registration order, silently skipping later casters (`return` without a counter). Aircraft are typically created later than the ground army. | `EmitVolumeShadow` | whole shadows toggling as other casters enter/leave view or change LOD in busy scenes; newest casters lose first |
+| 3 | **HLod LOD / alpha rotor meshes**: `GatherShadowGeometry` takes the current LOD level and skips alpha/translucent meshes unless flagged `CAST_SHADOW`; a different LOD or a rotor-only model yields "no geometry" (`shadowNoGeometry`). | `GatherShadowGeometry` | shadow vanishes when the LOD switches |
+| 4 | **Drawable-driven flags**: `setShadowsEnabled(false)` (stealth look), `enableShadowInvisible(fullyObscuredByShroud)` toggled as the aircraft crosses shroud/fog boundaries, hidden render object. | `W3DModelDraw` shadow flags, `Drawable.cpp` | pop on/off at fog or stealth state changes |
+| 5 | **Widescreen/viewport geometry**: the native world uses the 3D camera frustum (same camera as drawing), so a plain 4:3 mismatch there is not apparent; but drawable-level visibility used by the game client (view-region based culling, the 0.80 viewport height scale, centered HUD island) is a place where an old 4:3 assumption could hide. | `W3DView`/GameClient visibility | pop-in near the left/right edges that depends on aspect ratio |
+Caster versus shadow position (the question raised): for volume shadows `EmitVolumeShadow` projects each vertex along the
+light onto the terrain; for decals the grid is placed under the caster. A high helicopter can therefore have its shadow
+meaningfully displaced from its screen position, and the caster-only cull in suspect 1 ignores that displacement.
+
+## 22.4 How to settle it (next, separate from the performance work; nothing changed here)
+* Per-reason shadow drop counters in the receipt: skipped by disabled / invisible / hidden / frustum / no geometry / budget
+  / over 60k vertices / emit refused, split by aircraft vs other (cheap, measurement only).
+* One native look with the counters: a helicopter flying in from the right, plus the same on `x64-34-smooth-presentation`
+  and the Win32 reference if available, to establish whether the behavior predates X64.35 and whether the reference
+  renderer shows it.
+* Only then choose a fix (e.g. cull on the shadow's projected bounds, budget by distance rather than registration order).
+Not fixed, not part of the C-S1 performance analysis, and the cache is unchanged.
