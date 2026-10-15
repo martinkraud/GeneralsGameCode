@@ -201,3 +201,80 @@ Full analysis: `X64_35_BASELINE_ANALYSIS_AND_DISK_AUDIT.md` section 10. Recorded
 * **Recommended first batch: attribution scopes for the unclassified display_draw time + `calculateZones` scope +
   sentence-texture labels (no behavior change), then ONE Heavy uncapped run.** No optimization has been made;
   X64.35 is not accepted.
+
+
+---
+
+# 17. x64-35-attribution - attribute the unclassified display_draw time (measurement only)
+
+Approved after the C-U1 analysis (section 16). Starting point `f10c8a0eb`; implementation `10b4503e9`. **No optimization,
+no behavior change.** The D3D11 state cache was deliberately not started (bounded to <= 4 %).
+
+## 17.1 Why the 2.97 ms was invisible
+In native play the world is drawn by `W3DDisplay::drawOrdinaryMenuFrame` (W3DDisplayOrdinaryHost.cpp), not by the legacy
+loop in `W3DDisplay::draw` that carries the old `SceneView`/`RenderEnd` scopes, so those categories read 0. The native
+frame is: `Begin_Render` -> terrain (`HeightMapRenderObjClass::renderNative`) -> world objects
+(`NativeWorldObjects::render`: gather, per-object CPU mesh processing/lighting, effects collection, geometry upload,
+batch submission) -> world overlays -> `InGameUI::DRAW` (windows, developer overlay) -> mouse -> `End_Render`.
+
+## 17.2 New profiler categories (frames.csv / categories.csv / receipt)
+| category | scope | nesting |
+|---|---|---|
+| `native_begin_render` | `WW3D::Begin_Render` | top level |
+| `native_terrain` | whole `renderNative` | top level |
+| `native_terrain_overlays` | shoreline / extra blend / roads / bridges (to end of `renderNative`) | in terrain |
+| `native_objects` | whole `NativeWorldObjects::render` | top level |
+| `native_obj_gather` | drawable/shroud queries and input building | in objects |
+| `native_obj_process` | per-object cull + `ProcessObject` (skinning, lighting, vertex build) | in objects |
+| `native_fx_ground` / `_shadows` / `_water` / `_shroud` / `_particles` | the five `NativeWorldEffects::collect` families | in objects |
+| `native_geom_upload` | `Update_Geometry_Vertices/Indices` for the chunks | in objects |
+| `native_submit` | layer sort + `Submit_World` loop | in objects |
+| `native_world_overlays` | `W3DView::drawNativeWorldOverlays` (selection rings, icons) | top level |
+| `native_ui` | `InGameUI::DRAW` / `winRepaint` | top level |
+| `native_dev_overlay` | `DeveloperTools::drawOverlay` (developer-only text) | in native_ui |
+| `native_mouse` | cursor | top level |
+| `native_end_render` | `WW3D::End_Render` (flush + Present) | top level |
+| `zone_calc` | `m_zoneManager.calculateZones` | in `path_queue` (logic) |
+
+The receipt gains a `native_frame_phases` table: for each category **inclusive** and **exclusive** ms per outer frame
+averaged over all frames and calls per frame, plus `display_draw_unattributed` = `display_draw` inclusive minus the seven
+top-level native phases. Read exclusive time to avoid double counting nested scopes. `zone_calc` calls per frame x 30
+ticks tells how often zones are recalculated; `path_queue` exclusive time dropping by the `zone_calc` amount confirms or
+rejects the hypothesis for the 20-30 ms spikes (no change to zone behavior, ordering or determinism).
+
+## 17.3 Sentence texture labels
+`Render2DSentenceClass` remembers the first 44 printable characters of the text it builds and gives the resulting
+`TextureClass` a diagnostic label (`TextureClass::Set_Diagnostic_Label`, never used for lookup). The D3D11 bridge records
+the label as `text:<characters>` in the creation table, so the `=== Texture creation attribution ===` rows distinguish
+`text:DEV MODE | FPS ...` (the developer overlay) from game HUD strings. Texture creation behavior and lifetime are not
+changed.
+
+## 17.4 Overhead and dormancy
+Every scope is `PerformanceProfile::Scope`, whose constructor reads one thread-local pointer and does nothing when no
+capture is running; the `std::optional<Scope>` wrappers in `NativeWorldObjects` behave the same. No allocation, no
+clock read and no D3D11 call happens outside a capture. Inside a capture each scope costs two QPC reads (about 20
+scopes per frame, order of microseconds).
+
+## 17.5 Validation
+Win64: ctest 16/16, g 239 and z 238 gtests; Win32: ctest 23/23, g 209 and z 209 gtests (shared engine, Generals and Zero
+Hour); all Python contracts (the Win32-reference byte-identity contract needed the new include in HeightMap.cpp guarded
+by `_WIN64`) and PowerShell workflow tests pass. New tests: `PerformanceReceipt.NativePhaseTableSplitsDisplayDrawWithoutDoubleCounting`
+(nesting, exclusive time, unattributed remainder) and the extended instrumentation contract.
+
+## 17.6 Candidate
+`build/dev-runtimes/native/Generals/x64-35-attribution` (staged and preflighted, not run by the agent):
+* `game/generalsv.exe` SHA256 `996B972ECE88DEBF9F31ECA3532ED326F5D3569719A43086C6826B17B5E75B68`
+* `game/generalsv.pdb` SHA256 `BDF59316C6299E86157CDB3B8F10B0D72F0DE8D99BB7E33782FFD6D2DC2C9572`
+Steam untouched.
+
+## 17.7 The ONE human run (same procedure as C-U1)
+Laptop plugged in, Best performance mode, same resolution/settings, Smooth OFF, VSync off.
+1. `mkdir C:\perf\x64-35-attribution\C-A1`
+2. From `build\dev-runtimes\native\Generals\x64-35-attribution\game`:
+```
+generalsv.exe -devMode -quickGame -devFps uncapped -performanceProfile C:\perf\x64-35-attribution\C-A1
+```
+3. When the match is playing, hold **Ctrl+Alt+Shift** and press **F10**, **O**, **B**; wait 5 seconds; **F11**.
+4. Let the 60 s capture finish (the recorder stops at 16,384 frames if the fps is very high), exit through the game menu.
+5. Send everything in `C:\perf\x64-35-attribution\C-A1` (`*-summary.txt` first: it now contains `native_frame_phases`).
+Keep the run out of the A/B/C statistics. Nothing else is required.
