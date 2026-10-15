@@ -27,7 +27,12 @@ enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisite
 	// X64.35 renderer measurement (deltas of D3D11Backend::Render_Stats): state_requested = calls the per-draw re-issue
 	// makes, state_changed = how many differ from the previously issued value.
 	Draws2D, DrawsWorld, DrawsWater, Triangles, StateRequested, StateChanged, TextureBinds, ShaderChanges, TargetChanges,
-	BufferChanges, Count };
+	BufferChanges,
+	// X64.35 baseline2. *Ticks are QueryPerformanceCounter ticks measured inside the D3D11 backend (per-frame deltas).
+	// GpuMicros/GpuFrames: GPU timestamp span of frames retrieved this frame (lagging by up to 3 frames).
+	// TexturesLive/WorkingSetMb/PrivateMb are gauges; PageFaults is a per-frame delta of the process fault counter.
+	PresentTicks, SubmitTicks, UploadTicks, GpuMicros, GpuFrames, TexturesDestroyed, TextureUpdates, TextureUpdateKb,
+	TexturesLive, PageFaults, WorkingSetMb, PrivateMb, Count };
 constexpr unsigned int CategoryCount = static_cast<unsigned int>(Category::Count);
 constexpr unsigned int CounterCount = static_cast<unsigned int>(Counter::Count);
 constexpr unsigned int MaxFrames = 16384, MaxDepth = 64;
@@ -117,7 +122,7 @@ private:
 struct Metadata
 {
 	std::string title, git, timestamp, startedUtc, label, build, mode;
-	std::string hardware, renderContext;   // X64.35: machine + renderer identification so receipts are not compared blindly
+	std::string hardware, renderContext, devFps, extension;   // X64.35: machine + renderer identification so receipts are not compared blindly
 	bool dirty=false, interpolation=false;
 	std::uint64_t frequency=1;
 };
@@ -126,6 +131,13 @@ void report(const Recorder& recorder, const Metadata& metadata, std::ostream& su
 Tick now();
 // X64.35: one-line renderer/display context supplied by the display host (adapter, size, vsync, cap).
 void setRenderContext(const std::string& text);
+// X64.35 baseline2: the display host supplies extra summary text (texture-creation attribution). onStart runs when a
+// capture starts (snapshot), onReport when the report is written.
+void setCaptureExtension(void(*onStart)(), std::string(*onReport)());
+// Per-frame process page-fault delta and working-set gauges (no-op unless a capture is running).
+void samplePageFaults();
+// Dev-only frame-rate override applied to the interactive quick game: empty string = none, otherwise the text given.
+void setDevFpsDescription(const std::string& text);
 const std::string& renderContext();
 Tick frequency();
 extern thread_local Recorder* activeRecorder;

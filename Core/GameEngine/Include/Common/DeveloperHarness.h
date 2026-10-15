@@ -86,6 +86,18 @@ bool validScenario(const char* name);
 bool allowAction(bool dev, bool scenario, bool offline, Action action);
 inline bool canSpawn(unsigned existing,unsigned count) { return existing<=MaxDevUnits && count<=MaxDevUnits-existing; }
 inline bool timedOut(std::uint64_t now,std::uint64_t deadline) { return now>deadline; }
+// X64.35 baseline2: developer-only frame cap override for the interactive quick game. "uncapped" maps to the engine's
+// UncappedFpsValue (1000000); an integer must be 15..1000. No other effect: simulation stays at 30 ticks/s.
+constexpr int DevFpsUncapped=1000000;
+inline bool parseDevFps(const char* text,int& out)
+{
+    if(!text||!*text)return false;
+    const char* u="uncapped";const char* p=text;
+    while(*u&&*p&&((*p|0x20)==*u)){++u;++p;}
+    if(!*u&&!*p){out=DevFpsUncapped;return true;}
+    long v=0;for(p=text;*p;++p){if(*p<'0'||*p>'9')return false;v=v*10+(*p-'0');if(v>1000)return false;}
+    if(v<15)return false;out=static_cast<int>(v);return true;
+}
 class Controller
 {
 public:
@@ -108,6 +120,9 @@ bool devModeEnabled();
 void requestQuickGame();
 bool quickGameEnabled();
 bool configureDevPreset(const char* value);
+bool configureDevFps(const char* value);   // -devFps <15..1000|uncapped>; false when rejected
+int scenarioFpsLimit();                    // 120 unless -devFps was given
+bool scenarioFpsOverridden();
 // Explicit slot ownership predicate, also used by the interactive runtime.
 bool validDevOwners(int humanIndex,bool humanActive,bool humanType,
                     int enemyIndex,bool enemyActive,bool enemyComputer);

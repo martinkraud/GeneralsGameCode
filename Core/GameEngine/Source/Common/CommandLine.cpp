@@ -1210,6 +1210,12 @@ static Int parseDevPreset(char *args[], int num)
     if(!DeveloperTools::configureDevPreset(args[1]))OutputDebugStringA("-devPreset supports battle only.\n");
     return 2;
 }
+static Int parseDevFps(char *args[], int num)
+{
+    if(num<2 || args[1][0]=='-')return 1;
+    if(!DeveloperTools::configureDevFps(args[1]))OutputDebugStringA("-devFps accepts 15..1000 or uncapped.\n");
+    return 2;
+}
 // Initial Params are parsed before Windows Creation.
 // Note that except for TheGlobalData, no other global objects exist yet when these are parsed.
 static Int parseGroundInterpolation(char *args[], int num)
@@ -1233,6 +1239,7 @@ static CommandLineParam paramsForStartup[] =
 	{ "-devMode", parseDevMode },
 	{ "-quickGame", parseQuickGame },
 	{ "-devPreset", parseDevPreset },
+	{ "-devFps", parseDevFps },
 	{ "-performanceProfile", parsePerformanceProfile },
 	{ "-pathProfile", parsePathProfile },
 	{ "-groundInterpolation", parseGroundInterpolation },

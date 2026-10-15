@@ -324,3 +324,47 @@ TEST(PerformanceReceipt, ReportsRendererStateCountersAndHardwareContext)
 	EXPECT_NE(text.find("hardware: cpu=test; logical_cores=14; ram_mb=16384"), std::string::npos);
 	EXPECT_NE(text.find("render_context: adapter=[Test GPU]"), std::string::npos);
 }
+
+TEST(PerformanceReceipt, ReportsPresentSubmitGpuTextureAndMemoryFields)
+{
+	using namespace PerformanceProfile;
+	activeRecorder = nullptr;
+	Recorder r(8);
+	r.start(0);
+	for (int i = 0; i < 4; ++i)
+	{
+		ASSERT_TRUE(r.beginFrame(i * 10, i, 1000000, 1000000));
+		activeRecorder = &r;
+		r.add(Counter::SubmitTicks, 2);
+		r.add(Counter::PresentTicks, 4);
+		r.add(Counter::UploadTicks, 1);
+		r.add(Counter::GpuMicros, 3000);   // 3 ms
+		r.add(Counter::GpuFrames, 1);
+		r.add(Counter::TexturesCreated, 2);
+		r.add(Counter::TexturesDestroyed, 2);
+		r.add(Counter::TexturesLive, 500 + i);
+		r.add(Counter::PageFaults, 10);
+		r.add(Counter::WorkingSetMb, 900 + i);
+		r.add(Counter::PrivateMb, 700);
+		activeRecorder = nullptr;
+		r.endFrame(i * 10 + 10, i);
+	}
+	r.stop();
+	Metadata meta;
+	meta.frequency = 1000;
+	meta.devFps = "uncapped (-devFps)";
+	meta.extension = "\n=== Texture creation attribution (this capture) ===\n=== end texture attribution ===\n";
+	std::ostringstream summary, frames, categories, slow;
+	report(r, meta, summary, frames, categories, slow);
+	const std::string text = summary.str();
+	EXPECT_NE(text.find("fps_cap_override: uncapped (-devFps)"), std::string::npos);
+	EXPECT_NE(text.find("submit 2 present 4 texture_upload 1"), std::string::npos);
+	EXPECT_NE(text.find("frames_measured 4 avg_gpu_ms 3"), std::string::npos);
+	EXPECT_NE(text.find("textures: created 8 destroyed 8 live_end 503"), std::string::npos);
+	EXPECT_NE(text.find("page_faults 40 peak_faults_per_frame 10 working_set_mb_end 903"), std::string::npos);
+	EXPECT_NE(text.find("=== Texture creation attribution"), std::string::npos);
+	EXPECT_NE(text.find("=== end receipt ==="), std::string::npos);
+	// the previous receipt fields are all still present
+	for (const char *field : {"avg_draw_calls", "avg_draws_world", "avg_requested", "avg_texture_binds", "hardware:", "render_context:", "logic_ticks:"})
+		EXPECT_NE(text.find(field), std::string::npos) << field;
+}

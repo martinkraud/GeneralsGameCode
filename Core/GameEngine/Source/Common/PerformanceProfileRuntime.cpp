@@ -11,13 +11,19 @@
 #include <fstream>
 #include <memory>
 #include <ctime>
+#ifndef PSAPI_VERSION
+#define PSAPI_VERSION 2
+#endif
+#include <psapi.h>
 #include <intrin.h>
 #include <string>
 #include <cstring>
 #include <cstdio>
 namespace PerformanceProfile
 {
-namespace { std::string g_renderContext; }
+namespace { std::string g_renderContext, g_devFps; void(*g_extStart)()=nullptr; std::string(*g_extReport)()=nullptr; }
+void setCaptureExtension(void(*onStart)(), std::string(*onReport)()){g_extStart=onStart;g_extReport=onReport;}
+void setDevFpsDescription(const std::string& text){g_devFps=text;}
 void setRenderContext(const std::string& text){g_renderContext=text;}
 const std::string& renderContext(){return g_renderContext;}
 namespace {
@@ -71,7 +77,7 @@ void flush(const char* reason)
 	metadata.git=GitSHA1;metadata.dirty=GitUncommittedChanges;metadata.timestamp=stamp;
 	metadata.label=captureLabel;metadata.startedUtc=captureStartUtc;
 	metadata.build="MSVC "+std::to_string(_MSC_FULL_VER)+"; " __DATE__ " " __TIME__;
-	metadata.hardware=hardwareDescription();metadata.renderContext=renderContext();metadata.mode=reason;metadata.frequency=clockFrequency;metadata.interpolation=GroundTranslation::isEnabled();
+	metadata.hardware=hardwareDescription();metadata.devFps=g_devFps;if(g_extReport){try{metadata.extension=g_extReport();}catch(...){}}metadata.renderContext=renderContext();metadata.mode=reason;metadata.frequency=clockFrequency;metadata.interpolation=GroundTranslation::isEnabled();
 	report(*recorder,metadata,summary,frames,categories,slow);
 	bool written=true;
 	if(recorder->deepPaths())
@@ -100,7 +106,7 @@ bool startCapture(const char* label)
 {
 	if(!enabled || activeRecorder || !label || (recorder && recorder->running()))return false;
 	try {if(!recorder)recorder=std::make_unique<Recorder>(MaxFrames,pathDetails?MaxPaths:0);
-		captureLabel=std::string(label).substr(0,120);captureStartUtc=utcStamp();recorder->start(now());return true;}
+		captureLabel=std::string(label).substr(0,120);captureStartUtc=utcStamp();if(g_extStart)g_extStart();recorder->start(now());return true;}
 	catch(...){OutputDebugStringA("Stage4A: capture start failed.\n");return false;}
 }
 bool stopCapture(const char* reason)
@@ -109,6 +115,17 @@ bool stopCapture(const char* reason)
 	try {flush(reason);return true;}catch(...){OutputDebugStringA("Stage4A: capture stop failed.\n");return false;}
 }
 void enablePathDetails(){pathDetails=true;}
+void samplePageFaults()
+{
+	static DWORD last=0;static bool primed=false;
+	if(!activeRecorder){primed=false;return;}
+	PROCESS_MEMORY_COUNTERS_EX pmc{};pmc.cb=sizeof(pmc);
+	if(!GetProcessMemoryInfo(GetCurrentProcess(),reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc),sizeof(pmc)))return;
+	if(!primed){last=pmc.PageFaultCount;primed=true;}
+	count(Counter::PageFaults,pmc.PageFaultCount-last);last=pmc.PageFaultCount;
+	count(Counter::WorkingSetMb,static_cast<Tick>(pmc.WorkingSetSize>>20));
+	count(Counter::PrivateMb,static_cast<Tick>(pmc.PrivateUsage>>20));
+}
 bool configure(const char* path)
 {
 	try

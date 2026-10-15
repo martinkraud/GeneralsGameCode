@@ -16,6 +16,14 @@
 #include <map>
 #include <cstdio>
 #include <atomic>
+#include <vector>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 
 using Microsoft::WRL::ComPtr;
 namespace {
@@ -95,10 +103,12 @@ bool ValidateSampler(const Texture2DSampler &s)
     Unsupported();
 }
 std::atomic<unsigned> liveResidencies{0};
+std::atomic<unsigned> liveTextures{0};
+std::atomic<unsigned long long> texturesDestroyed{0};
 class Residency final : public Texture2DResidency {
 public:
-    Residency() { ++liveResidencies; }
-    ~Residency() override { --liveResidencies; }
+    Residency() { ++liveResidencies; ++liveTextures; }
+    ~Residency() override { --liveResidencies; --liveTextures; ++texturesDestroyed; }
     ComPtr<ID3D11Device> device;
     ComPtr<ID3D11Texture2D> texture;
     ComPtr<ID3D11ShaderResourceView> view;
@@ -281,6 +291,62 @@ struct D3D11Backend::Impl {
     const void *lastState[SlotCount] = {};
     RenderStats stats;
     std::string adapterDescription;
+    // --- X64.35 baseline2 measurement (no behavior change) ---
+    static unsigned long long Ticks() { LARGE_INTEGER q; QueryPerformanceCounter(&q); return static_cast<unsigned long long>(q.QuadPart); }
+    struct ScopedTicks {
+        unsigned long long &sink, start;
+        explicit ScopedTicks(unsigned long long &s) : sink(s), start(Ticks()) {}
+        ~ScopedTicks() { sink += Ticks() - start; }
+    };
+    struct GpuSlot { ComPtr<ID3D11Query> disjoint, begin, end; bool pending = false; };
+    static constexpr unsigned kGpuSlots = 4;
+    GpuSlot gpu[kGpuSlots];
+    unsigned gpuHead = 0, gpuTail = 0;
+    bool gpuEnabled = false, gpuOpen = false;
+    void GpuBegin()
+    {
+        if (!gpuEnabled || gpuOpen || !device) return;
+        GpuSlot &slot = gpu[gpuHead];
+        if (slot.pending) { ++stats.gpu_skipped; return; }          // ring full: this frame is not measured
+        if (!slot.disjoint) {
+            D3D11_QUERY_DESC q{}; q.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+            if (FAILED(device->CreateQuery(&q, &slot.disjoint))) { gpuEnabled = false; return; }
+            q.Query = D3D11_QUERY_TIMESTAMP;
+            if (FAILED(device->CreateQuery(&q, &slot.begin)) || FAILED(device->CreateQuery(&q, &slot.end))) { gpuEnabled = false; return; }
+        }
+        context->Begin(slot.disjoint.Get());
+        context->End(slot.begin.Get());
+        gpuOpen = true;
+    }
+    void GpuEnd()
+    {
+        if (!gpuOpen) return;
+        GpuSlot &slot = gpu[gpuHead];
+        context->End(slot.end.Get());
+        context->End(slot.disjoint.Get());
+        slot.pending = true; gpuOpen = false;
+        gpuHead = (gpuHead + 1) % kGpuSlots;
+    }
+    void GpuPoll()   // never blocks: results that are not ready yet are collected on a later frame
+    {
+        while (gpu[gpuTail].pending) {
+            GpuSlot &slot = gpu[gpuTail];
+            D3D11_QUERY_DATA_TIMESTAMP_DISJOINT dj{};
+            if (context->GetData(slot.disjoint.Get(), &dj, sizeof(dj), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK) break;
+            UINT64 b = 0, e = 0;
+            if (context->GetData(slot.begin.Get(), &b, sizeof(b), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK ||
+                context->GetData(slot.end.Get(), &e, sizeof(e), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK) break;
+            if (dj.Disjoint || !dj.Frequency || e < b) ++stats.gpu_disjoint;
+            else { stats.gpu_ns += (e - b) * 1000000000ull / dj.Frequency; ++stats.gpu_frames; }
+            slot.pending = false;
+            gpuTail = (gpuTail + 1) % kGpuSlots;
+        }
+    }
+    struct TexKey { std::string label; unsigned entry, w, h, fmt; bool operator<(const TexKey &o) const {
+        if (entry != o.entry) return entry < o.entry; if (w != o.w) return w < o.w; if (h != o.h) return h < o.h;
+        if (fmt != o.fmt) return fmt < o.fmt; return label < o.label; } };
+    std::map<TexKey, std::pair<unsigned long long, unsigned long long>> textureTable;   // created, bytes (bounded)
+    void NoteTexture(unsigned entry, unsigned w, unsigned h, unsigned fmt, unsigned long long bytes);
     void Note(Slot slot, const void *value)
     {
         ++stats.state_requested;
@@ -603,9 +669,32 @@ UploadImage ConvertForUpload(const Texture2DCPUContent &content)
     return out;
 }
 std::atomic<unsigned> dynamicUploads{0};
+thread_local std::string creationLabel;
 }
+void D3D11Backend::Set_Creation_Label(const char *label) { creationLabel = label ? label : ""; }
+void D3D11Backend::Impl::NoteTexture(unsigned entry, unsigned w, unsigned h, unsigned fmt, unsigned long long bytes)
+{
+    stats.texture_bytes_created += bytes;
+    TexKey key{creationLabel, entry, w, h, fmt};
+    auto it = textureTable.find(key);
+    if (it == textureTable.end()) {
+        if (textureTable.size() >= 512) { key.label = "(other)"; key.w = key.h = key.fmt = 0; }   // bounded
+        it = textureTable.emplace(key, std::make_pair(0ull, 0ull)).first;
+    }
+    ++it->second.first; it->second.second += bytes;
+}
+std::vector<D3D11Backend::TextureCreationRow> D3D11Backend::Texture_Creation_Table() const
+{
+    std::vector<TextureCreationRow> rows;
+    for (const auto &kv : impl->textureTable)
+        rows.push_back({kv.first.label, kv.first.entry, kv.first.w, kv.first.h, kv.first.fmt, kv.second.first, kv.second.second});
+    return rows;
+}
+unsigned D3D11Backend::Live_Textures() const { return liveTextures.load(); }
+void D3D11Backend::Set_Gpu_Timing(bool enabled) { impl->gpuEnabled = enabled; }
 Texture2DResidency *D3D11Backend::Create_Content_Residency(const Texture2DCPUContent &content)
 {
+    Impl::ScopedTicks timing(impl->stats.upload_ticks);
     auto result = std::make_unique<Residency>();
     result->device = impl->device; result->description = content.Describe();
     const UploadImage image = ConvertForUpload(content);
@@ -616,10 +705,12 @@ Texture2DResidency *D3D11Backend::Create_Content_Residency(const Texture2DCPUCon
     Check(impl->device->CreateTexture2D(&d, &data, &result->texture), "Upload sentence texture");
     Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create sentence SRV");
     ++impl->textures;
+    impl->NoteTexture(0, d.Width, d.Height, static_cast<unsigned>(d.Format), static_cast<unsigned long long>(image.pitch) * d.Height);
     return result.release();
 }
 Texture2DResidency *D3D11Backend::Create_Dynamic_Content_Residency(const Texture2DCPUContent &content)
 {
+    Impl::ScopedTicks timing(impl->stats.upload_ticks);
     auto result = std::make_unique<Residency>();
     result->device = impl->device; result->description = content.Describe();
     result->dynamic = true;
@@ -632,10 +723,12 @@ Texture2DResidency *D3D11Backend::Create_Dynamic_Content_Residency(const Texture
     Check(impl->device->CreateTexture2D(&d, &data, &result->texture), "Upload dynamic UI texture");
     Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create dynamic UI SRV");
     ++impl->textures;
+    impl->NoteTexture(1, d.Width, d.Height, static_cast<unsigned>(d.Format), static_cast<unsigned long long>(image.pitch) * d.Height);
     return result.release();
 }
 void D3D11Backend::Update_Content_Residency(Texture2DResidency &residency, const Texture2DCPUContent &content)
 {
+    Impl::ScopedTicks timing(impl->stats.upload_ticks);
     auto *resource = dynamic_cast<Residency *>(&residency);
     if (!resource || !resource->dynamic || resource->device.Get() != impl->device.Get()) Unsupported();
     const auto d = content.Describe();
@@ -644,6 +737,7 @@ void D3D11Backend::Update_Content_Residency(Texture2DResidency &residency, const
     const UploadImage image = ConvertForUpload(content);
     impl->context->UpdateSubresource(resource->texture.Get(), 0, nullptr, image.source, image.pitch, 0);
     ++dynamicUploads;
+    ++impl->stats.texture_updates; impl->stats.texture_update_bytes += static_cast<unsigned long long>(image.pitch) * d.height;
 }
 unsigned D3D11Backend::Dynamic_Uploads() const { return dynamicUploads.load(); }
 void D3D11Backend::Bind_Content(Texture2DResidency *content, const Texture2DSampler &sampler)
@@ -675,6 +769,8 @@ void D3D11Backend::Bind_Content(Texture2DResidency *content, const Texture2DSamp
 }
 void D3D11Backend::Submit_Render2D_Content(const Render2DSubmission &s, Texture2DResidency *content, const Texture2DSampler &sampler)
 {
+    Impl::ScopedTicks timing(impl->stats.submit_ticks);
+    impl->GpuBegin();
     if (s.texture) Unsupported(); // explicit neutral-content route, never ignore logical identity
     Bind_Content(content, sampler); Draw(s);
 }
@@ -756,7 +852,14 @@ void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene =
 void D3D11Backend::End_Scene(bool flip) { if (!impl->scene) Unsupported(); impl->scene = false; if (flip) Flip_To_Primary(); }
 void D3D11Backend::Flip_To_Primary() {
     if (!impl->swapchain) Unsupported();
-    const HRESULT result = impl->swapchain->Present(impl->config.vsync ? 1 : 0, 0);
+    impl->GpuEnd();
+    HRESULT result;
+    {
+        Impl::ScopedTicks timing(impl->stats.present_ticks);
+        result = impl->swapchain->Present(impl->config.vsync ? 1 : 0, 0);
+    }
+    ++impl->stats.present_calls;
+    impl->GpuPoll();
     impl->lastPresent = {static_cast<unsigned>(result),
         FAILED(result) ? static_cast<unsigned>(impl->device->GetDeviceRemovedReason()) : 0u,
         result == DXGI_STATUS_OCCLUDED};
@@ -810,7 +913,12 @@ std::vector<unsigned char> D3D11Backend::Readback_RGBA8()
 unsigned D3D11Backend::Texture_Creations() const { return impl->textures; }
 unsigned D3D11Backend::Buffer_Creations() const { return impl->buffers; }
 unsigned D3D11Backend::Draw_Count() const { return impl->draws; }
-D3D11Backend::RenderStats D3D11Backend::Render_Stats() const { return impl->stats; }
+D3D11Backend::RenderStats D3D11Backend::Render_Stats() const
+{
+    RenderStats r = impl->stats;
+    r.textures_destroyed = texturesDestroyed.load();
+    return r;
+}
 const char *D3D11Backend::Adapter_Description() const { return impl->adapterDescription.c_str(); }
 unsigned D3D11Backend::Live_Residencies() { return liveResidencies.load(); }
 static std::atomic<bool> cpuBackedGeometry{false};
@@ -845,6 +953,11 @@ Texture2DResidency *D3D11Backend::Create_Mipped_Rgba8_Residency(unsigned width, 
     Check(impl->device->CreateTexture2D(&d, data.data(), &result->texture), "Upload mipped texture");
     Check(impl->device->CreateShaderResourceView(result->texture.Get(), nullptr, &result->view), "Create mipped SRV");
     ++impl->textures;
+    {
+        unsigned long long total = 0;
+        for (const auto &m : mips) total += m.size();
+        impl->NoteTexture(2, width, height, static_cast<unsigned>(d.Format), total);
+    }
     return result.release();
 }
 GeometryResidency *D3D11Backend::Create_Geometry_Residency(const GeometryCPUContent &content)
@@ -901,6 +1014,8 @@ void D3D11Backend::Update_Geometry_Indices(GeometryResidency &geometry, unsigned
 }
 void D3D11Backend::Submit_World(const WorldSubmission &s)
 {
+    Impl::ScopedTicks timing(impl->stats.submit_ticks);
+    impl->GpuBegin();
     if (!s.index_count) return;
     auto *g = dynamic_cast<GeoResidency *>(s.geometry);
     if (!impl->scene || !impl->dsv || !g || g->device.Get() != impl->device.Get() || s.index_count % 3 ||

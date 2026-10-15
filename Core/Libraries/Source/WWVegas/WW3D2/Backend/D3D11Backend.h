@@ -62,8 +62,28 @@ public:
         unsigned long long draws_2d = 0, draws_world = 0, draws_water = 0, triangles = 0;
         unsigned long long state_requested = 0, state_changed = 0, texture_binds = 0, shader_changes = 0,
                            target_changes = 0, buffer_changes = 0;
+        // X64.35 baseline2: CPU wall time in QueryPerformanceCounter ticks measured *inside* the backend. submit =
+        // Render2D + world submit functions (state sets, constant-buffer updates, DrawIndexed); present =
+        // IDXGISwapChain::Present; upload = texture creation + dynamic texture updates. GPU = elapsed GPU time of
+        // frames whose timestamp queries were retrieved without blocking (nanoseconds, summed), gpu_frames of them.
+        unsigned long long submit_ticks = 0, present_ticks = 0, upload_ticks = 0, present_calls = 0;
+        unsigned long long gpu_ns = 0, gpu_frames = 0, gpu_disjoint = 0, gpu_skipped = 0;
+        unsigned long long textures_destroyed = 0, texture_updates = 0, texture_update_bytes = 0, texture_bytes_created = 0;
     };
     RenderStats Render_Stats() const;
+    unsigned Live_Textures() const;
+    // Opt-in GPU timestamp measurement (disjoint + begin/end per frame, ring of 4, polled without flushing or
+    // blocking). Off by default; the display host enables it only while a performance capture runs.
+    void Set_Gpu_Timing(bool enabled);
+    // Attribution of texture creations. entry: 0 file/content (immutable), 1 dynamic UI, 2 mipped atlas/LUT.
+    struct TextureCreationRow
+    {
+        std::string label; unsigned entry = 0, width = 0, height = 0, format = 0;
+        unsigned long long created = 0, bytes = 0;
+    };
+    std::vector<TextureCreationRow> Texture_Creation_Table() const;
+    // Thread-local label recorded with subsequent texture creations (empty = untagged). Measurement only.
+    static void Set_Creation_Label(const char *label);
     const char *Adapter_Description() const; // adapter, ids, feature level, VRAM (X64.35 receipt context)
     // Opt-in (default off) for the world renderer: legacy DX8 vertex/index buffers become
     // CPU-backed while this backend owns WW3D. Profiles that do not render the world

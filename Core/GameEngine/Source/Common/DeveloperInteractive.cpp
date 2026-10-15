@@ -11,6 +11,8 @@
 #include "Common/Recorder.h"
 #include "Common/MessageStream.h"
 #include "Common/FramePacer.h"
+#include "Common/PerformanceProfile.h"
+#include <string>
 #include "GameNetwork/GameInfo.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Object.h"
@@ -73,11 +75,12 @@ bool startQuickGame()
     }
     Money cash;cash.setStartingCash(10000);game->setStartingCash(cash);
     game->setMap(Map);game->setMapCRC(map->m_CRC);game->setMapSize(map->m_filesize);game->setSeed(Seed);game->setUseStats(FALSE);game->startGame(0);
-    TheWritableGlobalData->m_mapName=Map;TheWritableGlobalData->m_framesPerSecondLimit=120;TheFramePacer->setFramesPerSecondLimit(120);
+    TheWritableGlobalData->m_mapName=Map;TheWritableGlobalData->m_framesPerSecondLimit=scenarioFpsLimit();TheFramePacer->setFramesPerSecondLimit(scenarioFpsLimit());
+    if(scenarioFpsOverridden())PerformanceProfile::setDevFpsDescription(scenarioFpsLimit()==DevFpsUncapped?"uncapped (-devFps)":std::to_string(scenarioFpsLimit())+" (-devFps)");
     InitRandom(Seed); // Normal new-game RNG initialization; only explicit developer quick game.
     auto* msg=TheMessageStream->appendMessage(GameMessage::MSG_NEW_GAME);
     msg->appendIntegerArgument(GAME_SKIRMISH);msg->appendIntegerArgument(DIFFICULTY_NORMAL);
-    msg->appendIntegerArgument(0);msg->appendIntegerArgument(120);
+    msg->appendIntegerArgument(0);msg->appendIntegerArgument(scenarioFpsLimit());
     state=QuickState::Loading;status="DEV: loading normal offline skirmish";return true;
 }
 Coord3D anchor(bool enemy)
@@ -133,6 +136,10 @@ void moveUnits(bool battle)
 void requestQuickGame(){requested=true;}
 bool quickGameEnabled(){return requested && devModeEnabled() && !scenarioEnabled();}
 bool configureDevPreset(const char* value){preset=value && std::strcmp(value,"battle")==0;return preset;}
+namespace { int fpsOverride=0; }
+bool configureDevFps(const char* value){int v=0;if(!parseDevFps(value,v))return false;fpsOverride=v;return true;}
+int scenarioFpsLimit(){return fpsOverride?fpsOverride:120;}
+bool scenarioFpsOverridden(){return fpsOverride!=0;}
 const char* interactiveStatus(){return status;}
 bool interactiveOffline()
 {

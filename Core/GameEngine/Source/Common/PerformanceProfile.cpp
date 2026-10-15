@@ -33,7 +33,9 @@ const char* name(Counter c)
 		"drawables_updated","queued_paths_processed","queue_cells_allocated",
 		"draw_calls","textures_created","buffers_created","drawables_drawn","particles_live_gauge","objects_live_gauge",
 		"draws_2d","draws_world","draws_water","triangles","state_requested","state_changed","texture_binds","shader_changes",
-		"target_changes","buffer_changes"};
+		"target_changes","buffer_changes",
+		"present_qpc","submit_qpc","upload_qpc","gpu_us","gpu_frames","textures_destroyed","texture_updates","texture_update_kb",
+		"textures_live_gauge","page_faults","working_set_mb_gauge","private_mb_gauge"};
 	static_assert(sizeof(names)/sizeof(*names)==CounterCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -270,8 +272,16 @@ void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
 	   <<" avg_texture_binds "<<sum[static_cast<unsigned>(Counter::TextureBinds)]/n<<" avg_shader_changes "<<sum[static_cast<unsigned>(Counter::ShaderChanges)]/n
 	   <<" avg_target_changes "<<sum[static_cast<unsigned>(Counter::TargetChanges)]/n<<" avg_buffer_changes "<<sum[static_cast<unsigned>(Counter::BufferChanges)]/n<<"\n"
 	   <<"hardware: "<<meta.hardware<<"\nrender_context: "<<meta.renderContext<<"\n"
+	   <<"fps_cap_override: "<<(meta.devFps.empty()?std::string("none"):meta.devFps)<<"\n"
+	   <<"timing_ms_per_frame (CPU wall, inside backend): submit "<<sum[static_cast<unsigned>(Counter::SubmitTicks)]/n/ticksPerMs<<" present "<<sum[static_cast<unsigned>(Counter::PresentTicks)]/n/ticksPerMs
+	   <<" texture_upload "<<sum[static_cast<unsigned>(Counter::UploadTicks)]/n/ticksPerMs<<" peak_present "<<peak[static_cast<unsigned>(Counter::PresentTicks)]/ticksPerMs<<" peak_submit "<<peak[static_cast<unsigned>(Counter::SubmitTicks)]/ticksPerMs<<"\n"
+	   <<"gpu: frames_measured "<<sum[static_cast<unsigned>(Counter::GpuFrames)]<<" avg_gpu_ms "<<(sum[static_cast<unsigned>(Counter::GpuFrames)]?sum[static_cast<unsigned>(Counter::GpuMicros)]/1000.0/sum[static_cast<unsigned>(Counter::GpuFrames)]:0.0)<<"\n"
+	   <<"textures: created "<<sum[static_cast<unsigned>(Counter::TexturesCreated)]<<" destroyed "<<sum[static_cast<unsigned>(Counter::TexturesDestroyed)]<<" live_end "<<(frames.empty()?0:frames.back().counters[static_cast<unsigned>(Counter::TexturesLive)])
+	   <<" dynamic_updates "<<sum[static_cast<unsigned>(Counter::TextureUpdates)]<<" update_kb "<<sum[static_cast<unsigned>(Counter::TextureUpdateKb)]<<"\n"
+	   <<"memory: page_faults "<<sum[static_cast<unsigned>(Counter::PageFaults)]<<" peak_faults_per_frame "<<peak[static_cast<unsigned>(Counter::PageFaults)]<<" working_set_mb_end "<<(frames.empty()?0:frames.back().counters[static_cast<unsigned>(Counter::WorkingSetMb)])
+	   <<" private_mb_end "<<(frames.empty()?0:frames.back().counters[static_cast<unsigned>(Counter::PrivateMb)])<<"\n"
 	   <<"interpolation(smooth): "<<meta.interpolation<<"\nnote: CPU wall time incl. pacer waits; GPU time is not measured.\n"
-	   <<"=== end receipt ===\n";
+	   <<"=== end receipt ===\n"<<meta.extension;
 }
 void report(const Recorder& r,const Metadata& meta,std::ostream& summary,std::ostream& frames,std::ostream& categories,std::ostream& slow)
 {

@@ -3,6 +3,11 @@
 // attached diagnostic in W3DDisplayPresentation.cpp.
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/W3DDisplay.h"
+#include <algorithm>
+#include <map>
+#include <string>
+#include <tuple>
+#include <vector>
 #include "Common/GlobalData.h"
 #include "Common/Errors.h"
 #include "Common/StartupDiagnostics.h"
@@ -171,12 +176,70 @@ bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, in
 // current outer frame of an active profiler capture (the sample point is the start of the display draw, so a frame's
 // numbers describe the preceding draw pass). Free when no capture is running.
 static bool g_countersPrimed = false;
+// X64.35 baseline2: texture-creation attribution for the summary. The table is cumulative in the backend; a capture
+// reports the difference to the snapshot taken when it started.
+static std::map<std::tuple<std::string, unsigned, unsigned, unsigned, unsigned>, std::pair<unsigned long long, unsigned long long>> g_textureSnapshot;
+static D3D11Backend::RenderStats g_captureStartStats;
+static void NativeCaptureStarted()
+{
+    g_textureSnapshot.clear();
+    if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+        for (const auto &r : backend->Texture_Creation_Table())
+            g_textureSnapshot[{r.label, r.entry, r.width, r.height, r.format}] = {r.created, r.bytes};
+        g_captureStartStats = backend->Render_Stats();
+    }
+}
+static std::string NativeCaptureReport()
+{
+    auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend());
+    if (!backend) return std::string();
+    struct Row { std::string label; unsigned entry, w, h, fmt; unsigned long long created, bytes; };
+    std::vector<Row> rows;
+    unsigned long long total[3] = {0, 0, 0}, bytes[3] = {0, 0, 0};
+    for (const auto &r : backend->Texture_Creation_Table()) {
+        unsigned long long c0 = 0, b0 = 0;
+        auto it = g_textureSnapshot.find({r.label, r.entry, r.width, r.height, r.format});
+        if (it != g_textureSnapshot.end()) { c0 = it->second.first; b0 = it->second.second; }
+        if (r.created <= c0) continue;
+        rows.push_back({r.label, r.entry, r.width, r.height, r.format, r.created - c0, r.bytes - b0});
+        if (r.entry < 3) { total[r.entry] += r.created - c0; bytes[r.entry] += r.bytes - b0; }
+    }
+    std::sort(rows.begin(), rows.end(), [](const Row &a, const Row &b) { return a.created > b.created; });
+    std::string out = "\n=== Texture creation attribution (this capture) ===\n";
+    char line[640];
+    snprintf(line, sizeof(line), "by_entry: content_file created %llu (%llu KB), dynamic_ui created %llu (%llu KB), mipped created %llu (%llu KB)\n",
+             total[0], bytes[0] >> 10, total[1], bytes[1] >> 10, total[2], bytes[2] >> 10);
+    out += line;
+    out += "rows (top 30 by creations): entry(0 content,1 dynamic,2 mipped) WxH dxgi_format created kb label\n";
+    for (size_t i = 0; i < rows.size() && i < 30; ++i) {
+        snprintf(line, sizeof(line), "%u %ux%u %u %llu %llu %s\n", rows[i].entry, rows[i].w, rows[i].h, rows[i].fmt, rows[i].created,
+                 rows[i].bytes >> 10, rows[i].label.empty() ? "(untagged)" : rows[i].label.c_str());
+        out += line;
+    }
+    const D3D11Backend::RenderStats now = backend->Render_Stats();
+    snprintf(line, sizeof(line),
+             "textures_destroyed_this_capture: %llu  live_textures_now: %u  dynamic_updates: %llu (%llu KB)\n"
+             "gpu_timestamp_frames_discarded_disjoint: %llu  ring_full_skipped: %llu\n=== end texture attribution ===\n",
+             now.textures_destroyed - g_captureStartStats.textures_destroyed, backend->Live_Textures(),
+             now.texture_updates - g_captureStartStats.texture_updates, (now.texture_update_bytes - g_captureStartStats.texture_update_bytes) >> 10,
+             now.gpu_disjoint - g_captureStartStats.gpu_disjoint, now.gpu_skipped - g_captureStartStats.gpu_skipped);
+    out += line;
+    return out;
+}
+void NativeRegisterPerformanceExtensions()
+{
+    PerformanceProfile::setCaptureExtension(&NativeCaptureStarted, &NativeCaptureReport);
+}
 void NativeSampleRenderCounters()
 {
     if (!PerformanceProfile::activeRecorder) {
+        if (g_countersPrimed) {   // capture ended: stop issuing GPU timestamp queries
+            if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) backend->Set_Gpu_Timing(false);
+        }
         g_countersPrimed = false;   // the first sample of the next capture only establishes the baseline (no whole-session spike)
         return;
     }
+    PerformanceProfile::samplePageFaults();
     static unsigned lastDraws = 0, lastTextures = 0, lastBuffers = 0;
     static D3D11Backend::RenderStats last;
     static bool contextSet = false;
@@ -185,6 +248,7 @@ void NativeSampleRenderCounters()
         if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
             lastDraws = backend->Draw_Count(); lastTextures = backend->Texture_Creations();
             lastBuffers = backend->Buffer_Creations(); last = backend->Render_Stats();
+            backend->Set_Gpu_Timing(true);
         }
         primed = true;
     }
@@ -206,6 +270,15 @@ void NativeSampleRenderCounters()
         PerformanceProfile::count(PC::ShaderChanges, now.shader_changes - last.shader_changes);
         PerformanceProfile::count(PC::TargetChanges, now.target_changes - last.target_changes);
         PerformanceProfile::count(PC::BufferChanges, now.buffer_changes - last.buffer_changes);
+        PerformanceProfile::count(PC::PresentTicks, now.present_ticks - last.present_ticks);
+        PerformanceProfile::count(PC::SubmitTicks, now.submit_ticks - last.submit_ticks);
+        PerformanceProfile::count(PC::UploadTicks, now.upload_ticks - last.upload_ticks);
+        PerformanceProfile::count(PC::GpuMicros, (now.gpu_ns - last.gpu_ns) / 1000);
+        PerformanceProfile::count(PC::GpuFrames, now.gpu_frames - last.gpu_frames);
+        PerformanceProfile::count(PC::TexturesDestroyed, now.textures_destroyed - last.textures_destroyed);
+        PerformanceProfile::count(PC::TextureUpdates, now.texture_updates - last.texture_updates);
+        PerformanceProfile::count(PC::TextureUpdateKb, (now.texture_update_bytes - last.texture_update_bytes) >> 10);
+        PerformanceProfile::count(PC::TexturesLive, backend->Live_Textures());
         last = now;
         if (!contextSet) {
             contextSet = true;
@@ -262,6 +335,7 @@ void W3DDisplay::initOrdinaryHostPresentation()
         state.modern = true;
         DisplayRuntime::applyModeHook() = &NativeApplyDisplayMode;
         DisplayRuntime::vsyncHook() = [](bool enabled) { WW3D::Set_Native_Vsync(enabled); };
+        NativeRegisterPerformanceExtensions();
         if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
         state.settings = settings;
         state.resolved = resolved;

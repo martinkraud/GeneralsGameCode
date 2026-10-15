@@ -278,3 +278,24 @@ TEST(DeveloperHarness, QuickGameRequiresDevAndRejectsScenarioAndNeutralOwners)
     EXPECT_FALSE(configureDevPreset(nullptr));EXPECT_FALSE(configureDevPreset("pathfinding"));
     EXPECT_TRUE(configureDevPreset("battle"));DeveloperTools::shutdown();
 }
+
+TEST(DeveloperHarness, DevFpsOverrideParsing)
+{
+	int v = 0;
+	EXPECT_TRUE(DeveloperTools::parseDevFps("uncapped", v));
+	EXPECT_EQ(v, DeveloperTools::DevFpsUncapped);
+	EXPECT_TRUE(DeveloperTools::parseDevFps("UnCapped", v));
+	EXPECT_TRUE(DeveloperTools::parseDevFps("144", v));
+	EXPECT_EQ(v, 144);
+	EXPECT_TRUE(DeveloperTools::parseDevFps("15", v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps("14", v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps("1001", v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps("", v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps(nullptr, v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps("-5", v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps("12x", v));
+	EXPECT_FALSE(DeveloperTools::parseDevFps("uncappedx", v));
+	// default: no override, scenario cap stays 120 and nothing is reported as overridden
+	EXPECT_FALSE(DeveloperTools::scenarioFpsOverridden());
+	EXPECT_EQ(DeveloperTools::scenarioFpsLimit(), 120);
+}
