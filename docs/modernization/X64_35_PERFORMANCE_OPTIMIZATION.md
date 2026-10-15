@@ -844,3 +844,84 @@ the helicopter case. It remains tracked separately in section 22.
   draw/triangle counts and no visible decal difference. REVERT/REWORK if the saving is < 0.2 ms, any decal differs, a stale
   decal appears after terrain flattening, or a contract is violated.
 Not implemented. The volume-shadow cache stays reverted.
+
+
+---
+
+# 25. X64.35 optimization 2: decal-geometry reuse (implemented, awaiting native before/after vs C-D1)
+
+Candidate `x64-35-decal-reuse`; implementation commit `b63d86149`; baseline for comparison **C-D1**. Still X64.35,
+**not accepted**. This batch is decal geometry reuse only. The reverted shadow-volume cache is not involved.
+
+## 25.1 Terrain-mutation audit (done before any code)
+**Where the height consumed by `GroundHeight` comes from.** `GroundHeight()` (NativeWorldEffects.cpp) calls
+`TheTerrainLogic->getGroundHeight(x, y)`. In the game `TheTerrainLogic` is `W3DTerrainLogic`, whose `getGroundHeight` is
+`TheTerrainRenderObject->getHeightMapHeight(x, y, normal)`, which samples
+**`TheTerrainVisual->getLogicHeightMap()`** (the *logic* `WorldHeightMap`; `m_map` of the render object only when there is no
+terrain visual) through `getDataPtr()` and, outside the playable area, `getClipHeight` (same data). It uses no flip state,
+no layers/bridges (those are `getLayerHeight`), nothing else.
+
+**Every runtime path that can change those bytes** (repo-wide search of `setRawHeight`, `getDataPtr()`, `m_data`):
+| path | effect | covered by |
+|---|---|---|
+| `WorldHeightMap::setRawHeight` (single inline mutator), reached from `W3DTerrainVisual::setRawMapHeight` <- `TerrainLogic::flattenTerrain` (construction flattening: `DozerAIUpdate`, `WorkerAIUpdate`) and the seismic lowering loop in `TerrainLogic.cpp` | per-cell height lowered in place | `m_heightRevision` incremented inside `setRawHeight` |
+| `W3DTerrainVisual::xfer` with `XFER_LOAD`: `xfer->xferUser(data, len)` writes the whole logic height array **bypassing `setRawHeight`** (found by this audit; the first search had missed it) | bulk replace on savegame load | `noteHeightsReplaced()` called right after the bulk write |
+| `W3DTerrainVisual::load`: `REF_PTR_RELEASE(m_logicHeightMap); m_logicHeightMap = NEW WorldHeightMap(...)` | map / world replacement, new object (possibly at the **same address**) | per-instance process-unique `renderSerial` (atomic counter, not the pointer) |
+| client map `setRawHeight` in the seismic simulation (`m_clientHeightMap`) | not read by `GroundHeight` (logic map) | harmless: it bumps that instance's own revision |
+| WorldBuilder/tools writers (`getDataPtr()` writes in editor code) | not part of the game | not built into the game; a contract asserts no other `setRawHeight` writer exists in the game sources |
+| `WorldHeightMap` constructors/parse (`m_data` fills, resampling) | before the object is visible | new instance, new serial |
+All other `getDataPtr()` users (terrain mesh build, volumetric shadow, scorch, `getMaxHeightInRegion`, ...) only read.
+**Result: a complete and reliable revision exists without architectural change**: a render-side `renderSerial` +
+`heightRevision` pair on `WorldHeightMap` (members guarded by `_WIN64`, so the Win32 reference code and its byte-identity
+contracts are unchanged), never serialized, never read by game logic, no RNG, no CRC involvement.
+
+## 25.2 Implementation
+* `NativeDecalGridCache.h`: `Build()` is the former `EmitDecal` grid loop (same arithmetic and order); `Cache::get()` reuses a
+  grid only when **centre, yaw, size X/Y, grid dimensions, colour, terrain serial and terrain revision are bit-identical**.
+  Entry per shadow, LRU with an 8 MB budget, oversize entries never retained, released with the shadow
+  (`NativeShadow::release`), cleared on uninstall. Texture lookup, blend state, `emitEffect`, ordering and every
+  visibility/culling decision stay canonical every frame.
+* `TerrainStamp()` supplies the terrain identity/revision **only** when the terrain logic is the W3D one
+  (`typeid(*TheTerrainLogic)` name contains `W3DTerrainLogic`) and a logic height map exists; otherwise the stamp is 0 and
+  the grid is built canonically every frame and never stored (tests/stubs, unknown sources).
+* Counters (dormant outside capture): `decal_cache_hits`, `decal_cache_misses`, `decal_uncached`, `decal_cache_evictions`,
+  `decal_cache_kb_gauge`; receipt line `decal_geometry_reuse (per frame): hits .. misses .. uncached .. evictions ..
+  retained_kb_end ..`. `native_shadow_decal` is unchanged and comparable to C-D1 (it now measures lookup + build-or-reuse).
+
+## 25.3 Validation (automated)
+* `NativeDecalGridCache.*` (8 tests): `Build` equals the former inline loop; hits bit-identical; centre x/y, yaw, size
+  X/Y, colour, grid width/height, terrain revision and terrain identity each force a recompute and the recomputed grid is
+  the canonical one; terrain change with a new revision follows the new heights; unknown terrain stamp/null owner never
+  cached; a moving caster misses every frame and matches canonical, then hits once it stops; forget and address reuse;
+  bounded eviction and oversize; clear.
+* `NativeWorldEffectsTest.DecalGeometryReuseIsPixelIdenticalAndFollowsChanges`: through the real native effects pipeline
+  and the D3D11 WARP backend, the cached frames are **pixel-identical** to the canonical (uncached) frame; a moved/rotated
+  decal recomputes and changes the image and restoring it restores the identical image; a terrain revision or identity
+  change forces a rebuild. (The production stamp source - W3D terrain logic + logic height map - cannot be constructed in
+  the hermetic test and is replaced by the test hook; it is exercised by the native run.)
+* Contract tests: revision bump is inside `setRawHeight`, the serial is per instance, the savegame bulk write calls
+  `noteHeightsReplaced`, no other `setRawHeight` writer exists in the game sources, the cache has no simulation dependency,
+  unknown terrain logic is canonical.
+* Matrix: Win64 ctest 16/16, g 249 and z 248 gtests; Win32 ctest 23/23, g 211 and z 211; all Python contracts (including the
+  Win32-reference byte-identity contracts, untouched) and PowerShell workflow tests pass.
+* Not claimed: any performance number, or visual acceptance.
+
+## 25.4 Candidate and native run
+`build/dev-runtimes/native/Generals/x64-35-decal-reuse` (staged and preflighted, not run by the agent):
+* `game/generalsv.exe` SHA256 `F8C8803A8F6A3255CA36F7F1F489EC2CD599D405E47AD70F787E03772FB9E751`
+* `game/generalsv.pdb` SHA256 `00DD89373B014DBBAFB3C0676A553DE63CAE45E2BBE9662DEE0514A5A62BFC1D`
+* summary must show `git=b63d86149...` and a `decal_geometry_reuse` line.
+Same Heavy uncapped scenario as C-D1:
+```
+pwsh scripts\native-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-decal-reuse `
+     -OutputDirectory C:\perf\x64-35-decal-reuse\C-R1 -ExpectPhases `
+     -ExpectedSha256 F8C8803A8F6A3255CA36F7F1F489EC2CD599D405E47AD70F787E03772FB9E751
+```
+(Ctrl+Alt+Shift F10, O, B, wait 5 s, F11.) Please also look at decals (tree/building/unit ground shadows, any construction
+on flattened ground if you build something) for any difference or a stale decal.
+
+## 25.5 Keep / revert (as approved)
+KEEP if `native_shadow_decal` falls >= 0.35 ms/frame and the clean-window frame improves >= 7 % with comparable
+draw/triangle counts, no visible decal/shadow difference and no stale decal after terrain changes. REVERT/REWORK if the saving
+is < 0.20 ms, terrain invalidation proves unreliable, a stale decal appears, visual output differs unexpectedly, or a
+contract fails. Not combined with any other optimization.
