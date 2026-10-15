@@ -692,3 +692,67 @@ meaningfully displaced from its screen position, and the caster-only cull in sus
   renderer shows it.
 * Only then choose a fix (e.g. cull on the shadow's projected bounds, budget by distance rather than registration order).
 Not fixed, not part of the C-S1 performance analysis, and the cache is unchanged.
+
+
+---
+
+# 23. Shadow-volume reuse reverted; shadow attribution extended (decision C approved)
+
+## 23.1 Record of the experiment
+* **Hypothesis (from C-A2):** `native_fx_shadows` (1.009 ms, 29 % of the frame) is dominated by per-frame regeneration of
+  planar shadow-volume geometry from unchanged inputs, so exact reuse should save 0.4-0.7 ms.
+* **Implementation (`1a37a4c4d`, candidate `x64-35-shadow-reuse`):** bit-exact keyed per-shadow cache (positions, topology,
+  light, colour, center, g0/gx/gy), planar casters only, bounded LRU; byte-identical to the former loop in tests.
+* **Result (C-S1 vs C-A2):** 98 % hit rate (28.4 hits / 0.6 misses / 0 uncached per frame), **0.00 ms saved** (+0.02 ms),
+  frame +2.9 % within drift. Criteria failed (>= 0.25 ms saving, >= 5 % frame improvement).
+* **Why:** the volume path (gather 0.045 + project 0.035 + emit 0.060 = 0.14 ms for 29 casters) was ~14 % of
+  `native_fx_shadows`; **0.88 ms (86 %) is exclusive time of `CollectShadows` outside it**. The hypothesis was built from
+  reading the code without a split of the phase; the sub-scopes added in the same batch produced the refutation.
+* **Decision:** rejected and **reverted** (`git revert` of `1a37a4c4d`): the cache header, `g_volumeCache` integration, LRU
+  machinery, cache tests and cache counters are removed. The retail-model readback test returns to its original form.
+
+## 23.2 What was kept / added (measurement only, no behavior change)
+* Sub-scopes in `native_fx_shadows`: `native_shadow_gather`, `native_shadow_project`, `native_shadow_emit` (volume
+  casters) and the new **`native_shadow_decal`** (`EmitDecal`).
+* The **exclusive** time of `native_fx_shadows` in the phase table is, by construction, the `CollectShadows` loop itself
+  (iteration, render-enabled/invisible/hidden/frustum tests, object-space offset, distance, dispatch): the former
+  unattributed 0.88 ms is now decomposable into `decal` + `loop remainder`.
+* Per-frame counters and a receipt line `shadows (per frame): seen .. skipped .. decals .. volumes ..`
+  (`shadows_seen`, `shadows_skipped` = all early-outs, `shadow_decals` = decal shadows emitted, `shadow_volumes` = volume
+  casters emitted). Dormant outside a capture. These counters also give per-frame numbers for the existing
+  helicopter-shadow issue below, without changing any behavior.
+* Test: `PerformanceReceipt.ShadowPhaseIsDecomposedIntoVolumeDecalAndLoopRemainder`.
+
+## 23.3 Validation
+Win64 ctest 16/16, g 240 and z 239 gtests; Win32 ctest 23/23, g 210 and z 210; all Python contracts and PowerShell workflow
+tests pass (the instrumentation contract now asserts that the cache is gone and the shadow scopes exist). No performance
+claim is made for this instrumentation commit and no new native candidate is staged (see 23.5).
+
+## 23.4 Separately tracked: helicopter shadow pop-in (pre-existing, suspected) - see section 22
+Not fixed here; the cache is gone, so it can no longer be a factor. The new `shadows_skipped` counter and the existing
+suspects (caster-sphere cull vs shadow position, shared 200,000-triangle budget in registration order, LOD/alpha rotor
+meshes, drawable shadow flags, widescreen visibility) remain to be investigated separately.
+
+## 23.5 What was learned and the next measurement target
+* A phase-level hypothesis must be split by sub-scopes **before** an optimization is built; the same batch that adds
+  the sub-scopes cannot also be the optimization.
+* The shadow loop and decals are now the target: **0.88 ms** in `CollectShadows` outside the volume path. Candidates (from
+  code reading, unverified): `EmitDecal` builds a terrain-conforming grid of up to 33 x 33 vertices with three `GroundHeight`
+  lookups per vertex for every decal shadow every frame; the loop visits every registered shadow, including ones with no
+  visible caster.
+* **Does this need another native run?** Yes, one: the current data cannot split the 0.88 ms between `EmitDecal` and the
+  loop (the receipt of C-S1 has no scope for either), so one candidate was staged for that single purpose:
+
+## 23.6 Candidate `x64-35-shadow-attribution` (instrumentation only; built from `f0c347b34`; not run by the agent)
+* `game/generalsv.exe` SHA256 `0AAC4EE6C50160AA53F4EC0813D9023B3FE8B1300EB11AF1DF67A6847A377EC9`
+* `game/generalsv.pdb` SHA256 `716DD369730229D3A1CF93D2FCBF7EAC9F32CE50541B8E3B50299710F7D566D6`
+* Same Heavy uncapped run as C-A2/C-S1:
+```
+pwsh scripts
+ative-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-shadow-attribution `
+     -OutputDirectory C:\perfd-35-shadow-attribution\C-D1 -ExpectPhases `
+     -ExpectedSha256 0AAC4EE6C50160AA53F4EC0813D9023B3FE8B1300EB11AF1DF67A6847A377EC9
+```
+  (Ctrl+Alt+Shift F10, O, B, wait 5 s, F11; summary must show `git=f0c347b34...` and the line `shadows (per frame): ...`.)
+* The superseded `x64-35-shadow-reuse` candidate contains the reverted code and can be retired by the retention tool
+  after review (dry run first); nothing was deleted.
