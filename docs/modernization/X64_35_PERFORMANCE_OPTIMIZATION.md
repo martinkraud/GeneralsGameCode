@@ -1,8 +1,8 @@
 # X64.35 Performance profiling + evidence-driven optimization
 
 Baseline commit: `96766b2d9` (X64.34 accepted). Branch `dev/modern-engine`.
-Status: **FIRST DELIVERY (baseline instrumentation + benchmark procedure). Waiting for native baseline receipts.
-No optimization has been made. X64.35 is NOT accepted.**
+Status: **BASELINE COMPLETE (2026-10-15); awaiting review before any optimization. No optimization has been made.
+X64.35 is NOT accepted.**
 
 Rule for this milestone: MEASURE -> IDENTIFY BOTTLENECK -> CHANGE -> MEASURE AGAIN -> COMPARE -> KEEP OR REVERT.
 
@@ -76,7 +76,13 @@ generalsv.exe -devMode -quickGame -performanceProfile C:\perf\x64-35-baseline\A1
    and the `*-categories.csv`. Add power mode / plugged-in note.
 
 ## 6. Native baseline results
-_Pending human capture. No number is claimed here._
+Complete: A1-A3, B1/B2/B4, C1-C3 accepted; B3 excluded (anomalous). Full tables, scaling, B3/spike/texture/state analysis
+and the ranked hypotheses are in `X64_35_BASELINE_ANALYSIS_AND_DISK_AUDIT.md` section 9. Headline (medians, Intel
+Core Ultra 5 125U laptop, 1920x1200, capped 120 fps, Smooth OFF): work per frame 2.8 / 2.9 / 4.4 ms (A/B/C), draw calls
+160 / 196 / 372, triangles 74k / 86k / 110k, state values requested per frame 2,946 / 3,766 / 7,246 of which only
+5-6 % actually change, textures created 1.35 per frame in all scenarios, pacer wait 48-74 % of each frame.
+Ranked hypotheses (analysis doc 9.9): H1 bounded D3D11 state cache, H4 deterministic 21-43 ms logic spikes,
+H2 per-frame texture creation, H3 split display_draw into submit vs Present.
 
 ## 7. Bottlenecks / 8. Hypotheses / 9. Optimizations / 10. Before-after / 11. Determinism evidence
 _Pending baseline. Hypothesis to test first (not acted on): the per-draw full-state re-issue in `D3D11Backend`
