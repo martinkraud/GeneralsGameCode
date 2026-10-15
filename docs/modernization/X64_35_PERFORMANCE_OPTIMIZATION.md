@@ -1098,3 +1098,6 @@ PowerShell workflow tests pass; no test was weakened.
 | real heavy combat | not profiled (the Heavy scenario had ~11 particles) | most informative next measurement |
 | helicopter shadow pop-in | pre-existing, suspected caster-sphere cull / triangle budget / LOD / flags | separate correctness issue (section 22); `shadows_skipped` counter available |
 | instrumentation | per-reason shadow-drop counters not yet added | only if the helicopter issue is investigated |
+
+## 27.9 Retention cleanup after closeout
+Dry run -> plan hash `9F557A20...3E1E` -> executed with `-ApprovedPlan`: removed `Generalsd-35-attribution` and `Generalsd-35-shadow-reuse` (1.56 GB each, 3.12 GB; no run evidence, manifests archived under `build/evidence-archive/native-candidates/`). Kept: `x64-34-smooth-presentation`, `x64-35-baseline`, `x64-35-baseline2`, `x64-35-decal-reuse` (native-verified), `x64-35-shadow-attribution`, ZeroHour `x64-20-fix1`. C: free space 112.6 GB.
