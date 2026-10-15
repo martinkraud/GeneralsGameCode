@@ -386,6 +386,7 @@ void W3DInGameUI::reset()
 /** Draw member for the W3D implementation of the game user interface */
 //-------------------------------------------------------------------------------------------------
 #include "Common/DeveloperHarness.h"
+#include "Common/PerformanceProfile.h"
 void W3DInGameUI::draw()
 {
 	TheDisplay->beginBatch();
@@ -436,7 +437,7 @@ void W3DInGameUI::draw()
 	TheWindowManager->winRepaint();
 
 	postWindowDraw();
-	DeveloperTools::drawOverlay();
+	{ PERFORMANCE_PROFILE_SCOPE(NativeDevOverlay); DeveloperTools::drawOverlay(); }
 
 #ifdef EXTENDED_STATS
 	}

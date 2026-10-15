@@ -17,7 +17,12 @@ enum class Category : unsigned int
 	Outer, EngineUpdate, Pacer, Logic, Client, ObjectUpdates, AIGlobal, AIPlayer, AIObject,
 	Movement, PathQueue, PathRequest, PathSearch, PathBuild, WeaponFire, WeaponStore,
 	Missile, DrawableUpdates, Terrain, DisplayUpdate, Particles, DisplayDraw, SceneView,
-	RenderEnd, Network, Messages, Count
+	RenderEnd, Network, Messages,
+	// X64.35 attribution (native gameplay frame path W3DDisplay::drawOrdinaryMenuFrame): top level = NativeBeginRender,
+	// NativeTerrain, NativeObjects, NativeOverlays, NativeUi, NativeMouse, NativeEndRender. Nested: NativeTerrainOverlays
+	// in NativeTerrain; NativeObjGather/NativeObjProcess/NativeFx*/NativeGeomUpload/NativeSubmit in NativeObjects;
+	// NativeDevOverlay in NativeUi; ZoneCalc in PathQueue. Use exclusive time to avoid double counting.
+	NativeBeginRender, NativeTerrain, NativeTerrainOverlays, NativeObjects, NativeObjGather, NativeObjProcess, NativeFxGround, NativeFxShadows, NativeFxWater, NativeFxShroud, NativeFxParticles, NativeGeomUpload, NativeSubmit, NativeOverlays, NativeUi, NativeDevOverlay, NativeMouse, NativeEndRender, ZoneCalc, Count
 };
 // X64.34: DrawCalls/TexturesCreated/BuffersCreated are per-frame deltas of the native backend's cumulative counters;
 // DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame

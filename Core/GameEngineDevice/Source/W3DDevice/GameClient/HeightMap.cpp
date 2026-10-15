@@ -46,6 +46,9 @@
 //         Includes
 //-----------------------------------------------------------------------------
 #include "W3DDevice/GameClient/HeightMap.h"
+#if defined(_WIN64)
+#include "Common/PerformanceProfile.h"   // X64.35 attribution scopes (native path only)
+#endif
 
 #ifndef USE_FLAT_HEIGHT_MAP // Flat height map uses flattened textures. jba. [3/20/2003]
 
@@ -2029,6 +2032,7 @@ HeightMapRenderObjClass::NativeMapFeatures HeightMapRenderObjClass::nativeMapFea
 
 Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 {
+	PERFORMANCE_PROFILE_SCOPE(NativeTerrain);
 	if (Is_Hidden() || !m_map || !m_vertexBufferTiles || !m_indexBuffer || m_numVertexBufferTiles <= 0)
 		return 0;
 	auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend());
@@ -2163,6 +2167,7 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 		++draws;
 	}
 
+	PERFORMANCE_PROFILE_SCOPE(NativeTerrainOverlays);   // to the end of renderNative
 	// ---- X64.27 overlay families, in the legacy Render() order: shoreline destination alpha,
 	// extra-blend (3-way) tiles, roads, bridges. Each is one pass of the TerrainOverlay material.
 	{

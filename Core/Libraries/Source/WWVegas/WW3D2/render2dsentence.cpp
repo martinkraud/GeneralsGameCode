@@ -75,6 +75,7 @@ Render2DSentenceClass::Render2DSentenceClass () :
 	useHardWordWrap( false)
 {
 	Shader = Render2DClass::Get_Default_Shader ();
+	DiagnosticText[0] = 0;
 }
 
 
@@ -359,6 +360,7 @@ Render2DSentenceClass::Build_Textures ()
 		//	Create the new texture
 		//
 		TextureClass *new_texture = W3DNEW TextureClass (*curr_surface);
+		new_texture->Set_Diagnostic_Label(DiagnosticText);   // measurement label only
 
 		new_texture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
 		new_texture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
@@ -1144,6 +1146,13 @@ Render2DSentenceClass::Build_Sentence (const WCHAR *text, int *hkX, int *hkY)
 
 	if (Font == nullptr)
 		return;
+
+	{	// X64.35 attribution: remember the beginning of the text (printable ASCII only) for texture labels.
+		int n = 0;
+		for (; n < 44 && text[n]; ++n)
+			DiagnosticText[n] = (text[n] >= 32 && text[n] < 127) ? static_cast<char>(text[n]) : '?';
+		DiagnosticText[n] = 0;
+	}
 
 	if(Centered && (WrapWidth > 0 || wcschr(text,L'\n')))
 		Build_Sentence_Centered(text, hkX, hkY);

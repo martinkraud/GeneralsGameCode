@@ -368,3 +368,40 @@ TEST(PerformanceReceipt, ReportsPresentSubmitGpuTextureAndMemoryFields)
 	for (const char *field : {"avg_draw_calls", "avg_draws_world", "avg_requested", "avg_texture_binds", "hardware:", "render_context:", "logic_ticks:"})
 		EXPECT_NE(text.find(field), std::string::npos) << field;
 }
+
+TEST(PerformanceReceipt, NativePhaseTableSplitsDisplayDrawWithoutDoubleCounting)
+{
+	using namespace PerformanceProfile;
+	activeRecorder = nullptr;
+	Recorder r(8);
+	r.start(0);
+	for (int i = 0; i < 4; ++i)
+	{
+		const Tick t = i * 100;
+		ASSERT_TRUE(r.beginFrame(t, i, 120, 120));
+		activeRecorder = &r;
+		r.push(Category::DisplayDraw, t + 1);              // 40 ms inclusive
+		r.push(Category::NativeObjects, t + 2);            // 20 ms, 8 of them in a nested scope
+		r.push(Category::NativeFxParticles, t + 4);
+		r.pop(t + 12);
+		r.pop(t + 22);
+		r.push(Category::NativeUi, t + 23);                // 10 ms
+		r.pop(t + 33);
+		r.pop(t + 41);
+		activeRecorder = nullptr;
+		r.endFrame(t + 50, i);
+	}
+	r.stop();
+	Metadata meta;
+	meta.frequency = 1000;
+	std::ostringstream summary, frames, categories, slow;
+	report(r, meta, summary, frames, categories, slow);
+	const std::string text = summary.str();
+	EXPECT_NE(text.find("native_frame_phases"), std::string::npos);
+	EXPECT_NE(text.find("native_objects"), std::string::npos);
+	EXPECT_NE(text.find("native_fx_particles"), std::string::npos);
+	// native_objects: inclusive 20 ms, exclusive 12 (20 - nested 8)
+	EXPECT_NE(text.find("native_objects             incl  20.0000  excl  12.0000"), std::string::npos) << text;
+	// display_draw 40 ms - NativeObjects 20 - NativeUi 10 = 10 ms unattributed
+	EXPECT_NE(text.find("display_draw_unattributed   10.0000"), std::string::npos) << text;
+}

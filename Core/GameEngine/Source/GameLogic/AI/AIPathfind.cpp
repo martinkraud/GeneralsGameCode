@@ -6036,7 +6036,10 @@ void Pathfinder::processPathfindQueue()
 #endif
 
 	if (m_zoneManager.needToCalculateZones()) {
-		m_zoneManager.calculateZones(m_map, m_layers, m_extent);
+		{
+			PERFORMANCE_PROFILE_SCOPE(ZoneCalc);   // X64.35 attribution only; calls == zone recalculations
+			m_zoneManager.calculateZones(m_map, m_layers, m_extent);
+		}
 		return;
 	}
 

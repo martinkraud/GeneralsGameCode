@@ -158,6 +158,7 @@ private:
 	DynamicVectorClass<PendingSurfaceStruct>	PendingSurfaces;
 	DynamicVectorClass<RendererDataStruct>		Renderers;
 	FontCharsClass	*						Font;
+	char												DiagnosticText[48];   // X64.35: first characters of the last sentence (labels its texture)
 	Vector2											BaseLocation;
 	Vector2											Location;
 	Vector2											Cursor;

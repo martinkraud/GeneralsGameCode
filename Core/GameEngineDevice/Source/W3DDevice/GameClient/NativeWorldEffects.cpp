@@ -3,6 +3,7 @@
 // terrain decals, planar shadows, water and shroud follow in the same translation unit.
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/NativeWorldEffects.h"
+#include "Common/PerformanceProfile.h"
 #include "W3DDevice/GameClient/W3DTerrainTracks.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
@@ -1398,14 +1399,17 @@ void clearScorches()
 
 void collect(D3D11Backend &backend, CameraClass &camera)
 {
-    if (StartupDiagnostics::nativeFeature("scorches")) CollectScorches(backend, camera);
-    if (StartupDiagnostics::nativeFeature("tracks")) CollectTracks(backend, camera);
-    if (StartupDiagnostics::nativeFeature("bibs")) CollectBibs(backend, camera);
-    CollectGroundLines(backend, camera);
-    if (StartupDiagnostics::nativeFeature("shadows")) CollectShadows(backend, camera);
-    if (StartupDiagnostics::nativeFeature("water")) CollectWater(backend, camera);
-    if (StartupDiagnostics::nativeFeature("shroud")) CollectShroud(backend, camera);
-    if (StartupDiagnostics::nativeFeature("particles")) CollectParticles(backend, camera);
+    {
+        PERFORMANCE_PROFILE_SCOPE(NativeFxGround);
+        if (StartupDiagnostics::nativeFeature("scorches")) CollectScorches(backend, camera);
+        if (StartupDiagnostics::nativeFeature("tracks")) CollectTracks(backend, camera);
+        if (StartupDiagnostics::nativeFeature("bibs")) CollectBibs(backend, camera);
+        CollectGroundLines(backend, camera);
+    }
+    { PERFORMANCE_PROFILE_SCOPE(NativeFxShadows); if (StartupDiagnostics::nativeFeature("shadows")) CollectShadows(backend, camera); }
+    { PERFORMANCE_PROFILE_SCOPE(NativeFxWater); if (StartupDiagnostics::nativeFeature("water")) CollectWater(backend, camera); }
+    { PERFORMANCE_PROFILE_SCOPE(NativeFxShroud); if (StartupDiagnostics::nativeFeature("shroud")) CollectShroud(backend, camera); }
+    { PERFORMANCE_PROFILE_SCOPE(NativeFxParticles); if (StartupDiagnostics::nativeFeature("particles")) CollectParticles(backend, camera); }
 }
 
 void releaseAll()

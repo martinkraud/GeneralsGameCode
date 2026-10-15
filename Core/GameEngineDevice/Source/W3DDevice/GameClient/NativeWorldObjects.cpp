@@ -17,6 +17,8 @@
 #include "Common/GameUtility.h"
 #include "Common/GlobalData.h"
 #include "Common/StartupDiagnostics.h"
+#include "Common/PerformanceProfile.h"
+#include <optional>
 #include "GameClient/Drawable.h"
 #include "GameClient/DrawableInfo.h"
 #include "GameLogic/Object.h"
@@ -1044,6 +1046,8 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
     f.infantryLights = infantryLights;
 
     unsigned drawnObjects = 0;
+    std::optional<PerformanceProfile::Scope> phase;
+    phase.emplace(PerformanceProfile::Category::NativeObjProcess);
     for (unsigned i = 0; i < count; ++i) {
         const ObjectInput &input = objects[i];
         RenderObjClass *object = input.object;
@@ -1065,6 +1069,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         ProcessObject(f, object, s, 0);
         if (f.drawnMeshes) ++drawnObjects;
     }
+    phase.reset();
 
     // Game-state-driven effects (particles, decals, shadows, water, shroud) join the same batch lists.
     NativeWorldEffects::collect(backend, camera);
@@ -1073,6 +1078,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
     // Upload each chunk once, then submit: opaque in order, translucent back to front.
     WorldSubmission base;
     FillBase(camera, base);
+    phase.emplace(PerformanceProfile::Category::NativeGeomUpload);
     for (Chunk &chunk : s.chunks) {
         if (chunk.vertices.empty() || chunk.indices.empty()) continue;
         backend.Update_Geometry_Vertices(*chunk.geometry, 0, chunk.vertices.data(),
@@ -1080,6 +1086,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         backend.Update_Geometry_Indices(*chunk.geometry, 0, chunk.indices.data(),
                                         static_cast<unsigned>(chunk.indices.size()));
     }
+    phase.reset();
     auto submit = [&](const Batch &b) {
         WorldSubmission sub = base;
         sub.geometry = s.chunks[b.chunk].geometry.get();
@@ -1107,6 +1114,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
     };
     int submissions = 0;
     unsigned translucent = 0;
+    phase.emplace(PerformanceProfile::Category::NativeSubmit);
     // Draw order: ground overlays (bibs, waypoint lines), opaque objects (registration order), terrain decals
     // (emission order), translucent objects/water back to front, particles back to front, overlays (shroud).
     // X64.29 review: the bound was left at LayerOverlay after the layers were renumbered, so the particle layer
@@ -1127,6 +1135,7 @@ int renderObjects(D3D11Backend &backend, CameraClass &camera, const SceneLightin
         }
     }
 
+    phase.reset();
     s.stats.batches += static_cast<unsigned>(submissions);
     s.stats.translucentBatches += translucent;
     s.stats.objectsDrawn += drawnObjects;
@@ -1145,6 +1154,9 @@ void addFrameObject(RenderObjClass *object)
 
 int render(D3D11Backend &backend, CameraClass &camera)
 {
+    PERFORMANCE_PROFILE_SCOPE(NativeObjects);
+    std::optional<PerformanceProfile::Scope> gather;
+    gather.emplace(PerformanceProfile::Category::NativeObjGather);
     State &s = S();
     NativeWorldEffects::addFrameObjects(camera);   // sky box
     std::vector<RenderObjClass *> frameObjects;
@@ -1213,6 +1225,7 @@ int render(D3D11Backend &backend, CameraClass &camera)
     SceneLighting lights, infantry;
     BuildLights(lights, false);
     BuildLights(infantry, true);
+    gather.reset();
     return renderObjects(backend, camera, lights, infantry, inputs.data(), static_cast<unsigned>(inputs.size()));
 }
 

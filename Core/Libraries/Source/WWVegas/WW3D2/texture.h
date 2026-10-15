@@ -104,6 +104,9 @@ public:
 	// Names
 	void	Set_Texture_Name(const char * name);
 	void	Set_Full_Path(const char * path)			{ FullPath = path; }
+	// X64.35 attribution only: free-form creation label (e.g. the text of a sentence texture). Never used for lookup.
+	void	Set_Diagnostic_Label(const char * label)	{ DiagnosticLabel = label; }
+	const StringClass& Get_Diagnostic_Label() const	{ return DiagnosticLabel; }
 	const StringClass& Get_Texture_Name() const		{ return Name; }
 	const StringClass& Get_Full_Path() const			{ if (FullPath.Is_Empty ()) return Name; return FullPath; }
 
@@ -240,6 +243,7 @@ private:
 	// Name
 	StringClass Name;
 	StringClass	FullPath;
+	StringClass DiagnosticLabel;
 
 	// Unique id
 	unsigned texture_id;

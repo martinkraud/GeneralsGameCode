@@ -51,8 +51,25 @@ class Baseline2Contracts(unittest.TestCase):
 
     def test_texture_creation_label_is_cleared(self):
         s = text("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp")
-        self.assertIn("Set_Creation_Label(texture.Get_Full_Path().str())", s)
+        self.assertIn("texture.Get_Full_Path().str()", s)
+        self.assertIn("Get_Diagnostic_Label()", s)
         self.assertIn("Set_Creation_Label(nullptr)", s)
+
+    def test_attribution_scopes_exist_and_zone_calc_behavior_untouched(self):
+        for rel, scope in (
+            ("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp", "NativeEndRender"),
+            ("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp", "NativeUi"),
+            ("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp", "NativeTerrain"),
+            ("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp", "NativeObjProcess"),
+            ("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp", "NativeFxParticles"),
+            ("Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DInGameUI.cpp", "NativeDevOverlay"),
+            ("GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DInGameUI.cpp", "NativeDevOverlay"),
+        ):
+            self.assertIn(scope, text(rel))
+        ai = text("Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp")
+        self.assertIn("PERFORMANCE_PROFILE_SCOPE(ZoneCalc)", ai)
+        # the original statement sequence is unchanged: calculate, then return
+        self.assertRegex(ai, r"calculateZones\(m_map, m_layers, m_extent\);\s*\}\s*return;")
 
 
 if __name__ == "__main__":

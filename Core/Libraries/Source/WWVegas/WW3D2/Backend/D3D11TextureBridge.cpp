@@ -68,7 +68,11 @@ std::unique_ptr<D3D11Backend> D3D11Backend::Create_For_W3D(const Configuration &
         const auto *content = texture.Get_Render2D_CPU_Content();
         if (!content) throw std::runtime_error("D3D11 requires supported CPU content");
         // X64.35 baseline2: measurement label only (which engine texture caused this creation).
-        D3D11Backend::Set_Creation_Label(texture.Get_Full_Path().str());
+        {
+            const StringClass &diagnostic = texture.Get_Diagnostic_Label();
+            D3D11Backend::Set_Creation_Label(!diagnostic.Is_Empty() ? (std::string("text:") + diagnostic.str()).c_str()
+                                                                    : texture.Get_Full_Path().str());
+        }
         struct ClearLabel { ~ClearLabel() { D3D11Backend::Set_Creation_Label(nullptr); } } clearLabel;
         if (texture.Is_Render2D_Dynamic()) {
             texture.Render2D_Uploaded_Revision() = content->Revision();

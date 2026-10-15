@@ -810,8 +810,11 @@ static int drawNativeTerrainPass()
 void W3DDisplay::drawOrdinaryMenuFrame()
 {
     // Black clear like the legacy no-shell-map menu; windows then the cursor layer.
-    if (WW3D::Begin_Render(true, false, Vector3(0.0f, 0.0f, 0.0f), 1.0f) != WW3D_ERROR_OK)
-        throw std::runtime_error("Ordinary menu Begin_Render failed");
+    {
+        PERFORMANCE_PROFILE_SCOPE(NativeBeginRender);
+        if (WW3D::Begin_Render(true, false, Vector3(0.0f, 0.0f, 0.0f), 1.0f) != WW3D_ERROR_OK)
+            throw std::runtime_error("Ordinary menu Begin_Render failed");
+    }
     try {
         const int terrainDraws = drawNativeTerrainPass();
         if (terrainDraws) {
@@ -873,12 +876,20 @@ void W3DDisplay::drawOrdinaryMenuFrame()
             // Native play profile: the legacy in-game composition after the 3D scene - per-drawable
             // icon UI (health bars, veterancy, names), then InGameUI::DRAW which draws the selection
             // region, move/placement hints, messages and repaints every window (Control Bar included).
-            if (auto *view = dynamic_cast<W3DView *>(TheTacticalView)) view->drawNativeWorldOverlays();
+            if (auto *view = dynamic_cast<W3DView *>(TheTacticalView)) {
+                PERFORMANCE_PROFILE_SCOPE(NativeOverlays);
+                view->drawNativeWorldOverlays();
+            }
+            PERFORMANCE_PROFILE_SCOPE(NativeUi);
             TheInGameUI->DRAW();
         } else if (TheWindowManager) {
+            PERFORMANCE_PROFILE_SCOPE(NativeUi);
             TheWindowManager->winRepaint();
         }
-        if (TheMouse) TheMouse->DRAW();
+        if (TheMouse) {
+            PERFORMANCE_PROFILE_SCOPE(NativeMouse);
+            TheMouse->DRAW();
+        }
         if (StartupDiagnostics::enabled() && StartupDiagnostics::ordinaryTerrain() && terrainDraws && g_uiProbesDone == 0 && g_terrainFrames >= 240) {
             // Bounded Control Bar review: composed frame after the UI (bottom 20% = outside the
             // 0.80 world viewport) with per-third non-black statistics and an evidence image.
@@ -908,8 +919,11 @@ void W3DDisplay::drawOrdinaryMenuFrame()
         try { WW3D::End_Render(false); } catch (...) {}
         throw;
     }
-    if (WW3D::End_Render(true) != WW3D_ERROR_OK)
-        throw std::runtime_error("Ordinary menu End_Render failed");
+    {
+        PERFORMANCE_PROFILE_SCOPE(NativeEndRender);
+        if (WW3D::End_Render(true) != WW3D_ERROR_OK)
+            throw std::runtime_error("Ordinary menu End_Render failed");
+    }
     const PresentationStatus present = WW3D::Native_Presentation_Status();
     ++m_hostPresents;
     m_hostPresentResult = present.result;

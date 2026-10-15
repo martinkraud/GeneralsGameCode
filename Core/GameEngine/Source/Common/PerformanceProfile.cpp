@@ -7,6 +7,8 @@
 #include "Common/PerformanceProfile.h"
 #include <algorithm>
 #include <ostream>
+#include <sstream>
+#include <cstdio>
 #include <iomanip>
 #include <limits>
 #include <locale>
@@ -23,7 +25,8 @@ const char* name(Category c)
 		"ai_object_base_update","locomotor_move","path_queue","path_request_entries","path_search",
 		"path_reconstruction","weapon_fire","weapon_store","missile_ai_update","drawable_client_updates",
 		"terrain_visual_update","display_update","particle_manager_update","display_draw","scene_view_draw",
-		"render_end_flush_present","network_update","message_propagation"};
+		"render_end_flush_present","network_update","message_propagation",
+		"native_begin_render","native_terrain","native_terrain_overlays","native_objects","native_obj_gather","native_obj_process","native_fx_ground","native_fx_shadows","native_fx_water","native_fx_shroud","native_fx_particles","native_geom_upload","native_submit","native_world_overlays","native_ui","native_dev_overlay","native_mouse","native_end_render","zone_calc"};
 	static_assert(sizeof(names)/sizeof(*names)==CategoryCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -229,6 +232,33 @@ std::vector<std::size_t> Recorder::slowest(Category category,std::size_t limit,b
 	if(order.size()>limit)order.resize(limit);return order;
 }
 // X64.34 bounded developer receipt: the numbers X64.35 compares before/after a change. CPU wall time only.
+std::string phaseTable(const std::vector<Frame>& frames,std::uint64_t frequencyHz)
+{
+	// X64.35 attribution. Top-level phases partition display_draw; the remainder is reported explicitly as unattributed.
+	static const Category order[]={Category::DisplayDraw,Category::NativeBeginRender,Category::NativeTerrain,Category::NativeTerrainOverlays,
+		Category::NativeObjects,Category::NativeObjGather,Category::NativeObjProcess,Category::NativeFxGround,Category::NativeFxShadows,
+		Category::NativeFxWater,Category::NativeFxShroud,Category::NativeFxParticles,Category::NativeGeomUpload,Category::NativeSubmit,
+		Category::NativeOverlays,Category::NativeUi,Category::NativeDevOverlay,Category::NativeMouse,Category::NativeEndRender,Category::ZoneCalc};
+	const double n=static_cast<double>(frames.empty()?1:frames.size());
+	const double tpm=static_cast<double>(frequencyHz?frequencyHz:1)/1000.0;
+	double incl[static_cast<unsigned>(Category::Count)]={},excl[static_cast<unsigned>(Category::Count)]={},calls[static_cast<unsigned>(Category::Count)]={};
+	for(const auto& f:frames)for(unsigned c=0;c<static_cast<unsigned>(Category::Count);++c){incl[c]+=static_cast<double>(f.metrics[c].inclusive);excl[c]+=static_cast<double>(f.metrics[c].exclusive);calls[c]+=static_cast<double>(f.metrics[c].calls);}
+	std::ostringstream out;
+	char line[200];
+	for(const Category c:order)
+	{
+		const unsigned i=static_cast<unsigned>(c);
+		snprintf(line,sizeof(line),"  %-26s incl %8.4f  excl %8.4f  calls %8.3f\n",name(c),incl[i]/n/tpm,excl[i]/n/tpm,calls[i]/n);
+		out<<line;
+	}
+	const unsigned dd=static_cast<unsigned>(Category::DisplayDraw);
+	double top=0;
+	for(const Category c:{Category::NativeBeginRender,Category::NativeTerrain,Category::NativeObjects,Category::NativeOverlays,Category::NativeUi,Category::NativeMouse,Category::NativeEndRender})
+		top+=incl[static_cast<unsigned>(c)];
+	snprintf(line,sizeof(line),"  display_draw_unattributed  %8.4f  (display_draw incl minus the seven top-level native phases)\n",(incl[dd]-top)/n/tpm);
+	out<<line;
+	return out.str();
+}
 void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
 {
 	const double ticksPerMs=static_cast<double>(std::max<Tick>(meta.frequency,1))/1000.0;
@@ -271,6 +301,8 @@ void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
 	   <<"state: avg_requested "<<sum[static_cast<unsigned>(Counter::StateRequested)]/n<<" avg_changed "<<sum[static_cast<unsigned>(Counter::StateChanged)]/n
 	   <<" avg_texture_binds "<<sum[static_cast<unsigned>(Counter::TextureBinds)]/n<<" avg_shader_changes "<<sum[static_cast<unsigned>(Counter::ShaderChanges)]/n
 	   <<" avg_target_changes "<<sum[static_cast<unsigned>(Counter::TargetChanges)]/n<<" avg_buffer_changes "<<sum[static_cast<unsigned>(Counter::BufferChanges)]/n<<"\n"
+	   <<"native_frame_phases (ms per outer frame averaged over ALL frames; incl = with nested scopes, excl = own time; calls per frame):\n"
+	   <<phaseTable(frames,meta.frequency)
 	   <<"hardware: "<<meta.hardware<<"\nrender_context: "<<meta.renderContext<<"\n"
 	   <<"fps_cap_override: "<<(meta.devFps.empty()?std::string("none"):meta.devFps)<<"\n"
 	   <<"timing_ms_per_frame (CPU wall, inside backend): submit "<<sum[static_cast<unsigned>(Counter::SubmitTicks)]/n/ticksPerMs<<" present "<<sum[static_cast<unsigned>(Counter::PresentTicks)]/n/ticksPerMs
