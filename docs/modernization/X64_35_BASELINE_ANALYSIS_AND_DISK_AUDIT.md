@@ -442,3 +442,6 @@ settle the other open questions. No behavior change, no optimization.**
   the first run is again a no-combat scene, that is acceptable: the render phases are what is being measured.
 Why this and not the state cache: the cache is bounded to <= 4 % and is itself safe to do later; spending the
 first optimization on 4 % while 80 % of the frame is unexplained would not be evidence-driven.
+
+## 11. C-A1 note
+C-A1 was produced by the x64-35-baseline2 executable (git 0ae7d608f), not by x64-35-attribution; it contains no attribution data and serves only as a reproducible second uncapped run of the same build. See `X64_35_PERFORMANCE_OPTIMIZATION.md` section 18.

@@ -278,3 +278,68 @@ generalsv.exe -devMode -quickGame -devFps uncapped -performanceProfile C:\perf\x
 4. Let the 60 s capture finish (the recorder stops at 16,384 frames if the fps is very high), exit through the game menu.
 5. Send everything in `C:\perf\x64-35-attribution\C-A1` (`*-summary.txt` first: it now contains `native_frame_phases`).
 Keep the run out of the A/B/C statistics. Nothing else is required.
+
+
+---
+
+# 18. C-A1 result: the capture is NOT an attribution capture (wrong executable); useful as an uncapped repeat
+
+Raw: `C:\perf\x64-35-attribution\C-A1`.
+
+## 18.1 Validation: which build produced it
+The summary header says `git=0ae7d608f85bfea3a8fda8a69116a8e5a02c1199`, `build=... Oct 15 2026 23:45:16`, and the
+file contains none of the new `native_frame_phases` / `native_*` categories (`scene_view_draw` and
+`render_end_flush_present` still read 0, texture rows are still `(untagged)`). That is the `x64-35-baseline2`
+executable (SHA256 `94626379...68239`, built from `0ae7d608f`), **not** `x64-35-attribution` (`996B972E...75B68`, built from
+`10b4503e9`, 00:20 on Oct 16). The capture was taken in the folder named `x64-35-attribution` only by name: no
+attribution data exists in it. **The attribution questions (items 2-8 of the request) cannot be answered from this data
+and I am not inferring any.** (Probable cause: the launch command was run from, or resolved to, the baseline2 `game`
+folder. A launcher with a hash/commit check was added to prevent a repeat, see 18.4.)
+
+## 18.2 What it is good for: a second uncapped run of the same build
+Same machine, same settings, same exe as C-U1, so it measures run-to-run reproducibility:
+
+| metric | C-U1 | C-A1 | difference |
+|---|---|---|---|
+| frames / duration | 16,271 / 60.00 s | 16,269 / 60.00 s | |
+| avg fps / frame ms | 271.17 / 3.686 | 271.14 / 3.686 | 0.01 % |
+| p95 / p99 / max frame ms | 4.59 / 5.69 / 24.8 | 4.65 / 5.86 / 23.0 | |
+| `display_draw` | 3.380 | 3.383 | 0.1 % |
+| backend submit / present / upload | 0.154 / 0.169 / 0.086 | 0.152 / 0.175 / 0.086 | |
+| `display_draw` remainder (not submit/present/upload) | 2.970 | 2.969 | 0.03 % |
+| GPU timestamp span | 2.18 ms | 2.09 ms | |
+| draws / triangles / state requested / changed | 341 / 110.9k / 6,610 / 384 | 341 / 110.9k / 6,612 / 384 | identical |
+| objects / drawables / particles | 650 / 121 / 11 | 650 / 121 / 11 | identical |
+| textures created = destroyed, live | 18,790 / 54 | 18,788 / 54 | identical |
+
+* The measurement is highly reproducible: **the 2.97 ms unattributed remainder is a stable, real quantity** (not noise),
+  and the receipt counters are exact.
+* The workload is again a no-combat Heavy scene (11 particles), identical to C-U1.
+* Logic spikes (18.4-19.4 ms, all `path_queue`/`ai_global`): C-U1 at 7.2, 9.2, 15.3, 35.2, 55.2 s; C-A1 at 11.2, 13.2,
+  19.3, 39.2, 59.2 s - **the same events shifted by exactly +4.0 s** (the capture started 121 ticks, i.e. 4.03 s of game
+  time, later: `logic_before` 602 vs 481). They are tied to simulation time: deterministic. Whether they are
+  `calculateZones` still needs the ZoneCalc scope (not present in this build).
+* The late presentation step recurs but is **not** tied to simulation time: the two 13 MB page-fault frames (3,288 + 3,287
+  faults, identical size) occur at 34.9 s / tick 1648 in C-U1 and at 43.7 s / tick 1791 in C-A1; after them `Present`
+  rises from 0.05-0.06 ms to 0.3-0.8 ms and the GPU span from 1.9 to 2.5-2.8 ms (fps 280 -> 243-258) in both runs. So it
+  is a **recurring event in this build/machine under sustained uncapped load that is not driven by the game
+  state** (workload counters are flat): driver/memory/power-state behavior is a candidate, but nothing here identifies
+  it. It does not affect the 3.68 ms frame figures above (those are dominated by the first 35-44 s). Still unexplained.
+
+## 18.3 Consequence
+Nothing about the ranking or the recommendation changes yet: item 1 (attribute the ~2.97 ms, now confirmed stable) is
+still the first step, and `x64-35-attribution` is unchanged and still the right candidate. **One more capture is
+genuinely required**, from the correct executable.
+
+## 18.4 Repeat run, with a guard against the wrong executable
+```
+pwsh scripts\native-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-attribution `
+     -OutputDirectory C:\perf\x64-35-attribution\C-A2 -ExpectPhases `
+     -ExpectedSha256 996B972ECE88DEBF9F31ECA3532ED326F5D3569719A43086C6826B17B5E75B68
+```
+It prints the executable path and SHA256 before launching, starts `generalsv.exe -devMode -quickGame -devFps uncapped
+-performanceProfile <dir>` from that candidate's `game` folder, and afterwards prints the summary's `git=` line and
+whether `native_frame_phases` is present (exit code 3 if not). In the game do exactly as before: Ctrl+Alt+Shift **F10**,
+**O**, **B**, wait 5 s, **F11**, let the capture finish, exit via the menu. The summary must show
+`git=10b4503e9...` and contain `native_frame_phases`. Add `-WhatIf` to see the command without launching.
+(Manual alternative: run the exe from `build\dev-runtimes\native\Generals\x64-35-attribution\game`; check `git=` afterwards.)
