@@ -180,3 +180,24 @@ Optional only if the first run looks odd: a second identical run `C-U2`.
 * `game/generalsv.exe` SHA256 `94626379991B99A4F9BA2DA009F6F0E111A7ED6FEC1FA766E40A62200F468239`
 * `game/generalsv.pdb` SHA256 `A4E5FD6C7AE537791147A20159BBA52157A301FD467857F3CCD1E79527DE015`
 Steam untouched. X64.35 is NOT accepted.
+
+
+---
+
+# 16. C-U1 result (uncapped Heavy, x64-35-baseline2) - summary
+
+Full analysis: `X64_35_BASELINE_ANALYSIS_AND_DISK_AUDIT.md` section 10. Recorded separately from the capped A/B/C baseline.
+* 271 fps / 3.69 ms per frame uncapped (60 s, 16,271 frames, 1,800 ticks). Render scene equal to C1-C3; simulation and
+  particles much lighter (no combat): comparable for render, not for logic.
+* **CPU limited; the CPU is not in D3D11 submission (0.154 ms, 4 %) nor Present (0.17 ms, 5 %; 0.06 ms for the first
+  34 s) but in ~2.97 ms (80 %) of engine-side render preparation inside `display_draw` that has no active profiler
+  category.** GPU timestamp span 1.9-2.5 ms (a span, not busy time) is shorter than the CPU frame.
+* H1 state cache re-classified **C**: upper bound ~0.15 ms (4 %), realistic 1.5-3 %.
+* Texture creation: churn (18,790 created = destroyed, live 54), 64x64 per frame and per tick + 6 every 0.5 s from the
+  Developer Mode overlay; not a leak; unlabeled text content.
+* Logic spikes: 20-30 ms single `path_queue` calls (likely `calculateZones`), deterministic, in every run.
+* Page faults: 84 % of the capture's faults are two render frames at ~35 s (+26 MB), coinciding with an unexplained
+  Present/GPU-span step (0.06 -> 0.35 ms; 1.9 -> 2.55 ms) at constant workload.
+* **Recommended first batch: attribution scopes for the unclassified display_draw time + `calculateZones` scope +
+  sentence-texture labels (no behavior change), then ONE Heavy uncapped run.** No optimization has been made;
+  X64.35 is not accepted.

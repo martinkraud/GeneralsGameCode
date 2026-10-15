@@ -304,3 +304,141 @@ Repository 199.7 GB -> **90.6 GB**; C: free 9.0 GB -> **116.8 GB**. 62 supersede
 
 ## 9.12 Follow-up
 The uncapped run decision (9.10) was approved and implemented as candidate `x64-35-baseline2`; see `X64_35_PERFORMANCE_OPTIMIZATION.md` section 15 for the added measurements, limitations and the exact run.
+
+
+---
+
+# 10. C-U1 - uncapped Heavy diagnostic (`x64-35-baseline2`), analysis
+
+Raw: `C:\perf\x64-35-uncapped\C-U1`. **Separate from the capped A/B/C baseline; never merged into C1-C3 statistics.**
+Candidate `x64-35-baseline2` (`generalsv.exe` SHA256 `94626379...68239`), `fps_cap_override: uncapped (-devFps)`,
+same hardware / render context (Intel Graphics 0x8086:0x7D45, 1920x1200, `vsync=0`), Smooth OFF (`interpolation(smooth): 0`).
+
+## 10.1 Validation and comparability with C1-C3
+Valid capture: 60.00 s, 16,271 frames (below the 16,384 recorder cap, so complete), 1,800 ticks (exactly 30 TPS),
+0 catch-up frames, `frame_pacer_wait` 0.0005 ms (the cap really is gone). Workload comparison against the capped C median:
+
+| metric | C-U1 | C1-C3 median | note |
+|---|---|---|---|
+| objects | 650 | 650 | identical |
+| triangles / frame | 110,865 (peak 110,872) | 110,195 | identical |
+| draw calls / frame | 341 (312 world + 29 2D) | 372 | -8 % |
+| state requested / changed | 6,610 / 384 | 7,246 / 359 | -9 % / +7 % |
+| texture binds | 183 | 171 | +7 % |
+| drawables drawn | 121 (constant every frame) | 78 | static camera framing, +55 % |
+| **particles avg (peak)** | **11 (13)** | **203 (700)** | **-95 %: no combat effects** |
+| **logic ms / tick** | **0.41** | **1.09** | **-62 %: AI/pathing quiet** (`ai_object_base_update` 0.05 vs 0.55) |
+| path_request_entries | 0.12 ms mean (28 active frames) | 0.2-0.9 ms | fewer path searches |
+The *render scene* (objects, triangles, draws, binds) is equivalent; the *simulation/effect load* is much lighter (the
+armies were deployed but the fight did not develop). Therefore the render-side numbers are comparable, the logic
+and particle numbers are not, and C-U1's fps is an upper-ish estimate for a Heavy scene without combat.
+
+## 10.2 Throughput and where the 3.69 ms goes
+| | C-U1 | capped C |
+|---|---|---|
+| avg fps / frame ms | **271.2 / 3.69** (p95 4.59, p99 5.69, max 24.8) | 119.8 / 8.33 (4.36 work) |
+| fps over time | 280 (0-34 s) -> **258** (35-60 s) | |
+| game_client_update | 3.59 ms (97 % of frame) | 3.4-4.0 |
+| display_draw | **3.38 ms (91.7 %)** | 3.3-3.7 |
+| logic (amortized per frame) | 0.41 x 1800/16271 = 0.045 ms (1.2 %) | |
+
+Inside `display_draw` (per frame, measured with the new in-backend timers):
+
+| part | ms | % of frame | what it is |
+|---|---|---|---|
+| `Submit_Render2D/World` (state sets, constant-buffer update, DrawIndexed) | 0.154 | 4.2 % | CPU wall inside the backend |
+| `Present` | 0.169 (0.057 before 34 s, 0.35 after) | 4.6 % | CPU wall blocked in Present |
+| texture create/update | 0.086 | 2.3 % | |
+| **everything else in `display_draw`** | **2.97** | **80.6 %** | **not attributed to any category** |
+| GPU timestamp span | 2.18 avg (1.94 before 34 s, 2.55 after) | 59 % of frame | first command to end of frame; includes gaps while the CPU is still submitting |
+
+## 10.3 Primary limit
+**CPU-limited, and the CPU time is in engine-side render preparation, not in D3D11 submission or Present.**
+* Present blocks only 0.06 ms for the first 34 s: the CPU is not being back-pressured by the GPU.
+* The GPU span (1.9-2.5 ms) is shorter than the CPU frame (3.5-3.9 ms), i.e. the GPU has idle gaps waiting for the CPU.
+  (This is a span, not busy time; busy time is less than or equal to the span.)
+* Of the 3.38 ms in `display_draw`, only ~0.41 ms is inside the D3D11 backend. ~2.97 ms is W3D scene traversal, drawable/
+  model preparation (skeletal animation, culling, material setup), particle/shadow/water preparation, terrain
+  updates, in-game UI and the developer overlay - none of which has an active profiler category in the native path
+  (`scene_view_draw`, `terrain_visual_update`, `render_end_flush_present` read 0).
+* Classification: **CPU limited (render-preparation dominated), not CPU-submission limited, not Present/GPU limited
+  at this scene.** The GPU span suggests headroom of roughly 2x before the iGPU becomes the limiter (span 1.9-2.5 ms),
+  but this is not a measured GPU busy time.
+* The earlier "225-227 fps from 4.4 ms work" estimate was meaningful (measured 271, 20 % higher): the capped runs
+  carried ~0.17 ms/frame more logic (combat), and at a 120 fps cap the laptop CPU
+  idles ~60 % of each frame (clock/power-state effects are plausible but not measured).
+* Step change at ~34.9 s: fps 281 -> 258, Present 0.06 -> 0.35 ms, GPU span 1.9 -> 2.55 ms, with *no change* in draws,
+  triangles, drawables or particles, and two render frames with 3,288 page faults each (+26 MB working set). Cause not
+  established (candidates: GPU/package power or thermal state, the driver reallocating, DWM/presentation-mode change).
+  **Unexplained**; it is not a workload effect. This makes absolute fps of long captures sensitive to the machine state.
+
+## 10.4 State cache (H1) re-evaluated -> classification **C: lower priority than another measured bottleneck**
+The whole backend submit function costs 0.154 ms/frame for 341 draws (0.45 us per draw including ~19 state calls,
+constant-buffer update and DrawIndexed, i.e. ~20 ns per state call). A cache that removes ~94 % of the redundant state
+calls can save at most the state-call share of 0.154 ms: **upper bound 0.15 ms (4 % of the frame), realistic
+0.05-0.12 ms (1.5-3 %), i.e. ~271 -> ~275-280 fps.** The 7,246 requested vs 359 changed ratio is real, but each
+redundant call is cheap on this driver. It is a safe, benchmarkable cleanup, worth doing later, but it does not
+address the 80 % of the frame that lies elsewhere. (If the CPU-side render preparation is optimized first, the
+share of submission grows and the cache becomes more valuable.)
+
+## 10.5 Texture creation (attribution result)
+* 18,790 created, 18,790 destroyed, **live 54 constant over the whole capture**: this is **allocation churn, not a
+  leak.** All creations are immutable RGBA8 content textures (entry `content_file`, DXGI format 28): **18,431 of 64x64
+  and 360 of 128x128** (317,936 KB created in total; 16 KB and 64 KB each). 0 dynamic updates.
+* Exact decomposition of the earlier pattern: 16,271 (one 64x64 per rendered frame) + 1,800 (one more per logic tick)
+  + 120 bursts x (3 x 64x64 + 3 x 128x128) = 18,071 + 360 = **18,431 64x64 textures**, matching to the unit. The
+  0.5 s burst of 6 equals the developer overlay: `drawOverlay()` rebuilds its three-line text every `freq/2`
+  (`DeveloperToolsRuntime.cpp`). So the **burst component is a Developer Mode artifact** (not present in retail play).
+* The per-frame and per-tick component is unlabeled (empty texture path => the textures are created from in-memory text/
+  surface content, not files). It is consistent with DisplayString/Render2DSentence rebuilds (frame counter, tick-driven
+  text, overlay re-draw) but this run cannot distinguish the developer overlay from the game's own HUD text. **Not
+  yet proven which.** Cost: `texture_upload` 0.086 ms/frame (2.3 %) + driver allocation; no GPU measurement.
+* Verdict: legitimate transient dynamic-text behavior in a developer scenario, small cost, not a leak. Candidate for
+  a cheap cached-sentence fix only after attribution says it also occurs in normal play.
+
+## 10.6 Page faults / memory
+7,869 faults in 60 s, but **6,575 (84 %) are two frames at 34.9 s and 35.2 s (3,288 and 3,287, i.e. 13 MB each)**
+with logic idle (render frames). Otherwise ~20-25 faults per second: steady working set 464-465 MB, 26 MB step up
+to 490 MB, flat afterwards, private 432 -> 459 MB. The step coincides with the Present/GPU-span step (10.3), not with the
+logic spikes. Compared with B3: B3 had *no* comparable page-fault data (the counter did not exist), so this does not
+test the B3 hypothesis. **B3 remains "unexplained; environmental interference likely"**; nothing here supports or
+rules out disk pressure.
+
+## 10.7 Logic spikes - attributed
+C-U1 shows the same events: 18.4-19.0 ms at 7.2, 9.2, 15.3, 35.2/35.3, 55.2 s (the same game times as C2/C3 within the
+~0.9 s capture-start offset), cost scaled with the faster uncapped CPU (22 -> 18.6 ms). The slow-frame report now
+shows **exclusive time inside one `path_queue` call** (`path_queue` 18.32 ms exclusive of 18.32 inclusive, 1 call, no
+search/request/reconstruction time) on the worst frame of C-U1, and across all capped runs: A1 25-32 ms (6 events),
+A3 20-31 (6), B1 20-24 (3), B2 21-23 (6), B4 20-21 (6), C1 20-21 (3), C2 20-22 (6), C3 20-21 (6). The remaining spikes
+are `ai_player_strategy` 8-59 ms (B1's 85 ms frame is 59 ms of it, A1 13 ms, B4 9-11 ms). The B3 failure mode is
+different (exclusive logic time, not path_queue). Source reading: the only unscoped heavy work in
+`Pathfinder::processPathfindQueue` is `m_zoneManager.calculateZones(...)` (zone recalculation after the map/obstacles
+changed; it returns immediately after, which matches "no search time"). **Likely** (not proven) cause; a scope around
+`calculateZones` and a counter of calls settles it. They are deterministic simulation events, so any fix
+(time-slicing, incremental update) must be CRC/replay-neutral and is a simulation-side change: do it as its own
+batch, after the renderer attribution, not inside it. The 22-ms hitch is visible as one long frame at 120+ fps.
+
+## 10.8 Final ranked list (all evidence: A, B, C, B3, C-U1)
+| # | item | observation / evidence | expected benefit | risk | scope | automated validation | native validation | keep/revert |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **Attribute the 2.97 ms (80 %) of unclassified `display_draw`** | C-U1: backend = 0.41 of 3.38 ms; scene_view/terrain/render_end categories read 0 | enables every real renderer optimization; no direct fps gain | none (measurement) | ~10-12 `PERFORMANCE_PROFILE_SCOPE`s in `W3DDisplay::draw`/`drawViews` (particle DRAW, water/shadow RTT update, scene+terrain render, drawable pass, in-game UI, mouse, End_Render) | receipt/category tests, shared-engine build | ONE Heavy run (uncapped) | n/a (instrumentation); the result decides item 2 |
+| 2 | **Optimize the dominant attributed render-preparation phase(s)** (decided by item 1) | 80 % of the frame | up to ~1-2 ms/frame (25-50 %) if one phase dominates | medium (shared Generals/ZH render path; visual identity) | per finding | pixel/readback equality, CRC/replay neutral | same Heavy run repeated | keep if median frame ms drops >= 5 % with no visual diff |
+| 3 | **Remove the 20-30 ms `path_queue` zone-calc hitches** | 3-10 per minute, deterministic, scope attributable | smoothness (1 hitch frame removed per event), no throughput change | medium (simulation; must be CRC-neutral) | scope `calculateZones`, count, then time-slice/incremental | determinism/CRC/replay tests, pathfinding tests | frame max, long-frame count | keep if events < 10 ms and CRC identical |
+| 4 | **D3D11 state cache (H1)** | 94 % of 6.6k state values redundant; whole submit = 0.154 ms | <= 0.15 ms (<= 4 %), realistic 1.5-3 % | low-medium (stale state) | `D3D11Backend` submit paths | mock-context call counts, shadow-state compare, readback equality | repeat C | keep if `submit` drops >= 30 % and frame ms improves; else revert |
+| 5 | **Sentence-texture churn** | 1.35 x 64x64 per frame; burst = dev overlay; 0.086 ms/frame | ~0.1 ms, less driver churn | low | label sentence creations, then cache unchanged text | readback equality | overlay-off + normal HUD run | keep if creations/frame -> 0 for unchanged text |
+| 6 | **34.9 s presentation/GPU step** | present 0.06 -> 0.35, GPU span +30 % at constant workload, +26 MB WS | stability of results | n/a | not actionable yet | n/a | recurrence in next run | investigate if it repeats at the same time |
+| 7 | B3 stall | 1 of 11 runs, unexplained | stability | n/a | watch list | page-fault counter now exists | recur | |
+| 8 | GPU-side work (overdraw/triangles) | GPU span 1.9-2.5 ms < CPU frame | none until CPU is faster | | | | | |
+
+## 10.9 Recommendation: ONE batch
+**Batch "x64-35-attribution": make the unattributed 80 % of the frame attributable, plus the two cheap labels that
+settle the other open questions. No behavior change, no optimization.**
+* Add profiler scopes only (the existing macros) in `W3DDisplay::draw` / `drawViews` and the major children: particle
+  system DRAW, water RTT and projected-shadow RTT updates, tactical view scene render (terrain / objects / drawables /
+  shadows / water), in-game UI, mouse/cursor, developer overlay, `End_Render`; a scope and call counter around
+  `m_zoneManager.calculateZones`; a texture label for sentence/text creations (font + first characters).
+* Do NOT change: rendering order/output, simulation, caps, settings, texture behavior, the state cache.
+* One native run (same Heavy uncapped recipe), after which item 2 will be a concrete, evidence-sized optimization. If
+  the first run is again a no-combat scene, that is acceptable: the render phases are what is being measured.
+Why this and not the state cache: the cache is bounded to <= 4 % and is itself safe to do later; spending the
+first optimization on 4 % while 80 % of the frame is unexplained would not be evidence-driven.
