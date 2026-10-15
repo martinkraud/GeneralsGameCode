@@ -748,9 +748,8 @@ meshes, drawable shadow flags, widescreen visibility) remain to be investigated 
 * `game/generalsv.pdb` SHA256 `716DD369730229D3A1CF93D2FCBF7EAC9F32CE50541B8E3B50299710F7D566D6`
 * Same Heavy uncapped run as C-A2/C-S1:
 ```
-pwsh scripts
-ative-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-shadow-attribution `
-     -OutputDirectory C:\perfd-35-shadow-attribution\C-D1 -ExpectPhases `
+pwsh scripts\native-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-shadow-attribution `
+     -OutputDirectory C:\perf\x64-35-shadow-attribution\C-D1 -ExpectPhases `
      -ExpectedSha256 0AAC4EE6C50160AA53F4EC0813D9023B3FE8B1300EB11AF1DF67A6847A377EC9
 ```
   (Ctrl+Alt+Shift F10, O, B, wait 5 s, F11; summary must show `git=f0c347b34...` and the line `shadows (per frame): ...`.)
