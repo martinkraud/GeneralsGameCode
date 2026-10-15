@@ -43,7 +43,10 @@ enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisite
 	TexturesLive, PageFaults, WorkingSetMb, PrivateMb,
 	// X64.35 shadow counts per frame: registered shadows visited, shadows skipped by an early-out, decal shadows emitted,
 	// volume casters emitted.
-	ShadowsSeen, ShadowsSkipped, ShadowDecals, ShadowVolumes, Count };
+	ShadowsSeen, ShadowsSkipped, ShadowDecals, ShadowVolumes,
+	// X64.35 decal-geometry reuse: per-frame hits (reused exactly), misses (rebuilt), uncached (terrain source unknown /
+	// not cacheable), evictions; DecalCacheKb is a gauge of the retained cache size.
+	DecalCacheHits, DecalCacheMisses, DecalUncached, DecalEvictions, DecalCacheKb, Count };
 constexpr unsigned int CategoryCount = static_cast<unsigned int>(Category::Count);
 constexpr unsigned int CounterCount = static_cast<unsigned int>(Counter::Count);
 constexpr unsigned int MaxFrames = 16384, MaxDepth = 64;

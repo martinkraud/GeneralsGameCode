@@ -68,6 +68,9 @@ struct Stats
     unsigned shadowsSeen;         // registered shadows considered
     unsigned shadowNoGeometry;    // volume shadows whose object had no shadow-casting geometry
     unsigned shadowCulled;        // shadows skipped: hidden or outside the view
+    unsigned decalCacheHits;      // decal-shadow grids reused bit-exactly from the previous frame
+    unsigned decalCacheMisses;    // decal-shadow grids rebuilt (changed inputs / first sight)
+    unsigned decalUncached;       // decal grids built without caching (terrain source not known for certain)
     unsigned waterPatches;        // water areas emitted
     unsigned shroudCells;         // shroud overlay cells emitted
     unsigned scorches;            // scorch marks emitted
@@ -132,6 +135,8 @@ void replaceSkyboxTexture(const char *oldTexture, const char *newTexture);
 float shroudCellWorldSize();
 // Test hook: installs a shroud level grid without a loaded map (cleared by uninstall()/releaseAll()).
 void setShroudForTests(int cellsX, int cellsY, float cellSize, const unsigned char *levels, unsigned char border);
+// Test hook: supplies the terrain identity/revision for decal-grid reuse (null restores the production source).
+void setTerrainStampForTests(bool (*stamp)(unsigned &serial, unsigned &revision));
 
 // Scorch marks (W3DScorch equivalent): terrain-following decals from the 3x3 EXScorch01 atlas.
 void addScorch(float x, float y, float z, float radius, int type, bool permanent);
@@ -151,6 +156,7 @@ inline void setShroudFilter(bool) {}
 inline void shroudMultiplierAt(float, float, float rgb[3]) { rgb[0] = rgb[1] = rgb[2] = 1.0f; }
 inline float shroudCellWorldSize() { return 0.0f; }
 inline void setShroudForTests(int, int, float, const unsigned char *, unsigned char) {}
+inline void setTerrainStampForTests(bool (*)(unsigned &, unsigned &)) {}
 inline void addScorch(float, float, float, float, int, bool) {}
 inline void clearScorches() {}
 }

@@ -1270,6 +1270,10 @@ void W3DTerrainVisual::xfer( Xfer *xfer )
 			}
 		}
 		xfer->xferUser(data, len);
+#if defined(_WIN64)
+		if (xfer->getXferMode() == XFER_LOAD)
+			m_logicHeightMap->noteHeightsReplaced();   // bulk write bypassed setRawHeight (render-side revision only)
+#endif
 		if (xfer->getXferMode() == XFER_LOAD)
     {
 			// Update the display height map.

@@ -8,6 +8,9 @@
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "W3DDevice/GameClient/NativeDecalGridCache.h"
+#include "GameClient/TerrainVisual.h"
+#include <typeinfo>
 #include "Common/GlobalData.h"
 #include "Common/StartupDiagnostics.h"
 #include "GameClient/ParticleSys.h"
@@ -536,9 +539,12 @@ public:
 
 NativeShadowManager *g_shadowManager = nullptr;
 unsigned g_shadowColor = 0x7fa0a0a0;
+// X64.35: exact reuse of decal-shadow grids (see NativeDecalGridCache.h). Render-only.
+NativeDecalGrid::Cache g_decalCache;
 
 void NativeShadow::release()
 {
+    g_decalCache.forget(this);   // an entry can never outlive its shadow (or be matched by a reused address)
     if (g_shadowManager) g_shadowManager->Remove(this);
     delete this;
 }
@@ -547,6 +553,25 @@ float GroundHeight(float x, float y)
 {
     if (!TheTerrainLogic) return 0.0f;
     return TheTerrainLogic->getGroundHeight(x, y);
+}
+
+// X64.35: identity and revision of the height map that GroundHeight reads, or false when that is not known for
+// certain. In the game TheTerrainLogic is the W3DTerrainLogic, whose getGroundHeight is
+// TheTerrainRenderObject->getHeightMapHeight(), which samples TheTerrainVisual->getLogicHeightMap(). Heights of that map
+// change only through WorldHeightMap::setRawHeight (W3DTerrainVisual::setRawMapHeight: construction flattening, seismic
+// lowering) and the bulk read in W3DTerrainVisual::xfer (savegame load); both bump the revision, and a new map object
+// (map load) has a new serial. Any other terrain logic (tests, stubs) is not cached.
+bool (*g_terrainStampForTests)(unsigned &, unsigned &) = nullptr;
+bool TerrainStamp(unsigned &serial, unsigned &revision)
+{
+    if (g_terrainStampForTests) return g_terrainStampForTests(serial, revision) && serial != 0;
+    if (!TheTerrainLogic || !TheTerrainRenderObject || !TheTerrainVisual) return false;
+    if (std::strstr(typeid(*TheTerrainLogic).name(), "W3DTerrainLogic") == nullptr) return false;
+    const WorldHeightMap *map = TheTerrainVisual->getLogicHeightMap();
+    if (!map) return false;
+    serial = map->renderSerial();
+    revision = map->heightRevision();
+    return serial != 0;
 }
 
 // The terrain height field itself (what the terrain mesh is built from): lattice index relative to the
@@ -583,42 +608,32 @@ void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, floa
     if (!(sx > 0.01f) || !(sy > 0.01f) || sx > 4000.0f || sy > 4000.0f) return;
     // 2.5 unit steps (a quarter of the terrain cell) keep the decal within a fraction of a unit of the
     // surface; the lift below covers the remaining fold deviation on steep slopes.
-    int nu = static_cast<int>(std::ceil(sx / 2.5f)) + 1, nv = static_cast<int>(std::ceil(sy / 2.5f)) + 1;
-    nu = std::max(2, std::min(nu, 33)); nv = std::max(2, std::min(nv, 33));
-    const float stepX = sx / static_cast<float>(nu - 1), stepY = sy / static_cast<float>(nv - 1);
-    const float c = std::cos(yaw), s = std::sin(yaw);
-    static std::vector<WorldVertexXYZDUV2> vertices;
-    static std::vector<unsigned short> indices;
-    vertices.clear(); indices.clear();
-    const unsigned color = shadow.diffuse();
-    for (int j = 0; j < nv; ++j) {
-        for (int i = 0; i < nu; ++i) {
-            const float fu = static_cast<float>(i) / static_cast<float>(nu - 1);
-            const float fv = static_cast<float>(j) / static_cast<float>(nv - 1);
-            const float lx = (fu - 0.5f) * sx, ly = (fv - 0.5f) * sy;
-            WorldVertexXYZDUV2 v;
-            v.x = cx + lx * c - ly * s;
-            v.y = cy + lx * s + ly * c;
-            const float h = GroundHeight(v.x, v.y);
-            const float gx = (GroundHeight(v.x + 1.25f, v.y) - h) / 1.25f, gy = (GroundHeight(v.x, v.y + 1.25f) - h) / 1.25f;
-            const float slope = std::min(2.0f, std::sqrt(gx * gx + gy * gy));
-            v.z = h + 0.3f + slope * 0.5f * std::max(stepX, stepY);
-            v.diffuse = color;
-            v.u0 = v.u1 = fu; v.v0 = v.v1 = 1.0f - fv;
-            vertices.push_back(v);
-        }
-    }
-    for (int j = 0; j + 1 < nv; ++j) {
-        for (int i = 0; i + 1 < nu; ++i) {
-            const unsigned short a = static_cast<unsigned short>(j * nu + i), b = static_cast<unsigned short>(a + 1);
-            const unsigned short d = static_cast<unsigned short>(a + nu), e = static_cast<unsigned short>(d + 1);
-            indices.push_back(a); indices.push_back(d); indices.push_back(b);
-            indices.push_back(b); indices.push_back(d); indices.push_back(e);
-        }
+    NativeDecalGrid::Params params;
+    params.cx = cx; params.cy = cy; params.yaw = yaw; params.sx = sx; params.sy = sy;
+    NativeDecalGrid::Dimensions(sx, sy, params.nu, params.nv);
+    params.color = shadow.diffuse();
+    const auto height = [](float x, float y) { return GroundHeight(x, y); };
+    NativeDecalGrid::Cache::Result grid;
+    if (TerrainStamp(params.terrainSerial, params.terrainRevision)) {
+        // exact reuse: every input of the grid (incl. the terrain identity/revision) is part of the key
+        const unsigned long long evictionsBefore = g_decalCache.statistics().evictions;
+        grid = g_decalCache.get(&shadow, params, height);
+        if (grid.hit) ++g_stats.decalCacheHits; else ++g_stats.decalCacheMisses;
+        PerformanceProfile::count(grid.hit ? PerformanceProfile::Counter::DecalCacheHits
+                                           : PerformanceProfile::Counter::DecalCacheMisses);
+        const unsigned long long evicted = g_decalCache.statistics().evictions - evictionsBefore;
+        if (evicted) PerformanceProfile::count(PerformanceProfile::Counter::DecalEvictions, static_cast<PerformanceProfile::Tick>(evicted));
+        PerformanceProfile::count(PerformanceProfile::Counter::DecalCacheKb, static_cast<PerformanceProfile::Tick>(g_decalCache.statistics().bytes >> 10));
+    } else {
+        // unknown terrain source: canonical generation every frame, never cached (params.terrainSerial == 0)
+        params.terrainSerial = 0;
+        grid = g_decalCache.get(&shadow, params, height);
+        ++g_stats.decalUncached;
+        PerformanceProfile::count(PerformanceProfile::Counter::DecalUncached);
     }
     NativeWorldObjects::EffectBatch b = {};
-    b.vertices = vertices.data(); b.vertexCount = static_cast<unsigned>(vertices.size());
-    b.indices = indices.data(); b.indexCount = static_cast<unsigned>(indices.size());
+    b.vertices = grid.vertices; b.vertexCount = grid.vertexCount;
+    b.indices = grid.indices; b.indexCount = grid.indexCount;
     char name[80];
     std::snprintf(name, sizeof(name), "%s", shadow.info().m_ShadowName);
     const size_t length = std::strlen(name);
@@ -1324,6 +1339,7 @@ void uninstall()
         g_shadowManager = nullptr;
     }
     g_shroud = ShroudState{};
+    g_decalCache.clear();
     g_scorches.clear();
     g_staticScorches.clear();
 }
@@ -1362,6 +1378,11 @@ float shroudCellWorldSize()
 void setShroudFilter(bool enable)
 {
     g_shroud.filter = enable;
+}
+
+void setTerrainStampForTests(bool (*stamp)(unsigned &serial, unsigned &revision))
+{
+    g_terrainStampForTests = stamp;
 }
 
 void setShroudForTests(int cellsX, int cellsY, float cellSize, const unsigned char *levels, unsigned char border)

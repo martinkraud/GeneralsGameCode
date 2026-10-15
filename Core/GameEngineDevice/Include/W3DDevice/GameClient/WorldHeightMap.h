@@ -30,6 +30,9 @@
 #pragma once
 
 #include "Lib/BaseType.h"
+#if defined(_WIN64)
+#include <atomic>
+#endif
 #include "WWLib/refcount.h"
 #include "WWMath/vector3.h"
 #include "W3DDevice/GameClient/TileData.h"
@@ -136,6 +139,13 @@ protected:
 	VecICoord2D m_boundaries;	///< the in-game boundaries
 	Int m_dataSize;			///< size of m_data.
 	UnsignedByte *m_data;	///< array of z(height) values in the height map.
+#if defined(_WIN64)
+	// X64.35 decal-geometry reuse (render-side bookkeeping only; never serialized, never read by game logic): a
+	// process-unique identity per instance (survives allocator address reuse) and a counter bumped on every runtime
+	// change of the height data (setRawHeight, bulk replacement on load).
+	UnsignedInt m_renderSerial = WorldHeightMap::nextRenderSerial();
+	UnsignedInt m_heightRevision = 0;
+#endif
 
   UnsignedByte *m_seismicUpdateFlag;  ///< array of bits to prevent ovelapping physics-update regions from doubling effects on shared cells
   UnsignedInt   m_seismicUpdateWidth; ///< width of the array holding SeismicUpdateFlags
@@ -337,8 +347,18 @@ public:  // Flat tile texture info.
 	Bool getRawTileData(Short tileNdx, Int width, UnsignedByte *buffer, Int bufLen);
 	UnsignedByte *getRGBAlphaDataForWidth(Int width, TBlendTileInfo *pBlend);
 
+#if defined(_WIN64)
+public:  // X64.35 render-side height identity / revision
+	static UnsignedInt nextRenderSerial() { static std::atomic<UnsignedInt> counter{0}; return ++counter; }
+	UnsignedInt renderSerial() const { return m_renderSerial; }
+	UnsignedInt heightRevision() const { return m_heightRevision; }
+	void noteHeightsReplaced() { ++m_heightRevision; }   // after a bulk write of m_data (savegame load)
+#endif
 public:  // modify height value
 	void setRawHeight(Int xIndex, Int yIndex, UnsignedByte height) {
+#if defined(_WIN64)
+		++m_heightRevision;
+#endif
 		Int ndx = (yIndex*m_width)+xIndex;
 		if ((ndx>=0) && (ndx<m_dataSize) && m_data) m_data[ndx]=height;
 	};

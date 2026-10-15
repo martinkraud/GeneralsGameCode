@@ -40,7 +40,8 @@ const char* name(Counter c)
 		"target_changes","buffer_changes",
 		"present_qpc","submit_qpc","upload_qpc","gpu_us","gpu_frames","textures_destroyed","texture_updates","texture_update_kb",
 		"textures_live_gauge","page_faults","working_set_mb_gauge","private_mb_gauge",
-		"shadows_seen","shadows_skipped","shadow_decals","shadow_volumes"};
+		"shadows_seen","shadows_skipped","shadow_decals","shadow_volumes",
+		"decal_cache_hits","decal_cache_misses","decal_uncached","decal_cache_evictions","decal_cache_kb_gauge"};
 	static_assert(sizeof(names)/sizeof(*names)==CounterCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -307,6 +308,9 @@ void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
 	   <<phaseTable(frames,meta.frequency)
 	   <<"shadows (per frame): seen "<<sum[static_cast<unsigned>(Counter::ShadowsSeen)]/n<<" skipped "<<sum[static_cast<unsigned>(Counter::ShadowsSkipped)]/n
 	   <<" decals "<<sum[static_cast<unsigned>(Counter::ShadowDecals)]/n<<" volumes "<<sum[static_cast<unsigned>(Counter::ShadowVolumes)]/n<<"\n"
+	   <<"decal_geometry_reuse (per frame): hits "<<sum[static_cast<unsigned>(Counter::DecalCacheHits)]/n<<" misses "<<sum[static_cast<unsigned>(Counter::DecalCacheMisses)]/n
+	   <<" uncached "<<sum[static_cast<unsigned>(Counter::DecalUncached)]/n<<" evictions "<<sum[static_cast<unsigned>(Counter::DecalEvictions)]/n
+	   <<" retained_kb_end "<<(frames.empty()?0:frames.back().counters[static_cast<unsigned>(Counter::DecalCacheKb)])<<"\n"
 	   <<"hardware: "<<meta.hardware<<"\nrender_context: "<<meta.renderContext<<"\n"
 	   <<"fps_cap_override: "<<(meta.devFps.empty()?std::string("none"):meta.devFps)<<"\n"
 	   <<"timing_ms_per_frame (CPU wall, inside backend): submit "<<sum[static_cast<unsigned>(Counter::SubmitTicks)]/n/ticksPerMs<<" present "<<sum[static_cast<unsigned>(Counter::PresentTicks)]/n/ticksPerMs

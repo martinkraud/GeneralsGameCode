@@ -29,6 +29,7 @@ set(COREI_GOOGLETEST_SRC
     Libraries/NativeParticlePipelineTest.cpp
     Libraries/NativeRadarTest.cpp
     Libraries/NativeWorldOverlaysTest.cpp
+    Libraries/NativeDecalGridCacheTest.cpp
 )
 
 add_library(corei_googletest INTERFACE)

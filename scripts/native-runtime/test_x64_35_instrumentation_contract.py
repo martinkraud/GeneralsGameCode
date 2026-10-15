@@ -81,6 +81,31 @@ class Baseline2Contracts(unittest.TestCase):
         import pathlib
         self.assertFalse((ROOT / "Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeShadowVolumeCache.h").exists())
 
+    def test_decal_grid_reuse_terrain_revision_covers_every_height_writer(self):
+        wm = text("Core/GameEngineDevice/Include/W3DDevice/GameClient/WorldHeightMap.h")
+        # revision bump is inside setRawHeight itself and the identity is per instance (survives address reuse)
+        self.assertRegex(wm, r"void setRawHeight\([^)]*\) \{\s*#if defined\(_WIN64\)\s*\+\+m_heightRevision;\s*#endif")
+        self.assertIn("nextRenderSerial()", wm)
+        self.assertIn("m_renderSerial = WorldHeightMap::nextRenderSerial()", wm)
+        tv = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DTerrainVisual.cpp")
+        # the savegame bulk write bypasses setRawHeight and must bump the revision
+        self.assertRegex(tv, r"xfer->xferUser\(data, len\);\s*#if defined\(_WIN64\)\s*if \(xfer->getXferMode\(\) == XFER_LOAD\)\s*m_logicHeightMap->noteHeightsReplaced\(\)")
+        # the only remaining non-const writers of the data pointer are the xfer (above) and read-only users
+        import glob
+        writers = []
+        for path in glob.glob(str(ROOT / "Core/GameEngineDevice/Source/W3DDevice/GameClient/*.cpp")):
+            body = pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
+            if "setRawHeight(" in body and not path.endswith(("W3DTerrainVisual.cpp", "WorldHeightMap.cpp")):
+                writers.append(path)
+        self.assertEqual(writers, [])
+        fx = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp")
+        self.assertIn("g_decalCache.forget(this)", fx)
+        self.assertIn("g_decalCache.clear();", fx)
+        self.assertIn('std::strstr(typeid(*TheTerrainLogic).name(), "W3DTerrainLogic")', fx)   # unknown terrain logic: canonical
+        header = text("Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeDecalGridCache.h")
+        for forbidden in ("GameLogic", "TheGameLogic", "RandomValue", "Xfer"):
+            self.assertNotIn(forbidden, header)
+
 
 if __name__ == "__main__":
     unittest.main()

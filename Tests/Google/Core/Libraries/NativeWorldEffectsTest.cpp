@@ -395,6 +395,78 @@ TEST(NativeWorldEffectsTest, DecalShadowsComeFromTheNativeProjectedShadowManager
     EXPECT_EQ(TheProjectedShadowManager, nullptr);
 }
 
+namespace
+{
+unsigned g_testTerrainSerial = 11, g_testTerrainRevision = 1;
+bool TestTerrainStamp(unsigned &serial, unsigned &revision)
+{
+    serial = g_testTerrainSerial;
+    revision = g_testTerrainRevision;
+    return true;
+}
+}
+
+TEST(NativeWorldEffectsTest, DecalGeometryReuseIsPixelIdenticalAndFollowsChanges)
+{
+    NativeWorldObjects::resetStatsForTests();
+    NativeWorldEffects::resetStatsForTests();
+    Rig rig;
+    ASSERT_TRUE(rig.backend);
+    NativeWorldEffects::install();
+    ASSERT_NE(TheProjectedShadowManager, nullptr);
+
+    Shadow::ShadowTypeInfo info;
+    info.m_type = SHADOW_ALPHA_DECAL;
+    info.m_sizeX = info.m_sizeY = 60.0f;
+    Shadow *decal = TheProjectedShadowManager->addDecal(&info);
+    ASSERT_NE(decal, nullptr);
+    decal->setColor(0x00ff2020);
+    decal->setOpacity(200);
+    decal->setPosition(0.0f, 0.0f, 0.0f);
+    decal->setAngle(0.3f);
+
+    // canonical reference: no terrain stamp (production source unknown in this test) -> never cached
+    const std::vector<unsigned char> canonical = rig.render(nullptr, 0);
+    EXPECT_GT(NativeWorldEffects::stats().decalUncached, 0u);
+    EXPECT_EQ(NativeWorldEffects::stats().decalCacheHits, 0u);
+
+    // with a terrain stamp: first frame builds (miss), the next frames are served from the cache - identical pixels
+    NativeWorldEffects::setTerrainStampForTests(&TestTerrainStamp);
+    const std::vector<unsigned char> missFrame = rig.render(nullptr, 0);
+    EXPECT_GT(NativeWorldEffects::stats().decalCacheMisses, 0u);
+    const std::vector<unsigned char> hitFrame = rig.render(nullptr, 0);
+    EXPECT_GT(NativeWorldEffects::stats().decalCacheHits, 0u);
+    EXPECT_EQ(Differing(canonical, missFrame), 0u);
+    EXPECT_EQ(Differing(canonical, hitFrame), 0u);
+
+    // changed inputs recompute: a moved/rotated decal changes the image, restoring it restores the identical image
+    const unsigned missesBefore = NativeWorldEffects::stats().decalCacheMisses;
+    decal->setAngle(0.9f);
+    decal->setPosition(25.0f, -10.0f, 0.0f);
+    const std::vector<unsigned char> moved = rig.render(nullptr, 0);
+    EXPECT_GT(NativeWorldEffects::stats().decalCacheMisses, missesBefore);
+    EXPECT_GT(Differing(canonical, moved), 0u);
+    decal->setAngle(0.3f);
+    decal->setPosition(0.0f, 0.0f, 0.0f);
+    EXPECT_EQ(Differing(canonical, rig.render(nullptr, 0)), 0u);
+
+    // a terrain revision change forces a rebuild even for an unchanged decal
+    const unsigned missesBeforeRevision = NativeWorldEffects::stats().decalCacheMisses;
+    ++g_testTerrainRevision;
+    EXPECT_EQ(Differing(canonical, rig.render(nullptr, 0)), 0u);
+    EXPECT_GT(NativeWorldEffects::stats().decalCacheMisses, missesBeforeRevision);
+    // replaced terrain (new identity) likewise
+    const unsigned missesBeforeSerial = NativeWorldEffects::stats().decalCacheMisses;
+    g_testTerrainSerial = 12;
+    rig.render(nullptr, 0);
+    EXPECT_GT(NativeWorldEffects::stats().decalCacheMisses, missesBeforeSerial);
+
+    NativeWorldEffects::setTerrainStampForTests(nullptr);
+    decal->release();
+    NativeWorldEffects::uninstall();
+    EXPECT_EQ(TheProjectedShadowManager, nullptr);
+}
+
 TEST(NativeWorldEffectsTest, ShadowManagerSurvivesReleaseAfterUninstall)
 {
     Rig rig;
