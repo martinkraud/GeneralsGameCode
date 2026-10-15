@@ -437,3 +437,16 @@ blocker audit described above, under the next developer instruction.
 **X64.29 CLOSED:** `x64-29-gameplay-render-completeness-fix2` accepted by developer visual review (2026-10-13); evidence preserved in `docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/`. Zero Hour X64.30 parameterization is deliberately postponed (audit kept in `GAMEPLAY_RENDERING_COMPLETENESS.md` sections 11-12). Next batch: World/UI Completeness (`WORLD_UI_COMPLETENESS.md`).
 
 **X64.30 World/UI Completeness (offline batch complete, candidate `x64-30-world-ui-completeness` staged, NOT executed):** radar/minimap through the original `W3DRadar` on a shared CPU-backed dynamic UI texture residency (D3D11 backend, revision-driven upload), terrain tracks, building bibs and waypoint/rally lines (new ground layer, PASS_ALWAYS), retail water pixel shaders (sparkles/noise, river alpha edge), sky box, scenery shroud. Doc: `WORLD_UI_COMPLETENESS.md`. Env fallbacks: `GENERALS_NATIVE_DISABLE=radar,tracks,bibs,waypoints,skybox,water`. New receipt `world_overlays`. Zero Hour untouched (hooks are `RTS_GENERALS`-guarded).
+
+
+## X64.35 closeout (2026-10-16)
+
+X64.35 Performance Profiling + Evidence-Driven Optimization is ACCEPTED AND CLOSED (CP9). Accepted: the retained
+performance instrumentation (receipt, native frame phases, backend submit/Present timers, GPU timestamp span, texture
+attribution, shadow/decal counters, `-devFps`, `Invoke-NativeCandidateCapture.ps1`), the exact decal-geometry reuse
+(`b63d86149`, candidate `x64-35-decal-reuse`, native visual check accepted; C-D1 -> C-R1: -0.593 ms decal, frame
+3.540 -> 3.125 ms) and the native candidate retention policy/tool (`NATIVE_CANDIDATE_RETENTION.md`). The shadow-volume
+cache was disproven by measurement and reverted; do not reintroduce it without new evidence. Open and unresolved: the
+helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Present/GPU/page-fault step, the B3 stall,
+per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
+`X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.

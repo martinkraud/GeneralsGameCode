@@ -1,8 +1,8 @@
 # X64.35 Performance profiling + evidence-driven optimization
 
 Baseline commit: `96766b2d9` (X64.34 accepted). Branch `dev/modern-engine`.
-Status: **BASELINE COMPLETE (2026-10-15); awaiting review before any optimization. No optimization has been made.
-X64.35 is NOT accepted.**
+Status: **ACCEPTED AND CLOSED (2026-10-16)**: performance instrumentation + exact decal-geometry reuse kept; see section 27.
+(Earlier status lines in this document describe the milestone while it was in progress.)
 
 Rule for this milestone: MEASURE -> IDENTIFY BOTTLENECK -> CHANGE -> MEASURE AGAIN -> COMPARE -> KEEP OR REVERT.
 
@@ -1018,3 +1018,83 @@ Heavy uncapped scene: 3.69 (C-U1/C-A2 era) -> 3.13 ms; ~320 fps on the laptop iG
   issue, the `setUseHotkey` guard and the `native_geom_upload` observation as separately scoped follow-ups. An optional
   final capped Heavy capture would give a like-for-like before/after against the original 120 fps baseline.
 No further optimization is started; X64.35 is not marked accepted.
+
+
+---
+
+# 27. X64.35 ACCEPTED AND CLOSED (2026-10-16) - CP9 acceptance record
+
+## 27.1 Decision
+Human native visual acceptance of `x64-35-decal-reuse` is complete: shadows and ground decals looked normal in native
+gameplay, no stale or incorrect decal behavior was seen. **The decal-geometry reuse (`b63d86149`) is formally KEPT.** The
+helicopter shadow pop-in observed earlier is a separate pre-existing correctness issue and is not a failure of this
+optimization. X64.35 deliberately stops here.
+
+## 27.2 Accepted native result (C-D1 -> C-R1, clean window 0-24 s, same Heavy uncapped scenario)
+| metric | C-D1 | C-R1 |
+|---|---|---|
+| `native_shadow_decal` | 0.870 ms | **0.278 ms (-0.593 ms, -68 %)** |
+| `native_fx_shadows` | 1.022 ms | 0.433 ms |
+| frame | 3.540 ms | **3.125 ms (-11.7 %)** |
+| fps | 282.5 | **320.0** |
+| draws / triangles / decals / volumes | 341 / 110,865 / 53 / 29 | unchanged |
+| decal cache | - | hit rate 92.9 %, no uncached fallback, no evictions, ~0.6 MB retained |
+| human visual check | - | accepted |
+Full-run (including the earlier late Present step): 3.622 -> 3.370 ms, 276.0 -> 296.6 fps.
+
+## 27.3 Closeout instrumentation fix (measurement only)
+`retained_kb_end` was recorded once per decal call and therefore over-reported the retained cache size ~53x (C-R1 printed
+32,171 KB for ~607 KB). The gauge is now recorded **once per frame after the `CollectShadows` loop**
+(`NativeWorldEffects.cpp`); the cache, the renderer and every counter other than this gauge are unchanged. A contract test
+asserts a single gauge write after the loop and outside `EmitDecal`. No native run was required for this accounting fix.
+
+## 27.4 What X64.35 established
+* **Baseline profiling** identified `game_client_update` / render preparation as the dominant CPU cost in the measured
+  scene (logic 0.3-1.1 ms per tick; ~2.8-4.4 ms of work per frame; the 120 fps cap hid ~60 % idle time).
+* **Fine-grained attribution** (backend submit/Present/upload timers, GPU timestamp span, native frame phases) explained
+  99.5 % of `display_draw`: shadows, per-object CPU processing and the shroud mesh were the three large phases, while the
+  D3D11 submission and Present were small (~0.2 ms).
+* **The first shadow-volume cache hypothesis was disproven by measurement** (98 % hit rate, 0 ms saved; the volume path was
+  ~14 % of the shadow phase) and was **reverted**; it must not return without new evidence. Its sub-scopes were kept and
+  exposed the real cost.
+* **Further attribution found decal generation to be the actual dominant shadow cost** (0.87 ms, 53 decals/frame).
+* **Exact decal-geometry reuse** (bit-exact key including a render-side terrain identity/revision, after a mutation audit
+  that also found the savegame bulk write) produced the measured improvement and passed automated, pipeline-pixel and
+  native visual validation.
+* **Deliberately not done** (no demonstrated need; lower confidence/higher risk): per-object CPU processing reuse, shroud
+  reuse, D3D11 state cache, `setUseHotkey` guard.
+
+## 27.5 Retained and accepted
+Accepted state of X64.35: the performance instrumentation (receipt, phase table, backend timers, GPU span, texture
+attribution, page-fault counters, shadow/decal counters, `-devFps`, capture wrapper); the decal-geometry reuse; the
+retention policy and cleanup tool; all X64.33/X64.34 preservation contracts unchanged; the authoritative 30 TPS
+simulation unchanged (the optimization is render-only, nothing in it reads or writes simulation state, RNG or CRC).
+Native-verified candidate: `x64-35-decal-reuse` (built from `b63d86149`): `game/generalsv.exe` SHA256
+`F8C8803A8F6A3255CA36F7F1F489EC2CD599D405E47AD70F787E03772FB9E751`, `generalsv.pdb` SHA256
+`00DD89373B014DBBAFB3C0676A553DE63CAE45E2BBE9662DEE0514A5A62BFC1D`. (The closeout commit only moves one measurement gauge.)
+
+## 27.6 Validation (closeout matrix)
+Win64 ctest 16/16, g 249 and z 248 gtests; Win32 reference ctest 23/23, g 211 and z 211; all Python contracts and
+PowerShell workflow tests pass; no test was weakened.
+
+## 27.7 NOT claimed
+* No multiplayer/replay/lockstep determinism claim beyond what was already proven (the work is render-only and was not
+  replay-tested in this milestone).
+* No GPU optimization (the GPU span was measured, not reduced).
+* ZoneCalc is **not** resolved (attributed only).
+* The helicopter shadow pop-in is **not** resolved.
+* The late Present/GPU step is **not** resolved.
+
+## 27.8 Remaining backlog (documented, not scheduled)
+| item | measured / observed | note |
+|---|---|---|
+| per-object CPU processing (`ProcessObject`) | ~0.86 ms/frame in the measured scene | many inputs (pose, lights, shroud, team colour) |
+| shroud mesh (`CollectShroud`) | ~0.51 ms/frame | key: shroud levels + terrain revision (now available) + visible rect |
+| `setUseHotkey` / "$ 10000" texture churn | <= ~0.15 ms/frame (16,384 textures/capture) | missing equality guard in `W3DDisplayString::setUseHotkey` |
+| `native_geom_upload` | +0.068 ms after the decal change | unverified reading: higher frame rate through the same buffers |
+| ZoneCalc hitches | ~20 ms every ~11 s (path_queue = `calculateZones`) | simulation-side, must be CRC-neutral |
+| late Present/GPU/page-fault step | recurs in uncapped runs at 25-50 s, Present 0.05 -> 0.3-0.8 ms, 2 x 13 MB faults | unexplained, not tied to game state |
+| B3 long-stall anomaly | one run, logic stalls up to 1.7 s | environmental/unexplained |
+| real heavy combat | not profiled (the Heavy scenario had ~11 particles) | most informative next measurement |
+| helicopter shadow pop-in | pre-existing, suspected caster-sphere cull / triangle budget / LOD / flags | separate correctness issue (section 22); `shadows_skipped` counter available |
+| instrumentation | per-reason shadow-drop counters not yet added | only if the helicopter issue is investigated |

@@ -4,6 +4,7 @@
   "protect": [
     "x64-34-smooth-presentation",
     "x64-35-baseline",
+    "x64-35-decal-reuse",
     "Generals\\x64-35-baseline2",
     "ZeroHour\\x64-20-fix1"
   ]
