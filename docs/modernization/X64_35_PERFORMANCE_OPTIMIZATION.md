@@ -755,3 +755,92 @@ pwsh scripts\native-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-
   (Ctrl+Alt+Shift F10, O, B, wait 5 s, F11; summary must show `git=f0c347b34...` and the line `shadows (per frame): ...`.)
 * The superseded `x64-35-shadow-reuse` candidate contains the reverted code and can be retired by the retention tool
   after review (dry run first); nothing was deleted.
+
+
+---
+
+# 24. C-D1: `native_fx_shadows` decomposed - decal generation is 85 % of the shadow cost
+
+Raw: `C:\perf\x64-35-shadow-attribution\C-D1` (wrapper-verified: exe SHA256 `0AAC4EE6...77EC9`, `git=f0c347b34...`, `dirty=0`).
+Compared with C-A2 (attribution baseline) and the clean parts of C-S1/C-A1/C-U1. Recorded separately from the capped baseline.
+**The shadow-volume cache (section 20-23) was rejected and reverted; it must not be reintroduced without new evidence.**
+
+## 24.1 Comparability
+Same render workload as C-A2: objects 649.5 vs 649.8, drawables 121.3 vs 121.1, particles 10.9 vs 10.9, draws 340.8 vs 340.7,
+triangles 110,865 vs 110,865, state requested/changed 6,613/384 vs 6,611/384, **29 volume casters per frame** (as in C-S1),
+same hardware/settings (uncapped, Smooth OFF, VSync off). Capture: 16,384 frames in 59.4 s (frame cap), 1,781 ticks. The late
+Present/GPU step again occurred (`native_end_render` 0.121 ms vs 0.059 in C-A2; peak faults 3,287), which only affects
+`end_render`/frame totals; all phase numbers below are insensitive to it (unchanged phases agree with C-A2 within 1-2 %:
+objects 2.761 vs 2.726, per-object processing 0.863 vs 0.862, shroud 0.515 vs 0.505).
+
+## 24.2 Decomposition of `native_fx_shadows` (1.0221 ms/frame)
+| part | ms/frame | % of shadow phase | calls/frame | per call |
+|---|---|---|---|---|
+| **B. decal generation (`EmitDecal`)** | **0.8703** | **85.1 %** | **53** | **16.4 us** |
+| A. volume shadows (gather 0.0441 + project 0.0484 + emit 0.0358) | 0.1283 | 12.6 % | 29 | 4.4 us |
+| C. `CollectShadows` loop remainder (exclusive) | 0.0236 | 2.3 % | 633.5 inspected | 37 ns / shadow |
+Per frame: **shadows_seen 633.5, shadows_skipped 551.5 (87.1 %), shadow_decals 53, shadow_volumes 29** (53 + 29 = 82 drawn =
+633.5 - 551.5). **The dominant cost is decal generation: 0.87 ms = 24 % of the whole 3.62 ms frame, 26 % of `display_draw`.**
+(The first shadow-volume optimization targeted part A, which is 12.6 % of the phase: that is why it could not help.)
+
+## 24.3 What decal cost scales with
+`EmitDecal` (`NativeWorldEffects.cpp`) builds, for each decal shadow every frame, a terrain-conforming grid of
+`nu x nv` vertices with `nu = ceil(sizeX / 2.5) + 1`, `nv = ceil(sizeY / 2.5) + 1` (each clamped to 2..33) and, **per
+vertex, three `GroundHeight` lookups** (`h`, `h(x+1.25, y)`, `h(x, y+1.25)`), each of which is
+`TerrainLogic::getGroundHeight` -> `HeightMapRenderObjClass::getHeightMapHeight`. At 16.4 us per decal the grid is on the order
+of 80-100 vertices (~250-300 lookups at ~55-65 ns), i.e. a decal of roughly 20-25 world units. The cost therefore scales
+with (number of decal shadows on screen) x (decal area / 6.25) x 3 lookups; it does not depend on draws, triangles, UI or
+particles. Decals are emitted for casters with a decal shadow type (the 53 are visible object/prop decals; the
+skipped 551 are mostly culled or disabled casters, 37 ns each to reject). Grid sizes of individual decals are not recorded;
+the 80-100 vertex figure is an inference from per-call time and the implementation, not a measurement.
+Everything the vertices depend on is known: decal center (caster position + object-space offset), yaw, size X/Y, diffuse
+colour, and the terrain height field (from a source search, heights are written through `WorldHeightMap::setRawHeight`, reached from
+`W3DTerrainVisual` - terrain flattening for construction among them - and at map load; any other writer through
+`getDataPtr()` would have to be ruled out first, which is part of the proposed work)
+
+## 24.4 Helicopter pop-in (separate correctness issue, not conflated)
+The new counters show that 87 % of registered shadows are rejected by an early-out each frame (`shadows_skipped`), but the
+counter does not split the reasons (render-disabled / invisible / hidden / frustum), so C-D1 gives no direct evidence about
+the helicopter case. It remains tracked separately in section 22.
+
+## 24.5 Ranking of the remaining X64.35 targets (measured ms per frame, clean scene, uncapped)
+| # | target | cost | share of frame | exactness/risk | verdict |
+|---|---|---|---|---|---|
+| 1 | **Decal geometry reuse (`EmitDecal`)** | **0.870** | 24 % | exact key incl. terrain revision; render-only | **recommended next** |
+| 2 | Per-object CPU mesh processing (`ProcessObject`) | 0.863 | 24 % | many inputs (pose, lights, shroud, team colour); medium-high | later |
+| 3 | Shroud mesh (`CollectShroud`) | 0.515 | 14 % | inputs: shroud levels, terrain heights, visible rect, colour; the same terrain revision as #1 | after #1 |
+| 4 | `setUseHotkey` guard ("$ 10000" texture churn) | <= 0.15 | <= 4 % | one-line, exact | tiny, separately |
+| 5 | `calculateZones` hitches | 20 ms x 5 / min | smoothness only | simulation, CRC | separate batch |
+| 6 | Volume shadows (29 casters) | 0.128 | 3.5 % | | not worth it (tested: no gain) |
+| 7 | Loop remainder | 0.024 | 0.7 % | | no |
+
+## 24.6 Recommended next optimization (one): exact reuse of decal-shadow geometry
+* **Measured cost:** `native_shadow_decal` 0.870 ms/frame, 53 decals, 16.4 us each (24 % of the frame).
+* **Code path:** `NativeWorldEffects.cpp`: `CollectShadows` -> `EmitDecal` (grid build with 3 x `GroundHeight`/vertex) ->
+  `NativeWorldObjects::emitEffect`.
+* **Proposed bounded change:** a per-shadow cache of the *generated grid* (vertices and indices) keyed on **every** input of
+  the generation, compared bit-exactly: center `cx, cy`, `yaw`, `sx, sy`, diffuse colour, the grid dimensions, and a
+  **terrain height revision** (the heightmap object identity + a counter incremented in the single height mutator
+  `WorldHeightMap::setRawHeight`). The texture lookup and `emitEffect` still run every frame, so blend state and texture
+  residency are never cached. On any mismatch/uncertainty the canonical path runs. Bounded size with LRU, entry released
+  with the shadow, as the earlier cache did (that machinery was sound; only its *target* was wrong).
+* **Expected benefit:** most decals belong to static scenery, so the large majority hits: 0.5-0.8 ms/frame (14-22 % of the
+  3.6 ms frame, ~275 -> ~330-350 fps uncapped). Moving casters (units' decals) miss and cost what they cost today.
+  The new `decal` counters would report hits/misses so that the figure is not assumed.
+* **Preservation risk:** low-medium. The only non-local part is the terrain revision: a missed mutation site would
+  leave a stale decal on changed terrain (construction flattening). Mitigation: the revision lives in the single mutator
+  and the unit tests drive `setRawHeight`; the counter is render-side bookkeeping only.
+* **Determinism/CRC risk:** none for simulation: client-only geometry; the counter is a non-serialized member of the
+  heightmap object (the logic and client height maps are separate instances); no RNG, no CRC input, no GameLogic write.
+  Win32/DX8 renderer untouched (native Win64 path only; the member addition must keep the Win32 contracts byte-identical,
+  which the established contract suite verifies).
+* **Automated validation:** bit-exact cache tests as before (hit identical to the canonical grid; each input change - center,
+  yaw, size, colour, terrain revision - recomputes; removal/eviction cannot return stale data; oversize not retained);
+  a terrain test: `setRawHeight` under a decal invalidates and the new grid follows the new height; retail-model/readback
+  equality; the full Win64/Win32 matrices and contracts.
+* **Native before/after:** same Heavy uncapped capture; baseline C-D1 (`native_shadow_decal` 0.870 ms, frame 3.62 ms).
+  Also look at decals (trees, buildings, units, construction on flattened ground) for any difference.
+* **Keep / revert:** KEEP if `native_shadow_decal` falls by >= 0.35 ms **and** the frame improves >= 7 % with identical
+  draw/triangle counts and no visible decal difference. REVERT/REWORK if the saving is < 0.2 ms, any decal differs, a stale
+  decal appears after terrain flattening, or a contract is violated.
+Not implemented. The volume-shadow cache stays reverted.
