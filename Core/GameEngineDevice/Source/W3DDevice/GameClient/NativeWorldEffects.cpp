@@ -623,7 +623,6 @@ void EmitDecal(D3D11Backend &backend, const NativeShadow &shadow, float cx, floa
                                            : PerformanceProfile::Counter::DecalCacheMisses);
         const unsigned long long evicted = g_decalCache.statistics().evictions - evictionsBefore;
         if (evicted) PerformanceProfile::count(PerformanceProfile::Counter::DecalEvictions, static_cast<PerformanceProfile::Tick>(evicted));
-        PerformanceProfile::count(PerformanceProfile::Counter::DecalCacheKb, static_cast<PerformanceProfile::Tick>(g_decalCache.statistics().bytes >> 10));
     } else {
         // unknown terrain source: canonical generation every frame, never cached (params.terrainSerial == 0)
         params.terrainSerial = 0;
@@ -826,6 +825,9 @@ void CollectShadows(D3D11Backend &backend, CameraClass &camera)
     }
     PerformanceProfile::count(PerformanceProfile::Counter::ShadowsSeen, loopSeen);
     PerformanceProfile::count(PerformanceProfile::Counter::ShadowsSkipped, loopSkipped);
+    // Retained decal-cache size: a gauge, recorded once per frame (not once per decal call).
+    PerformanceProfile::count(PerformanceProfile::Counter::DecalCacheKb,
+                              static_cast<PerformanceProfile::Tick>(g_decalCache.statistics().bytes >> 10));
 }
 
 // ---------------------------------------------------------------------------------------------

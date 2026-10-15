@@ -102,6 +102,12 @@ class Baseline2Contracts(unittest.TestCase):
         self.assertIn("g_decalCache.forget(this)", fx)
         self.assertIn("g_decalCache.clear();", fx)
         self.assertIn('std::strstr(typeid(*TheTerrainLogic).name(), "W3DTerrainLogic")', fx)   # unknown terrain logic: canonical
+        # the retained-size gauge is recorded once per frame, after the CollectShadows loop - not once per decal call
+        self.assertEqual(fx.count("Counter::DecalCacheKb"), 1)
+        self.assertLess(fx.index("Counter::ShadowsSkipped, loopSkipped"), fx.index("Counter::DecalCacheKb"))
+        self.assertGreater(fx.index("Counter::DecalCacheKb"), fx.index("void EmitDecal"))
+        collect = fx[fx.index("void CollectShadows"):]
+        self.assertIn("Counter::DecalCacheKb", collect[:collect.index("\n}\n")])
         header = text("Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeDecalGridCache.h")
         for forbidden in ("GameLogic", "TheGameLogic", "RandomValue", "Xfer"):
             self.assertNotIn(forbidden, header)
