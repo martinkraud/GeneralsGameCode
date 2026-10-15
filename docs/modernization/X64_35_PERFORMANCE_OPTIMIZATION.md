@@ -500,3 +500,73 @@ Any change is a simulation-side change that must be CRC/replay-neutral and is a 
   is found.
 * **Not part of this batch:** per-object processing reuse, shroud reuse, the setUseHotkey guard (a one-line exact
   change that can be approved separately), zone calculation, the state cache, any visual change.
+
+
+---
+
+# 20. X64.35 optimization 1: shadow-volume geometry reuse (implemented, awaiting native before/after)
+
+Candidate `x64-35-shadow-reuse`; implementation commit `1a37a4c4d`; baseline for comparison: **C-A2**. This remains
+X64.35 (not a new milestone). **Not accepted** until the native before/after measurement and the human visual review.
+The `setUseHotkey` guard, per-object mesh reuse, shroud reuse, ZoneCalc, the state cache and the Present investigation
+are deliberately not part of this batch.
+
+## 20.1 What changed (render-only)
+* New header-only `NativeShadowVolumeCache.h` (`Core/GameEngineDevice/Include/W3DDevice/GameClient`):
+  `NativeShadowVolume::Cache`, plus `ProjectPlanar()` = the former inline planar projection loop with unchanged arithmetic.
+* `NativeWorldEffects.cpp::EmitVolumeShadow`: gathering of the posed geometry is unchanged. For **planar casters
+  (bounding radius <= 30)** the projection and index conversion now go through the cache keyed on the shadow object:
+  the entry is reused only if **positions, triangle indices, light direction, colour, caster center and the three
+  ground samples g0/gx/gy are all bit-identical** (`memcmp`/bit compare, no version counters, no animation or
+  identity assumptions); otherwise the geometry is recomputed canonically and the entry replaced. Casters with radius
+  > 30 (structures and large vehicles) and anything uncertain stay on the previous path byte for byte.
+* Lifetime: `NativeShadow::release()` forgets the entry (address reuse cannot match); `uninstall()` clears the cache;
+  bounded to 16 MB with least-recently-used eviction; an entry larger than the budget is never retained.
+* Nothing in the simulation is read for the key beyond what the renderer already read; nothing is written. The cache takes
+  const pointers only and has no GameLogic/RNG/CRC dependency (asserted by a contract test).
+
+## 20.2 New measurements (receipt / frames.csv / categories.csv)
+* Scopes nested in `native_fx_shadows`: `native_shadow_gather`, `native_shadow_project` (cache lookup + projection),
+  `native_shadow_emit`.
+* Counters per frame: `shadow_cache_hits`, `shadow_cache_misses`, `shadow_uncached`, `shadow_cache_evictions`; receipt line
+  `shadow_volume_reuse (per frame): hits .. misses .. uncached .. evictions ..`. Dormant outside a capture as before.
+
+## 20.3 Honest expectation
+A retail-model test shows the full-size Paladin has radius **35.2 > 30**, i.e. large tanks stay on the canonical path in this
+version; units, trees and props below 30 are cached. The receipt's hit/miss/uncached split will state exactly what
+fraction of the 1.009 ms became cacheable. A low hit rate means the radius cut-off, not the cache, limits the gain.
+
+## 20.4 Validation (automated)
+* `NativeShadowVolumeCache.*` (7 tests): result byte-identical to the former loop on miss and hit; every input
+  (light, colour, g0, gx, gy, center, positions, topology, vertex count, -0.0 vs 0.0) forces recomputation and yields the
+  fresh result; forget / address reuse; bounded eviction and oversize entries never return stale data; uncertain inputs
+  use the canonical path and are not stored; inputs are never modified.
+* Contract test: header has no simulation dependency, the key is a bit-exact comparison, the cache is only used for planar
+  casters, entries are forgotten on release and cleared on uninstall.
+* Retail-model readback test (`PlanarVolumeShadowIsBlendedOncePerPixel`, opt-in `GENERALS_OFFLINE_ASSETS`; run here with
+  the Paladin model extracted from the retail W3D/Textures archives): full-size tank = uncached and identical frame to
+  frame; scaled to a planar caster = miss then hit with **bit-identical images**; moving it recomputes and changes the
+  image; moving it back restores the identical image.
+* Matrix: Win64 ctest 16/16, g 246 and z 245 gtests; Win32 ctest 23/23, g 210 and z 210 gtests; all Python contracts and
+  PowerShell workflow tests pass. Win32/DX8 reference code is untouched.
+* Not claimed: any performance number. Automated tests do not establish the benefit.
+
+## 20.5 Candidate and the native run
+`build/dev-runtimes/native/Generals/x64-35-shadow-reuse` (staged and preflighted, not run by the agent):
+* `game/generalsv.exe` SHA256 `C1501FB6D5C456DBB8500BBE8D6ACAAD0242DDC8B72256B9F63AB36CF0DBFAF7`
+* `game/generalsv.pdb` SHA256 `1CC3FF6A3E17964D13ED8A42D08EFDCBA4D72B1889D554601D9ABEF8B38EA509`
+* the capture summary must show `git=1a37a4c4d...` and contain `shadow_volume_reuse`.
+
+Same Heavy uncapped scenario as C-A2 (same settings, Smooth OFF, VSync off, plugged in, Best performance):
+```
+pwsh scripts\native-runtime\Invoke-NativeCandidateCapture.ps1 -Candidate x64-35-shadow-reuse `
+     -OutputDirectory C:\perf\x64-35-shadow-reuse\C-S1 -ExpectPhases `
+     -ExpectedSha256 C1501FB6D5C456DBB8500BBE8D6ACAAD0242DDC8B72256B9F63AB36CF0DBFAF7
+```
+In game: Ctrl+Alt+Shift **F10**, **O**, **B**, wait 5 s, **F11**, let it finish, exit via the menu. Please also look at the
+shadows during the run (units idle and moving, trees, buildings) for any difference from before.
+
+## 20.6 Keep / revert (unchanged)
+KEEP if `native_fx_shadows` drops >= 0.25 ms/frame and the frame improves >= 5 % with identical draw/triangle workload,
+no visible shadow difference and no stale shadow. REVERT/REWORK if the saving is < 0.15 ms, any visual difference
+appears, a stale shadow occurs, or a preservation/determinism contract is violated.
