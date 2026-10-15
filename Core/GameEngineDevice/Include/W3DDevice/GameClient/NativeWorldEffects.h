@@ -68,6 +68,9 @@ struct Stats
     unsigned shadowsSeen;         // registered shadows considered
     unsigned shadowNoGeometry;    // volume shadows whose object had no shadow-casting geometry
     unsigned shadowCulled;        // shadows skipped: hidden or outside the view
+    unsigned shadowCacheHits;     // planar volume shadows reused bit-exactly from the previous frame
+    unsigned shadowCacheMisses;   // planar volume shadows recomputed (changed inputs / first sight)
+    unsigned shadowUncached;      // volume shadows that keep the canonical path (structures: non-planar)
     unsigned waterPatches;        // water areas emitted
     unsigned shroudCells;         // shroud overlay cells emitted
     unsigned scorches;            // scorch marks emitted

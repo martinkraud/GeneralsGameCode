@@ -22,7 +22,9 @@ enum class Category : unsigned int
 	// NativeTerrain, NativeObjects, NativeOverlays, NativeUi, NativeMouse, NativeEndRender. Nested: NativeTerrainOverlays
 	// in NativeTerrain; NativeObjGather/NativeObjProcess/NativeFx*/NativeGeomUpload/NativeSubmit in NativeObjects;
 	// NativeDevOverlay in NativeUi; ZoneCalc in PathQueue. Use exclusive time to avoid double counting.
-	NativeBeginRender, NativeTerrain, NativeTerrainOverlays, NativeObjects, NativeObjGather, NativeObjProcess, NativeFxGround, NativeFxShadows, NativeFxWater, NativeFxShroud, NativeFxParticles, NativeGeomUpload, NativeSubmit, NativeOverlays, NativeUi, NativeDevOverlay, NativeMouse, NativeEndRender, ZoneCalc, Count
+	NativeBeginRender, NativeTerrain, NativeTerrainOverlays, NativeObjects, NativeObjGather, NativeObjProcess, NativeFxGround, NativeFxShadows, NativeFxWater, NativeFxShroud, NativeFxParticles, NativeGeomUpload, NativeSubmit, NativeOverlays, NativeUi, NativeDevOverlay, NativeMouse, NativeEndRender, ZoneCalc,
+	// X64.35 shadow reuse (nested in NativeFxShadows): gather posed geometry / project + cache lookup / emit batch.
+	NativeShadowGather, NativeShadowProject, NativeShadowEmit, Count
 };
 // X64.34: DrawCalls/TexturesCreated/BuffersCreated are per-frame deltas of the native backend's cumulative counters;
 // DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame
@@ -37,7 +39,10 @@ enum class Counter : unsigned int { CompletedTicks, UpdateModules, ObjectsVisite
 	// GpuMicros/GpuFrames: GPU timestamp span of frames retrieved this frame (lagging by up to 3 frames).
 	// TexturesLive/WorkingSetMb/PrivateMb are gauges; PageFaults is a per-frame delta of the process fault counter.
 	PresentTicks, SubmitTicks, UploadTicks, GpuMicros, GpuFrames, TexturesDestroyed, TextureUpdates, TextureUpdateKb,
-	TexturesLive, PageFaults, WorkingSetMb, PrivateMb, Count };
+	TexturesLive, PageFaults, WorkingSetMb, PrivateMb,
+	// X64.35 shadow-volume reuse: per-frame counts (hit = reused exactly, miss = recomputed, uncached = structures and
+	// other casters that keep the canonical path).
+	ShadowCacheHits, ShadowCacheMisses, ShadowUncached, ShadowEvictions, Count };
 constexpr unsigned int CategoryCount = static_cast<unsigned int>(Category::Count);
 constexpr unsigned int CounterCount = static_cast<unsigned int>(Counter::Count);
 constexpr unsigned int MaxFrames = 16384, MaxDepth = 64;

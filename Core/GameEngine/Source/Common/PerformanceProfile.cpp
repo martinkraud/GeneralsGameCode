@@ -26,7 +26,8 @@ const char* name(Category c)
 		"path_reconstruction","weapon_fire","weapon_store","missile_ai_update","drawable_client_updates",
 		"terrain_visual_update","display_update","particle_manager_update","display_draw","scene_view_draw",
 		"render_end_flush_present","network_update","message_propagation",
-		"native_begin_render","native_terrain","native_terrain_overlays","native_objects","native_obj_gather","native_obj_process","native_fx_ground","native_fx_shadows","native_fx_water","native_fx_shroud","native_fx_particles","native_geom_upload","native_submit","native_world_overlays","native_ui","native_dev_overlay","native_mouse","native_end_render","zone_calc"};
+		"native_begin_render","native_terrain","native_terrain_overlays","native_objects","native_obj_gather","native_obj_process","native_fx_ground","native_fx_shadows","native_fx_water","native_fx_shroud","native_fx_particles","native_geom_upload","native_submit","native_world_overlays","native_ui","native_dev_overlay","native_mouse","native_end_render","zone_calc",
+		"native_shadow_gather","native_shadow_project","native_shadow_emit"};
 	static_assert(sizeof(names)/sizeof(*names)==CategoryCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -38,7 +39,8 @@ const char* name(Counter c)
 		"draws_2d","draws_world","draws_water","triangles","state_requested","state_changed","texture_binds","shader_changes",
 		"target_changes","buffer_changes",
 		"present_qpc","submit_qpc","upload_qpc","gpu_us","gpu_frames","textures_destroyed","texture_updates","texture_update_kb",
-		"textures_live_gauge","page_faults","working_set_mb_gauge","private_mb_gauge"};
+		"textures_live_gauge","page_faults","working_set_mb_gauge","private_mb_gauge",
+		"shadow_cache_hits","shadow_cache_misses","shadow_uncached","shadow_cache_evictions"};
 	static_assert(sizeof(names)/sizeof(*names)==CounterCount);
 	return names[static_cast<unsigned int>(c)];
 }
@@ -238,7 +240,7 @@ std::string phaseTable(const std::vector<Frame>& frames,std::uint64_t frequencyH
 	static const Category order[]={Category::DisplayDraw,Category::NativeBeginRender,Category::NativeTerrain,Category::NativeTerrainOverlays,
 		Category::NativeObjects,Category::NativeObjGather,Category::NativeObjProcess,Category::NativeFxGround,Category::NativeFxShadows,
 		Category::NativeFxWater,Category::NativeFxShroud,Category::NativeFxParticles,Category::NativeGeomUpload,Category::NativeSubmit,
-		Category::NativeOverlays,Category::NativeUi,Category::NativeDevOverlay,Category::NativeMouse,Category::NativeEndRender,Category::ZoneCalc};
+		Category::NativeOverlays,Category::NativeUi,Category::NativeDevOverlay,Category::NativeMouse,Category::NativeEndRender,Category::ZoneCalc,Category::NativeShadowGather,Category::NativeShadowProject,Category::NativeShadowEmit};
 	const double n=static_cast<double>(frames.empty()?1:frames.size());
 	const double tpm=static_cast<double>(frequencyHz?frequencyHz:1)/1000.0;
 	double incl[static_cast<unsigned>(Category::Count)]={},excl[static_cast<unsigned>(Category::Count)]={},calls[static_cast<unsigned>(Category::Count)]={};
@@ -303,6 +305,8 @@ void writeReceipt(const Recorder& r,const Metadata& meta,std::ostream& out)
 	   <<" avg_target_changes "<<sum[static_cast<unsigned>(Counter::TargetChanges)]/n<<" avg_buffer_changes "<<sum[static_cast<unsigned>(Counter::BufferChanges)]/n<<"\n"
 	   <<"native_frame_phases (ms per outer frame averaged over ALL frames; incl = with nested scopes, excl = own time; calls per frame):\n"
 	   <<phaseTable(frames,meta.frequency)
+	   <<"shadow_volume_reuse (per frame): hits "<<sum[static_cast<unsigned>(Counter::ShadowCacheHits)]/n<<" misses "<<sum[static_cast<unsigned>(Counter::ShadowCacheMisses)]/n
+	   <<" uncached "<<sum[static_cast<unsigned>(Counter::ShadowUncached)]/n<<" evictions "<<sum[static_cast<unsigned>(Counter::ShadowEvictions)]/n<<"\n"
 	   <<"hardware: "<<meta.hardware<<"\nrender_context: "<<meta.renderContext<<"\n"
 	   <<"fps_cap_override: "<<(meta.devFps.empty()?std::string("none"):meta.devFps)<<"\n"
 	   <<"timing_ms_per_frame (CPU wall, inside backend): submit "<<sum[static_cast<unsigned>(Counter::SubmitTicks)]/n/ticksPerMs<<" present "<<sum[static_cast<unsigned>(Counter::PresentTicks)]/n/ticksPerMs
