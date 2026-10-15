@@ -445,3 +445,6 @@ first optimization on 4 % while 80 % of the frame is unexplained would not be ev
 
 ## 11. C-A1 note
 C-A1 was produced by the x64-35-baseline2 executable (git 0ae7d608f), not by x64-35-attribution; it contains no attribution data and serves only as a reproducible second uncapped run of the same build. See `X64_35_PERFORMANCE_OPTIMIZATION.md` section 18.
+
+## 12. C-A2 attribution result
+The attribution capture C-A2 resolved the unattributed display_draw time (99.5 % attributed: shadow volumes 1.01, per-object CPU processing 0.86, shroud 0.50 ms of a 3.50 ms frame), confirmed `calculateZones` as 100 % of the 20 ms path_queue spikes and labelled the sentence-texture churn. Full analysis, re-ranking and the recommended first optimization batch: `X64_35_PERFORMANCE_OPTIMIZATION.md` sections 19.

@@ -343,3 +343,160 @@ whether `native_frame_phases` is present (exit code 3 if not). In the game do ex
 **O**, **B**, wait 5 s, **F11**, let the capture finish, exit via the menu. The summary must show
 `git=10b4503e9...` and contain `native_frame_phases`. Add `-WhatIf` to see the command without launching.
 (Manual alternative: run the exe from `build\dev-runtimes\native\Generals\x64-35-attribution\game`; check `git=` afterwards.)
+
+
+---
+
+# 19. C-A2 - attribution capture (x64-35-attribution): where the frame time goes
+
+Raw: `C:\perf\x64-35-attribution\C-A2` (wrapper-verified: exe SHA256 `996B972E...75B68`, `git=10b4503e9...`,
+`dirty=1` only because the staged docs/scripts were uncommitted at the time of the run; the engine code is that commit).
+Recorded separately from the capped A/B/C baseline and from C-U1/C-A1 (different build, instrumentation overhead differs).
+
+## 19.1 Validation and comparability
+* 16,384 frames in 57.43 s (the recorder's frame cap, as expected uncapped), 1,724 ticks = 30.0/s, 0 catch-up frames,
+  `fps_cap_override: uncapped`, same hardware / render context, Smooth OFF, VSync off.
+* Workload equals C-U1/C-A1: objects 650, drawables 121, triangles 110,865, draws 341 (312 world + 29 2D), state
+  requested 6,611 / changed 384, texture binds 183, particles 11 (no combat). Against capped C1-C3 it has the same render scene
+  (110k triangles, 650 objects) but ~95 % fewer particles and ~62 % lower logic cost.
+* Frame 3.50 ms (285 fps) vs 3.69 ms (271 fps) in C-U1/C-A1: the earlier runs include a late Present/GPU step (below);
+  the clean first ~44 s of every uncapped run is 3.44-3.56 ms. Scope overhead is not visible (this run is, if anything, faster).
+
+## 19.2 Frame breakdown (ms per frame, averaged over all 16,384 frames; calls/frame = 1 for every phase)
+| phase | inclusive | exclusive | % of display_draw (3.235) | % of frame (3.504) |
+|---|---|---|---|---|
+| `display_draw` | 3.2349 | 0.0162 | 100 | 92.3 |
+| `native_begin_render` | 0.0022 | 0.0022 | 0.1 | 0.1 |
+| `native_terrain` | 0.1447 | 0.0209 | 4.5 | 4.1 |
+| &nbsp;&nbsp; `native_terrain_overlays` | 0.1238 | 0.1238 | 3.8 | 3.5 |
+| **`native_objects`** | **2.7259** | 0.0040 | **84.3** | **77.8** |
+| &nbsp;&nbsp; `native_obj_gather` | 0.0233 | 0.0233 | 0.7 | 0.7 |
+| &nbsp;&nbsp; **`native_obj_process`** (per-object CPU mesh processing) | **0.8616** | 0.8616 | 26.6 | 24.6 |
+| &nbsp;&nbsp; `native_fx_ground` | 0.0087 | 0.0087 | 0.3 | 0.2 |
+| &nbsp;&nbsp; **`native_fx_shadows`** | **1.0089** | 1.0089 | **31.2** | **28.8** |
+| &nbsp;&nbsp; `native_fx_water` | 0.0053 | 0.0053 | 0.2 | 0.2 |
+| &nbsp;&nbsp; **`native_fx_shroud`** | **0.5046** | 0.5046 | **15.6** | **14.4** |
+| &nbsp;&nbsp; `native_fx_particles` | 0.0150 | 0.0150 | 0.5 | 0.4 |
+| &nbsp;&nbsp; `native_geom_upload` | 0.1513 | 0.1513 | 4.7 | 4.3 |
+| &nbsp;&nbsp; `native_submit` | 0.1434 | 0.1434 | 4.4 | 4.1 |
+| `native_world_overlays` | 0.0658 | 0.0658 | 2.0 | 1.9 |
+| `native_ui` | 0.2112 | 0.1971 | 6.5 | 6.0 |
+| &nbsp;&nbsp; `native_dev_overlay` | 0.0141 | 0.0141 | 0.4 | 0.4 |
+| `native_mouse` | 0.0104 | 0.0104 | 0.3 | 0.3 |
+| `native_end_render` (flush + Present) | 0.0585 | 0.0585 | 1.8 | 1.7 |
+| **`display_draw_unattributed`** | **0.0162** | | **0.5** | **0.5** |
+
+Backend (inside the above): submit 0.151, present 0.054, texture upload 0.080 ms; GPU timestamp span 2.02 ms.
+Remaining frame outside display_draw: 0.27 ms (logic 0.40 ms x 1,724/16,384 = 0.04, drawable client updates 0.08,
+display update 0.05, message propagation 0.04 ...).
+
+## 19.3 The former 2.97 ms mystery is resolved
+`display_draw` minus backend submit/present/upload was 2.97 ms (C-U1/C-A1); with this build 3.235 - 0.285 = 2.95 ms, of
+which **2.934 ms (99.5 %) is now attributed**; 0.016 ms remains.
+* **Three phases account for 2.376 ms = 73 % of display_draw / 68 % of the frame:** shadow volumes 1.009, per-object CPU
+  mesh processing 0.862, shroud mesh 0.505. All three are CPU work executed *every frame* by the native world
+  renderer (`NativeWorldObjects::render` -> `renderObjects` / `NativeWorldEffects::collect`).
+* Next: geometry upload 0.151, terrain 0.145, submit 0.143, UI 0.211 (a 0.15-0.2 ms single string-rebuild is inside it,
+  see 19.5). Everything else is below 0.07 ms. The D3D11 backend itself (submit + Present) is 0.2 ms: the premise
+  of the state-cache hypothesis is now fully quantified at <= 0.15 ms.
+* **Clear bottleneck: the per-frame CPU regeneration of derived world geometry (shadow volumes, lit/skinned object
+  vertices, shroud) in `NativeWorldObjects`/`NativeWorldEffects`.**
+* What it scales with (evidence): the capped baseline A (8 drawables drawn, no units) already had `display_draw`
+  1.8-2.5 ms with 553 registered objects, and C (+96 units) only 3.3-3.7 ms. So the cost is dominated by the
+  ~550 registered scenery objects (trees, props, buildings; all processed every frame) and grows only ~+1 ms with 100
+  units. Combined with the per-frame timings being flat over time (shadows 1.010 / 1.012 / 1.012 ms in the first,
+  middle and last 10 s of this static-camera run), the work is largely *identical from frame to frame*: it is
+  regenerated, not changed. It does not scale with draw calls, UI or particles in this scene.
+
+## 19.4 ZoneCalc: the path_queue spikes are confirmed
+5 `calculateZones` calls in 57 s (one every ~11 s): **19.67, 19.97, 20.12, 20.36, 19.92 ms**. Every `path_queue` spike
+equals its `zone_calc` time (`path_queue` exclusive time on those frames = 0.0006-0.001 ms): **100 % of the 20 ms
+`path_queue` events are zone recalculation**; 100 ms in total = 14.6 % of all logic time in the capture; two of the five
+fall on consecutive ticks (37.6 s, 37.7 s). Cost is constant (~20 ms) and independent of the army. The remaining logic
+outliers are small (`ai_player_strategy` 4.1-8.7 ms, 1-2 per run). Each event makes one 23-24 ms frame (the six frames
+over 16.7 ms in the run). These are simulation hitches, not renderer throughput: they cost 0.3 % of average frame time
+but are the visible frame-time spikes. They are deterministic (same game times in C-U1/C-A1/C2/C3). What triggers each
+recalculation (obstacle add/remove: construction, destruction, bridge state) is not yet known; **not modified**.
+Any change is a simulation-side change that must be CRC/replay-neutral and is a separate batch.
+
+## 19.5 Sentence textures (labelled)
+18,797 created = 18,797 destroyed, live 54. Identified in the labelled table:
+
+| label (string) | creations / 57.4 s | per | source |
+|---|---|---|---|
+| `$ 10000` | **16,384 (87 %)** | **every rendered frame** | the Control Bar money static text (`GUI:ControlBarMoneyDisplay`, "$ 10000" = starting cash) |
+| `.00` ... `.29` | **~1,724 (9 %)**, 57-58 per value | one per logic tick, cycling 0..29 | `InGameUI::drawGameTime`: `m_gameTimeFrameString->setText(L".%2.2d", currentFrame % 30)` (game timer HUD) |
+| `DEV MODE | FPS ...` | 445 (2.4 %): 267 x 128x128 + 178 x 64x64 | twice per second | the developer overlay (`DeveloperTools::drawOverlay`, text rebuilt every 0.5 s) |
+| other | the remainder of 18,797 | | not in the top-30 rows |
+* **The per-frame creation is a normal-game engine behavior, not developer instrumentation**: `W3DStaticText.cpp:107-109`
+  calls `text->setUseHotkey(TRUE/FALSE, ...)` on every draw and `W3DDisplayString::setUseHotkey` calls
+  `notifyTextChanged()` unconditionally (reset + `Build_Sentence` + a new texture on the next draw) even when nothing
+  changed. `DisplayString::setText` already guards equality, `setFont`/`setWordWrap` also; `setUseHotkey` is the
+  missing guard. Cost: one 64x64 glyph raster + texture create/destroy per frame (`texture_upload` 0.080 ms plus
+  the raster inside `native_ui` 0.197 ms exclusive).
+* The `.NN` per tick is legitimate text change (the string changes every tick). The 0.5 s burst is developer-only.
+* Conclusion: allocation churn from a missing equality guard; not a leak; not caching of texture lifetimes.
+
+## 19.6 Other observations
+* The late Present/GPU step (page-fault pair of 3,287 + 3,286, then Present 0.05 -> 0.1-0.8 ms, GPU span 1.9 -> 2.3-2.8 ms)
+  occurred in all three uncapped runs at a different time (34.9 s, 43.7 s, 50.3 s after capture start; game tick
+  1648 / 1791 / 2039) and with the same 2 x 13 MB signature. It is not tied to game state or to the F10/O/B moment;
+  still unexplained, relevant only to long sustained runs, and is excluded from the clean-phase numbers above.
+
+## 19.7 Re-ranked X64.35 work (all evidence)
+| # | item | evidence | expected benefit | risk | notes |
+|---|---|---|---|---|---|
+| 1 | **Shadow-volume geometry reuse** (`NativeWorldEffects::EmitVolumeShadow`) | 1.009 ms = 29 % of frame, rebuilt every frame from unchanged inputs | 0.4-0.7 ms (11-20 %) | low-medium (render only; exact-by-construction key) | **recommended first batch** |
+| 2 | Per-object CPU mesh processing reuse (`ProcessObject`/`ProcessMesh`) | 0.862 ms = 25 %, ~550 mostly static scenery objects | 0.4-0.6 ms | medium (lighting, shroud, team color inputs) | after #1; same mechanism |
+| 3 | Shroud mesh reuse (`CollectShroud`) | 0.505 ms = 14 %, static camera/shroud | 0.3-0.45 ms | low-medium (needs a shroud/terrain revision key) | simple key; after #1 |
+| 4 | `W3DDisplayString::setUseHotkey` equality guard | 16,384 textures/capture, up to ~0.15 ms | 0.1-0.15 ms (3-4 %), also less driver churn | very low | tiny, exact; can ride with any batch |
+| 5 | `calculateZones` hitches | 5 x 20 ms per 57 s, 100 % of path_queue spikes | removes 20 ms frame spikes, no throughput | medium-high (simulation, CRC) | separate simulation batch |
+| 6 | Geometry upload + submit (0.15 + 0.14) and D3D11 state cache | <= 0.15 ms state calls | <= 4 % | low | after the above |
+| 7 | Terrain overlays rebuild (0.124 ms) | | <= 3.5 % | low | later |
+| 8 | Late Present/GPU step, B3 stall | unexplained | stability | n/a | watch list |
+
+## 19.8 Recommended first optimization batch (not implemented)
+**"x64-36-shadow-reuse": exact frame-to-frame reuse of shadow-volume geometry for unchanged shadow casters.**
+
+* **Measured bottleneck:** `native_fx_shadows` 1.009 ms/frame (28.8 % of the frame), flat over time and identical across
+  the static-camera heavy runs.
+* **Code path:** `Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp`:
+  `CollectShadows` -> `EmitVolumeShadow` (+ `GatherShadowGeometry`) -> `NativeWorldObjects::emitEffect`. Native Win64 path
+  only; the Win32 DX8 renderer and the simulation are untouched.
+* **Proposed implementation:**
+  1. Add three free sub-scopes/counters inside the batch itself (gather, project, emit; shadows seen / emitted /
+     triangles / cache hits) so the before/after receipt shows exactly what moved.
+  2. Per `NativeShadow`, keep a cache entry holding: the gathered world-space positions, the projected vertices, the
+     index list, and the inputs they were computed from (light direction, shadow color, planar flag, and the three
+     ground-height samples `g0/gx/gy`). Each frame: run `GatherShadowGeometry` (needed to observe the pose), and if the
+     positions are **bit-identical** (`memcmp`) to the cached ones and the other inputs are equal, skip the projection loop
+     and the triangle/index rebuild and emit the cached arrays; otherwise recompute and overwrite the entry. The key is
+     complete by construction, so reuse is exact: output bytes equal what a fresh computation would produce.
+  3. Restrict v1 to the planar case (`bounding radius <= 30`: units, trees, props); structures (the non-planar per-vertex
+     terrain refinement, which depends on the height field) keep the current path unless a terrain revision key is added
+     later. Entries are released when the shadow is removed and the cache is bounded (e.g. 16 MB total, LRU eviction).
+  4. Remove the redundant per-shadow `std::vector<unsigned>` -> `unsigned short` conversion by gathering indices
+     directly in final form (exact, behavior-neutral).
+* **Expected benefit:** 0.4-0.7 ms/frame (11-20 % of the 3.5 ms frame, ~285 -> ~320-355 fps uncapped) on a static
+  scene; less in combat (moving/animating casters miss), never a regression beyond one memcmp per shadow. The
+  attribution counters will state the hit rate.
+* **Risks:** stale geometry if the key misses an input (mitigated: key = all inputs, compared bit-exactly, no
+  version counters); memory growth (bounded); pointer reuse after a shadow object is destroyed (entries are
+  keyed on the `NativeShadow*` and cleared in its destructor/removal).
+* **Preservation / determinism:** render-only; reads object transforms and writes nothing back; no simulation call, no
+  RNG, no CRC input. Classic and Smooth presentation produce identical pixels (Smooth changes the *input* poses, which
+  are part of the key). Generals and Zero Hour share the file; Win32 reference untouched.
+* **Automated validation:** unit test with a synthetic shadow caster: cached output byte-identical to a freshly
+  computed one across N frames; any change of position, light, ground height or color forces recomputation; cache
+  eviction and shadow removal; extend the existing NativeWorldEffects tests / world readback tests (pixel equality of a
+  frame with shadows before vs after); the existing receipt/contract tests; full Win64/Win32 matrix.
+* **Native before/after:** the same Heavy uncapped run (`Invoke-NativeCandidateCapture.ps1`, F10, O, B, wait 5 s, F11),
+  baseline = C-A2 (`native_fx_shadows` 1.009 ms, frame 3.50 ms, triangles 110,865, draws 341), 1 run, plus an optional
+  second to check repeatability (the repeatability of this scene is 0.1 %). Visual check: shadows identical (units
+  stationary and moving).
+* **Keep / revert criterion:** KEEP if `native_fx_shadows` exclusive drops by >= 0.25 ms (>= 25 %) **and** the frame
+  mean improves by >= 5 %, with identical triangles/draw counters (reused geometry is the same size) and no visual
+  difference in the review. REVERT if the saving is < 0.15 ms, any visual difference appears, or a stale-shadow case
+  is found.
+* **Not part of this batch:** per-object processing reuse, shroud reuse, the setUseHotkey guard (a one-line exact
+  change that can be approved separately), zone calculation, the state cache, any visual change.
