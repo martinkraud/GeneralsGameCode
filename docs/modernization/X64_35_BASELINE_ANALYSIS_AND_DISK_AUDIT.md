@@ -301,3 +301,6 @@ Repository 199.7 GB -> **90.6 GB**; C: free 9.0 GB -> **116.8 GB**. 62 supersede
 (50 Generals, 12 Zero Hour, 112.1 GB), 3,062 MB of run evidence archived in `build/evidence-archive/`
 (429 files, verified). Kept: x64-35-baseline, x64-34-smooth-presentation, ZeroHour x64-20-fix1, `dev-runtimes/zh`,
 `build/performance`, userdata-backups, all A/B/C evidence.
+
+## 9.12 Follow-up
+The uncapped run decision (9.10) was approved and implemented as candidate `x64-35-baseline2`; see `X64_35_PERFORMANCE_OPTIMIZATION.md` section 15 for the added measurements, limitations and the exact run.

@@ -101,3 +101,82 @@ GPU timestamp queries, allocation counters - all evidence first.
 * `game/generalsv.exe` SHA256 `69AA86EF1648932B5B71F327BE68D3A198C0C5BAF30319C5D8412E8CD5D6869C`
 * `game/generalsv.pdb` SHA256 `F968F22F1363AE4E405283E1A38FF61D63CC61BBFA0A986D8A705E88FA8353C0`
 Steam untouched.
+
+
+---
+
+# 15. x64-35-baseline2 - diagnostic candidate (instrumentation only)
+
+Why it exists: the capped A/B/C baseline (see `X64_35_BASELINE_ANALYSIS_AND_DISK_AUDIT.md` section 9) cannot say whether
+the Heavy scene is CPU-submission bound or Present/GPU bound, nor where the ~1.35 textures/frame come from. This
+candidate adds the measurements needed to answer both with ONE uncapped Heavy run. **No optimization was made.**
+Built from `0ae7d608f` (starting point `f472d4d63`).
+
+## 15.1 New measurements (receipt fields)
+All earlier receipt fields are unchanged and still present. New lines in `*-summary.txt` after `render_context:`:
+
+```
+fps_cap_override: none | uncapped (-devFps) | <n> (-devFps)
+timing_ms_per_frame (CPU wall, inside backend): submit <ms> present <ms> texture_upload <ms> peak_present <ms> peak_submit <ms>
+gpu: frames_measured <n> avg_gpu_ms <ms>
+textures: created <n> destroyed <n> live_end <n> dynamic_updates <n> update_kb <n>
+memory: page_faults <n> peak_faults_per_frame <n> working_set_mb_end <n> private_mb_end <n>
+```
+and, after `=== end receipt ===`, a `=== Texture creation attribution (this capture) ===` section: totals per entry point
+(content_file / dynamic_ui / mipped) and the top 30 rows `entry WxH dxgi_format created kb label` where `label` is the
+engine texture path when the creation came through the texture bridge. `*-frames.csv` gains the per-frame columns
+`present_qpc, submit_qpc, upload_qpc, gpu_us, gpu_frames, textures_destroyed, texture_updates, texture_update_kb,
+textures_live_gauge, page_faults, working_set_mb_gauge, private_mb_gauge` (`*_qpc` are QueryPerformanceCounter ticks;
+divide by `qpc_frequency` in the summary header).
+
+## 15.2 What each measurement is, and what it cannot prove
+| field | measures | cannot prove |
+|---|---|---|
+| `submit` | CPU wall time inside `Submit_Render2D_Content` and `Submit_World` (state sets, constant-buffer updates, `DrawIndexed`) | time the driver spends later on the GPU queue; includes preemption by the OS |
+| `present` | CPU wall time inside `IDXGISwapChain::Present(0,0)` | does not separate GPU wait from driver/DWM work. A large value with VSync off means the CPU was blocked (queue backpressure) - consistent with GPU/present pressure, not proof of it |
+| `texture_upload` | CPU wall time of texture creation + dynamic texture updates | GPU-side upload cost |
+| `avg_gpu_ms` | elapsed GPU time between the first command of a frame and its end (D3D11 timestamp + disjoint queries, ring of 4, polled with `DONOTFLUSH`, never waited on); frames whose results are not yet available are collected later | GPU *busy* time: gaps while the CPU is still submitting are inside the span. If the frame is CPU-bound the span approaches CPU submit time; if GPU-bound it approaches the frame interval. Disjoint frames are discarded and counted |
+| `display_draw` (existing category) minus `submit` minus `present` minus `texture_upload` | remaining CPU work in the draw path (scene traversal, culling, W3D object preparation) | |
+| `page_faults` | process page-fault counter delta (`PROCESS_MEMORY_COUNTERS_EX.PageFaultCount`: soft + hard faults) | hard faults/disk I/O specifically; it cannot show that disk pressure caused anything |
+| `textures destroyed/live` | residency objects created/destroyed in the backend (texture + SRV) | where in the engine the owning texture object lives |
+
+Overhead: two QueryPerformanceCounter reads per submitted draw and per upload/Present, a map update per texture
+creation, one GetProcessMemoryInfo per frame, and 3 GPU timestamp queries per frame. GPU timing and page-fault sampling
+are active only inside a running capture; the QPC reads and texture table are always on and negligible. No blocking
+synchronization is added. Rendering output and D3D11 call arguments are unchanged.
+
+## 15.3 Frame-rate override (`-devFps`)
+`Options > Display > Frame Rate = Uncapped` was **not** used: it works only after the match is running, persists the
+user setting (the accept path writes `Options.ini`) and the Quick Game forces 120 at start. The smallest dev-only
+alternative was added: `-devFps <15..1000|uncapped>`, honoured only by the interactive Quick Game
+(`-devMode -quickGame`), runtime-only (never persisted), default unchanged (120), simulation stays at 30 ticks/s,
+Smooth untouched. The receipt prints `fps_cap_override:` and `initial_requested_fps` (1000000 = uncapped).
+A capture holds at most 16,384 frames: above ~273 fps the 60 s capture ends early at that frame count; the receipt
+`duration_s` / `avg_fps` stay valid, so do not restart it.
+
+## 15.4 Exact uncapped Heavy run (ONE run, separate from the A/B/C statistics)
+Laptop plugged in, "Best performance" power mode, same resolution and options as the baseline (Smooth OFF, VSync off).
+1. `mkdir C:\perf\x64-35-uncapped\C-U1`
+2. From `build\dev-runtimes\native\Generals\x64-35-baseline2\game`:
+```
+generalsv.exe -devMode -quickGame -devFps uncapped -performanceProfile C:\perf\x64-35-uncapped\C-U1
+```
+3. Wait for the match, then hold **Ctrl+Alt+Shift** and press: **F10**, **O**, **B**; wait 5 seconds; **F11**.
+4. Let the capture finish (60 s, or earlier if the frame cap is reached); exit via the game menu.
+5. Send everything in `C:\perf\x64-35-uncapped\C-U1` (`*-summary.txt` is the key file).
+Optional only if the first run looks odd: a second identical run `C-U2`.
+
+## 15.5 How the result decides the next step
+* `avg_fps` far above 120, `present` small and `avg_gpu_ms` well below the frame time: CPU-bound. H1 (state cache) and
+  other CPU-side work are justified; `submit` is the quantity they must reduce.
+* `present` large (or `avg_gpu_ms` close to the frame interval) with `submit` small: GPU/Present-bound. CPU-side state
+  caching will not raise throughput; triangles/overdraw/resolution-side work would be the lever.
+* `textures: created` split by label/size tells which engine textures are created every frame; `destroyed` and
+  `live_end` distinguish transient churn from a leak.
+* `page_faults` per frame and peak identify memory-pressure stalls (compare B3-style behavior).
+
+## 15.6 Candidate
+`build/dev-runtimes/native/Generals/x64-35-baseline2` (staged and preflighted, not run by the agent):
+* `game/generalsv.exe` SHA256 `94626379991B99A4F9BA2DA009F6F0E111A7ED6FEC1FA766E40A62200F468239`
+* `game/generalsv.pdb` SHA256 `A4E5FD6C7AE537791147A20159BBA52157A301FD467857F3CCD1E79527DE015`
+Steam untouched. X64.35 is NOT accepted.
