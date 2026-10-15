@@ -925,3 +925,96 @@ KEEP if `native_shadow_decal` falls >= 0.35 ms/frame and the clean-window frame 
 draw/triangle counts, no visible decal/shadow difference and no stale decal after terrain changes. REVERT/REWORK if the saving
 is < 0.20 ms, terrain invalidation proves unreliable, a stale decal appears, visual output differs unexpectedly, or a
 contract fails. Not combined with any other optimization.
+
+
+---
+
+# 26. C-R1 result: decal-geometry reuse (before = C-D1)
+
+Raw: `C:\perf\x64-35-decal-reuse\C-R1` (wrapper-verified: exe SHA256 `F8C8803A...FC1D`, `git=b63d86149...`, `dirty=0`).
+Before reference: C-D1. Thresholds are the ones agreed before the run; none was moved.
+
+## 26.1 Comparability
+Same render workload as C-D1: objects 649.6 vs 649.5, drawables 121.2 vs 121.3, particles 10.9 vs 10.9, draws 340.78 vs 340.81,
+triangles 110,865 vs 110,865, state requested/changed 6,612.7/384.4 vs 6,613.2/384.5, texture binds 182.8 vs 182.8,
+**shadows seen 633.7 vs 633.5, skipped 551.7 vs 551.5, decals 53.0 vs 53.0, volumes 29 vs 29**; same hardware/settings
+(uncapped, Smooth OFF, VSync off). Capture: 16,384 frames in 55.2 s (frame cap), 1,657 ticks. **The late Present/GPU step
+occurred earlier than before (page-fault pair at 25.6 s; C-D1 at 49.1 s)** and inflates the full-run `native_end_render`
+(0.363 vs 0.121 ms). Matching clean windows are used: **first 24 s of both runs** (before the step in both), 6,777 vs 7,675 frames.
+
+## 26.2 Decal cache effectiveness
+* Per frame: **hits 49.2, misses 3.77, uncached 0, evictions 0** -> hit rate **92.9 %** (53 decals/frame).
+* **The production terrain stamp is active**: `decal_uncached` = 0 and the hits show the W3D terrain-logic check and the
+  logic height map were found; the run did not fall through to the uncached path.
+* Misses are **constant at ~3.8 per frame in every 10 s window and on tick and non-tick frames alike (4 on the first
+  frame, none of the frames has 0)**: about four decal casters whose inputs change every frame (moving/turning units or a
+  fading colour); they recompute as designed. The identities are not recorded, so which objects they are is inferred, not
+  measured. No miss storms, no growth, no evictions.
+* Retained size: the receipt prints `retained_kb_end 32171`, **which is an instrumentation artifact**: the gauge is
+  `count()`-ed once per decal call (53x per frame). Divided by 53 it is **~607 KB** retained, far below the 8 MB budget.
+  The gauge should be recorded once per frame (a later one-line instrumentation fix; no behavior impact).
+
+## 26.3 Before / after (clean window 0-24 s, ms per frame)
+| phase | C-D1 | C-R1 | delta |
+|---|---|---|---|
+| **`native_shadow_decal`** | **0.870** | **0.278** | **-0.593 (-68 %)** |
+| `native_fx_shadows` | 1.022 | 0.433 | -0.589 (-58 %) |
+| exclusive remainder (loop) | 0.0235 | 0.0237 | 0.000 |
+| `native_shadow_gather / project / emit` | 0.044 / 0.048 / 0.036 | 0.045 / 0.050 / 0.038 | +0.001 .. +0.002 |
+| `native_objects` | 2.754 | 2.279 | -0.475 |
+| `display_draw` | 3.262 | 2.835 | -0.427 |
+| **frame** | **3.540** | **3.125** | **-0.415 (-11.7 %)** |
+| fps | 282.5 | 320.0 | +13.3 % |
+Full run (including the earlier late step in C-R1): frame 3.622 -> 3.370 ms (-7.0 %), 276.0 -> 296.6 fps (+7.5 %), so the
+gain is visible even through the larger Present penalty.
+
+## 26.4 Did cost move elsewhere?
+Phases that are unchanged code moved by +1-3 % (the same drift seen between earlier runs): per-object processing +0.012,
+shroud +0.014, submit +0.014, UI +0.020, terrain +0.004, Present/end_render +0.005. **One phase moved more than drift:
+`native_geom_upload` 0.148 -> 0.216 ms (+0.068, +46 %).** The geometry sent is the same, so a plausible reading is that
+more frames per second push the same dynamic buffers harder (driver-side renaming/hazards), but this is not verified. It is
+already inside the net result (-0.415 ms) and is the first candidate to look at if more throughput is wanted. Memory/page
+faults: 8,200 vs 8,114, peak 3,286 (the same late-step pair), working set 501 vs 500 MB: no new memory cost; no new
+unexplained phase (`display_draw_unattributed` 0.018 ms).
+
+## 26.5 Work preservation
+Draw calls, triangles, state counts, decal count (53.0), volumes (29) and skipped counts are identical to C-D1, so no decals
+stopped rendering. The remaining 0.278 ms of `native_shadow_decal` is the work that stays canonical every frame: the texture
+name/lookup, `emitEffect` and 3.77 rebuilds per frame (~0.06 ms at the previous ~16 us each), i.e. roughly
+0.06 + 53 x ~4 us (canonical lookup/emit) = 0.28 ms, versus 53 x 16.4 us = 0.87 ms before. The saving (0.593 ms) is the
+removed grid generation for ~49 reused decals, not missing rendering. Pixel equivalence of cached and canonical frames is
+established by the automated pipeline test, not by this run.
+
+## 26.6 Keep / revert (pre-agreed criteria)
+| criterion | threshold | result |
+|---|---|---|
+| `native_shadow_decal` saving | >= 0.35 ms | **0.593 ms** |
+| clean-window frame improvement | >= 7 % | **11.7 %** (full run 7.0 %) |
+| comparable draws/triangles/decals | yes | **identical** |
+| missing/stale decal work | none | none in counters; stale-after-terrain-change **not exercised** by this run (static scene) |
+| strong result 0.5-0.8 ms | | **0.593 ms - in range** |
+**Recommendation: KEEP**, subject to human visual confirmation (below). Strong result by the pre-agreed definition.
+
+## 26.7 Visual / terrain acceptance status
+**No human visual observation of decals/shadows has been reported for C-R1; visual acceptance is NOT claimed.** The automated
+pixel/readback test establishes equivalence of cached and canonical output through the real pipeline, not human
+acceptance. The terrain-invalidation path (construction flattening, savegame load) was not triggered by the Heavy
+scenario: it is covered by the audit, contract tests and unit tests, and needs one human look: build a structure on sloped
+ground (or load a savegame) and check that decals under/around it follow the flattened terrain. The helicopter shadow
+pop-in (section 22) remains a separate pre-existing correctness issue and is unrelated to this cache.
+
+## 26.8 X64.35 status and next step - recommendation B (stop optimizing, prepare closeout)
+Optimizations kept: decal-geometry reuse (+ the earlier no-benefit attempts rejected and reverted). Clean-window frame in the
+Heavy uncapped scene: 3.69 (C-U1/C-A2 era) -> 3.13 ms; ~320 fps on the laptop iGPU against a 120 fps cap, GPU span ~2.1 ms.
+* **Why not another optimization now:** (1) the engine already runs ~2.6x above the 120 fps cap in the heaviest scene
+  measured (CPU 3.1 ms, GPU span 2.1 ms); (2) the next targets are worth 0.5-0.9 ms each and carry more risk (per-object
+  processing has many inputs: pose, lights, shroud, team colour; the shroud mesh needs a shroud + terrain key) or are tiny
+  (`setUseHotkey` <= 0.15 ms); (3) what remains visible to a player is not average cost but the **20 ms ZoneCalc
+  hitches** (5 per minute) and the **helicopter shadow pop-in**, which are correctness/smoothness items, not throughput;
+  (4) the Heavy scenario had no combat (particles 11): logic cost under real combat is untested, and that, not another
+  render micro-optimization, is the more informative measurement.
+* **Proposed closeout:** human visual acceptance of decals/shadows plus the terrain-change look above; keep the
+  instrumentation; record the late Present/GPU step and B3 as open observations; carry the ZoneCalc hitch, the helicopter shadow
+  issue, the `setUseHotkey` guard and the `native_geom_upload` observation as separately scoped follow-ups. An optional
+  final capped Heavy capture would give a like-for-like before/after against the original 120 fps baseline.
+No further optimization is started; X64.35 is not marked accepted.
