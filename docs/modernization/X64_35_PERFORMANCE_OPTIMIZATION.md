@@ -570,3 +570,75 @@ shadows during the run (units idle and moving, trees, buildings) for any differe
 KEEP if `native_fx_shadows` drops >= 0.25 ms/frame and the frame improves >= 5 % with identical draw/triangle workload,
 no visible shadow difference and no stale shadow. REVERT/REWORK if the saving is < 0.15 ms, any visual difference
 appears, a stale shadow occurs, or a preservation/determinism contract is violated.
+
+
+---
+
+# 21. C-S1 result: shadow-volume reuse did NOT move the measured cost (before = C-A2)
+
+Raw: `C:\perf\x64-35-shadow-reuse\C-S1` (wrapper-verified: exe SHA256 `C1501FB6...FAF7`, `git=1a37a4c4d...`). Before reference:
+C-A2 (`x64-35-attribution`). Recorded separately from the capped baseline.
+
+## 21.1 Comparability
+Identical render workload; no material difference: objects 649.6 vs 649.8, drawables 121.2 vs 121.1, particles 10.9 vs 10.9,
+draws 340.77 vs 340.72, triangles 110,865 vs 110,865, state requested/changed 6,612/384 vs 6,611/384, same hardware and
+settings (uncapped, Smooth OFF, VSync off). Differences in the capture itself: C-S1 ran 60.0 s / 16,102 frames / 1,800 ticks
+(C-A2 stopped at the 16,384-frame cap after 57.4 s / 1,724 ticks), and **C-S1 contains the late Present/GPU step starting at
+38.5 s** (page-fault pair 3,287 + 3,288; fourth recurrence: 34.9, 43.7, 50.3, 38.5 s), which inflates its full-run
+`native_end_render` (0.199 vs 0.059 ms) and frame time. For a fair comparison the first 40 s (before the step in both runs)
+are used below.
+
+## 21.2 Result
+| (ms/frame, 0-40 s window) | C-A2 | C-S1 | delta |
+|---|---|---|---|
+| frame (outer) | 3.480 | 3.582 | +0.101 (+2.9 %) |
+| `display_draw` | 3.212 | 3.301 | +0.089 |
+| `native_objects` | 2.718 | 2.764 | +0.046 |
+| `native_fx_shadows` inclusive | 1.0076 | 1.0275 | **+0.020** |
+| `native_obj_process` | 0.861 | 0.875 | +0.014 |
+| `native_fx_shroud` | 0.504 | 0.511 | +0.007 |
+| `native_geom_upload` / `native_submit` | 0.146 / 0.142 | 0.145 / 0.146 | -0.002 / +0.004 |
+| `native_end_render` | 0.051 | 0.074 | +0.023 |
+| fps (clean window) | 287.3 | 279.2 | -2.8 % |
+Full run: 3.504 -> 3.725 ms (268.4 vs 285.3 fps), dominated by the earlier late step. **The shadow time did not decrease
+(+0.02 ms, within the run-to-run drift of unchanged phases: shroud +1.4 %, terrain +2.6 %, per-object processing +1.6 %).**
+
+## 21.3 Why: the volume geometry was never the cost
+New sub-scopes of `native_fx_shadows` (full run, per frame): `native_shadow_gather` 0.045 ms, `native_shadow_project` (cache
+lookup + projection) 0.035 ms, `native_shadow_emit` 0.060 ms, **29 volume shadows per frame -> 0.140 ms in total**, while the
+phase's **exclusive** time is **0.882 ms** (of 1.022). So only ~14 % of `native_fx_shadows` is the volume path this change
+touches; **~86 % (0.88 ms) is spent in `CollectShadows` outside gather/project/emit**: the iteration over all registered
+shadows (visibility/cull tests, object-space offsets), and in particular `EmitDecal` (decal shadows: a terrain-conforming grid
+of up to 33 x 33 vertices with three `GroundHeight` lookups per vertex), which has no scope and no counter yet. The earlier
+assumption that the 1.0 ms was volume geometry was a hypothesis built from reading the code without that split; the data now
+refutes it. Subtracting the unchanged remainder, the volume path cost ~0.13 ms before the change and ~0.14 ms after it.
+* Reuse distribution: hits 28.40 / misses 0.60 / **uncached 0** / evictions 0 per frame (98.1 % hit; 457,372 hits,
+  9,586 misses over the run; the misses come in bursts of ~14 frames-worth of animated units at ~1 in 17 frames, plus the
+  first frames). The cache behaves exactly as designed; nothing stale was observed in the counters.
+* Radius rule: **0 casters were excluded** (`shadow_uncached` 0): all 29 volume casters in this scene are planar. The
+  Paladin (r 35.2) is not in the scene; the 30-unit cut-off does not limit this result and widening it cannot help here.
+* Memory: evictions 0; the cache stays under the 16 MB bound (bytes are not in the receipt; 29 casters of a few thousand
+  vertices is on the order of 1-2 MB).
+
+## 21.4 Hidden costs
+None moved: geometry upload, submit and Present are unchanged within noise (Present clean-window 0.069 vs 0.047 ms is
+the same drift as end_render); `native_objects` +0.046 ms is spread over unchanged phases. The cache's own overhead (3
+scopes x 29 per frame plus memcmp + copy on a hit) is of the order of the 0.02 ms observed, i.e. it is not free and
+currently buys nothing.
+
+## 21.5 Criteria and decision
+| criterion | target | result |
+|---|---|---|
+| `native_fx_shadows` reduction | >= 0.25 ms | **0.00 ms** (+0.02) |
+| frame improvement | >= 5 % | **-2.8 % (clean window), -6 % (full run, late step)** |
+| comparable draws/triangles | | yes (identical) |
+| stale/incorrect shadows | none | none observed in counters; visual review not part of this analysis |
+Verdict: **fails the keep target and the "<0.15 ms" revert line.** The hit/miss/uncached distribution shows the design is
+sound and eligibility is not the limiting factor (0 uncached), so option B is excluded by the evidence; the limiting fact
+is that the cached work is ~0.13 ms of the 1.0 ms.
+
+**Recommendation: C - revert the batch.** Concretely: revert the cache logic (`NativeShadowVolumeCache.h`, the
+`g_volumeCache` use in `EmitVolumeShadow`, its tests), **keep** the three sub-scopes and a `shadow_volume_casters`
+counter, and add a scope + count around `EmitDecal` and the loop so that the 0.88 ms remainder is attributed
+(a measurement step, not an optimization) before choosing the next target. Nothing is implemented in this analysis and the
+radius cut-off is unchanged.
