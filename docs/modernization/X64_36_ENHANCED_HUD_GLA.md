@@ -1,9 +1,6 @@
 # X64.36 Enhanced HUD - GLA (v1 candidate)
 
-Status: **staged for native human review** (`x64-36-enhanced-hud-gla-v1`). USA: ACCEPTED. China: ACCEPTED (v2, `dac818a0d`, after the
-hover-tooltip fix). Shared Enhanced HUD Framework v1: FROZEN and unmodified (the pinned shared headers are unchanged). CP10: IN REVIEW;
-acceptance table USA PASS / China PASS / GLA PENDING. Deferred (not part of this task): the cross-faction polish pass
-(`ENHANCED_HUD_POLISH_BACKLOG.md`), Modern Settings / Display completion, CPU scalability / multithreading.
+Status: **ACCEPTED** after native review of `x64-36-enhanced-hud-gla-v1` (`c1cde26c1`). USA, China and GLA are accepted; Framework v1 is frozen; CP10 is closed (`X64_36_CP10_CLOSEOUT.md`). Deferred: the cross-faction polish pass (`ENHANCED_HUD_POLISH_BACKLOG.md`).
 
 ## 1. Audit of the real GLA runtime data (retail Generals INI/WND archives; every number read from the data)
 

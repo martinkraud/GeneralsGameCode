@@ -451,12 +451,15 @@ helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Presen
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
 
-## X64.36 Enhanced gameplay UI - USA prototype (CP10, in review)
+## X64.36 Enhanced gameplay UI (CP10, ACCEPTED AND CLOSED 2026-10-17)
 
-Presentation-only prototype: `Options > Gameplay > Interface: Original | Enhanced` (key `InterfaceStyle`, default
-Original). Enhanced (USA only; other sides fall back to Original) moves the existing ControlBar.wnd windows into a bounded,
-centred, bottom-flush 920 x 180 (reference) island - radar | unit info | money+power+12-button command grid | General XP bar -
-and draws a procedural modular frame; the special-power shortcut column sits beside it. No command logic is duplicated.
-Code: `Common/EnhancedHudLayout.h` (pure geometry), `Common/EnhancedHud.h` (switch), `ControlBarEnhanced.cpp`, hooks in
-`ControlBarScheme.cpp`/`ControlBar.cpp`/`ControlBarPopupDescription.cpp`/`ModernDisplayOptions.cpp`. Not accepted until the
-human Original-vs-Enhanced review. Full record: `X64_36_ENHANCED_HUD_USA_PROTOTYPE.md`.
+Presentation-only: `Options > Gameplay > Interface: Original | Enhanced` (key `InterfaceStyle`, default Original). Enhanced is
+available for all three base Generals factions (USA, China, GLA; other sides fall back to Original). It moves the existing
+ControlBar.wnd windows into a bounded, centred, bottom-flush island (radar | unit info | cash + power + 12-button command grid | General
+XP) and draws a procedural frame from a faction theme; the General Powers console is built at runtime from the real science graph
+(`ScienceStore::getPrerequisiteSciences`); the Battle Overview and Global Powers dock follow the same framework. Shared Enhanced HUD
+Framework v1 is FROZEN (`ENHANCED_HUD_FRAMEWORK_V1.md`: version constant, content-pinned shared headers, faction-blind contract
+tests); factions differ only through `EnhancedHudTheme`. Native acceptance: USA `201b126b1`, China v2 `dac818a0d` (the General Powers
+hover-tooltip flicker was a tooltip window covering the button under the pointer; fixed by `EnhancedHudPanels::tooltipPlacement`),
+GLA `c1cde26c1`. Cross-faction visual polish is intentionally deferred (`ENHANCED_HUD_POLISH_BACKLOG.md`). Full record:
+`X64_36_CP10_CLOSEOUT.md`, `X64_36_ENHANCED_HUD_USA_PROTOTYPE.md`, `X64_36_ENHANCED_HUD_CHINA.md`, `X64_36_ENHANCED_HUD_GLA.md`.

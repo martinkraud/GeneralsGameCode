@@ -1,6 +1,6 @@
 # X64.36 Enhanced Gameplay UI - USA prototype (CP10)
 
-Status: **IN REVIEW. First native review found a systematic command/build hit-test bug (fixed in the follow-up batch below); awaiting a second native review. NOT accepted.**
+Status: **ACCEPTED AND CLOSED (CP10, 2026-10-17)** - see `X64_36_CP10_CLOSEOUT.md`. The text below is the historical engineering record of the USA prototype and its refinements.
 No native execution was performed by the agent. Baseline: `fa4675c36` (X64.35 / CP9 ACCEPTED AND CLOSED).
 
 ## 1. Purpose

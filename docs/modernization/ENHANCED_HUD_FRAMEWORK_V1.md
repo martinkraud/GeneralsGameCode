@@ -1,8 +1,7 @@
 # Shared Enhanced HUD Framework v1 (FROZEN)
 
 Status: **frozen at X64.36 after native acceptance of the USA Enhanced HUD (`201b126b1`).** USA is the reference
-implementation. CP10 is still IN REVIEW: it may be proposed for closure only after USA, China and GLA have each passed native
-review and Original preservation has passed.
+implementation. CP10 is ACCEPTED AND CLOSED (2026-10-17): USA, China and GLA have each passed native review and Original preservation has passed.
 
 Version constant: `EnhancedHud::kFrameworkVersion == 1` (`Core/GameEngine/Include/Common/EnhancedHud.h`).
 
@@ -52,7 +51,7 @@ all shared tests run unchanged with the faction active.
   console, visual-state cleanup). Small visual refinements may follow in a future cross-faction polish pass; USA prototyping is not
   reopened.
 * China (`dac818a0d`, v2 after the hover-tooltip fix): native review PASS.
-* GLA: implemented (`X64_36_ENHANCED_HUD_GLA.md`), awaiting native acceptance.
+* GLA (`c1cde26c1`): native review PASS (`X64_36_ENHANCED_HUD_GLA.md`).
 * Original preservation: re-verified with every candidate.
 
 ## 4. Sequence
@@ -60,7 +59,7 @@ all shared tests run unchanged with the faction active.
 1. Freeze v1 (this document and tests) - done.
 2. Enhanced China - native review.
 3. Enhanced GLA (only after China passes) - native review.
-4. Only after USA, China, GLA and Original preservation all pass may CP10 be proposed for closure. It is not closed automatically.
+4. USA, China, GLA and Original preservation all passed: CP10 closed (`X64_36_CP10_CLOSEOUT.md`). The framework stays frozen and proven across the three base Generals factions.
 
 ## 5. Roadmap note (not part of this work): parallelism after CP10
 

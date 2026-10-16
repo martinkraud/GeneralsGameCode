@@ -147,7 +147,7 @@ Current Modern Experience work includes:
 - Improved frontend layout
 - Starting Cash match option
 - Smooth unit presentation
-- Enhanced gameplay UI development
+- Optional Enhanced gameplay interface (USA, China, GLA)
 
 The guiding design principle is:
 
@@ -267,7 +267,8 @@ than extremely high peak FPS in an empty scene.
 
 # Enhanced Gameplay UI
 
-An optional **Enhanced** gameplay interface is currently under development.
+An optional **Enhanced** gameplay interface is available for the three base
+Generals factions: USA, China and GLA.
 
 This is separate from the Original presentation.
 
@@ -279,9 +280,7 @@ The architecture follows:
 The Enhanced interface does not duplicate command or simulation logic.
 
 Instead, it presents existing gameplay functionality through a modernized
-layout.
-
-The current prototype focuses on the USA faction and includes work toward:
+layout shared by every faction:
 
 - A centered bottom HUD island
 - Open battlefield space on both sides
@@ -289,18 +288,16 @@ The current prototype focuses on the USA faction and includes work toward:
 - Improved radar presentation
 - Improved unit information
 - Clear command/build grouping
-- Dedicated cash presentation
+- Dedicated cash and power presentation
 - General rank and XP presentation
-- General-power integration
+- A General Powers console built from the game's real power data
 - Ultrawide-safe layout
 - UI-scale support
 
-The prototype is still undergoing native visual review.
-
-Final faction artwork has not yet been completed.
-
-Long-term Enhanced HUD work is intended to provide distinct visual themes for
-each faction while keeping a consistent functional structure.
+Each faction has its own construction language (USA precision-machined,
+China heavy industrial, GLA improvised field equipment) on top of the shared
+functional structure. Further faction-specific visual polish is planned for a
+later pass.
 
 ---
 
@@ -358,7 +355,7 @@ modernization.
 | UI scaling foundation | ✅ Working |
 | Smooth presentation | ✅ Working, optional |
 | Performance instrumentation | ✅ Working |
-| Enhanced USA HUD | 🚧 In development |
+| Enhanced HUD (USA, China, GLA) | ✅ Working, optional |
 | Movies / cutscenes | 🚧 Incomplete |
 | Replay native validation | 🧪 Further validation needed |
 | Multiplayer / determinism | ⏳ Further validation needed |
@@ -470,10 +467,10 @@ Further fidelity and correctness improvements remain ongoing.
 
 - [x] Original / Enhanced interface architecture
 - [x] USA Enhanced HUD foundation
-- [ ] USA HUD visual refinement
-- [ ] Final Enhanced HUD artwork
-- [ ] China Enhanced HUD
-- [ ] GLA Enhanced HUD
+- [x] USA HUD visual refinement
+- [x] China Enhanced HUD
+- [x] GLA Enhanced HUD
+- [ ] Cross-faction Enhanced HUD polish and final artwork
 - [ ] Further graphics enhancements
 - [ ] Higher-quality optional visual assets
 
@@ -648,7 +645,7 @@ It contains the current:
 - Direct3D 11 renderer
 - Modern Experience
 - performance work
-- Enhanced interface development
+- Modern Display / Settings completion
 
 Major modernization work remains here while systems are still being developed
 and validated.
@@ -720,7 +717,7 @@ Important remaining areas include:
 - Some shadow correctness/fidelity cases
 - Further display controls
 - Key rebinding
-- Enhanced HUD completion
+- Cross-faction Enhanced HUD polish
 - Heavy-combat performance validation
 - Additional Modern Experience polish
 
