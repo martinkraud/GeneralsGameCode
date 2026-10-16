@@ -634,6 +634,20 @@ void RecorderClass::startRecording(GameDifficulty diff, GameMode originalGameMod
     {
 			TheSkirmishGameInfo->setCRCInterval(diagnosticReplayCrcInterval());
       theSlotList = GameInfoToAsciiString(TheSkirmishGameInfo);
+			// The Generals options string has no starting-cash field (Zero Hour writes SC=). A non-default Skirmish starting cash
+			// (Match Options extension) must be recorded or the replay re-simulates with the default and diverges (X64.41 R1).
+			// Written only when it differs from the default, so replays of default-cash matches are byte-identical to before.
+			if (TheSkirmishGameInfo->getStartingCash().countMoney() != TheGlobalData->m_defaultStartingCash.countMoney())
+			{
+				const char *slotsAt = strstr(theSlotList.str(), ";S=");
+				if (slotsAt)
+				{
+					AsciiString before(theSlotList.str(), static_cast<Int>(slotsAt - theSlotList.str()));
+					AsciiString rebuilt;
+					rebuilt.format("%s;SC=%u%s", before.str(), TheSkirmishGameInfo->getStartingCash().countMoney(), slotsAt);
+					theSlotList = rebuilt;
+				}
+			}
       DEBUG_LOG(("GameInfo String: %s",theSlotList.str()));
 			localIndex = 0;
     }

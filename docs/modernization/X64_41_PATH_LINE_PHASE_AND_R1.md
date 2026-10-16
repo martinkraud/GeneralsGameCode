@@ -196,3 +196,15 @@ Win64 and Win32 builds, ctest (16/16, 23/23), gtests (416 / 415 Win64, 378 / 378
 Evidence now points away from pathfinding: the worst tick is the **periodic script tick** (70-110 ms every 300 frames, plus rare stalls inside it) and the **update-module spikes** (max 56-84 ms). X64.42: attribute the script
 tick (which script action, which object scans - the `logic_scripts` exclusive time has no sub-attribution yet), then apply the same method (counters, exactness oracle, serial fix). In parallel: close R1 with the diagnostic recording. Parallel
 pathfinding remains unjustified (the remaining 75 ms search is smaller than the script tick).
+
+## 15. R1 resolved (follow-up): the Generals replay header did not record the Skirmish starting cash
+
+The two staged recordings were analysed with the new tooling. First divergent frame 1459; the command at logic frame 1458 is the human's `MSG_DOZER_CONSTRUCT` (War Factory). A temporary env-gated trace of `onDozerConstruct` / `BuildAssistant::buildObjectNow` / `DozerAIUpdate::construct` (removed again, not committed) showed the re-simulation rejecting it with `canMakeUnit == CANMAKE_NO_MONEY`: the human had **0** money at frame 1458, the live game had at least 2000.
+
+Cause: the live Skirmish was started with Match Options starting cash 50000 (`Skirmish.ini StartingCash = 50000`, X64.31 extension). `GameInfoToAsciiString` writes the starting cash (`SC=`) only for Zero Hour; the `RTS_GENERALS` branch has no such field, so a Generals replay re-simulates with the default 10000. The player CRC does not include money, so the difference stayed invisible until the first purchase the smaller bank could not afford (AI players were not cash-limited that early, so objects matched until then).
+
+Proof: re-running the same replay with starting cash forced to 50000 gives `NO DIVERGENCE on the 6640 common frames` against the live trace; and with the real CRC check (no `GENERALS_SIM_IGNORE_CRC`) the replay with `SC=50000` inserted in its header simulates to the end (exit 0), the original stops at `CRC Mismatch in Frame 1458`.
+
+Fix (replay format only, no gameplay change): `RecorderClass::startRecording` (Generals) now inserts `;SC=<cash>` into the Skirmish options string **only when the starting cash differs from the default**, so default-cash replays are byte-identical to before; LAN / GameSpy strings are untouched; `ParseAsciiStringToGameInfo` already parsed `SC=` in both titles. Replays recorded before this fix with non-default cash cannot be replayed exactly (cash unknown; patching `;SC=<n>` into the header repairs them).
+
+Consequences: the R1 divergence was **not** a simulation nondeterminism; the earlier "simple scenario deterministic" result is consistent (default cash). The remaining determinism risks of section 9 are unchanged. Not yet verified: a fresh live recording with the fix (the writer path is covered by the equivalence above, not by a native run); the next human native test can confirm by recording a non-default-cash Skirmish and replaying it.
