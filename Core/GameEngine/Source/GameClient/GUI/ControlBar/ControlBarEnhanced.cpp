@@ -311,7 +311,8 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 			} );
 	}
 	else
-		EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, panel, factor, original, rememberWin );
+		EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, panel, factor, original, rememberWin,
+			layout.powerEdgeRight, layout.powerPlateMargin );
 	// the retail frame art of each slot (59 x 56 box) is replaced by the Enhanced plate: remember it, then clear it
 	for( GameWindow *slot = parent->winGetChild(); slot; slot = slot->winGetNext() )
 	{
@@ -506,28 +507,85 @@ void drawVents( Int x, Int y, Int w, Int h, int lines, const HudPalette &c )
 	}
 }
 
-// A module of the console: chamfered panel with bevel, a header rail, a short accent cap (all from the theme).
-void drawModule( const HRect &r, const HudPalette &c, bool ventsRight )
+Color themeLerp( const EnhancedHudTheme::Rgba &a, const EnhancedHudTheme::Rgba &b, int num, int den )
+{
+	if( den <= 0 )
+		return themeColor( a );
+	EnhancedHudTheme::Rgba m;
+	m.r = (unsigned char)( a.r + ( b.r - a.r ) * num / den );
+	m.g = (unsigned char)( a.g + ( b.g - a.g ) * num / den );
+	m.b = (unsigned char)( a.b + ( b.b - a.b ) * num / den );
+	m.a = 255;
+	return themeColor( m );
+}
+
+// The chassis (level 0): a gunmetal shell whose top corners are machined (stepped chamfer) and whose colour fades from a lit
+// upper band to a darker base; an optional fine grain gives it a material. The bottom is square (flush with the screen).
+void fillChassis( const HRect &r, Int k, const HudPalette &c )
+{
+	const EnhancedHudTheme::Theme &th = *c.theme;
+	for( Int y = 0; y < r.h; )
+	{
+		const Int band = ( y < k ) ? 1 : 4;
+		const Int h = std::min<Int>( band, r.h - y );
+		const Int inset = ( y < k ) ? ( k - y ) : 0;
+		TheDisplay->drawFillRect( r.x + inset, r.y + y, r.w - 2 * inset, h, themeLerp( th.plateBand, th.plate, y, r.h * 2 / 3 > 0 ? r.h * 2 / 3 : 1 ) );
+		y += h;
+	}
+	if( th.brushedChassis )
+	{
+		const Int step = std::max<Int>( 4, P( 2.5 ) );
+		for( Int y = k + 2; y < r.h - 2; y += step )
+			TheDisplay->drawLine( r.x + 2, r.y + y, r.x + r.w - 3, r.y + y, 1, themeColor( th.chassisLine ) );
+	}
+}
+
+// Group of small illuminated segments (technical status lights). `lit` of `count` are on.
+void drawLedGroup( Int x, Int y, int count, int lit, const HudPalette &c )
+{
+	const Int side = std::max<Int>( 2, P( 2 ) ), gap = std::max<Int>( 1, P( 1.2 ) );
+	for( int i = 0; i < count; ++i )
+	{
+		const Int lx = x + i * ( side + gap );
+		TheDisplay->drawFillRect( lx, y, side, side, i < lit ? c.ready : c.accentDim );
+		TheDisplay->drawLine( lx, y, lx + side - 1, y, 1, i < lit ? c.icon : c.wellEdge );
+	}
+}
+
+// A raised machined frame (level 3 hardware) around a recessed content area: the frame is the visible bezel.
+void drawRaisedFrame( const HRect &inner, Int thickness, const HudPalette &c, bool lit )
+{
+	const EnhancedHudTheme::Theme &th = *c.theme;
+	const Int k = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
+	const HRect outer = inflate( inner, thickness );
+	drawBevelPlate( outer, k, CM_ALL, lit ? c.warningDark : themeColor( th.control ), lit ? c.warning : c.shadow, false, c );
+}
+
+// A module of the console (level 1): a recessed panel set into the chassis - inner shadow on the top/left, a faint lit lip on
+// the bottom/right, machined corners, and a header band with a small group of status lights.
+void drawModule( const HRect &r, const HudPalette &c, int litLeds )
 {
 	const EnhancedHudTheme::Theme &th = *c.theme;
 	if( r.w < 8 || r.h < 8 )
 		return;
 	const Int k = th.moduleCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.moduleCornerRef ) : 0;
+	fillChamfered( r, k, CM_ALL, c.panel );
+	const Int depth = P( th.wellDepthRef );
 	if( th.bevelModules )
-		drawBevelPlate( r, k, CM_ALL, c.panel, c.outline, false, c );
-	else
 	{
-		fillChamfered( r, k, CM_ALL, c.panel );
-		edgeChamfered( r, k, CM_ALL, c.outline );
+		TheDisplay->drawFillRect( r.x + k, r.y, r.w - 2 * k, depth, c.shadow );
+		TheDisplay->drawFillRect( r.x, r.y + k, depth, r.h - 2 * k, c.shadow );
+		TheDisplay->drawLine( r.x + k, r.y + r.h - 1, r.x + r.w - k, r.y + r.h - 1, 1, c.highlight );
+		TheDisplay->drawLine( r.x + r.w - 1, r.y + k, r.x + r.w - 1, r.y + r.h - k, 1, c.highlight );
 	}
-	// inset header rail under the top edge
-	const Int rail = r.y + P( 6.5 );
-	TheDisplay->drawLine( r.x + P( 7 ), rail, r.x + r.w * 6 / 10, rail, 1, c.shadow );
-	TheDisplay->drawLine( r.x + P( 7 ), rail + 1, r.x + r.w * 6 / 10, rail + 1, 1, c.wellEdge );
-	if( th.moduleCaps )
-		TheDisplay->drawFillRect( r.x + k + P( 2 ), r.y + 1, std::max<Int>( 8, r.w * th.capPermille / 1000 ), std::max<Int>( 2, P( 1.5 ) ), c.accent );
-	if( th.vents && ventsRight )
-		drawVents( r.x + r.w - P( 30 ), r.y + P( 4 ), P( 20 ), P( 8 ), 3, c );
+	edgeChamfered( r, k, CM_ALL, c.shadow );
+	// header band (slightly darker than the panel) carrying the status lights
+	const Int headH = P( 11 );
+	TheDisplay->drawFillRect( r.x + depth, r.y + depth, r.w - 2 * depth - 1, headH, themeColor( th.moduleLow ) );
+	if( th.vents )
+		drawVents( r.x + r.w - P( 30 ), r.y + depth + P( 2 ), P( 20 ), std::max<Int>( 4, headH - P( 4 ) ), 3, c );
+	if( th.moduleLeds )
+		drawLedGroup( r.x + P( 9 ), r.y + depth + ( headH - std::max<Int>( 2, P( 2 ) ) ) / 2, 3, litLeds, c );
 }
 
 // Filled five point star (scanline, even-odd).
@@ -649,12 +707,8 @@ bool drawAttackLamp( GameWindow *win, const HudPalette &c, bool *lit )
 	const Color red = c.warning, redDark = c.warningDark, white = c.warningInk;
 	// housing: the lamp is built into the console
 	const HRect housing = inflate( r, P( 2 ) );
+	drawRaisedFrame( r, P( 2 ), c, on );
 	drawRecess( housing, c, P( 1.5 ) );
-	if( c.theme->fasteners )
-	{
-		drawScrew( housing.x + P( 1.5 ), housing.y + housing.h / 2, c );
-		drawScrew( housing.x + housing.w - P( 1.5 ) - 1, housing.y + housing.h / 2, c );
-	}
 	drawBevelPlate( r, 0, 0, on ? red : redDark, on ? white : c.accentDim, false, c );
 	const Int cx = r.x + r.w / 2, top = r.y + std::max<Int>( 2, r.h / 6 ), bottom = r.y + r.h - std::max<Int>( 2, r.h / 6 );
 	const Int half = std::max<Int>( 3, ( bottom - top ) * 6 / 10 );
@@ -682,8 +736,9 @@ void drawUtilityKey( GameWindow *win, Glyph glyph, const HudPalette &c )
 	pointerState( r, &hover, &down );
 	const bool enabled = BitIsSet( win->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false;
 	const Int k = c.theme->plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( c.theme->plateCornerRef ) : 0;
-	const Color body = !enabled ? c.panelLow : ( down ? c.panelLow : ( hover ? c.panel : c.panel ) );
-	drawBevelPlate( r, k, CM_ALL, body, enabled ? ( hover ? c.accent : c.outline ) : c.shadow, down && enabled, c );
+	const EnhancedHudTheme::Theme &th = *c.theme;
+	const Color body = !enabled ? themeColor( th.controlLow ) : ( down ? themeColor( th.controlLow ) : themeColor( th.control ) );
+	drawBevelPlate( r, k, CM_ALL, body, enabled ? ( hover ? c.accent : c.shadow ) : c.shadow, down && enabled, c );
 	// LED strip along the top edge
 	if( c.theme->stateRails )
 	{
@@ -722,7 +777,7 @@ void powersPanelDraw( GameWindow *window, WinInstanceData * )
 		pointerState( plate, &hover, &down );
 		// the cut corners face the battlefield (left); in the compact row both sides are cut
 		const int mask = l.powerHorizontal ? CM_ALL : ( CM_TL | CM_BL );
-		drawBevelPlate( plate, k, mask, c.steelDark, ready ? ( hover ? c.accent : c.ready ) : c.outline, down && ready, c );
+		drawBevelPlate( plate, k, mask, ready ? themeColor( c.theme->control ) : themeColor( c.theme->controlLow ), ready ? ( hover ? c.accent : c.shadow ) : c.shadow, down && ready, c );
 		const HRect icon = inflate( plate, -std::max<Int>( 2, P( 1.5 ) ) );
 		drawRecess( icon, c, P( 1.2 ) );
 		if( c.theme->stateRails )
@@ -765,57 +820,54 @@ void drawEnhancedHudFrame()
 	}
 	const HRect isl = l.island;
 	const HRect mods[ 4 ] = { l.radarFrame, l.infoFrame, l.commandFrame, l.xpFrame };
+	const Int shellK = th.shellCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.shellCornerRef ) : 0;
 
-	// 1. OUTER CONSOLE: one gunmetal shell with machined top corners, a lighter upper band, a lit top edge and an accent rail
-	//    that is broken into one segment per module. The bottom is square and flush with the screen.
+	// 1. LEVEL 0 - CHASSIS: one gunmetal shell (graded, finely grained) with stepped machined top corners and a lit top edge.
+	//    The bottom is square and flush with the screen. Raised structural ribs in the gaps between the modules make the
+	//    modules read as panels set into ONE chassis instead of four boxes that touch.
+	fillChassis( isl, shellK, c );
+	edgeChamfered( isl, shellK, CM_TOP, c.shadow );
+	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 1, isl.x + isl.w - shellK - 2, isl.y + 1, 1, c.highlight );
+	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 2, isl.x + isl.w - shellK - 2, isl.y + 2, 1, themeColor( th.plateBand ) );
+	if( th.junctionRibs )
 	{
-		const Int k = th.shellCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.shellCornerRef ) : 0;
-		fillChamfered( isl, k, CM_TOP, c.steelDark );
-		fillChamfered( HRect{ isl.x, isl.y + k, isl.w, isl.h / 3 }, 0, 0, c.steelMid );
-		edgeChamfered( isl, k, CM_TOP, c.outline );
-		TheDisplay->drawLine( isl.x + k + 1, isl.y + 1, isl.x + isl.w - k - 1, isl.y + 1, 1, c.highlight );
-		const Int railY = isl.y + P( 2.5 );
-		if( th.railBreaks )
+		for( int i = 0; i < 3; ++i )
 		{
-			for( int i = 0; i < 4; ++i )
-				TheDisplay->drawFillRect( mods[ i ].x + P( 6 ), railY, mods[ i ].w - P( 12 ), std::max<Int>( 1, t / 2 + 1 ), c.accentDim );
-		}
-		else
-			TheDisplay->drawFillRect( isl.x + 2 * k, railY, isl.w - 4 * k, std::max<Int>( 1, t / 2 + 1 ), c.accentDim );
-		if( th.fasteners )
-		{
-			drawScrew( isl.x + k + P( 4 ), isl.y + P( 5 ), c );
-			drawScrew( isl.x + isl.w - k - P( 4 ) - 1, isl.y + P( 5 ), c );
-			drawScrew( isl.x + P( 4 ), isl.y + isl.h - P( 4 ), c );
-			drawScrew( isl.x + isl.w - P( 4 ) - 1, isl.y + isl.h - P( 4 ), c );
-		}
-		if( th.seams )
-		{
-			// short machined seams in the gaps between modules, with a break in the middle
-			for( int i = 0; i < 3; ++i )
+			const Int gx = mods[ i ].right(), gw = mods[ i + 1 ].x - mods[ i ].right();
+			if( gw < 4 )
+				continue;
+			const HRect rib = { gx + 1, isl.y + P( 8 ), gw - 2, isl.h - P( 8 ) - P( 5 ) };
+			TheDisplay->drawFillRect( rib.x, rib.y, rib.w, rib.h, themeColor( th.plateBand ) );
+			TheDisplay->drawLine( rib.x, rib.y, rib.x, rib.y + rib.h, 1, c.highlight );
+			TheDisplay->drawLine( rib.x + rib.w - 1, rib.y, rib.x + rib.w - 1, rib.y + rib.h, 1, c.shadow );
+			if( th.seams )
 			{
-				const Int sx = ( mods[ i ].right() + mods[ i + 1 ].x ) / 2;
-				const Int y0 = isl.y + P( 12 ), y1 = isl.y + isl.h - P( 10 ), ym = ( y0 + y1 ) / 2;
-				TheDisplay->drawLine( sx, y0, sx, ym - P( 6 ), 1, c.shadow );
-				TheDisplay->drawLine( sx, ym + P( 6 ), sx, y1, 1, c.shadow );
-				TheDisplay->drawLine( sx + 1, y0, sx + 1, ym - P( 6 ), 1, c.wellEdge );
-				TheDisplay->drawLine( sx + 1, ym + P( 6 ), sx + 1, y1, 1, c.wellEdge );
+				const Int cx = rib.x + rib.w / 2, ym = rib.y + rib.h / 2;
+				TheDisplay->drawLine( cx, rib.y + P( 5 ), cx, ym - P( 5 ), 1, c.shadow );
+				TheDisplay->drawLine( cx, ym + P( 5 ), cx, rib.y + rib.h - P( 5 ), 1, c.shadow );
 			}
+			// one status light on each rib: the console is powered
+			TheDisplay->drawFillRect( rib.x + rib.w / 2 - 1, rib.y + P( 2 ), 2, std::max<Int>( 2, P( 2 ) ), c.ready );
 		}
 	}
+	if( th.fasteners )
+	{
+		// two corner fasteners only, at the flush bottom corners
+		drawScrew( isl.x + P( 4 ), isl.y + isl.h - P( 4 ), c );
+		drawScrew( isl.x + isl.w - P( 4 ) - 1, isl.y + isl.h - P( 4 ), c );
+	}
 
-	// 2. MODULES: structural panels inset from the shell (radar and General carry vent groups in their headers)
-	drawModule( mods[ 0 ], c, true );
-	drawModule( mods[ 1 ], c, false );
-	drawModule( mods[ 2 ], c, false );
-	drawModule( mods[ 3 ], c, true );
+	// 2. LEVEL 1 - MODULES: recessed panels set into the chassis. The lit status lights show which subsystems are powered.
+	drawModule( mods[ 0 ], c, 3 );
+	drawModule( mods[ 1 ], c, 2 );
+	drawModule( mods[ 2 ], c, 3 );
+	drawModule( mods[ 3 ], c, 2 );
 
 	// 3. RADAR MODULE. The radar keeps the map's aspect ratio and (by retail design, W3DRadar::draw) paints the unused part
 	//    of its window opaque black. In Enhanced the radar WINDOW is fitted to the map's aspect inside the module's radar
 	//    slot (uniform, centred), so the radar fills its window, the mouse mapping stays exact and the map is never
-	//    stretched. Around the fitted radar sits a military display bezel: a deep recessed screen in a machined frame with
-	//    corner fasteners and tick marks; the same bezel turns red while the attack warning is lit. Original keeps the retail
-	//    window and its black bars.
+	//    stretched. Around the fitted radar sits a military tactical display: a raised machined bezel around a deep recessed
+	//    screen; the bezel turns red while the attack warning is lit. Original keeps the retail window and its black bars.
 	const bool lampLit = s_hudWin[ 6 ] && !s_hudWin[ 6 ]->winIsHidden() && !BitIsSet( s_hudWin[ 6 ]->winGetStatus(), WIN_STATUS_ENABLED );
 	if( GameWindow *radar = s_hudWin[ 0 ] )
 	{
@@ -840,28 +892,26 @@ void drawEnhancedHudFrame()
 			EnhancedHudWindows::placeAbsolute( radar, fitted );
 		drawRecess( slot, c, P( 1.5 ) );
 		const Int bz = P( th.bezelRef );
-		const HRect frame = inflate( fitted, bz );
-		const Color frameEdge = lampLit ? c.warning : c.outline;
-		drawBevelPlate( frame, P( 2.5 ), CM_ALL, lampLit ? c.warningDark : c.steelMid, frameEdge, false, c );
+		drawRaisedFrame( fitted, bz, c, lampLit );
 		if( lampLit )
-			TheDisplay->drawOpenRect( frame.x - 1, frame.y - 1, frame.w + 2, frame.h + 2, 1, c.warning );
-		drawRecess( inflate( fitted, 1 ), c, P( 1.2 ) );       // the screen itself sits deeper than the bezel
+			TheDisplay->drawOpenRect( fitted.x - bz - 1, fitted.y - bz - 1, fitted.w + 2 * bz + 2, fitted.h + 2 * bz + 2, 1, c.warning );
+		drawRecess( inflate( fitted, 1 ), c, P( 1.5 ) );       // the screen sits deeper than the bezel
 		if( th.fasteners )
 		{
 			const Int o = std::max<Int>( 2, bz / 2 );
-			drawScrew( frame.x + o, frame.y + o, c );
-			drawScrew( frame.x + frame.w - o - 1, frame.y + o, c );
-			drawScrew( frame.x + o, frame.y + frame.h - o - 1, c );
-			drawScrew( frame.x + frame.w - o - 1, frame.y + frame.h - o - 1, c );
+			drawScrew( fitted.x - bz + o, fitted.y - bz + o, c );
+			drawScrew( fitted.x + fitted.w + bz - o - 1, fitted.y + fitted.h + bz - o - 1, c );
 		}
+		if( th.moduleLeds )
+			drawLedGroup( fitted.x - bz + std::max<Int>( 2, bz / 2 ) + P( 5 ), fitted.y + fitted.h + std::max<Int>( 1, bz / 2 ) - 1, 3, lampLit ? 0 : 2, c );
 		if( th.tickMarks )
 		{
-			// graduation ticks along the bottom bezel edge
-			const Int ty = frame.y + frame.h - std::max<Int>( 2, bz / 2 ) - 1;
-			for( int i = 1; i < 8; ++i )
+			// graduation ticks along the top bezel
+			const Int ty = fitted.y - bz + std::max<Int>( 1, bz / 3 );
+			for( int i = 1; i < 10; ++i )
 			{
-				const Int tx = frame.x + frame.w * i / 8;
-				TheDisplay->drawLine( tx, ty, tx, ty + ( i == 4 ? 2 : 1 ), 1, lampLit ? c.warning : c.accentDim );
+				const Int tx = fitted.x + fitted.w * i / 10;
+				TheDisplay->drawLine( tx, ty, tx, ty + ( i == 5 ? 2 : 1 ), 1, lampLit ? c.warning : c.accentDim );
 			}
 		}
 	}
@@ -874,30 +924,22 @@ void drawEnhancedHudFrame()
 		drawAttackLamp( s_hudWin[ 6 ], c, &lit );
 	}
 
-	// 4. UNIT INFORMATION MODULE: the retail selection block is mounted in one equipment well with corner brackets
+	// 4. UNIT INFORMATION MODULE: the retail selection block is a tactical information display: a raised bezel around a
+	//    recessed screen (the cameo, upgrades and queue are mounted inside).
 	{
 		EnhancedHudLayout::Rect dst;
 		bool hide = false;
 		if( EnhancedHudLayout::destinationFor( "WinUnitSelected", dst, hide ) )
 		{
-			const HRect well = inflate( EnhancedHudLayout::toPhysical( l, dst ), g / 2 + 1 );
-			drawRecess( well, c );
-			if( th.cornerBrackets )
-			{
-				const Int len = P( 6 );
-				const Color k = c.accentDim;
-				const Int x1 = well.x + well.w - 1, y1 = well.y + well.h - 1;
-				TheDisplay->drawLine( well.x, well.y, well.x + len, well.y, 1, k );     TheDisplay->drawLine( well.x, well.y, well.x, well.y + len, 1, k );
-				TheDisplay->drawLine( x1, well.y, x1 - len, well.y, 1, k );             TheDisplay->drawLine( x1, well.y, x1, well.y + len, 1, k );
-				TheDisplay->drawLine( well.x, y1, well.x + len, y1, 1, k );             TheDisplay->drawLine( well.x, y1, well.x, y1 - len, 1, k );
-				TheDisplay->drawLine( x1, y1, x1 - len, y1, 1, k );                     TheDisplay->drawLine( x1, y1, x1, y1 - len, 1, k );
-			}
+			const HRect screen = inflate( EnhancedHudLayout::toPhysical( l, dst ), 1 );
+			drawRaisedFrame( screen, std::max<Int>( 2, g / 2 + 1 ), c, false );
+			drawRecess( screen, c );
 		}
 	}
 
-	// 5. COMMAND MODULE: resource readout and power gauge share a header strip; below it the command bay: one recessed keypad
-	//    with twelve fixed cells (retail slot indices). Empty cells are subdued wells, occupied cells are mounted machined
-	//    plates with a state rail; hover = blue rim, pressed = depressed, disabled = muted.
+	// 5. COMMAND MODULE: resource readout and power gauge share a header strip; below it the command bay: a recessed keypad
+	//    in a raised frame with twelve fixed cells (retail slot indices). Empty cells are subdued shallow wells; occupied
+	//    cells are raised machined plates with a state rail; hover = blue rim, pressed = depressed, disabled = muted.
 	{
 		const Int cg = std::max<Int>( 2, g / 2 );
 		const HRect strip = { l.cashFrame.x - cg, l.cashFrame.y - cg,
@@ -915,9 +957,9 @@ void drawEnhancedHudFrame()
 		}
 		if( !l.cashFrame.empty() )
 		{
-			// compact military readout: dark inset, blue status edge, three status segments on the right
+			// compact military data readout: raised bezel, deep dark display, blue status edge, status segments
+			drawRaisedFrame( l.cashFrame, std::max<Int>( 2, P( 1.5 ) ), c, false );
 			drawRecess( l.cashFrame, c, P( 1.5 ) );
-			TheDisplay->drawOpenRect( l.cashFrame.x, l.cashFrame.y, l.cashFrame.w, l.cashFrame.h, 1, c.outline );
 			TheDisplay->drawFillRect( l.cashFrame.x + 1, l.cashFrame.y + 1, std::max<Int>( 2, t ), l.cashFrame.h - 2, c.accent );
 			const Int segW = std::max<Int>( 2, P( 3 ) ), segH = std::max<Int>( 2, l.cashFrame.h / 5 );
 			for( int i = 0; i < 3; ++i )
@@ -935,7 +977,7 @@ void drawEnhancedHudFrame()
 			bay = ( i == 0 ) ? cells[ i ] : EnhancedHudWindows::unionOf( bay, cells[ i ] );
 		}
 		const HRect bayRect = inflate( bay, g );
-		drawBevelPlate( inflate( bayRect, P( 1.5 ) ), P( 2.5 ), CM_ALL, c.panelLow, c.outline, false, c );
+		drawRaisedFrame( bayRect, std::max<Int>( 2, P( 2 ) ), c, false );
 		drawRecess( bayRect, c, P( 2 ) );
 		const bool commandsShown = s_hudWin[ 7 ] && windowChainShown( s_hudWin[ 7 ] );
 		if( commandsShown )
@@ -949,34 +991,28 @@ void drawEnhancedHudFrame()
 				const HRect cell = inflate( cells[ i ], ig );
 				if( !occupied )
 				{
-					// subdued empty cell: shallow well with corner ticks only
+					// subdued empty cell: a shallow well, no border
 					TheDisplay->drawFillRect( cell.x, cell.y, cell.w, cell.h, c.panelLow );
-					TheDisplay->drawOpenRect( cell.x, cell.y, cell.w, cell.h, 1, c.steelMid );
-					if( th.tickMarks )
-					{
-						const Int len = P( 3 );
-						TheDisplay->drawLine( cell.x, cell.y, cell.x + len, cell.y, 1, c.wellEdge );
-						TheDisplay->drawLine( cell.x, cell.y, cell.x, cell.y + len, 1, c.wellEdge );
-						TheDisplay->drawLine( cell.x + cell.w - 1, cell.y + cell.h - 1, cell.x + cell.w - 1 - len, cell.y + cell.h - 1, 1, c.wellEdge );
-						TheDisplay->drawLine( cell.x + cell.w - 1, cell.y + cell.h - 1, cell.x + cell.w - 1, cell.y + cell.h - 1 - len, 1, c.wellEdge );
-					}
+					TheDisplay->drawLine( cell.x, cell.y, cell.x + cell.w - 1, cell.y, 1, c.shadow );
 					continue;
 				}
 				const bool enabled = BitIsSet( btn->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false;
 				bool hover, down;
 				pointerState( cell, &hover, &down );
-				drawBevelPlate( cell, k, CM_ALL, enabled ? c.panel : c.panelLow, enabled ? ( hover ? c.accent : c.outline ) : c.steelMid, down && enabled, c );
+				drawBevelPlate( cell, k, CM_ALL, enabled ? themeColor( th.control ) : themeColor( th.controlLow ), enabled ? ( hover ? c.accent : c.shadow ) : c.shadow, down && enabled, c );
 				if( th.stateRails )
 					TheDisplay->drawFillRect( cell.x + k + 1, cell.y + cell.h - 3, cell.w - 2 * k - 2, std::max<Int>( 1, P( 1 ) ), enabled ? ( hover ? c.ready : c.accentDim ) : c.shadow );
 			}
 		}
 	}
 
-	// 6. GENERAL MODULE: one compact officer/status unit - XP gauge with instrument ticks, the General Powers entry in its
-	//    own well, and the rank grid (earned ranks in restrained gold on a mounted plate, unearned ones recede).
+	// 6. GENERAL MODULE: ONE rank/status unit. The XP gauge sits in its own raised housing with instrument ticks; the General
+	//    Powers entry is mounted in a housing of its own; the rank grid is a recessed bay whose earned cells are raised plates
+	//    in restrained gold and whose unearned cells recede.
 	if( GameWindow *bar = s_hudWin[ 5 ] )
 	{
 		const HRect r = windowRect( bar );
+		drawRaisedFrame( r, std::max<Int>( 2, P( 2 ) ), c, false );
 		drawRecess( r, c, P( 1.5 ) );
 		if( th.tickMarks )
 		{
@@ -993,7 +1029,8 @@ void drawEnhancedHudFrame()
 		bool hide = false;
 		if( EnhancedHudLayout::destinationFor( "ButtonGeneral", dst, hide ) )
 		{
-			const HRect gr = inflate( EnhancedHudLayout::toPhysical( l, dst ), std::max<Int>( 1, g / 2 ) );
+			const HRect gr = inflate( EnhancedHudLayout::toPhysical( l, dst ), 1 );
+			drawRaisedFrame( gr, std::max<Int>( 2, g / 2 + 1 ), c, false );
 			drawRecess( gr, c );
 		}
 
@@ -1005,6 +1042,13 @@ void drawEnhancedHudFrame()
 			levels = TheRankInfoStore->getRankLevelCount();
 		const int slots = EnhancedHudLayout::rankSlotCount( levels );
 		const Int k = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
+		if( slots > 0 )
+		{
+			HRect rankBay = EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankSlot( 0 ) );
+			for( int i = 1; i < slots; ++i )
+				rankBay = EnhancedHudWindows::unionOf( rankBay, EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankSlot( i ) ) );
+			drawRecess( inflate( rankBay, std::max<Int>( 2, g / 2 ) ), c );
+		}
 		for( int i = 0; i < slots; ++i )
 		{
 			const bool reached = rank >= i + 2;
@@ -1012,12 +1056,15 @@ void drawEnhancedHudFrame()
 			const HRect star = EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankStar( i ) );
 			if( reached )
 			{
-				drawBevelPlate( slot, k, CM_ALL, c.panelLow, c.lit, false, c );
+				drawBevelPlate( slot, k, CM_ALL, themeColor( th.control ), c.shadow, false, c );
 				if( th.stateRails )
 					TheDisplay->drawFillRect( slot.x + k + 1, slot.y + slot.h - 3, slot.w - 2 * k - 2, std::max<Int>( 1, P( 1 ) ), c.lit );
 			}
 			else
-				drawRecess( slot, c, P( 1 ) );
+			{
+				TheDisplay->drawFillRect( slot.x, slot.y, slot.w, slot.h, c.panelLow );
+				TheDisplay->drawLine( slot.x, slot.y, slot.x + slot.w - 1, slot.y, 1, c.shadow );
+			}
 			fillStar( star.x + star.w / 2, star.y + star.h / 2, std::max( 2, star.h / 2 ), reached ? c.lit : c.litDim );
 		}
 	}

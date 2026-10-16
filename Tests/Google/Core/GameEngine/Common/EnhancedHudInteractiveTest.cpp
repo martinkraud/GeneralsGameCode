@@ -589,8 +589,10 @@ TEST(EnhancedHudInteractive, SpecialPowerShortcutButtonsAreClickableWhereDrawn)
 				EnhancedHudWindows::applyPowerRow<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember,
 					[](Win *w) { return w->name.rfind("ButtonParent", 0) == 0 ? w->name[12] - '1' : -1; });
 			else
-				EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember);
-			EXPECT_EQ(t.master()->lox, layout.powerPanel.x);
+				EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember,
+						layout.powerEdgeRight, layout.powerPlateMargin);
+			// edge docking measures the real rounded windows and shifts by the remainder: within a few pixels of nominal
+			EXPECT_NEAR(t.master()->lox, layout.powerPanel.x, 3);
 			EXPECT_EQ(t.master()->loy, layout.powerPanel.y);
 			for (int i = 1; i <= 5; ++i)
 			{
@@ -760,7 +762,8 @@ TEST(EnhancedHudInteractive, GlobalPowersAreIndividualPlatesWithNoEnclosingBackg
 					EnhancedHudWindows::applyPowerRow<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember,
 						[](Win *w) { return w->name.rfind("ButtonParent", 0) == 0 ? w->name[12] - '1' : -1; });
 				else
-					EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember);
+					EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember,
+						layout.powerEdgeRight, layout.powerPlateMargin);
 				// the retail populate shows the first `visible` slots only
 				std::vector<Rect> plates;
 				for (int i = 1; i <= 5; ++i)
@@ -800,6 +803,55 @@ TEST(EnhancedHudInteractive, GlobalPowersAreIndividualPlatesWithNoEnclosingBackg
 				// never the old tall panel: the extent stays inside the reserved frame
 				EXPECT_LE(extent.h, layout.powerFrame.h);
 				EXPECT_LE(extent.w, layout.powerFrame.w);
+			}
+		}
+}
+
+TEST(EnhancedHudInteractive, DrawnGlobalPowerPlatesEndExactlyAtTheScreenEdge)
+{
+	// root cause of the visible gap: the layout positioned the window from nominal numbers (and kept an inset plus a
+	// rounding tolerance on the screen side); the real child windows are rounded when scaled, so the drawn plates ended a few
+	// pixels short of the edge. The fix measures the real leaf windows and shifts the parent by the remaining difference.
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid || layout.powerHorizontal)
+				continue;
+			ASSERT_EQ(layout.powerEdgeRight, s.w);
+			for (int visible = 1; visible <= 5; ++visible)
+			{
+				Tree t;
+				t.build(kPowers);
+				scaleLoaded(t, ls);
+				std::map<Win *, std::vector<int>> orig;
+				auto original = [&orig](Win *w, int *out)
+				{
+					auto it = orig.find(w);
+					if (it == orig.end())
+						it = orig.insert({w, {w->lox, w->loy, w->w, w->h}}).first;
+					for (int i = 0; i < 4; ++i)
+						out[i] = it->second[i];
+				};
+				EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original,
+					[&original](Win *w) { int o[4]; original(w, o); }, layout.powerEdgeRight, layout.powerPlateMargin);
+				int maxPlateRight = -1;
+				for (int i = 1; i <= 5; ++i)
+				{
+					Win *slot = t.find("ButtonParent" + std::to_string(i));
+					slot->hidden = i > visible;
+					if (slot->hidden)
+						continue;
+					const Rect plate = EnhancedHudLayout::powerPlateRect(screen(t.find("ButtonCommand" + std::to_string(i))), layout.scale);
+					maxPlateRight = std::max(maxPlateRight, plate.right());
+					// the plate never leaves the surface
+					EXPECT_LE(plate.right(), s.w) << s.w << "x" << s.h << " ui" << ui;
+					EXPECT_GE(plate.x, 0);
+				}
+				// every visible plate of the column shares the same outer edge, and it is the screen edge (0-1 px)
+				EXPECT_GE(maxPlateRight, s.w - 1) << s.w << "x" << s.h << " ui" << ui << " visible " << visible;
+				EXPECT_LE(maxPlateRight, s.w) << s.w << "x" << s.h << " ui" << ui;
 			}
 		}
 }

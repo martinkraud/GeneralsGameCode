@@ -247,16 +247,17 @@ TEST(EnhancedHudLayout, GlobalPowersAreMountedFlushAgainstTheRightScreenEdge)
 			if (compact)
 				continue;
 			ASSERT_FALSE(r.powerHorizontal) << s.name;
-			EXPECT_EQ(r.powerFrame.right(), s.w - 1) << s.name << " ui" << ui;        // the extent ends at the edge (1 px inset)
+			EXPECT_EQ(r.powerFrame.right(), s.w) << s.name << " ui" << ui;            // the extent ends at the edge
+			EXPECT_EQ(r.powerEdgeRight, s.w) << s.name;
 			// the plates themselves end within a few pixels of the edge: "attached to the screen edge"
 			const int m = std::max(2, int(std::lround(3 * r.scale)));
 			const int plateRight = r.powerPanel.x + scaledRef(kPowerButtonX, r.scale) + scaledRef(kPowerButtonW, r.scale) + m;
-			EXPECT_LE(s.w - plateRight, 2 * std::max(3, int(std::lround(1.5 * r.scale))) + 2) << s.name << " ui" << ui;
+			EXPECT_LE(std::abs(s.w - plateRight), 1) << s.name << " ui" << ui;               // nominal numbers agree within rounding
 			EXPECT_LE(plateRight, s.w) << s.name;
 		}
 	// 32:9 keeps the edge anchor (no safe-region rule): far right of a 5120 px surface
 	const Result wide = compute(kSurfaces[8]);
-	EXPECT_GT(wide.powerFrame.right(), 5120 - 4);
+	EXPECT_EQ(wide.powerFrame.right(), 5120);
 	EXPECT_FALSE(wide.powerFrame.intersects(wide.island));
 }
 
@@ -765,13 +766,15 @@ TEST(EnhancedHudTheme, ThemeIsPresentationDataOnly)
 TEST(EnhancedHudTheme, UsaThemeKeepsAReadableHierarchy)
 {
 	const EnhancedHudTheme::Theme &t = EnhancedHudTheme::usa();
-	// dark surfaces: outer console > module > well
-	EXPECT_LT(luminance(t.plate), 40.0);
+	// depth hierarchy (darkest last): control (raised) > chassis > module (recessed) > module header > well
+	EXPECT_LT(luminance(t.plate), 70.0);                       // still a dark console
 	EXPECT_LT(luminance(t.well), luminance(t.moduleLow));
 	EXPECT_LT(luminance(t.moduleLow), luminance(t.module));
-	EXPECT_LT(luminance(t.plate), luminance(t.module));
+	EXPECT_LT(luminance(t.module), luminance(t.plate));        // modules are recessed into the chassis
+	EXPECT_GT(luminance(t.control), luminance(t.plate));       // interactive plates are raised above it
+	EXPECT_GT(luminance(t.control), luminance(t.controlLow));
 	// content is readable on every surface
-	for (const EnhancedHudTheme::Rgba *surface : {&t.plate, &t.module, &t.moduleLow, &t.well})
+	for (const EnhancedHudTheme::Rgba *surface : {&t.plate, &t.module, &t.moduleLow, &t.well, &t.control})
 	{
 		EXPECT_GT(luminance(t.icon) - luminance(*surface), 100.0);
 		EXPECT_GT(luminance(t.rankLit) - luminance(*surface), 100.0);
@@ -783,7 +786,7 @@ TEST(EnhancedHudTheme, UsaThemeKeepsAReadableHierarchy)
 	EXPECT_GT(t.accent.b, t.accent.r);
 	EXPECT_LT(luminance(t.accentDim), luminance(t.accent));
 	EXPECT_LT(luminance(t.warningDark), luminance(t.warning));
-	EXPECT_TRUE(t.moduleCaps && t.bevelModules && t.cornerBrackets);
+	EXPECT_TRUE(t.bevelModules && t.brushedChassis && t.junctionRibs && t.moduleLeds);
 }
 
 TEST(EnhancedHudTheme, LiveStateFollowsTheSideAndNeverChangesLayout)
@@ -955,7 +958,8 @@ TEST(EnhancedHudTheme, ThemeCanExpressShapeAndMaterialDifferencesBeyondColour)
 	EXPECT_EQ(t.shellCorner, Corner::Chamfer);
 	EXPECT_EQ(t.moduleCorner, Corner::Chamfer);
 	EXPECT_EQ(t.plateCorner, Corner::Chamfer);
-	EXPECT_TRUE(t.fasteners && t.seams && t.vents && t.tickMarks && t.stateRails && t.railBreaks);
+	EXPECT_TRUE(t.fasteners && t.seams && t.tickMarks && t.stateRails);
+	EXPECT_FALSE(t.vents);                          // detail only where it serves a purpose
 	EXPECT_GT(t.bezelRef, t.wellDepthRef);        // the radar bezel is a stronger surround than an ordinary well
 	// shape parameters are small, bounded reference units (a theme cannot reshape the layout)
 	EXPECT_LE(t.shellCornerRef, 16);

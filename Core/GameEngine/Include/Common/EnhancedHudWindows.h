@@ -127,8 +127,26 @@ void scaleSubtree(Win *win, double factor, Original &original)
 
 // The special power shortcut column: the whole layout is moved to `column` and scaled uniformly by `factor`; rounding
 // can leave a scaled child a pixel outside its scaled parent, so the (all placed) containers are extended afterwards.
+//
+// Edge docking (edgeRight >= 0): the DRAWN plate of a button is powerPlateRect = the button rectangle plus `plateMargin`.
+// Child positions are rounded when they are scaled, so after the layout the parent is shifted by the exact remaining
+// difference: afterwards the outer edge of the right-most drawn plate is exactly `edgeRight` (the screen edge). The measure
+// is taken on the real windows, not on the nominal layout numbers.
+template <class Win>
+void measureLeafRight(Win *win, int &maxRight)
+{
+	if (win->winGetChild() == nullptr)
+	{
+		const Rect r = screenRect(win);
+		maxRight = std::max(maxRight, r.right());
+	}
+	for (Win *child = win->winGetChild(); child; child = child->winGetNext())
+		measureLeafRight(child, maxRight);
+}
+
 template <class Win, class Original, class Remember>
-void applyPowerColumn(Win *parent, const Rect &column, double factor, Original &&original, Remember &&remember)
+void applyPowerColumn(Win *parent, const Rect &column, double factor, Original &&original, Remember &&remember,
+                      int edgeRight = -1, int plateMargin = 0)
 {
 	int o[4] = {0, 0, 0, 0};
 	original(parent, o);
@@ -138,6 +156,19 @@ void applyPowerColumn(Win *parent, const Rect &column, double factor, Original &
 	std::set<Win *> all;
 	collectSubtree(parent, all);
 	fitContainers(parent, parent, all, remember);
+	if (edgeRight >= 0)
+	{
+		int maxRight = -1000000;
+		for (Win *child = parent->winGetChild(); child; child = child->winGetNext())
+			measureLeafRight(child, maxRight);
+		const int delta = edgeRight - (maxRight + plateMargin);
+		if (delta != 0)
+		{
+			int px = 0, py = 0;
+			parent->winGetPosition(&px, &py);
+			parent->winSetPosition(px + delta, py);
+		}
+	}
 }
 
 // The compact fallback of the Global Powers surface: the direct children of `parent` (slotOf(child) = 0..4, -1 for none)

@@ -80,6 +80,8 @@ struct Result
 	Rect powerFrame;             // extent the Global Powers plates can occupy (all five slots, plus rounding tolerance); nothing is drawn behind it
 	bool powerHorizontal = false;   // compact fallback: a row of five instead of a column
 	bool powerAboveIsland = false;  // the panel is stacked above the island's footprint (otherwise beside it)
+	int powerEdgeRight = -1;        // x the outer edge of every drawn Global Powers plate must end at (screen edge), or -1
+	int powerPlateMargin = 0;       // margin of powerPlateRect in pixels at this scale
 	// frame regions in physical pixels
 	Rect radarFrame, infoFrame, commandFrame, xpFrame, cashFrame;
 	int dividerX[3] = {0, 0, 0};
@@ -125,11 +127,10 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	const int bx = scaledRef(kPowerButtonX, r.scale), bw = scaledRef(kPowerButtonW, r.scale);
 	const int by = scaledRef(kPowerButtonY, r.scale), bh = scaledRef(kPowerButtonH, r.scale);
 	const int pitchY = scaledRef(kPowerPitchY, r.scale), pitchX = scaledRef(kPowerColumnW, r.scale);
-	const int inset = 1;
 	const int colW = scaledRef(kPowerColumnW, r.scale), colH = scaledRef(kPowerColumnH, r.scale);
 	// extent of the plates relative to the panel window origin: column
-	const int cL = bx - pm - tol, cR = bx + bw + pm + tol, cT = by - pm - tol, cB = (kPowerCount - 1) * pitchY + by + bh + pm + tol;
-	const int cx = surfaceW - inset - cR;                                               // frame right = surface edge - inset
+	const int cL = bx - pm - tol, cR = bx + bw + pm, cT = by - pm - tol, cB = (kPowerCount - 1) * pitchY + by + bh + pm + tol;
+	const int cx = surfaceW - cR;                                                       // the plates end exactly at the screen edge
 	const bool overlapsX = cx + cL < r.island.right() + gap && cx + cR > r.island.x - gap;
 	const int yMax = (overlapsX ? r.island.y - gap : surfaceH - mar) - cB;
 	const int yMin = mar - cT;
@@ -140,6 +141,8 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 		r.powerHorizontal = false;
 		r.powerAboveIsland = overlapsX;
 		r.powerFrame = {cx + cL, cy + cT, cR - cL, cB - cT};
+		r.powerEdgeRight = surfaceW;
+		r.powerPlateMargin = pm;
 	}
 	else
 	{
@@ -147,7 +150,7 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 		// battlefield) and the rare case where a column cannot fit: a row of five above the island's right end
 		const int rL = bx - pm - tol, rR = (kPowerCount - 1) * pitchX + bx + bw + pm + tol, rT = by - pm - tol, rB = by + bh + pm + tol;
 		const int rowW = kPowerCount * pitchX, rowH = scaledRef(kPowerCellH, r.scale);
-		const int frameRight = std::min(r.island.right(), surfaceW) - inset;
+		const int frameRight = std::min(r.island.right(), surfaceW) - 1;
 		const int rx = std::max(-rL + mar, frameRight - rR);
 		const int ry = std::max(mar - rT, r.island.y - gap - rB);
 		r.powerPanel = {rx, ry, rowW, rowH};

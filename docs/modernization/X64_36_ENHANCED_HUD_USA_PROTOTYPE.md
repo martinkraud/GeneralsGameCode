@@ -447,3 +447,44 @@ is not modernised in this batch; it is the next milestone.
 **Future factions.** China/GLA/Europe/Russia can differ materially by choosing different shape language (square vs chamfered vs
 asymmetric corners, no/many fasteners, seams vs welds, rail style, bezel and well depth) in addition to colour; the layout,
 interaction, hit testing and image fitting stay identical. Not implemented now.
+
+## 17. Refinement 6: USA Design2 (after native review of `x64-36-enhanced-hud-usa-design1`)
+Geometry is unchanged (pinned by `AcceptedMajorGeometryIsFrozen`); this batch is art direction plus one correctness fix.
+The accepted layout is the intended **shared Enhanced HUD framework** for every faction (structure frozen, faction art not).
+It is NOT formally declared "Enhanced HUD Shared Framework v1" until the human accepts the native result of this candidate;
+at that point the frozen geometry, module boundaries, responsive rules, hit-test contracts, command slots, radar behaviour,
+image-fit policy, Global Powers rules, theme API and renderer primitives are to be recorded as v1.
+
+**Global Powers: true right-edge dock - root cause and fix.** Design1 left a visible strip between the plates and the screen.
+Cause: the layout positioned the shortcut window from nominal numbers and deliberately kept a 1 px inset plus a rounding
+tolerance on the screen side of its frame; the real child windows are rounded when they are scaled, so the DRAWN plates
+(button + `powerPlateRect` margin) ended 4-6 px short of the edge. Fix (shared mechanism, `EnhancedHudWindows.h`):
+`applyPowerColumn(..., edgeRight, plateMargin)` measures the real leaf button windows after the layout and shifts the parent by
+the exact remainder so the right-most drawn plate edge equals `edgeRight` (= the surface width); the layout no longer keeps an
+inset or tolerance on that side (`powerFrame.right == surfaceW`). The real drawn rectangle is tested (mock windows with the
+loader's rounding): `DrawnGlobalPowerPlatesEndExactlyAtTheScreenEdge` - 9 surfaces x 5 UI scales x 1..5 visible powers, outer
+edge within 0-1 px, never past the surface. Compact surfaces keep the row.
+
+**Design2 changes (all procedural, shared renderer, theme-driven).**
+* Depth hierarchy (theme colours and test): level 0 chassis (mid gunmetal, vertical grade, fine grain, stepped machined top
+  corners, lit top edge); level 1 modules as RECESSED navy panels set into the chassis (inner shadow, lit lip, header band with
+  status lights); level 2 wells (near black); level 3 RAISED machined control plates and bezels (lighter than the chassis);
+  level 4 icons / LEDs / rank. Previously the modules were lighter boxes on a dark plate; now they read as windows in one chassis.
+* Raised structural ribs between the modules (with a broken centre seam and a status light) join the modules into one device;
+  blue is illumination (LED groups, hover, ready rails) and no longer traces every rectangle; screws reduced to 2 (shell) + 2
+  (radar bezel) and none on the lamp.
+* Radar: raised bezel around a deep recessed screen, graduation ticks, LED group, red bezel when the attack warning is lit; the
+  accepted lamp sits in a raised housing. Selection: raised bezel around a recessed information screen. Cash: raised bezel around
+  a deep data readout with a blue status edge and segments. Command bay: raised frame around a deep keypad recess; empty cells
+  are shallow wells without borders, occupied cells raised plates with a state rail. General: XP gauge and General Powers entry in
+  raised housings, rank grid in a recessed bay (earned = raised plate with gold rail, unearned recede). Global Powers: raised
+  machined plates, cut corners on the battlefield side only, square against the screen edge, recessed icon well, blue ready rail.
+* Labels (FUNDS, RANK ...): audited and deliberately NOT added - the procedural renderer has no safe font path (labels need
+  DisplayString/fonts); they remain a candidate for the first asset/typography pass.
+
+**Theme architecture.** New theme data: raised control colours, chassis grain colour, `brushedChassis`, `junctionRibs`,
+`moduleLeds`; removed unused `moduleCaps/capPermille/cornerBrackets/railBreaks` (every field is read by the renderer; contract
+tested). `differsBeyondColour()` still separates a recolour from a different construction language. Planned expectations,
+documented here so future factions are not recolours: China - heavy industrial (square massive framing, thick bezel/deep wells,
+red lighting); GLA - improvised (asymmetric, welded/bolted, worn, exposed fasteners, green/amber instruments); Europe (future) -
+refined modular; Russia (future) - heavy olive/dark industrial. China and GLA still fall back to Original; nothing for Europe/Russia.

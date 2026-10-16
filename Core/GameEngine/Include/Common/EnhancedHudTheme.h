@@ -42,6 +42,8 @@ struct Theme
 	Rgba icon, iconDim, rankLit, rankDim;
 	// state treatments
 	Rgba ready, warning, warningDark, warningInk;
+	// raised control surfaces and chassis texture
+	Rgba control, controlLow, chassisLine;
 	// ---- shape and material language (not colour): what makes a faction look different when recoloured is not enough ----
 	Corner shellCorner;       // outer console top corners
 	int shellCornerRef;       // size in reference units
@@ -49,18 +51,17 @@ struct Theme
 	int moduleCornerRef;
 	Corner plateCorner;       // interactive plates: command cells, utility keys, Global Powers plates
 	int plateCornerRef;
-	bool moduleCaps;          // short accent cap on a module's top edge
-	int capPermille;          // cap length as a share of the module width (permille)
-	bool bevelModules;        // light top/left, dark bottom/right edge on modules
-	bool cornerBrackets;      // bracket marks on the console and bezel corners
+	bool bevelModules;        // inner shadow top/left and a lit lip bottom/right on recessed modules
 	bool fasteners;           // small screws at the shell corners, on the radar bezel and the lamp housing
 	bool seams;               // short machined seams in the gaps between modules
 	bool vents;               // small groups of vent lines in module headers
 	bool tickMarks;           // instrumentation ticks (XP gauge, header rail, radar bezel)
 	bool stateRails;          // thin accent rail on plates that shows ready / not ready
-	bool railBreaks;          // the shell's accent rail is drawn in segments with technical breaks
 	int bezelRef;             // radar bezel thickness (reference units)
 	int wellDepthRef;         // inner shadow thickness of recessed wells (reference units)
+	bool brushedChassis;      // fine horizontal grain on the chassis (material texture)
+	bool junctionRibs;        // raised structural ribs between modules: the modules read as windows in one chassis
+	bool moduleLeds;          // small illuminated segment group in each module header
 };
 
 // True when two themes differ in more than colour (shape / material language). Used by tests and tools to keep a new
@@ -69,30 +70,37 @@ inline bool differsBeyondColour(const Theme &a, const Theme &b)
 {
 	return a.shellCorner != b.shellCorner || a.shellCornerRef != b.shellCornerRef || a.moduleCorner != b.moduleCorner ||
 	       a.moduleCornerRef != b.moduleCornerRef || a.plateCorner != b.plateCorner || a.plateCornerRef != b.plateCornerRef ||
-	       a.moduleCaps != b.moduleCaps || a.capPermille != b.capPermille || a.bevelModules != b.bevelModules ||
-	       a.cornerBrackets != b.cornerBrackets || a.fasteners != b.fasteners || a.seams != b.seams || a.vents != b.vents ||
-	       a.tickMarks != b.tickMarks || a.stateRails != b.stateRails || a.railBreaks != b.railBreaks ||
-	       a.bezelRef != b.bezelRef || a.wellDepthRef != b.wellDepthRef;
+	       a.bevelModules != b.bevelModules || a.fasteners != b.fasteners || a.seams != b.seams || a.vents != b.vents ||
+	       a.tickMarks != b.tickMarks || a.stateRails != b.stateRails ||
+	       a.bezelRef != b.bezelRef || a.wellDepthRef != b.wellDepthRef || a.brushedChassis != b.brushedChassis ||
+	       a.junctionRibs != b.junctionRibs || a.moduleLeds != b.moduleLeds;
 }
 
-// USA Theme v1: modern military command console. Precision-manufactured: dark navy / gunmetal, machined (chamfered)
-// corners, recessed equipment bays, a few purposeful fasteners and seams, restrained blue instrumentation.
+// USA Theme (Design2): a precision-manufactured command console. Depth hierarchy, darkest last:
+//   level 0 chassis   - mid gunmetal with a fine grain and raised structural ribs between the modules
+//   level 1 module    - recessed navy panels set into the chassis
+//   level 2 well      - near-black equipment bays and displays
+//   level 3 control   - raised, lighter machined plates (the interactive things)
+//   level 4 content   - icons, LEDs, rank, state
+// Blue is illumination (LEDs, hover, ready), not an outline colour. Red is reserved for the attack warning, gold for rank.
 inline const Theme &usa()
 {
 	static const Theme t = {
 		"USA",
-		/* plate     */ {12, 16, 24, 255}, /* plateBand */ {21, 27, 39, 255}, /* module */ {30, 38, 52, 255},
-		/* moduleLow */ {20, 26, 38, 255}, /* well */ {9, 13, 20, 255},      /* wellEdge */ {44, 58, 82, 255},
-		/* outline   */ {34, 56, 98, 255}, /* accent */ {72, 126, 208, 255}, /* accentDim */ {38, 64, 112, 255},
-		/* bevelLight*/ {82, 100, 132, 255}, /* bevelDark */ {7, 9, 15, 255},
+		/* plate     */ {32, 40, 54, 255}, /* plateBand */ {44, 54, 72, 255}, /* module */ {21, 27, 40, 255},
+		/* moduleLow */ {15, 20, 31, 255}, /* well */ {8, 11, 18, 255},      /* wellEdge */ {50, 64, 90, 255},
+		/* outline   */ {22, 32, 54, 255}, /* accent */ {72, 126, 208, 255}, /* accentDim */ {36, 60, 106, 255},
+		/* bevelLight*/ {92, 110, 142, 255}, /* bevelDark */ {5, 7, 12, 255},
 		/* icon      */ {198, 214, 240, 255}, /* iconDim */ {92, 104, 124, 255},
 		/* rankLit   */ {236, 200, 88, 255},  /* rankDim */ {50, 58, 74, 255},
 		/* ready     */ {96, 156, 236, 255},  /* warning */ {224, 24, 24, 255}, /* warningDark */ {70, 14, 14, 255},
 		/* warningInk*/ {255, 255, 255, 255},
-		/* shell   */ Corner::Chamfer, 9, /* module */ Corner::Chamfer, 4, /* plate */ Corner::Chamfer, 3,
-		/* caps    */ true, 140, /* bevel */ true, /* brackets */ true, /* fasteners */ true, /* seams */ true,
-		/* vents   */ true, /* ticks */ true, /* stateRails */ true, /* railBreaks */ true,
-		/* bezel   */ 4, /* wellDepth */ 2,
+		/* control   */ {46, 58, 80, 255}, /* controlLow */ {31, 39, 55, 255}, /* chassisLine */ {37, 46, 62, 255},
+		/* shell   */ Corner::Chamfer, 14, /* module */ Corner::Chamfer, 4, /* plate */ Corner::Chamfer, 3,
+		/* bevel   */ true, /* fasteners */ true, /* seams */ true, /* vents */ false, /* ticks */ true,
+		/* stateRails */ true,
+		/* bezel   */ 5, /* wellDepth */ 2,
+		/* grain   */ true, /* ribs */ true, /* moduleLeds */ true,
 	};
 	return t;
 }

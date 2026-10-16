@@ -256,8 +256,10 @@ class EnhancedHudContracts(unittest.TestCase):
     def test_renderer_is_shared_and_reads_shape_language_from_the_theme(self):
         bar = text(BAR)
         frame = bar[bar.index("void drawEnhancedHudFrame()"):]
-        for field in ("th.shellCorner", "th.fasteners", "th.seams", "th.tickMarks", "th.railBreaks", "th.bezelRef", "th.cornerBrackets"):
+        for field in ("th.shellCorner", "th.fasteners", "th.seams", "th.tickMarks", "th.junctionRibs", "th.bezelRef", "th.moduleLeds"):
             self.assertIn(field, frame)
+        for field in ("th.brushedChassis", "th.bevelModules", "th.vents"):
+            self.assertIn(field, bar)
         self.assertIn("c.theme->stateRails", bar)
         self.assertIn("c.theme->plateCorner", bar)
         th = text("Core/GameEngine/Include/Common/EnhancedHudTheme.h")
@@ -275,8 +277,18 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertIn("CM_TL | CM_BL", draw)
         self.assertIn("powerPlateRect(", draw)
         lay = text("Core/GameEngine/Include/Common/EnhancedHudLayout.h")
-        self.assertIn("const int cx = surfaceW - inset - cR;", lay)
+        self.assertIn("const int cx = surfaceW - cR;", lay)
         self.assertNotIn("safeRight", lay)
+
+    def test_global_powers_edge_dock_measures_real_windows(self):
+        win = text("Core/GameEngine/Include/Common/EnhancedHudWindows.h")
+        self.assertIn("int edgeRight = -1, int plateMargin = 0", win)
+        self.assertIn("measureLeafRight(child, maxRight);", win)
+        bar = text(BAR)
+        self.assertIn("layout.powerEdgeRight, layout.powerPlateMargin", bar)
+        lay = text("Core/GameEngine/Include/Common/EnhancedHudLayout.h")
+        self.assertIn("r.powerEdgeRight = surfaceW;", lay)
+        self.assertNotIn("const int inset = 1;", lay)
 
 
 if __name__ == "__main__":
