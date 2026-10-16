@@ -1,187 +1,789 @@
-# Welcome to the Generals Game Code Project
+# GeneralsGameCode — MKRaudstein Modern Engine
 
-> ## Modern Engine Development
+> **Experimental modernization fork of TheSuperHackers/GeneralsGameCode.**
 >
-> This repository also contains an experimental modernization of
-> **Command & Conquer: Generals** and **Command & Conquer: Generals – Zero Hour**
-> focused on native AMD64 support, Direct3D 11 and broader engine modernization.
+> A native 64-bit and DirectX 11 modernization of  
+> **Command & Conquer: Generals** and **Command & Conquer: Generals – Zero Hour**.
 >
-> Active development currently takes place on the
-> [`dev/modern-engine`](../../tree/dev/modern-engine) branch.
+> The project focuses on preserving the original games while modernizing the
+> engine, rendering, display support, performance and optional user experience.
 >
-> **The modernization features described on that branch should not be assumed
-> to exist on `main`.**
->
-> The `main` branch currently serves as the stable/upstream-compatible baseline.
-> If the modernization project reaches the required level of completeness and
-> validation, the intention is for the modernized engine to eventually become
-> the main development line.
->
-> See the
-> [`dev/modern-engine` README](../../tree/dev/modern-engine#readme)
-> for its current status, roadmap and technical direction.
+> **Status:** Active development. Generals is playable on the modernized native
+> AMD64/D3D11 engine. This project is not yet intended as a finished end-user release.
 
 ---
 
-GeneralsGameCode is a community-driven project aimed at fixing and improving
-the classic RTS game *Command & Conquer: Generals* and its expansion
-*Command & Conquer: Generals – Zero Hour*.
+## Project Overview
 
-This repository is forked from
-[TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode).
+This repository builds on the community-driven
+[TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode)
+project.
 
-The upstream project contains the source code for both games and focuses on
-fixing, maintaining and improving the released game source.
+The goal of this fork is not to turn Generals into a different game.
 
-There is also a complementary upstream project for fixing and improving game
-data and assets such as INI scripts, GUI, AI, maps, models, textures, audio
-and localization:
+The goal is to make the original game work correctly on a modernized engine
+first, while creating a foundation for optional modern presentation and future
+expansion.
 
-[TheSuperHackers/GeneralsGamePatch](https://github.com/TheSuperHackers/GeneralsGamePatch)
-
----
-
-# Project Overview
-
-The game was originally developed using Visual Studio 6 and C++98.
-
-The upstream GeneralsGameCode project has modernized the codebase to support
-modern development environments including Visual Studio 2022 and C++20.
-
-Its initial goals include fixing critical bugs and implementing improvements
-while maintaining compatibility with the original:
-
-- *Command & Conquer: Generals* version 1.08
-- *Command & Conquer: Generals – Zero Hour* version 1.04
-
-This fork additionally contains the separate `dev/modern-engine` development
-line for more extensive engine modernization.
-
----
-
-# Modern Engine Branch
-
-The experimental modernization work is intentionally isolated from `main`
-while major engine systems are being changed.
-
-The work currently includes areas such as:
+The project currently focuses on:
 
 - Native AMD64 / 64-bit Windows support
 - Direct3D 11 rendering
-- Renderer modernization
-- Simulation/render timing separation
-- Modern display support
-- Performance and frame-pacing work
-- Engine maintainability
-- Preservation of original Generals and Zero Hour behaviour
+- Preservation of original Generals gameplay
+- Authoritative original-style 30 TPS simulation
+- Rendering independent of simulation rate
+- Smooth high-refresh presentation
+- Modern resolutions and ultrawide displays
+- UI scaling and modern display handling
+- Improved frame pacing and performance
+- Modernized frontend and settings
+- Optional Enhanced gameplay interface
+- Improved stability and maintainability
+- Continued compatibility work for Zero Hour
 
-The modernization branch is under active development and is **not currently
-intended as a replacement for the original game executables**.
+The modernization deliberately separates:
 
-For current progress and technical status, see:
-
-**[`dev/modern-engine`](../../tree/dev/modern-engine)**
-
----
-
-# Running the Upstream-Compatible Game
-
-To run *Generals* or *Zero Hour* using the normal upstream-compatible project,
-you need the original *Command & Conquer: Generals* and *Zero Hour* game data.
-
-The easiest current way to obtain the games is through
-*Command & Conquer The Ultimate Collection* on Steam.
-
-For upstream releases and installation instructions, see:
-
-- [GeneralsGameCode Releases](https://github.com/TheSuperHackers/GeneralsGameCode/releases)
-- [GeneralsGameCode Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki)
-
-> The experimental AMD64/D3D11 development branch uses a separate development
-> and validation workflow. The normal upstream installation instructions
-> should not be assumed to apply to that branch.
+1. **Original game preservation**
+2. **Engine modernization**
+3. **Optional Modern Experience features**
+4. **Future gameplay/content expansion**
 
 ---
 
-# Building the Game Yourself
+# Current Status
 
-The upstream project supports building on Windows and Linux.
+## Generals — Native AMD64 / DirectX 11
 
-For detailed upstream build instructions, see the
-[GeneralsGameCode build guides](https://github.com/TheSuperHackers/GeneralsGameCode/wiki/build_guides).
+**Command & Conquer: Generals is now playable through the modernized native
+AMD64 and Direct3D 11 engine path.**
 
-## Quick Start
+The native path has progressed far beyond the initial rendering prototype.
 
-### Windows
+Currently demonstrated functionality includes:
+
+- Native 64-bit Windows executable
+- Normal application startup
+- Original game asset loading
+- Original INI and WND parsing
+- Native Direct3D 11 presentation
+- Original frontend and Main Menu
+- Solo Play / Skirmish setup
+- Map loading
+- Live GameLogic
+- AI players
+- Unit selection and commands
+- Buildings and production
+- Ground units
+- Aircraft
+- Projectiles
+- Terrain
+- Scenery
+- Trees and props
+- Roads and bridges
+- Water and shorelines
+- Shroud
+- Shadows
+- Particles and effects
+- Radar
+- Command bar
+- General powers
+- Audio
+- Edge scrolling
+- Save / Load
+- Skirmish victory and return to frontend
+- Repeated match startup during native testing
+
+The modern renderer is therefore no longer limited to UI or terrain
+experimentation.
+
+A normal Generals gameplay path can run through:
+
+`Startup → Main Menu → Skirmish → Map Load → Gameplay → Victory / Exit`
+
+on the native AMD64/D3D11 engine.
+
+---
+
+# Original Experience
+
+Preserving the original game is a core requirement.
+
+The modernization is not intended to silently alter game balance, simulation
+rules or the identity of Generals.
+
+The original gameplay simulation remains authoritative.
+
+Examples of preservation priorities include:
+
+- Original unit behaviour
+- Original economy
+- Original combat rules
+- Original build times
+- Original damage values
+- Original faction behaviour
+- Original General powers
+- Original campaign behaviour
+- Original simulation timing
+
+Unexpected or unusual retail values are not automatically treated as bugs.
+
+Where optional modern features are introduced, the original behaviour remains
+the reference and compatibility target.
+
+---
+
+# Modern Experience
+
+Alongside preservation, the project provides an optional **Modern Experience**
+for improvements that do not need to redefine the underlying game.
+
+Current Modern Experience work includes:
+
+- Modern display handling
+- Widescreen support
+- Ultrawide support
+- UI scaling
+- Modernized Options interface
+- Improved frontend layout
+- Starting Cash match option
+- Smooth unit presentation
+- Enhanced gameplay UI development
+
+The guiding design principle is:
+
+> **Modernize Generals, not replace its identity.**
+
+The project asks what Generals might look and feel like if its original design
+team were adapting it for modern hardware and displays today.
+
+---
+
+# Modern Display Support
+
+The modernized engine supports display geometries far beyond the original
+4:3-era assumptions.
+
+Development and layout validation includes resolutions and aspect ratios such
+as:
+
+- 800×600
+- 1920×1080
+- 1920×1200
+- 2560×1440
+- 3440×1440
+- 5120×1440
+
+This includes support for:
+
+- 16:9
+- 16:10
+- 21:9
+- 32:9 ultrawide
+- unusual intermediate display sizes
+- scalable UI geometry
+
+Modern UI elements are designed to remain bounded rather than stretching
+proportionally across extremely wide displays.
+
+Additional display work remains planned, including further fullscreen,
+refresh-rate and runtime display handling improvements.
+
+---
+
+# Simulation and Smooth Presentation
+
+Generals gameplay simulation remains authoritative at its intended simulation
+rate.
+
+Rendering is treated separately.
+
+This allows modern displays to render substantially more frequently without
+making the game simulation run faster.
+
+The engine now includes an optional **Smooth** presentation mode.
+
+Current interpolation work includes:
+
+- Ground-unit movement
+- Aircraft movement
+- Projectile movement
+- Heading interpolation
+- Turret yaw
+- Barrel pitch
+
+The simulation itself remains authoritative.
+
+Interpolation is presentation-only and contains safeguards for events such as:
+
+- Large relocations
+- Teleports
+- Load transitions
+- Invalid history
+- Simulation gaps
+- Epoch changes
+
+The objective is smooth visual motion on modern high-refresh displays without
+changing the underlying gameplay.
+
+---
+
+# Performance
+
+Performance work is focused on **stable gameplay and frame pacing**, not simply
+maximizing an FPS counter.
+
+The main priorities are:
+
+- Maintaining the authoritative simulation rate
+- Avoiding large gameplay stalls
+- Improving frame pacing
+- Reducing expensive CPU rendering work
+- Improving large-battle headroom
+- Profiling before optimizing
+- Preserving deterministic gameplay behaviour
+
+The project includes native performance instrumentation capable of measuring
+engine subsystems and frame-time behaviour.
+
+Recent profiling has already identified and optimized expensive rendering
+paths, including terrain-conforming projected shadow decal generation.
+
+Performance work will increasingly focus on demanding real gameplay scenarios
+with:
+
+- Multiple AI players
+- Large bases
+- Large unit counts
+- Heavy pathfinding
+- Aircraft
+- Artillery
+- Particles and effects
+- Continuous combat
+
+For an RTS, a stable experience under heavy load is considered more valuable
+than extremely high peak FPS in an empty scene.
+
+---
+
+# Enhanced Gameplay UI
+
+An optional **Enhanced** gameplay interface is currently under development.
+
+This is separate from the Original presentation.
+
+The architecture follows:
+
+- **Original** — preservation of the classic Generals interface
+- **Enhanced** — modernized presentation using the same gameplay systems
+
+The Enhanced interface does not duplicate command or simulation logic.
+
+Instead, it presents existing gameplay functionality through a modernized
+layout.
+
+The current prototype focuses on the USA faction and includes work toward:
+
+- A centered bottom HUD island
+- Open battlefield space on both sides
+- Modern responsive geometry
+- Improved radar presentation
+- Improved unit information
+- Clear command/build grouping
+- Dedicated cash presentation
+- General rank and XP presentation
+- General-power integration
+- Ultrawide-safe layout
+- UI-scale support
+
+The prototype is still undergoing native visual review.
+
+Final faction artwork has not yet been completed.
+
+Long-term Enhanced HUD work is intended to provide distinct visual themes for
+each faction while keeping a consistent functional structure.
+
+---
+
+# Rendering Strategy
+
+This project does **not** implement a generic Direct3D 8 emulation device.
+
+Instead, original rendering semantics are migrated into backend-neutral or
+purpose-built Direct3D 11 systems.
+
+The fidelity target is:
+
+> Preserve the original visual intent, assets and rendering behaviour while
+> implementing equivalent modern rendering systems.
+
+The project does not require bit-identical Direct3D 8 raster output.
+
+Visual equivalence, gameplay readability and preservation of the original
+artistic intent are the priorities.
+
+The original renderer and original game remain important references during
+modernization.
+
+---
+
+# Current Feature Status
+
+| Area | Status |
+| --- | --- |
+| Native AMD64 executable | ✅ Working |
+| Normal Generals startup | ✅ Working |
+| Original asset loading | ✅ Working |
+| Direct3D 11 presentation | ✅ Working |
+| Direct3D 11 world rendering | ✅ Working |
+| Original Main Menu | ✅ Working |
+| Mouse / keyboard input | ✅ Working |
+| Skirmish setup | ✅ Working |
+| Map loading | ✅ Working |
+| Live GameLogic | ✅ Working |
+| AI gameplay | ✅ Working |
+| Terrain | ✅ Working |
+| Units / buildings | ✅ Working |
+| Aircraft / projectiles | ✅ Working |
+| Trees / scenery | ✅ Working |
+| Roads / bridges | ✅ Working |
+| Water / shorelines | ✅ Working |
+| Fog / shroud | ✅ Working |
+| Shadows | ✅ Working |
+| Particles / effects | ✅ Working |
+| Radar / command interface | ✅ Working |
+| Audio | ✅ Working |
+| Save / Load | ✅ Working |
+| Modern resolutions | ✅ Working |
+| Ultrawide support | ✅ Working |
+| UI scaling foundation | ✅ Working |
+| Smooth presentation | ✅ Working, optional |
+| Performance instrumentation | ✅ Working |
+| Enhanced USA HUD | 🚧 In development |
+| Movies / cutscenes | 🚧 Incomplete |
+| Replay native validation | 🧪 Further validation needed |
+| Multiplayer / determinism | ⏳ Further validation needed |
+| Full Zero Hour native validation | ⏳ Planned |
+
+---
+
+# Generals and Zero Hour
+
+The modernized engine is shared by both games.
+
+## Command & Conquer: Generals
+
+Generals is currently the primary native validation target.
+
+Most major AMD64, renderer and Modern Experience milestones are therefore
+validated in Generals first.
+
+## Command & Conquer: Generals – Zero Hour
+
+Zero Hour remains a target of the same modernized engine.
+
+Shared engine changes are built and tested against Zero Hour where
+appropriate.
+
+However, successful Generals native validation should not be interpreted as
+complete Zero Hour runtime validation.
+
+Zero Hour will receive its own broader native gameplay validation as the
+modernization progresses.
+
+---
+
+# Roadmap
+
+## Phase 1 — Native Engine Foundation
+
+- [x] Native AMD64 builds
+- [x] Win64 startup
+- [x] Direct3D 11 backend foundation
+- [x] Backend-neutral rendering groundwork
+- [x] Simulation/render timing separation
+
+## Phase 2 — Original UI and Frontend
+
+- [x] Direct3D 11 presentation
+- [x] Render2D
+- [x] Original UI textures
+- [x] Original fonts
+- [x] Original Main Menu
+- [x] Mouse and keyboard input
+- [x] Interactive Skirmish setup
+
+## Phase 3 — Native Game Integration
+
+- [x] Map loading
+- [x] Live GameLogic
+- [x] AI simulation
+- [x] Selection and commands
+- [x] Production
+- [x] General powers
+- [x] Save / Load
+- [x] Normal startup path
+- [x] Normal gameplay lifecycle
+
+## Phase 4 — Direct3D 11 World Rendering
+
+- [x] Terrain
+- [x] Static meshes
+- [x] Units and buildings
+- [x] Aircraft
+- [x] Projectiles
+- [x] Trees and props
+- [x] Roads and bridges
+- [x] Water and shorelines
+- [x] Shroud
+- [x] Shadows
+- [x] Particles and effects
+- [x] Radar
+- [x] Complete playable world frame
+
+Further fidelity and correctness improvements remain ongoing.
+
+## Phase 5 — Modern Display and Presentation
+
+- [x] Modern resolution handling
+- [x] Widescreen layouts
+- [x] Ultrawide layouts
+- [x] UI scaling foundation
+- [x] Modern Options architecture
+- [x] Simulation/render separation
+- [x] Optional Smooth unit presentation
+- [ ] Further fullscreen handling
+- [ ] Refresh-rate controls
+- [ ] Key rebinding
+
+## Phase 6 — Performance
+
+- [x] Performance instrumentation
+- [x] Frame-time attribution
+- [x] Renderer profiling
+- [x] Evidence-driven optimization foundation
+- [ ] Heavy real-combat profiling
+- [ ] Large-game simulation profiling
+- [ ] Further CPU optimization
+- [ ] Further frame-pacing improvements
+
+## Phase 7 — Enhanced Experience
+
+- [x] Original / Enhanced interface architecture
+- [x] USA Enhanced HUD foundation
+- [ ] USA HUD visual refinement
+- [ ] Final Enhanced HUD artwork
+- [ ] China Enhanced HUD
+- [ ] GLA Enhanced HUD
+- [ ] Further graphics enhancements
+- [ ] Higher-quality optional visual assets
+
+## Phase 8 — Compatibility Completion
+
+- [ ] Movies / cutscenes
+- [ ] Broader replay validation
+- [ ] Multiplayer validation
+- [ ] Determinism validation
+- [ ] Full Zero Hour native gameplay validation
+- [ ] Remaining renderer fidelity issues
+
+## Phase 9 — Extended Game
+
+Only after the original games are sufficiently stable on the modernized
+engine may the project provide a foundation for larger optional expansion.
+
+Possible future work includes:
+
+- New factions
+- New units and buildings
+- New maps
+- New campaigns
+- Expanded AI
+- Larger battles
+- New gameplay systems
+- Additional graphics features
+
+Potential future factions include:
+
+- Europe
+- Russia
+
+These are long-term concepts and are deliberately separated from the current
+Generals and Zero Hour preservation work.
+
+---
+
+# Original vs Enhanced
+
+The project deliberately avoids forcing every modernization feature onto the
+original presentation.
+
+## Original
+
+The preservation path.
+
+Its purpose is to retain the recognizable original Generals experience as
+closely as practical on the modernized engine.
+
+## Enhanced
+
+An optional modern presentation layer.
+
+Enhanced may provide:
+
+- Modernized HUD layouts
+- Improved information hierarchy
+- Higher-quality UI assets
+- Improved graphics options
+- Additional visual improvements
+
+Enhanced should still unmistakably look and feel like **Command & Conquer:
+Generals**.
+
+Gameplay changes are not automatically part of Enhanced presentation.
+
+---
+
+# AI-Assisted Development
+
+This modernization project makes extensive use of **AI coding agents** as part
+of the development workflow.
+
+AI agents are used for tasks including:
+
+- Source-code and engine analysis
+- C++ implementation
+- Refactoring
+- Renderer migration
+- Automated testing
+- Build diagnostics
+- Runtime diagnostics
+- Regression investigation
+- Performance analysis
+- Technical documentation
+
+The project is directed and reviewed by **Martin Raudstein / MKRaudstein**.
+
+Project goals, compatibility requirements, architecture priorities and
+acceptance criteria are human-directed.
+
+AI-generated code is **not considered correct solely because an agent produced
+it**.
+
+Changes are validated through combinations of:
+
+- Automated tests
+- AMD64 builds
+- Win32 builds
+- Generals and Zero Hour build validation
+- Reference-behaviour comparisons
+- Runtime diagnostics
+- Preserved evidence
+- Performance measurements
+- Regression checks
+- Manual native-game testing
+- Human visual and behavioural acceptance
+
+AI agents may autonomously investigate and implement bounded technical work
+within established project constraints.
+
+Native game execution, major architectural decisions and acceptance of
+significant runtime or visual milestones remain human-controlled.
+
+The project therefore follows a:
+
+> **Human-directed, AI-assisted development model.**
+
+---
+
+# Development Approach
+
+Modernization is performed incrementally.
+
+Original behaviour is first understood and preserved before or while the
+underlying implementation is replaced.
+
+Major milestones typically separate:
+
+1. Source and architecture analysis
+2. Implementation
+3. Automated regression testing
+4. AMD64 validation
+5. Win32 preservation validation
+6. Isolated native candidate staging
+7. Manual native-game testing
+8. Evidence preservation
+9. Human acceptance
+
+A successful build or automated rendering test is not automatically considered
+a successful native milestone.
+
+Machine validation and human visual/behavioural validation are deliberately
+treated as separate acceptance criteria where appropriate.
+
+Detailed engineering notes, audits, profiling data, runtime evidence and
+milestone documentation are maintained under:
+
+`docs/modernization/`
+
+The root README is intended to describe the public state and direction of the
+project rather than act as a detailed engineering changelog.
+
+---
+
+# Branches
+
+## `main`
+
+The `main` branch serves as the stable/upstream-compatible baseline.
+
+Experimental Modern Engine features should not be assumed to exist there.
+
+## `dev/modern-engine`
+
+This is the active modernization branch.
+
+It contains the current:
+
+- AMD64 engine work
+- Direct3D 11 renderer
+- Modern Experience
+- performance work
+- Enhanced interface development
+
+Major modernization work remains here while systems are still being developed
+and validated.
+
+---
+
+# Building
+
+The upstream project supports multiple build configurations.
+
+This modernization branch currently performs its primary native engine work
+and runtime validation on Windows.
+
+## Standard Win32 Build
 
 ```bash
 cmake --preset win32
-cmake --build build/win32 --config Release
+cmake --build --preset win32
 ```
 
-### Linux via Docker
+The repository uses a vcpkg manifest (`vcpkg.json`) for dependency management.
 
-```bash
-./scripts/docker-build.sh
-./scripts/docker-install.sh --detect
-```
+The experimental AMD64/D3D11 runtime uses its own staging and validation
+workflow.
 
----
+Do not assume that the normal Win32 installation workflow represents the
+current AMD64 development runtime.
 
-# Dependency Management
+Detailed modernization build, staging and runtime information is maintained in
+the repository documentation and scripts.
 
-The repository uses a vcpkg manifest (`vcpkg.json`).
-
-Dependency versions come from the `builtin-baseline` commit recorded there,
-with per-port `overrides` when a specific version is required.
-
-GitHub Actions can consume these ports through a vcpkg binary cache backed by
-a NuGet feed on GitHub Packages.
+For upstream build information, see the
+[GeneralsGameCode build guides](https://github.com/TheSuperHackers/GeneralsGameCode/wiki/build_guides).
 
 ---
 
-# Profiling
+# Running the Game
 
-Tracy profiling is supported by the upstream project's `win32-profile`
-CMake preset.
+Original **Command & Conquer: Generals** and **Zero Hour** game data is still
+required.
 
-See the upstream documentation for current profiling instructions and
-supported Tracy versions.
+This repository does not provide the proprietary game assets required to run
+the games.
+
+Users must obtain the original game data from a legitimate copy.
+
+The current Modern Engine branch is still a development project and is **not
+yet intended as a finished end-user release**.
+
+Development runtime workflows are deliberately isolated so modernization
+testing does not require replacing the user's installed original game
+executables.
 
 ---
 
-# Contributing
+# Known Incomplete Areas
 
-For the original/upstream-compatible project, see:
+Although Generals is now playable on the modernized engine, development is not
+complete.
 
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [GeneralsGameCode Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki)
-- [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode)
+Important remaining areas include:
 
-The experimental Modern Engine work has additional engineering documentation
-on the `dev/modern-engine` branch under:
+- Movie / cutscene playback
+- Full replay validation
+- Multiplayer validation
+- Determinism validation
+- Full Zero Hour native validation
+- Additional renderer fidelity work
+- Some shadow correctness/fidelity cases
+- Further display controls
+- Key rebinding
+- Enhanced HUD completion
+- Heavy-combat performance validation
+- Additional Modern Experience polish
 
-`docs/modernization/`
+The presence of a feature in the native engine should not automatically be
+interpreted as final release-quality implementation.
 
 ---
 
 # Upstream Project
 
-This repository is based on:
+This work is based on:
 
 **TheSuperHackers / GeneralsGameCode**
 
 https://github.com/TheSuperHackers/GeneralsGameCode
 
-The complementary game-data project is:
+The upstream project is a community-driven effort to fix and improve
+*Command & Conquer: Generals* and *Command & Conquer: Generals – Zero Hour*.
+
+The complementary upstream game-data project is:
 
 **TheSuperHackers / GeneralsGamePatch**
 
 https://github.com/TheSuperHackers/GeneralsGamePatch
 
-The experimental modernization work in this fork should not be interpreted as
-the official development direction, status or release plan of the upstream
-GeneralsGameCode project.
+It focuses on game data and assets including INI scripts, GUI, AI, maps,
+models, textures, audio and localization.
+
+This modernization fork should **not** be interpreted as the official
+development direction, status or release plan of TheSuperHackers or the
+upstream GeneralsGameCode project.
+
+---
+
+# Contributing
+
+For information about the upstream project, see:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [GeneralsGameCode Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki)
+- [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode)
+
+Modernization-specific engineering documentation is available under:
+
+`docs/modernization/`
+
+Because the Modern Engine branch includes substantial architectural changes,
+contributors should review the current modernization documentation and
+implementation before making large renderer, platform or simulation changes.
+
+---
+
+# Project Maintenance
+
+`README.md` describes the public state of the modernization project.
+
+It should be reviewed at major milestone closeout so that completed public
+capabilities, current development work and major remaining limitations remain
+accurate.
+
+Detailed implementation history, profiling results and engineering evidence
+belong under `docs/modernization/` rather than turning this README into a
+commit-by-commit changelog.
 
 ---
 
@@ -189,13 +791,49 @@ GeneralsGameCode project.
 
 EA has not endorsed and does not support this project.
 
-All trademarks are the property of their respective owners.
+**Command & Conquer**, **Command & Conquer: Generals**, **Zero Hour** and
+related trademarks and proprietary game assets belong to their respective
+owners.
 
-The source code is licensed under the
-[GPL-3.0 License](https://www.gnu.org/licenses/gpl-3.0.html).
+This project is based on the released GeneralsGameCode source and the
+community-maintained upstream project.
+
+The source code is licensed under the **GPL-3.0 License**.
 
 See [LICENSE.md](LICENSE.md) for details.
 
-The source-code license does not grant permission to redistribute proprietary
-*Command & Conquer* game assets. Original game data must be obtained from a
-legitimate copy of the game.
+The source-code license does **not** grant permission to redistribute
+proprietary Command & Conquer game assets.
+
+Original game data must be obtained from a legitimate copy of the game.
+
+---
+
+# Credits
+
+## Modern Engine fork
+
+**MKRaudstein / Martin Raudstein**
+
+Modern Engine direction, project priorities, native validation and human
+acceptance.
+
+Development is performed through a human-directed, AI-assisted workflow.
+
+## Upstream
+
+This project would not exist without the work of:
+
+- Electronic Arts and the original Command & Conquer: Generals development team
+- TheSuperHackers
+- GeneralsGameCode contributors
+- The wider Command & Conquer community
+
+For the full upstream contribution history, see the original repository and
+Git history.
+
+---
+
+**MKRaudstein Modern Engine**
+
+*Preserve the game. Modernize the engine.*
