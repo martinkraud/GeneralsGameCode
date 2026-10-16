@@ -348,8 +348,14 @@ class EnhancedHudContracts(unittest.TestCase):
         body = win[win.index("void applyPopupLayout("):]
         body = body[:body.index("// Places every window of the layout tables")]
         # the layout only places windows: no creation, destruction, command or state change
-        for forbidden in ("winCreate", "winDestroy", "winEnable", "winHide", "setControlCommand", "GadgetButton", "winSetUserData"):
+        for forbidden in ("winCreate", "winDestroy", "winEnable", "setControlCommand", "GadgetButton", "winSetUserData"):
             self.assertNotIn(forbidden, body)
+        # the only visibility change: the retail tier header texts flagged by the layout table, restored for Original
+        self.assertEqual(body.count("winHide"), 1)
+        self.assertIn("if (t.hide)", body)
+        self.assertIn("child->winHide(true);", body)
+        self.assertIn("s_purchaseHidden", text(BAR))
+        self.assertIn("( *it )->winHide( FALSE );", text(BAR))
         self.assertIn("winSetPosition", body)
         self.assertIn("winSetSize", body)
 

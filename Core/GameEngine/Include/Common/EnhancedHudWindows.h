@@ -217,6 +217,8 @@ void applyPopupLayout(Win *parent, const Rect &placement, double f, Original &&o
 		const EnhancedHudPanels::PopupTarget t = EnhancedHudPanels::popupTarget(retail);
 		if (!t.valid)
 			continue;
+		if (t.hide)
+			child->winHide(true);             // only the retail tier header texts, replaced by the Enhanced tier labels
 		child->winSetPosition(static_cast<int>(std::lround(t.rect.x * f)), static_cast<int>(std::lround(t.rect.y * f)));
 		child->winSetSize(static_cast<int>(std::lround(t.rect.w * f)), static_cast<int>(std::lround(t.rect.h * f)));
 	}

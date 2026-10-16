@@ -1156,3 +1156,42 @@ TEST(EnhancedHudLayout, PowerMeterHasRoomForTrackSymbolAndSegments)
 			EXPECT_GE(meter.w / EnhancedHudPanels::kPowerSegments, 4) << s.name;
 		}
 }
+
+TEST(EnhancedHudPanels, LabelsAlwaysFitTheirModule)
+{
+	using namespace EnhancedHudPanels;
+	EXPECT_EQ(fitPointSize(12, 7, 80, 100), 12);             // fits: unchanged
+	EXPECT_EQ(fitPointSize(12, 7, 200, 100), 6 < 7 ? 7 : 6); // twice too wide: halved but never below the minimum
+	EXPECT_EQ(fitPointSize(20, 7, 200, 100), 10);
+	EXPECT_EQ(fitPointSize(12, 7, 0, 100), 12);              // degenerate input
+	EXPECT_EQ(fitPointSize(12, 7, 80, 0), 12);
+	// the scaled width never exceeds the limit above the minimum size
+	for (int base : {9, 10, 12, 16})
+		for (int w : {50, 99, 100, 150, 400})
+		{
+			const int size = fitPointSize(base, 7, w, 100);
+			EXPECT_GE(size, 7);
+			EXPECT_LE(size, base);
+			if (size > 7)
+				EXPECT_LE(w * size / base, 100 + 1) << base << " " << w;
+		}
+}
+
+TEST(EnhancedHudPanels, PopupTiersFollowTheRetailRankTiers)
+{
+	using namespace EnhancedHudPanels;
+	// tiers open at the ranks the retail command sets are named for and read 1 / 3 / 5 star
+	EXPECT_EQ(kPopupTierRank[0], 1); EXPECT_EQ(kPopupTierRank[1], 3); EXPECT_EQ(kPopupTierRank[2], 8);
+	EXPECT_EQ(kPopupTierStars[0], 1); EXPECT_EQ(kPopupTierStars[1], 3); EXPECT_EQ(kPopupTierStars[2], 5);
+	const Rect m[4] = {kPopupNewHeader, kPopupNewTier1, kPopupNewTier3, kPopupNewTier5};
+	for (int i = 0; i < 4; ++i)
+	{
+		EXPECT_TRUE(m[i].within(Rect{0, 0, kPopupNewW, kPopupNewH})) << i;
+		if (i > 0)
+		{
+			EXPECT_GT(m[i].y - m[i - 1].bottom(), 2) << i;                // a visible gap for the joining rib
+			EXPECT_LT(m[i].y - m[i - 1].bottom(), 10) << i;
+		}
+	}
+	EXPECT_EQ(m[3].bottom() + 8, kPopupNewH);
+}

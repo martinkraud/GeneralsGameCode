@@ -989,8 +989,19 @@ TEST(EnhancedHudInteractive, GeneralPowersPopupKeepsTheThreeRankTiersAndTheScien
 			EXPECT_EQ(up.x, down.x) << col << "," << row;
 			EXPECT_LT(up.bottom(), down.y + 2);
 		}
-	// the popup is wider than tall (modern, compact) and much smaller than the retail column
-	EXPECT_GT(pc.place.rect.w, pc.place.rect.h);
+	// rank progression reads top to bottom: header, 1 star, 3 star, 5 star; the console is narrow, not a wide slab
+	EXPECT_LE(head.bottom(), t1.y); EXPECT_LE(t1.bottom(), t3.y); EXPECT_LE(t3.bottom(), t5.y);
+	EXPECT_EQ(t1.x, t3.x); EXPECT_EQ(t3.x, t5.x); EXPECT_EQ(t1.w, t3.w);
+	EXPECT_LT(pc.place.rect.w, pc.place.rect.h);
+	EXPECT_LT(pc.place.rect.w * 100, s.w * 40);
+	// only the three retail tier header texts are hidden (replaced by short Enhanced labels); nothing else
+	for (const char *n : {"Rank1Required", "Rank3Required", "Rank8Required"})
+		EXPECT_TRUE(pc.tree.find(n)->hidden) << n;
+	for (Win *ch = pc.tree.master()->child; ch; ch = ch->next)
+		if (ch->name != "Rank1Required" && ch->name != "Rank3Required" && ch->name != "Rank8Required")
+			EXPECT_FALSE(ch->hidden) << ch->name;
+	// the retail "Done" sits in the 5 star module's foot, to the right of its power
+	EXPECT_GT(screen(pc.tree.find("ButtonExit")).x, screen(pc.tree.find("ButtonRank8Number0")).right());
 	EXPECT_LT(double(pc.place.rect.w) * pc.place.rect.h, 0.35 * s.w * s.h);
 }
 

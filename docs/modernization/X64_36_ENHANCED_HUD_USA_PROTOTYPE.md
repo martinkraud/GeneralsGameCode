@@ -582,3 +582,40 @@ red only for warnings. China (later): heavy industrial military console - darker
 edges, red status light with restrained amber/gold, monumental symmetry; NOT USA painted red. GLA (later): improvised field
 equipment - salvaged and patched plates, asymmetry, welded seams, exposed fasteners, rough cut corners, amber/green practical lamps,
 worn dark metal; NOT USA painted green; still as clear to use as USA (same grid, hit regions, hierarchy). Europe/Russia: future.
+
+## 20. Refinement 9: USA Design5 - General Powers console (after native review of `design4`)
+Native verdict on Design4: bottom HUD, power meter, Global Powers dock, Battle Overview good; the General Powers popup was
+not (too wide and bulky, tall header, dead space, 1-star cramped, 5-star isolated, 3-star dominating, tier header texts wrapping and
+overlapping). The bottom HUD and the Overview are untouched in this batch.
+
+**Audit of the real hierarchy.** `SCIENCE_<SIDE>_CommandSetRank1/3/8` (CommandSet.ini): rank 1 = 3 powers in a row; rank 3 = 12
+positions assigned column-major ("1 4 7 10 / 2 5 8 11 / 3 6 9 12" in the INI comment); USA: position 1 = Pathfinder alone, then
+Paradrop 1-3, A-10 Strike 1-3, Emergency Repair 1-3 as the three levels of one science per column; rank 8 = 1 power (Daisy Cutter).
+So the columns of the 3-star grid are real upgrade chains; the tiers open at ranks 1 / 3 / 8 and are labelled 1 / 3 / 5 star.
+Nothing was added, removed or regrouped.
+
+**New information architecture (same windows, moved by `popupTarget`):** a narrow promotion console (reference 320 x 474, UI-scaled
+and always fitted: <= 95 % width, <= 90 % height; typically ~1/3 of the screen width) stacked in rank order:
+1. header - rank name + numeric level (retail windows), experience track (raised housing, recessed, ticked; visible when empty)
+   with "NEXT <next rank name>" (localised rank table) and the real numbers `skill / next level`, or MAXIMUM RANK at the top;
+   remaining General Points (retail count window) in its own readout that gets a blue rim when points are unspent;
+2. 1 STAR GENERAL - the three powers in a row; 3. 3 STAR GENERAL - the four chains (columns, retail order); 4. 5 STAR GENERAL - the
+   power, with Done at the console's foot beside it.
+Each tier has a short Enhanced-only label (stars drawn for the tier + `GUI:EnhancedTier1/3/5` with English fallback, unlocked/locked
+lamp and word from the real rank) instead of the retail "RANK REQUIRED - n Star General" texts, which are hidden by this layout
+(and only those three, recorded and un-hidden for Original). Labels are measured and shrunk to fit their module
+(`fitPointSize`), so no heading wraps or crosses a border. New strings are presentation-only (documented fallbacks, not in the
+retail text files).
+**Chains.** For visible powers of the 3-star grid that share a column and are neighbours, a recessed channel and a rail join them; the
+rail turns gold when the upper level is owned. Only real column neighbours are joined; no relationship is invented.
+**States.** locked = recessed and dim; available = raised plate with a blue rail (hover rim, pressed depressed); purchased = raised
+plate with a gold rim and rail; icons aspect-fitted. **Silhouette.** chassis with machined corners on all four corners, stacked recessed
+modules joined by raised ribs with a broken seam; Done in the foot; construction from the theme (`windowCorner`, ribs, seams, bevels).
+**Preservation.** Positions/sizes, images, draw function and the three header windows' visibility are recorded and restored for
+Original; all gameplay reads are read-only. **Tests.** popup placement/fit on 9 surfaces x 5 UI scales, 16 powers + Done present,
+inside, non-overlapping, full-plate hit probes, tiers in rank order, chains kept, only the three headers hidden, rectangles
+recognised exactly once, label fitting arithmetic, tier/rank constants.
+
+**Sequence after human acceptance (not done now):** freeze Shared Enhanced HUD Framework v1; keep USA as the reference; implement
+China (shared geometry, heavy-industrial construction language), native review; implement GLA (improvised language), native review;
+only then consider CP10 closure.

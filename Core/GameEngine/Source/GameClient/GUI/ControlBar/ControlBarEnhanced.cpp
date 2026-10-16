@@ -117,6 +117,7 @@ const Image *s_purchaseOriginalImage = nullptr;
 std::map<GameWindow *, Original> s_purchase;       // retail geometry of the popup windows (restored for Original)
 struct PopupArt { const Image *enabled; const Image *disabled; };
 std::map<GameWindow *, PopupArt> s_purchaseArt;      // retail bitmaps of popup decoration windows
+std::set<GameWindow *> s_purchaseHidden;           // retail tier header texts hidden by the Enhanced layout
 GameWindow *s_powerMeter = nullptr;                // the PowerWindow gauge (segment overlay)
 struct SlotArt { const Image *enabled; const Image *disabled; };
 std::map<GameWindow *, SlotArt> s_powerSlotArt;     // retail frame art of the shortcut slots (restored for Original)
@@ -267,6 +268,7 @@ void ControlBar::applyEnhancedLayout()
 			s_purchaseOriginalImage = nullptr;
 			s_purchase.clear();
 			s_purchaseArt.clear();
+			s_purchaseHidden.clear();
 		}
 		if( const Image *img = gen->winGetEnabledImage( 0 ) )
 			s_purchaseOriginalImage = img;
@@ -275,6 +277,10 @@ void ControlBar::applyEnhancedLayout()
 		const Int surfaceW = TheDisplay ? (Int)TheDisplay->getWidth() : 800, surfaceH = TheDisplay ? (Int)TheDisplay->getHeight() : 600;
 		const double ui = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
 		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement( surfaceW, surfaceH, layout.island.y, ui );
+		std::vector<GameWindow *> shownBefore;
+		for( GameWindow *ch = gen->winGetChild(); ch; ch = ch->winGetNext() )
+			if( !ch->winIsHidden() )
+				shownBefore.push_back( ch );
 		EnhancedHudWindows::applyPopupLayout<GameWindow>( gen, place.rect, place.scale,
 			[]( GameWindow *w, int *out )
 			{
@@ -282,6 +288,9 @@ void ControlBar::applyEnhancedLayout()
 				const Original &o = s_purchase[ w ];
 				out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
 			} );
+		for( size_t i = 0; i < shownBefore.size(); ++i )
+			if( shownBefore[ i ]->winIsHidden() )
+				s_purchaseHidden.insert( shownBefore[ i ] );      // hidden by this layout (and only those): unhidden for Original
 		for( GameWindow *ch = gen->winGetChild(); ch; ch = ch->winGetNext() )
 		{
 			const UnsignedInt style = ch->winGetStyle();
@@ -328,7 +337,10 @@ void ControlBar::restoreOriginalLayout()
 			it->first->winSetEnabledImage( 0, it->second.enabled );
 			it->first->winSetDisabledImage( 0, it->second.disabled );
 		}
+		for( std::set<GameWindow *>::const_iterator it = s_purchaseHidden.begin(); it != s_purchaseHidden.end(); ++it )
+			( *it )->winHide( FALSE );
 	}
+	s_purchaseHidden.clear();
 	s_purchase.clear();
 	s_purchaseArt.clear();
 	s_powerMeter = nullptr;
@@ -621,14 +633,21 @@ Color themeLerp( const EnhancedHudTheme::Rgba &a, const EnhancedHudTheme::Rgba &
 
 // The chassis (level 0): a gunmetal shell whose top corners are machined (stepped chamfer) and whose colour fades from a lit
 // upper band to a darker base; an optional fine grain gives it a material. The bottom is square (flush with the screen).
-void fillChassis( const HRect &r, Int k, const HudPalette &c )
+void fillChassis( const HRect &r, Int k, const HudPalette &c, int mask = CM_TOP )
 {
 	const EnhancedHudTheme::Theme &th = *c.theme;
+	const bool top = ( mask & ( CM_TL | CM_TR ) ) != 0, bottom = ( mask & ( CM_BL | CM_BR ) ) != 0;
+	const Int bottomZone = bottom ? r.h - k : r.h;
 	for( Int y = 0; y < r.h; )
 	{
-		const Int band = ( y < k ) ? 1 : 4;
-		const Int h = std::min<Int>( band, r.h - y );
-		const Int inset = ( y < k ) ? ( k - y ) : 0;
+		Int h = 1, inset = 0;
+		if( top && y < k )
+			inset = k - y;
+		else if( bottom && y >= bottomZone )
+			inset = y - bottomZone + 1;
+		else
+			h = std::min<Int>( 4, bottomZone - y );
+		h = std::max<Int>( 1, std::min<Int>( h, r.h - y ) );
 		TheDisplay->drawFillRect( r.x + inset, r.y + y, r.w - 2 * inset, h, themeLerp( th.plateBand, th.plate, y, r.h * 2 / 3 > 0 ? r.h * 2 / 3 : 1 ) );
 		y += h;
 	}
@@ -1268,7 +1287,7 @@ void releaseTexts()
 }
 
 // align: 0 = x is the left edge, 1 = centre, 2 = right edge. Uses the game's own font library and display strings.
-void drawLabel( const char *key, const UnicodeString &text, Int x, Int y, Int size, Bool bold, Color color, int align )
+void drawLabel( const char *key, const UnicodeString &text, Int x, Int y, Int size, Bool bold, Color color, int align, Int maxWidth = 0 )
 {
 	if( !TheDisplayStringManager || !TheFontLibrary )
 		return;
@@ -1291,6 +1310,17 @@ void drawLabel( const char *key, const UnicodeString &text, Int x, Int y, Int si
 		e.ds->setText( text );
 	Int w = 0, h = 0;
 	e.ds->getSize( &w, &h );
+	if( maxWidth > 0 && w > maxWidth )
+	{
+		// a label never crosses its module: shrink the point size until it fits (measured, not guessed)
+		const Int fitted = EnhancedHudPanels::fitPointSize( size, 7, w, maxWidth );
+		if( fitted != size )
+		{
+			e.ds->setFont( TheFontLibrary->getFont( AsciiString( "Arial" ), fitted, bold ) );
+			e.size = fitted;
+			e.ds->getSize( &w, &h );
+		}
+	}
 	if( align == 1 )
 		x -= w / 2;
 	else if( align == 2 )
@@ -1316,52 +1346,164 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 	const HRect r = windowRect( window );
 	const double u = r.w / (double)EnhancedHudPanels::kPopupNewW;
 	s_drawScale = std::max( 0.5, u );
+	// real, read-only state of the local player (the same numbers the retail popup shows)
+	Int rank = 1, levels = 1, points = 0, skill = 0, skillUp = 0;
+	if( TheControlBar )
+		if( Player *player = TheControlBar->getCurrentlyViewedPlayer() )
+		{
+			rank = player->getRankLevel();
+			points = player->getSciencePurchasePoints();
+			skill = player->getSkillPoints();
+			skillUp = player->getSkillPointsLevelUp();
+		}
+	if( TheRankInfoStore )
+		levels = TheRankInfoStore->getRankLevelCount();
+
+	// the console: one chassis with machined corners all round; raised ribs join the stacked modules
 	const Int k = th.windowCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.windowCornerRef ) : 0;
-	fillChassis( r, k, c );
-	edgeChamfered( r, k, CM_TOP, c.shadow );
+	fillChassis( r, k, c, CM_ALL );
+	edgeChamfered( r, k, CM_ALL, c.shadow );
 	TheDisplay->drawLine( r.x + k + 1, r.y + 1, r.x + r.w - k - 2, r.y + 1, 1, c.highlight );
-	// header module (rank, experience, General Points) and one recessed module per rank tier
-	const HRect modules[ 4 ] = { EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewHeader, u ),
-	                             EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewTier1, u ),
-	                             EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewTier3, u ),
-	                             EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewTier5, u ) };
-	for( int i = 0; i < 4; ++i )
-		drawModule( HRect{ r.x + modules[ i ].x, r.y + modules[ i ].y, modules[ i ].w, modules[ i ].h }, c, i == 0 ? 3 : -1 );
-	// the experience bar sits in a raised housing
+	auto place = [&]( const HRect &ref ) { const HRect s = EnhancedHudPanels::popupScaled( ref, u ); return HRect{ r.x + s.x, r.y + s.y, s.w, s.h }; };
+	const HRect header = place( EnhancedHudPanels::kPopupNewHeader );
+	const HRect tiers[ 3 ] = { place( EnhancedHudPanels::kPopupNewTier1 ), place( EnhancedHudPanels::kPopupNewTier3 ),
+	                           place( EnhancedHudPanels::kPopupNewTier5 ) };
+	const HRect stack[ 4 ] = { header, tiers[ 0 ], tiers[ 1 ], tiers[ 2 ] };
+	if( th.junctionRibs )
+		for( int i = 0; i < 3; ++i )
+		{
+			const Int gy = stack[ i ].bottom(), gh = stack[ i + 1 ].y - stack[ i ].bottom();
+			if( gh < 4 )
+				continue;
+			const HRect rib = { r.x + P( 16 ), gy + 1, r.w - 2 * P( 16 ), gh - 2 };
+			TheDisplay->drawFillRect( rib.x, rib.y, rib.w, rib.h, themeColor( th.plateBand ) );
+			TheDisplay->drawLine( rib.x, rib.y, rib.x + rib.w, rib.y, 1, c.highlight );
+			TheDisplay->drawLine( rib.x, rib.y + rib.h - 1, rib.x + rib.w, rib.y + rib.h - 1, 1, c.shadow );
+			if( th.seams )
+			{
+				const Int cy = rib.y + rib.h / 2, cx = rib.x + rib.w / 2;
+				TheDisplay->drawLine( rib.x + P( 8 ), cy, cx - P( 6 ), cy, 1, c.shadow );
+				TheDisplay->drawLine( cx + P( 6 ), cy, rib.x + rib.w - P( 8 ), cy, 1, c.shadow );
+			}
+		}
+	drawModule( header, c, 3 );
+	for( int i = 0; i < 3; ++i )
+		drawModule( tiers[ i ], c, -1 );
+
+	// ---- header: experience track with the next rank, General Points readout --------------------------------------------------
 	if( GameWindow *bar = childByName( window, "GeneralsExpPoints.wnd:ProgressBarExperience" ) )
 	{
 		const HRect b = windowRect( bar );
 		drawRaisedFrame( b, P( 2.5 ), c, false );
-		drawRecess( b, c, P( 1.5 ) );
-		if( th.tickMarks )
-			for( int i = 1; i < 10; ++i )
-			{
-				const Int tx = b.x + b.w * i / 10;
-				TheDisplay->drawLine( tx, b.y + b.h - 2, tx, b.y + b.h - 2 - ( i == 5 ? 3 : 1 ), 1, i == 5 ? c.accent : c.accentDim );
-			}
+		drawRecess( b, c, P( 1.5 ) );                       // the track stays visible when the experience is zero
+		for( int i = 1; i < 10; ++i )
+		{
+			const Int tx = b.x + b.w * i / 10;
+			TheDisplay->drawLine( tx, b.y + b.h - 2, tx, b.y + b.h - 2 - ( i == 5 ? 3 : 1 ), 1, i == 5 ? c.accent : c.accentDim );
+		}
+		// next rank (localised rank name of the retail table) and the real numbers; hidden at the top rank
+		const Int ny = b.y + b.h + P( 4 ), maxW = b.w + P( 12 );
+		if( rank < levels )
+		{
+			AsciiString key;
+			key.format( "SCIENCE:Rank%d", rank + 1 );
+			UnicodeString next;
+			next.format( L"%ls", TheGameText->fetchOrSubstitute( "GUI:EnhancedNext", L"NEXT" ).str() );
+			next.concat( L"  " );
+			next.concat( TheGameText->fetch( key ) );
+			drawLabel( "pop.next", next, b.x, ny, P( 8 ), FALSE, c.iconDim, 0, maxW * 6 / 10 );
+			UnicodeString numbers;
+			numbers.format( L"%d / %d", skill, skillUp );
+			drawLabel( "pop.xp", numbers, b.x + b.w, ny, P( 8 ), FALSE, c.ready, 2, maxW * 4 / 10 );
+		}
+		else
+			drawLabel( "pop.next", TheGameText->fetchOrSubstitute( "GUI:EnhancedMaxRank", L"MAXIMUM RANK" ), b.x, ny, P( 8 ), TRUE, c.lit, 0, maxW );
 	}
+	if( GameWindow *count = childByName( window, "GeneralsExpPoints.wnd:StaticTextRankPointsAvailable" ) )
+	{
+		const HRect cr = inflate( windowRect( count ), P( 3 ) );
+		drawRaisedFrame( cr, P( 1.5 ), c, false );
+		drawRecess( cr, c, P( 1.2 ) );
+		if( points > 0 )
+			TheDisplay->drawOpenRect( cr.x - P( 1.5 ), cr.y - P( 1.5 ), cr.w + 2 * P( 1.5 ), cr.h + 2 * P( 1.5 ), 1, c.ready );
+	}
+
+	// ---- tiers: label with stars and a lock lamp ------------------------------------------------------------------------------
+	static const char *const tierKey[ 3 ] = { "GUI:EnhancedTier1", "GUI:EnhancedTier3", "GUI:EnhancedTier5" };
+	static const wchar_t *const tierText[ 3 ] = { L"1 STAR GENERAL", L"3 STAR GENERAL", L"5 STAR GENERAL" };
+	static const char *const labelKey[ 3 ] = { "pop.t1", "pop.t3", "pop.t5" };
+	static const char *const stateKey[ 3 ] = { "pop.s1", "pop.s3", "pop.s5" };
+	for( int i = 0; i < 3; ++i )
+	{
+		const HRect t = tiers[ i ];
+		const bool open = rank >= EnhancedHudPanels::kPopupTierRank[ i ];
+		const Int starSide = P( 5 ), starGap = P( 2 );
+		Int sx = t.x + P( 10 );
+		for( int s = 0; s < EnhancedHudPanels::kPopupTierStars[ i ]; ++s )
+		{
+			fillStar( sx + starSide, t.y + P( 11 ), starSide, open ? c.lit : c.litDim );
+			sx += 2 * starSide + starGap;
+		}
+		drawLabel( labelKey[ i ], TheGameText->fetchOrSubstitute( tierKey[ i ], tierText[ i ] ), sx + P( 4 ), t.y + P( 5 ), P( 10 ), TRUE, open ? c.icon : c.iconDim, 0, t.x + t.w * 62 / 100 - sx );
+		const UnicodeString state = open ? TheGameText->fetchOrSubstitute( "GUI:EnhancedUnlocked", L"UNLOCKED" )
+		                                 : TheGameText->fetchOrSubstitute( "GUI:EnhancedLocked", L"LOCKED" );
+		drawLabel( stateKey[ i ], state, t.x + t.w - P( 10 ), t.y + P( 6 ), P( 8 ), TRUE, open ? c.ready : c.iconDim, 2, t.w * 30 / 100 );
+		drawLedGroup( t.x + t.w - P( 10 ) - t.w * 22 / 100, t.y + P( 8 ), 1, open ? 1 : 0, c );
+	}
+
+	// ---- powers: chain channels and rails first, then the plates -----------------------------------------------------------------
+	struct Plate { GameWindow *w; HRect rect; EnhancedHudPanels::PowerState state; };
+	std::vector<Plate> plates;
 	GameWindow *exitButton = childByName( window, "GeneralsExpPoints.wnd:ButtonExit" );
-	const Int pk = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
 	for( GameWindow *ch = window->winGetChild(); ch; ch = ch->winGetNext() )
 	{
-		if( ch->winIsHidden() || !BitIsSet( ch->winGetStyle(), GWS_PUSH_BUTTON ) )
+		if( ch->winIsHidden() || !BitIsSet( ch->winGetStyle(), GWS_PUSH_BUTTON ) || ch == exitButton )
 			continue;
-		const HRect b = windowRect( ch );
+		Plate p = { ch, windowRect( ch ), EnhancedHudPanels::powerState( BitIsSet( ch->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false,
+		                                                              BitIsSet( ch->winGetStatus(), WIN_STATUS_ALWAYS_COLOR ) ? true : false ) };
+		plates.push_back( p );
+	}
+	// a chain = the visible powers of the 3-star grid that share a column (the retail command set puts the three levels of a
+	// science in one column); only real neighbours are joined
+	for( size_t i = 0; i < plates.size(); ++i )
+	{
+		if( plates[ i ].rect.y < tiers[ 1 ].y || plates[ i ].rect.bottom() > tiers[ 1 ].bottom() )
+			continue;
+		GameWindow *belowWindow = nullptr;
+		Int belowY = 0x7fffffff;
+		HRect below = { 0, 0, 0, 0 };
+		EnhancedHudPanels::PowerState belowState = EnhancedHudPanels::PowerState::Locked;
+		for( size_t j = 0; j < plates.size(); ++j )
+			if( j != i && std::abs( plates[ j ].rect.x - plates[ i ].rect.x ) <= 2 && plates[ j ].rect.y > plates[ i ].rect.y && plates[ j ].rect.y < belowY )
+			{
+				belowWindow = plates[ j ].w;
+				belowY = plates[ j ].rect.y;
+				below = plates[ j ].rect;
+				belowState = plates[ j ].state;
+			}
+		if( !belowWindow )
+			continue;
+		const HRect a = plates[ i ].rect;
+		const Int cx = a.x + a.w / 2, railW = std::max<Int>( 2, P( 2 ) );
+		// recessed channel behind the pair, then the rail: gold when the upper level is owned (the next level follows from it)
+		drawRecess( HRect{ a.x - P( 3 ), a.y - P( 2 ), a.w + 2 * P( 3 ), below.bottom() - a.y + P( 4 ) }, c, P( 1 ) );
+		TheDisplay->drawFillRect( cx - railW / 2, a.bottom(), railW, std::max<Int>( 1, below.y - a.bottom() ),
+		                          plates[ i ].state == EnhancedHudPanels::PowerState::Purchased ? c.lit : c.accentDim );
+		(void)belowState;
+	}
+	const Int pk = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
+	for( size_t i = 0; i < plates.size(); ++i )
+	{
+		const HRect b = plates[ i ].rect;
 		bool hover, down;
 		pointerState( b, &hover, &down );
-		if( ch == exitButton )
-		{
-			drawBevelPlate( inflate( b, P( 2 ) ), pk, CM_ALL, themeColor( th.control ), hover ? c.accent : c.shadow, down, c );
-			continue;
-		}
-		const EnhancedHudPanels::PowerState state = EnhancedHudPanels::powerState(
-			BitIsSet( ch->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false, BitIsSet( ch->winGetStatus(), WIN_STATUS_ALWAYS_COLOR ) ? true : false );
+		const EnhancedHudPanels::PowerState state = plates[ i ].state;
 		const HRect plate = inflate( b, P( 3 ) );
 		const bool available = state == EnhancedHudPanels::PowerState::Available;
 		const bool purchased = state == EnhancedHudPanels::PowerState::Purchased;
 		if( !available && !purchased )
 		{
-			// locked: recessed and desaturated
+			// locked: recessed and dimmed (the retail icon is drawn greyed by the button itself)
 			drawRecess( plate, c, P( 1.2 ) );
 			continue;
 		}
@@ -1369,6 +1511,14 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 		if( th.stateRails )
 			TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ),
 			                          purchased ? c.lit : c.ready );
+	}
+	// Done sits in the console's foot
+	if( exitButton && !exitButton->winIsHidden() )
+	{
+		const HRect b = windowRect( exitButton );
+		bool hover, down;
+		pointerState( b, &hover, &down );
+		drawBevelPlate( inflate( b, P( 2 ) ), pk, CM_ALL, themeColor( th.control ), hover ? c.accent : c.shadow, down, c );
 	}
 }
 

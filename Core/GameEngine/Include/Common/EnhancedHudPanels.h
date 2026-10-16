@@ -89,17 +89,23 @@ inline Rect popupScaled(const Rect &r, double scale)
 	        static_cast<int>(std::lround(r.w * scale)), static_cast<int>(std::lround(r.h * scale))};
 }
 
-// Enhanced re-layout of the SAME windows (reference units, parent 536 x 300): a compact console. The header carries rank,
-// experience and General Points; the three rank tiers stay obvious - 1 star (top left), 5 star (bottom left, with Done) and the
-// 3 star grid on the right (its 4 columns x 3 rows are science chains: the columns are kept exactly as in the retail layout, so
-// no power moves relative to the others in its chain).
-constexpr int kPopupNewW = 536, kPopupNewH = 300;
-constexpr Rect kPopupNewHeader = {12, 10, 512, 76};
-constexpr Rect kPopupNewTier1 = {12, 98, 216, 94};
-constexpr Rect kPopupNewTier5 = {12, 204, 216, 84};
-constexpr Rect kPopupNewTier3 = {240, 98, 284, 190};
+// Enhanced re-layout of the SAME windows (reference units, parent 320 x 474): a promotion console, stacked in rank order.
+//   header   - rank name + numeric level, experience bar (+ next rank / numbers), remaining General Points
+//   1 star   - the three 1-star powers in a row
+//   3 star   - the 3-star powers as 4 chains (columns, three levels each, exactly as in the retail grid)
+//   5 star   - the 5-star power, and Done at the console's foot
+// The retail header texts ("RANK REQUIRED - n Star General") wrap badly in a compact module, so they are hidden in Enhanced and
+// replaced by short presentation-only tier labels; the real texts, their content and their windows are untouched.
+constexpr int kPopupNewW = 320, kPopupNewH = 474;
+constexpr Rect kPopupNewHeader = {8, 8, 304, 70};
+constexpr Rect kPopupNewTier1 = {8, 84, 304, 84};
+constexpr Rect kPopupNewTier3 = {8, 174, 304, 198};
+constexpr Rect kPopupNewTier5 = {8, 378, 304, 88};
+// rank level at which each tier opens (the retail command sets are named Rank1 / Rank3 / Rank8; the labels read 1 / 3 / 5 star)
+constexpr int kPopupTierRank[3] = {1, 3, 8};
+constexpr int kPopupTierStars[3] = {1, 3, 5};
 
-struct PopupTarget { bool valid; Rect rect; };
+struct PopupTarget { bool valid; Rect rect; bool hide; };
 
 inline bool popupNear(int a, int b) { return a - b <= 1 && b - a <= 1; }
 inline bool popupSame(const Rect &r, int x, int y, int w, int h)
@@ -111,31 +117,31 @@ inline bool popupSame(const Rect &r, int x, int y, int w, int h)
 // retail parent. Windows that are not part of the retail GeneralsExpPoints.wnd layout are reported invalid and left alone.
 inline PopupTarget popupTarget(const Rect &r)
 {
-	struct Entry { int rx, ry, rw, rh; Rect to; };
+	struct Entry { int rx, ry, rw, rh; Rect to; bool hide; };
 	static const Entry table[] = {
-		{0, 0, 296, 34, kPopupNewHeader},                    // header decoration window
-		{8, 6, 160, 26, {20, 14, 160, 26}},                  // StaticTextTitle (rank name)
-		{176, 6, 113, 26, {186, 14, 113, 26}},               // StaticTextLevel
-		{8, 38, 160, 16, {20, 46, 160, 16}},                 // "Experience"
-		{8, 54, 167, 18, {20, 64, 300, 18}},                 // experience bar housing
-		{11, 59, 161, 8, {23, 69, 294, 8}},                  // ProgressBarExperience
-		{174, 36, 84, 36, {404, 14, 84, 36}},                // "Remaining skill points"
-		{262, 40, 23, 31, {494, 18, 23, 31}},                // StaticTextRankPointsAvailable
-		{0, 76, 296, 24, {16, 102, 208, 24}},                // 1 star header text
-		{0, 160, 296, 24, {244, 102, 276, 24}},              // 3 star header text
-		{0, 348, 296, 24, {16, 208, 208, 24}},               // 5 star header text
-		{198, 392, 88, 32, {124, 240, 88, 32}},              // ButtonExit
+		{0, 0, 296, 34, kPopupNewHeader, false},                   // header decoration window
+		{8, 6, 160, 26, {18, 12, 170, 26}, false},                 // StaticTextTitle (rank name)
+		{176, 6, 113, 26, {192, 12, 104, 26}, false},              // StaticTextLevel
+		{8, 38, 160, 16, {18, 44, 66, 16}, false},                 // "Experience"
+		{8, 54, 167, 18, {86, 42, 100, 18}, false},                // experience bar housing
+		{11, 59, 161, 8, {89, 47, 94, 8}, false},                  // ProgressBarExperience
+		{174, 36, 84, 36, {192, 38, 84, 34}, false},               // "Remaining skill points"
+		{262, 40, 23, 31, {280, 42, 23, 31}, false},               // StaticTextRankPointsAvailable
+		{0, 76, 296, 24, {14, 88, 292, 24}, true},                 // 1 star header text (replaced by the tier label)
+		{0, 160, 296, 24, {14, 178, 292, 24}, true},               // 3 star header text
+		{0, 348, 296, 24, {14, 382, 292, 24}, true},               // 5 star header text
+		{198, 392, 88, 32, {216, 418, 88, 32}, false},             // ButtonExit
 	};
 	for (const Entry &e : table)
 		if (popupSame(r, e.rx, e.ry, e.rw, e.rh))
-			return {true, e.to};
+			return {true, e.to, e.hide};
 	if (popupNear(r.w, 56) && popupNear(r.h, 48))            // a power button
 	{
-		if (r.y < 160) return {true, {r.x + 8, r.y + 28, r.w, r.h}};            // 1 star row
-		if (r.y < 348) return {true, {r.x + 236, r.y - 56, r.w, r.h}};          // 3 star grid
-		return {true, {r.x + 8, r.y - 138, r.w, r.h}};                          // 5 star
+		if (r.y < 160) return {true, {r.x + 48, r.y + 12, r.w, r.h}, false};     // 1 star row
+		if (r.y < 348) return {true, {r.x + 14, r.y + 18, r.w, r.h}, false};     // 3 star chains
+		return {true, {r.x + 14, r.y + 34, r.w, r.h}, false};                    // 5 star
 	}
-	return {false, {}};
+	return {false, {}, false};
 }
 
 // Where the popup goes and how large it is drawn: the reference size times the UI scale, reduced so it always fits the
@@ -153,6 +159,15 @@ inline PopupPlacement popupPlacement(int surfaceW, int surfaceH, int consoleTop,
 	if (y < 0) y = std::max(0, (surfaceH - h) / 2);
 	if (y + h > surfaceH) y = std::max(0, surfaceH - h);
 	return {{x, y, w, h}, f};
+}
+
+// Largest point size <= base (never below minSize) at which text of width `widthAtBase` (measured at `base`) fits `maxWidth`.
+// Used by the label drawing so a label can never cross its module.
+inline int fitPointSize(int base, int minSize, int widthAtBase, int maxWidth)
+{
+	if (widthAtBase <= 0 || widthAtBase <= maxWidth || maxWidth <= 0) return base;
+	const int size = static_cast<int>(static_cast<long long>(base) * maxWidth / widthAtBase);
+	return size < minSize ? minSize : size;
 }
 
 // ---- Power meter (ControlBar PowerWindow) ------------------------------------------------------------------------------------
