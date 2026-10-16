@@ -159,7 +159,7 @@ inline const NamedPlacement *placements(int &count)
 	static const NamedPlacement table[] = {
 		// radar group
 		{"LeftHUD",              {  7, 443, 167, 152}, { 16,  14, 167, 152}, false},
-		{"WinUAttack",           { 77, 416,  45,  45}, { 18,  16,  45,  45}, false},
+		{"WinUAttack",           { 77, 416,  45,  45}, {188, 142,  32,  28}, false},
 		{"ButtonOptions",        {206, 495,  30,  22}, {188,  20,  32,  26}, false},
 		{"ButtonIdleWorker",     {206, 519,  30,  22}, {188,  50,  32,  26}, false},
 		{"ButtonPlaceBeacon",    {206, 543,  30,  22}, {188,  80,  32,  26}, false},
@@ -168,7 +168,7 @@ inline const NamedPlacement *placements(int &count)
 		{"MoneyDisplay",         {360, 437,  79,  19}, {413,  12, 144,  22}, false},
 		{"PowerWindow",          {261, 473, 283,   7}, {570,  17, 263,   7}, false},
 		// XP group
-		{"ButtonGeneral",        {736, 433,  56,  41}, {888,  14,  67,  49}, false},
+		{"ButtonGeneral",        {736, 433,  56,  41}, {879,  14,  86,  38}, false},
 		{"ExpBarForeground",     {766, 484,  21, 107}, {858,  68,  36, 102}, false},
 		{"GeneralsExp",          {769, 503,  13,  87}, {864,  74,  24,  90}, false},
 		// no Enhanced equivalent: the three size toggles of the 800 px bar

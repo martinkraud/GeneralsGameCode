@@ -130,7 +130,9 @@ class ModernDisplayContracts(unittest.TestCase):
     def test_deltas_module_lists_only_reviewed_files(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import x64_33_deltas
+        # X64.36 adds exactly one reviewed file: the Enhanced HUD image-fit hook in the push button draw
         self.assertEqual(sorted(x64_33_deltas.DELTAS), [
+            "Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp",
             "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.cpp",
             "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.h",
             "Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp",

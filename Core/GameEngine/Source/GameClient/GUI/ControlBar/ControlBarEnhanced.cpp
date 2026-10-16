@@ -21,6 +21,9 @@
 #include "Common/DisplayRuntime.h"
 #include "Common/EnhancedHud.h"
 #include "Common/EnhancedHudWindows.h"
+#include "Common/EnhancedHudImageFit.h"
+#include "GameClient/EnhancedHudImage.h"
+#include "GameClient/Image.h"
 #include "Common/NameKeyGenerator.h"
 #include "GameClient/ControlBar.h"
 #include "GameClient/Display.h"
@@ -34,7 +37,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <map>
+#include <set>
 #include <string>
 
 namespace
@@ -87,6 +92,55 @@ void restoreStore( std::map<GameWindow *, Original> &store )
 
 }  // namespace
 
+
+//-----------------------------------------------------------------------------
+// Draw-time image fitting (windows registered by the Enhanced layout only).
+namespace
+{
+std::set<GameWindow *> s_aspectFit;
+std::set<GameWindow *> s_gauges;
+}
+
+void EnhancedHudImage::clear()
+{
+	s_aspectFit.clear();
+	s_gauges.clear();
+}
+
+void EnhancedHudImage::registerAspectFit( GameWindow *window )
+{
+	if( window )
+		s_aspectFit.insert( window );
+}
+
+void EnhancedHudImage::registerGauge( GameWindow *window )
+{
+	if( window )
+		s_gauges.insert( window );
+}
+
+void EnhancedHudImage::fitImage( GameWindow *window, const Image *image, ICoord2D *start, ICoord2D *end )
+{
+	if( !image || !start || !end || s_aspectFit.empty() || !EnhancedHud::active() || s_aspectFit.find( window ) == s_aspectFit.end() )
+		return;
+	const EnhancedHudLayout::Rect area = { start->x, start->y, end->x - start->x, end->y - start->y };
+	const EnhancedHudLayout::Rect r = EnhancedHudImageFit::fit( EnhancedHudImageFit::Class::AspectFit, area,
+	                                                           image->getImageWidth(), image->getImageHeight() );
+	if( r.empty() )
+		return;
+	start->x = r.x;
+	start->y = r.y;
+	end->x = r.right();
+	end->y = r.bottom();
+}
+
+Real EnhancedHudImage::gaugeScale( GameWindow *window, Int windowCross, Int imageCross )
+{
+	if( s_gauges.empty() || !EnhancedHud::active() || s_gauges.find( window ) == s_gauges.end() )
+		return 1.0f;
+	return (Real)EnhancedHudImageFit::gaugeScale( windowCross, imageCross );
+}
+
 //-----------------------------------------------------------------------------
 void ControlBar::applyEnhancedLayout()
 {
@@ -135,6 +189,33 @@ void ControlBar::applyEnhancedLayout()
 	}
 	if( GameWindow *win = barWindow( "ExpBarForeground" ) )
 		win->winSetEnabledImage( 0, nullptr );
+	// The attack warning lamp (retail SUUAttackI/H, 22 x 24 px) keeps its window and its enable-toggle flashing (the
+	// disabled state is the lit state); only its tiny bitmap is replaced by a procedural lamp.
+	if( GameWindow *win = barWindow( "WinUAttack" ) )
+	{
+		win->winSetEnabledImage( 0, nullptr );
+		win->winSetDisabledImage( 0, nullptr );
+	}
+
+	// image fitting policy (Common/EnhancedHudImageFit.h): which reused retail bitmaps are aspect-fitted / gauges
+	EnhancedHudImage::clear();
+	{
+		int n = 0;
+		for( const EnhancedHudImageFit::Policy *p = EnhancedHudImageFit::policies( n ); n-- > 0; ++p )
+		{
+			if( p->cls != EnhancedHudImageFit::Class::AspectFit && p->cls != EnhancedHudImageFit::Class::Gauge )
+				continue;
+			if( std::strncmp( p->window, "Power:", 6 ) == 0 )
+				continue;
+			if( GameWindow *win = barWindow( p->window ) )
+			{
+				if( p->cls == EnhancedHudImageFit::Class::Gauge )
+					EnhancedHudImage::registerGauge( win );
+				else
+					EnhancedHudImage::registerAspectFit( win );
+			}
+		}
+	}
 
 	applyEnhancedPowerShortcutLayout();
 }
@@ -145,6 +226,7 @@ void ControlBar::restoreOriginalLayout()
 	// A strict no-op unless the Enhanced layout was applied: the Original presentation is never touched.
 	if( s_barMaster == nullptr && s_powersParent == nullptr )
 		return;
+	EnhancedHudImage::clear();
 	if( s_barMaster && s_barMaster == m_contextParent[ CP_MASTER ] && !s_bar.empty() )
 	{
 		const std::map<GameWindow *, Original>::const_iterator master = s_bar.find( s_barMaster );
@@ -192,6 +274,9 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 			out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
 		},
 		[]( GameWindow *win ) { remember( s_powers, win ); } );
+	// special power icons: aspect-fitted inside their (full-plate) buttons
+	for( int i = 0; i < MAX_SPECIAL_POWER_SHORTCUTS; ++i )
+		EnhancedHudImage::registerAspectFit( m_specialPowerShortcutButtons[ i ] );
 }
 
 //-----------------------------------------------------------------------------
@@ -320,9 +405,47 @@ void drawGlyph( Glyph glyph, const HRect &r, Color color )
 }
 
 GameWindow *s_hudMasterForLookup = nullptr;
-GameWindow *s_hudWin[ 6 ];     // radar, options, idle worker, beacon, communicator, XP bar foreground
-const char *const s_hudWinNames[ 6 ] = { "LeftHUD", "ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon",
-                                         "PopupCommunicator", "ExpBarForeground" };
+const int kHudWinCount = 7 + 12;
+GameWindow *s_hudWin[ kHudWinCount ];     // radar, options, idle worker, beacon, communicator, XP bar foreground, attack lamp, 12 command buttons
+const char *const s_hudWinNames[ kHudWinCount ] = { "LeftHUD", "ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon",
+                                         "PopupCommunicator", "ExpBarForeground", "WinUAttack",
+                                         "ButtonCommand01", "ButtonCommand02", "ButtonCommand03", "ButtonCommand04",
+                                         "ButtonCommand05", "ButtonCommand06", "ButtonCommand07", "ButtonCommand08",
+                                         "ButtonCommand09", "ButtonCommand10", "ButtonCommand11", "ButtonCommand12" };
+
+// The "under attack" warning lamp. The retail window still flashes by toggling its enable state (disabled = lit); this only
+// replaces its 22 x 24 px bitmap with a strong, clean lamp: a solid red plate with a white warning triangle when lit, a
+// dark idle lamp otherwise.
+bool drawAttackLamp( GameWindow *win, const HudPalette &c, bool *lit )
+{
+	*lit = false;
+	if( !win || win->winIsHidden() )
+		return false;
+	Int x = 0, y = 0, w = 0, h = 0;
+	win->winGetScreenPosition( &x, &y );
+	win->winGetSize( &w, &h );
+	const bool on = !BitIsSet( win->winGetStatus(), WIN_STATUS_ENABLED );
+	*lit = on;
+	const Color red = GameMakeColor( 224, 24, 24, 255 );
+	const Color redDark = GameMakeColor( 70, 14, 14, 255 );
+	const Color white = GameMakeColor( 255, 255, 255, 255 );
+	const HRect r = { x, y, w, h };
+	drawPlate( r, 1, on ? red : redDark, on ? white : c.accentDim, c );
+	// warning triangle with an exclamation mark
+	const Int cx = x + w / 2, top = y + std::max( 2, h / 6 ), bottom = y + h - std::max( 2, h / 6 );
+	const Int half = std::max( 3, ( bottom - top ) * 6 / 10 );
+	const Color tri = on ? white : GameMakeColor( 120, 40, 40, 255 );
+	for( Int row = top; row <= bottom; ++row )
+	{
+		const Int span = half * ( row - top ) / std::max( 1, bottom - top );
+		TheDisplay->drawLine( cx - span, row, cx + span, row, 1, tri );
+	}
+	const Color mark = on ? red : redDark;
+	const Int mh = std::max( 2, ( bottom - top ) / 3 );
+	TheDisplay->drawFillRect( cx - 1, top + ( bottom - top ) / 3, std::max( 2, w / 14 ), mh, mark );
+	TheDisplay->drawFillRect( cx - 1, bottom - std::max( 2, ( bottom - top ) / 6 ) - 1, std::max( 2, w / 14 ), std::max( 2, ( bottom - top ) / 8 ), mark );
+	return on;
+}
 
 void drawUtilityPlate( GameWindow *win, Glyph glyph, Int t, const HudPalette &c )
 {
@@ -385,7 +508,7 @@ void drawEnhancedHudFrame()
 	if( s_barMaster != s_hudMasterForLookup )
 	{
 		s_hudMasterForLookup = s_barMaster;
-		for( int i = 0; i < 6; ++i )
+		for( int i = 0; i < kHudWinCount; ++i )
 			s_hudWin[ i ] = s_barMaster ? barWindow( s_hudWinNames[ i ] ) : nullptr;
 	}
 
@@ -396,8 +519,28 @@ void drawEnhancedHudFrame()
 		radar->winGetScreenPosition( &x, &y );
 		radar->winGetSize( &w, &h );
 		const Int g = std::max( 2, t + 1 );
-		drawPlate( HRect{ x - g, y - g, w + 2 * g, h + 2 * g }, 1, c.shadow, c.accentDim, c );
+		bool lamp = false;
+		const bool lit = s_hudWin[ 6 ] && !s_hudWin[ 6 ]->winIsHidden() && !BitIsSet( s_hudWin[ 6 ]->winGetStatus(), WIN_STATUS_ENABLED );
+		(void)lamp;
+		// while the attack warning is lit the whole radar bezel turns red as well (strong, peripheral-vision cue)
+		drawPlate( HRect{ x - g, y - g, w + 2 * g, h + 2 * g }, 1, c.shadow, lit ? GameMakeColor( 224, 24, 24, 255 ) : c.accentDim, c );
+		if( lit )
+			TheDisplay->drawOpenRect( x - g - 1, y - g - 1, w + 2 * g + 2, h + 2 * g + 2, 1, GameMakeColor( 224, 24, 24, 255 ) );
 	}
+	{
+		bool lit = false;
+		drawAttackLamp( s_hudWin[ 6 ], c, &lit );
+	}
+	// command/build buttons sit on recessed plates (the icon is aspect-fitted inside, so the plate shows around it)
+	for( int i = 7; i < kHudWinCount; ++i )
+		if( GameWindow *btn = s_hudWin[ i ] )
+			if( !btn->winIsHidden() && !btn->winGetParent()->winIsHidden() )
+			{
+				Int x = 0, y = 0, w = 0, h = 0;
+				btn->winGetScreenPosition( &x, &y );
+				btn->winGetSize( &w, &h );
+				drawPlate( HRect{ x, y, w, h }, 1, c.panelLow, c.accentDim, c );
+			}
 	// utility buttons: procedural plates (the retail bitmaps are cleared for Enhanced)
 	drawUtilityPlate( s_hudWin[ 1 ], GLYPH_OPTIONS, 1, c );
 	drawUtilityPlate( s_hudWin[ 2 ], GLYPH_WORKER, 1, c );

@@ -225,3 +225,56 @@ read-only rank access, gated cash formatting in both titles, Original image path
 **Known limits.** Visual result is verified geometrically only; star/glyph/plate art is procedural placeholder; the General
 button and the XP fill still use retail bitmaps; the control-bar hide/show transition is not followed by the procedural frame.
 The reference-token guard failures are baselined in `REFERENCE_TOKEN_GUARD_BASELINE.md`.
+
+## 13. Refinement 2: retail image aspect-ratio / scaling pass (after native review of `x64-36-enhanced-hud-refine1`)
+**Finding.** The retail draw code maps every bitmap onto its GameWindow rectangle (`TheDisplay->drawImage(image, start, end)`),
+so moving/resizing a window for the Enhanced layout silently re-stretched the art. Concretely: the three-star General
+button (`SUGeneral/H/P` are **65 x 29 px**, aspect 2.24) was drawn into a 56 x 41 -> 67 x 49 plate (aspect 1.37): the stars were
+squeezed horizontally and stretched vertically. The "large red button" is the **attack warning lamp** (`WinUAttack`,
+`SUUAttackI` idle / `SUUAttackH` lit, both **22 x 24 px**): the scheme sizes it at 22 x 24, Enhanced had placed it in a 45 x 45
+window over the radar corner, i.e. a 22 px bitmap blown up about 3x and slightly stretched. The power gauge tiles and the
+XP fill tiles are drawn at native tile size along one axis and window size along the other, so any window whose thickness
+differs from the tile (Enhanced scale) distorted them.
+
+**Mechanism (one reusable policy, no per-button numbers).** `Common/EnhancedHudImageFit.h` (pure, tested) classifies every
+placed window (`policies()`; a unit test requires that every window of the layout tables is classified) and provides
+`containFit`, `nativeFit`, `gaugeScale`. The window stays the full interactive plate; only the *bitmap* rectangle is narrowed:
+`GameClient/EnhancedHudImage.h` (registry filled by `applyEnhancedLayout`, empty for Original) is called from the push-button
+image draw (`fitImage`, aspect-fit + centre) and from the power / General-XP gauge draws (`gaugeScale`, uniform tile scale).
+No window size/position/hit region is changed by the fit and no command/state code is touched.
+
+**Audit (every reused retail image class in the USA Enhanced HUD):**
+| control | source image(s) | was | now |
+|---|---|---|---|
+| General button (`ButtonGeneral`) | SUGeneral/H/P 65x29 | **distorted** (2.24 into 1.37) | aspect-fit; plate reshaped to 86x38 (2.26) so it fills it |
+| General rank stars (retail strip `ExpBarForeground`) | SUExpBar 21x107 (stars baked in) | squeezed | procedural (rank ladder, square stars, real rank) |
+| XP fill (`GeneralsExp`) | GenExpBar1 / Top1 / Bottom1 tiles | tiles stretched across the widened trough | gauge: tiles scaled uniformly from trough width, only fill length varies |
+| power bar (`PowerWindow`) | PowerPoint Y/R/G tiles, PowerBarSlider | tiles stretched to the window thickness | gauge: tile + needle scaled uniformly from thickness |
+| command/build buttons x12 | per-command icons (typ. 64x48) | stretched to the plate | aspect-fit inside the full plate, recessed plate shows around the icon |
+| cameo, upgrades x5, queue x9 | unit/upgrade icons | uniform 1.1x of retail mapping | aspect-fit |
+| special-power buttons x5 | command icons | uniform | aspect-fit; cooldown overlay still covers the whole plate |
+| special-power frames (`ButtonParent1-5`) | frame art | uniform with the column | frame art, same proportions as Original (not re-stretched) |
+| radar / minimap | TheRadar (map texture) | self-fitting | unchanged (draw code keeps the map aspect) |
+| utility buttons x4 | 30x22 px bitmaps | blown up | procedural plates + glyphs (refinement 1) |
+| attack warning lamp | SUUAttackI/H 22x24 | **blown up ~3x** | procedural lamp, see below |
+| size toggles x3, markers | - | hidden / no image | unchanged |
+Native-size (`NativeSize`) is implemented and tested (1:1 or whole multiple) but no control needs it in this pass; nothing is
+classified intentionally stretchable except the gauges, which stretch **only along their length** by design. Button highlight /
+pressed overlays (`Cameo_hilited/_push`), clock sweeps and borders are effects meant to cover the whole plate and still do.
+Windows not registered (observer lists, beacon text buttons, cancel-construction...) keep the exact retail mapping scaled
+uniformly, i.e. the same proportions as Original.
+
+**Attack warning (reported separately).** Behaviour is untouched: `Radar` still calls `triggerRadarAttackGlow()`, which
+toggles the retail `WinUAttack` window's enable state (disabled = lit); Enhanced only reads that state when drawing. The
+retail 22x24 bitmaps are cleared in Enhanced and replaced by a **solid red lamp with a white warning triangle** at the radar
+frame's lower right (32x28 units, clear of the radar and the utility buttons), and the **radar bezel turns red** while lit, so
+"under attack" reads in peripheral vision. Idle it is a dark red lamp. Original keeps SUUAttackI/H exactly.
+
+**Low-resolution retail assets that still scale acceptably (recorded, kept):** command and cameo icons (64x48-class
+sources, ~1.2-1.6x), General button (65x29, ~1.3x). Replaced procedurally because they cannot scale cleanly: utility
+buttons (30x22), attack lamp (22x24), XP strip (21x107).
+
+**Tests.** `EnhancedHudImageFit.*` (8): aspect preserved / inside / centred for nine real source shapes in five areas,
+squares stay square, native multiples, gauge scale, every placed window classified, General plate matches the 65x29
+bitmap on all surfaces x UI scales, icons stay inside their full hit plates; plus the lamp placement test and the contract
+test. The 9 interactive hit-test tests are unchanged and pass against the new General/lamp geometry.

@@ -157,7 +157,9 @@ set(GAMEENGINE_SRC
     Include/GameClient/Color.h
     Include/GameClient/CommandXlat.h
     Include/GameClient/ControlBar.h
+    Include/GameClient/EnhancedHudImage.h
     Include/Common/EnhancedHud.h
+    Include/Common/EnhancedHudImageFit.h
     Include/Common/EnhancedHudLayout.h
     Include/Common/EnhancedHudWindows.h
     Include/GameClient/ControlBarResizer.h

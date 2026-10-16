@@ -149,6 +149,31 @@ class EnhancedHudContracts(unittest.TestCase):
         # X64.35 attribution/instrumentation lives before 4a8641178; nothing after it may touch the guarded trees
         self.assertEqual(post, [], post)
 
+    def test_image_fitting_is_enhanced_only_and_hit_regions_are_untouched(self):
+        bar = text(BAR)
+        # every hook is gated by the Enhanced registry (empty for Original) and by EnhancedHud::active()
+        impl = bar[bar.index("void EnhancedHudImage::fitImage"):bar.index("void ControlBar::applyEnhancedLayout()")]
+        self.assertIn("!EnhancedHud::active()", impl)
+        self.assertIn("s_aspectFit.empty()", impl)
+        self.assertIn("EnhancedHudImage::gaugeScale", text("Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/GUICallbacks/W3DControlBar.cpp"))
+        push = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp")
+        self.assertIn("EnhancedHudImage::fitImage( window, image, &start, &end );", push)
+        # only the draw rectangle of the bitmap is narrowed; no window size/position is touched by the fit
+        fit = bar[bar.index("void EnhancedHudImage::fitImage"):bar.index("Real EnhancedHudImage::gaugeScale")]
+        self.assertNotIn("winSetSize", fit)
+        self.assertNotIn("winSetPosition", fit)
+        # the shared policy is the single table; the layout tables are covered by a unit test
+        pol = text("Core/GameEngine/Include/Common/EnhancedHudImageFit.h")
+        for cls in ("AspectFit", "NativeSize", "FrameArt", "Gauge", "Procedural", "SelfFitting"):
+            self.assertIn(cls, pol)
+        # the attack warning keeps its retail window and enable-toggle flashing; only its bitmaps are cleared in Enhanced
+        self.assertIn('barWindow( "WinUAttack" )', bar)
+        self.assertIn("!BitIsSet( win->winGetStatus(), WIN_STATUS_ENABLED )", bar)
+        for forbidden in ("triggerRadarAttackGlow", "m_radarAttackGlow", "winEnable"):
+            self.assertNotIn(forbidden, bar)
+        # Original keeps scheme images: the scheme file is not edited for Enhanced
+        self.assertNotIn("EnhancedHudImage", text(SCHEME))
+
 
 if __name__ == "__main__":
     unittest.main()

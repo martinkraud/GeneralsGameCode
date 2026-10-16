@@ -27,11 +27,13 @@
 // Desc: Control bar callbacks
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include "Common/GameUtility.h"
 #include "Common/GlobalData.h"
 #include "Common/Radar.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
+#include "GameClient/EnhancedHudImage.h"
 #include "GameClient/GameWindow.h"
 #include "W3DDevice/GameClient/W3DGameWindow.h"
 #include "GameClient/InGameUI.h"
@@ -164,6 +166,11 @@ void W3DPowerDraw( GameWindow *window, WinInstanceData *instData )
 	if( !slider || !centerBar)
 		return;
 
+	// Enhanced: tiles and needle are scaled uniformly from the gauge thickness (1.0 for Original)
+	const Real tileK = EnhancedHudImage::gaugeScale( window, size.y, centerBar->getImageHeight() );
+	#define PWR_W(img) (std::max<Int>( 1, (Int)((img)->getImageWidth() * tileK + 0.5f) ))
+	#define PWR_H(img) (std::max<Int>( 1, (Int)((img)->getImageHeight() * tileK + 0.5f) ))
+
 	Int range;
 	range = logN(production, TheGlobalData->m_powerBarBase) * (size.x / TheGlobalData->m_powerBarIntervals);
 	if(range >= size.x)
@@ -197,7 +204,7 @@ void W3DPowerDraw( GameWindow *window, WinInstanceData *instData )
 	{
 
 		// how many whole repeating pieces will fit in that width
-		pieces = centerWidth / centerBar->getImageWidth();
+		pieces = centerWidth / PWR_W(centerBar);
 		ICoord2D start, end;
 		// draw the pieces
 		start.x = pos.x;
@@ -206,11 +213,11 @@ void W3DPowerDraw( GameWindow *window, WinInstanceData *instData )
 		for( Int i = 0; i < pieces; i++ )
 		{
 
-			end.x = start.x + centerBar->getImageWidth();
+			end.x = start.x + PWR_W(centerBar);
 			TheWindowManager->winDrawImage( centerBar,
 																			start.x, start.y,
 																			end.x, end.y );
-			start.x += centerBar->getImageWidth();
+			start.x += PWR_W(centerBar);
 
 		}
 
@@ -224,7 +231,7 @@ void W3DPowerDraw( GameWindow *window, WinInstanceData *instData )
 		if( centerWidth > 0)
 		{
 			TheDisplay->setClipRegion(&reg);
-			end.x = start.x + centerBar->getImageWidth();
+			end.x = start.x + PWR_W(centerBar);
 			TheWindowManager->winDrawImage( centerBar,
 																			start.x, start.y,
 																			end.x, end.y );
@@ -251,21 +258,23 @@ void W3DPowerDraw( GameWindow *window, WinInstanceData *instData )
 		return;
 	if(range >= size.x)
 	{
-		posXstart = pos.x + size.x - slider->getImageWidth();
+		posXstart = pos.x + size.x - PWR_W(slider);
 		posXend = pos.x + size.x;
 	}
 	else
 	{
-		posXstart = pos.x + range - slider->getImageWidth()/2;
-		posXend = pos.x + range + slider->getImageWidth()/2;
+		posXstart = pos.x + range - PWR_W(slider)/2;
+		posXend = pos.x + range + PWR_W(slider)/2;
 	}
 	if(posXstart <=pos.x)
 	{
 		posXstart	 = pos.x;
-		posXend	= pos.x + slider->getImageWidth();
+		posXend	= pos.x + PWR_W(slider);
 	}
-	TheWindowManager->winDrawImage(slider, posXstart, pos.y + size.y - slider->getImageHeight(), posXend, pos.y + size.y);
+	TheWindowManager->winDrawImage(slider, posXstart, pos.y + size.y - PWR_H(slider), posXend, pos.y + size.y);
 }
+#undef PWR_W
+#undef PWR_H
 
 void W3DPowerDrawA( GameWindow *window, WinInstanceData *instData )
 {
@@ -504,6 +513,10 @@ void W3DCommandBarGenExpDraw( GameWindow *window, WinInstanceData *instData )
 	if( !endBar || !beginBar || !centerBar)
 		return;
 
+	// Enhanced: the fill tiles are scaled uniformly from the trough width (1.0 for Original), never stretched
+	const Real tileK = EnhancedHudImage::gaugeScale( window, size.x, centerBar->getImageWidth() );
+	#define EXP_H(img) (std::max<Int>( 1, (Int)((img)->getImageHeight() * tileK + 0.5f) ))
+
 	Int range;
 	range = size.y * progress / 100;
 
@@ -511,9 +524,9 @@ void W3DCommandBarGenExpDraw( GameWindow *window, WinInstanceData *instData )
 	// get image sizes for the ends
 	ICoord2D topSize, bottomSize, start, end;
 	bottomSize.x = beginBar->getImageWidth();
-	bottomSize.y = beginBar->getImageHeight();
+	bottomSize.y = EXP_H(beginBar);
 	topSize.x = endBar->getImageWidth();
-	topSize.y = endBar->getImageHeight();
+	topSize.y = EXP_H(endBar);
 
 	// get two key points used in the end drawing
 	ICoord2D bottomEnd, topStart;
@@ -548,7 +561,7 @@ void W3DCommandBarGenExpDraw( GameWindow *window, WinInstanceData *instData )
 	{
 
 		// how many whole repeating pieces will fit in that width
-		pieces = centerWidth / centerBar->getImageHeight();
+		pieces = centerWidth / EXP_H(centerBar);
 
 		// draw the pieces
 		start.x = pos.x;
@@ -557,11 +570,11 @@ void W3DCommandBarGenExpDraw( GameWindow *window, WinInstanceData *instData )
 		for( Int i = 0; i < pieces; i++ )
 		{
 
-			end.y = start.y + centerBar->getImageHeight();
+			end.y = start.y + EXP_H(centerBar);
 			TheWindowManager->winDrawImage( centerBar,
 																			start.x, start.y,
 																			end.x, end.y );
-			start.y += centerBar->getImageHeight();
+			start.y += EXP_H(centerBar);
 
 		}
 
@@ -575,7 +588,7 @@ void W3DCommandBarGenExpDraw( GameWindow *window, WinInstanceData *instData )
 		if( centerWidth > 0)
 		{
 			TheDisplay->setClipRegion(&reg);
-			end.y = start.y + centerBar->getImageHeight();
+			end.y = start.y + EXP_H(centerBar);
 			TheWindowManager->winDrawImage( centerBar,
 																			start.x, start.y,
 																			end.x, end.y );
@@ -598,6 +611,7 @@ void W3DCommandBarGenExpDraw( GameWindow *window, WinInstanceData *instData )
 	}
 
 }
+#undef EXP_H
 
 void W3DCommandBarTopDraw( GameWindow *window, WinInstanceData *instData )
 {

@@ -48,6 +48,7 @@
 #include <stdlib.h>
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
+#include "GameClient/EnhancedHudImage.h"
 #include "GameClient/Gadget.h"
 #include "GameClient/GameWindowGlobal.h"
 #include "GameClient/GameWindowManager.h"
@@ -369,6 +370,9 @@ void W3DGadgetPushButtonImageDrawOne( GameWindow *window,
 		// find end point
 		end.x = start.x + size.x;
 		end.y = start.y + size.y;
+
+		// Enhanced HUD: registered windows draw their bitmap aspect-fitted and centred (no-op for Original)
+		EnhancedHudImage::fitImage( window, image, &start, &end );
 
 		Display::DrawImageMode	drawMode=Display::DRAW_IMAGE_ALPHA;
 		Int colorMultiplier = 0xffffffff;

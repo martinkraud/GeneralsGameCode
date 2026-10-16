@@ -11,10 +11,13 @@
 #include "Common/DisplayGeometry.h"
 #include "Common/DisplaySettings.h"
 #include "Common/EnhancedHud.h"
+#include "Common/EnhancedHudImageFit.h"
 #include "Common/EnhancedHudLayout.h"
 #include "Common/OptionsPageLayout.h"
 
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 
 using namespace EnhancedHudLayout;
@@ -469,4 +472,154 @@ TEST(EnhancedHudLayout, RebalancedRegionsLeaveNoLargeEmptyCentre)
 	const Rect info = physical(r, "WinUnitSelected");
 	EXPECT_GE(double(info.w) / r.infoFrame.w, 0.90);
 	EXPECT_GE(double(info.h) / r.infoFrame.h, 0.70);
+}
+
+// ---- image fitting (native review 3): reused retail bitmaps keep their proportions ----------------------------------
+
+namespace
+{
+struct Source { const char *what; int w, h; };
+// native sizes of the retail bitmaps involved (INI MappedImage Coords) and typical cameo/icon shapes
+const Source kSources[] = {
+	{"SUGeneral 3 stars", 65, 29}, {"SUUAttackI warning", 22, 24}, {"SUExpBar strip", 21, 107}, {"command cameo", 64, 48},
+	{"power icon", 45, 38}, {"unit cameo", 91, 69}, {"square star", 18, 18}, {"wide gauge cap", 100, 10}, {"1x1", 1, 1},
+};
+}  // namespace
+
+TEST(EnhancedHudImageFit, ContainPreservesAspectStaysInsideAndIsCentred)
+{
+	using namespace EnhancedHudImageFit;
+	for (const Source &src : kSources)
+		for (Rect area : {Rect{10, 20, 67, 49}, Rect{0, 0, 86, 38}, Rect{5, 5, 63, 54}, Rect{100, 100, 300, 20}, Rect{3, 4, 20, 200}})
+		{
+			const Rect r = containFit(area, src.w, src.h);
+			ASSERT_FALSE(r.empty()) << src.what;
+			EXPECT_TRUE(r.within(area)) << src.what;
+			// aspect preserved up to the one-pixel rounding of each side
+			EXPECT_NEAR(double(r.w) / r.h, double(src.w) / src.h, (1.0 / std::min(r.w, r.h)) * (double(src.w) / src.h + 1.0) + 1e-9) << src.what;
+			// touches the limiting side and is centred on the other (within rounding)
+			EXPECT_TRUE(r.w == area.w || r.h == area.h) << src.what;
+			EXPECT_LE(std::abs((r.x - area.x) - (area.right() - r.right())), 1) << src.what;
+			EXPECT_LE(std::abs((r.y - area.y) - (area.bottom() - r.bottom())), 1) << src.what;
+		}
+}
+
+TEST(EnhancedHudImageFit, SquareAssetsStaySquare)
+{
+	using namespace EnhancedHudImageFit;
+	for (Rect area : {Rect{0, 0, 67, 49}, Rect{0, 0, 20, 200}, Rect{7, 9, 300, 40}, Rect{0, 0, 17, 17}})
+	{
+		const Rect r = containFit(area, 18, 18);
+		EXPECT_EQ(r.w, r.h);
+		EXPECT_TRUE(r.within(area));
+	}
+}
+
+TEST(EnhancedHudImageFit, NativeSizeIsOneToOneOrAWholeMultiple)
+{
+	using namespace EnhancedHudImageFit;
+	const Rect big = nativeFit({0, 0, 100, 60}, 22, 24);       // 100/22 = 4.5, 60/24 = 2.5 -> x2
+	EXPECT_EQ(big.w, 44);
+	EXPECT_EQ(big.h, 48);
+	EXPECT_EQ(big.x, 28);
+	EXPECT_EQ(big.y, 6);
+	const Rect exact = nativeFit({5, 5, 22, 24}, 22, 24);
+	EXPECT_EQ(exact.w, 22);
+	EXPECT_EQ(exact.h, 24);
+	const Rect shrink = nativeFit({0, 0, 11, 12}, 22, 24);      // larger than the area: uniform shrink, never distorted
+	EXPECT_EQ(shrink.w * 24, shrink.h * 22);
+	EXPECT_TRUE(shrink.within({0, 0, 11, 12}));
+	EXPECT_TRUE(containFit({0, 0, 0, 10}, 5, 5).empty());      // degenerate input
+	EXPECT_TRUE(containFit({0, 0, 10, 10}, 0, 5).empty());
+}
+
+TEST(EnhancedHudImageFit, GaugeTilesScaleUniformlyFromTheCrossExtent)
+{
+	using namespace EnhancedHudImageFit;
+	EXPECT_DOUBLE_EQ(gaugeScale(24, 12), 2.0);
+	EXPECT_DOUBLE_EQ(gaugeScale(0, 12), 1.0);        // degenerate: Original behaviour
+	EXPECT_DOUBLE_EQ(gaugeScale(10, 0), 1.0);
+}
+
+TEST(EnhancedHudImageFit, EveryPlacedWindowIsClassified)
+{
+	using namespace EnhancedHudImageFit;
+	int n = 0;
+	for (const NamedPlacement *p = placements(n); n-- > 0; ++p)
+		EXPECT_NE(find(p->window), nullptr) << p->window << " has no image-fit class";
+	for (const GroupWindow *g = infoGroup(n); n-- > 0; ++g)
+		EXPECT_NE(find(g->window), nullptr) << g->window;
+	for (const GroupWindow *g = commandGroup(n); n-- > 0; ++g)
+		EXPECT_NE(find(g->window), nullptr) << g->window;
+	// classes the human review named
+	EXPECT_EQ(find("ButtonGeneral")->cls, Class::AspectFit);
+	EXPECT_EQ(find("WinUAttack")->cls, Class::Procedural);
+	EXPECT_EQ(find("ExpBarForeground")->cls, Class::Procedural);
+	EXPECT_EQ(find("GeneralsExp")->cls, Class::Gauge);
+	EXPECT_EQ(find("PowerWindow")->cls, Class::Gauge);
+	EXPECT_EQ(find("LeftHUD")->cls, Class::SelfFitting);
+	EXPECT_EQ(find("ButtonCommand07")->cls, Class::AspectFit);
+	EXPECT_EQ(find("Power:ButtonCommand")->cls, Class::AspectFit);
+	// every non-container class documents why (nothing is silently exempt)
+	n = 0;
+	for (const Policy *p = policies(n); n-- > 0; ++p)
+		EXPECT_GT(std::strlen(p->why), 3u) << p->window;
+}
+
+TEST(EnhancedHudImageFit, GeneralButtonPlateMatchesItsThreeStarBitmap)
+{
+	using namespace EnhancedHudImageFit;
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			const Rect plate = physical(r, "ButtonGeneral");
+			EXPECT_TRUE(plate.within(r.xpFrame)) << s.name;
+			const Rect img = fit(Class::AspectFit, plate, 65, 29);
+			EXPECT_TRUE(img.within(plate)) << s.name;
+			// the plate is almost the bitmap's own shape: at most ~12 % of its height is letterbox, the stars are not
+			// squeezed into a tall box
+			EXPECT_LE(plate.h - img.h, plate.h / 8 + 2) << s.name << " ui" << ui;
+			EXPECT_NEAR(double(img.w) / img.h, 65.0 / 29.0, 0.12) << s.name;
+		}
+}
+
+TEST(EnhancedHudImageFit, ButtonIconsStayInsideTheirFullHitPlates)
+{
+	using namespace EnhancedHudImageFit;
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		int n = 0;
+		for (const GroupWindow *g = commandGroup(n); n-- > 0; ++g)
+		{
+			if (std::strncmp(g->window, "ButtonCommand", 13) != 0)
+				continue;
+			const Rect plate = physical(r, g->window);
+			for (const Source &src : kSources)
+			{
+				const Rect img = fit(Class::AspectFit, plate, src.w, src.h);
+				EXPECT_TRUE(img.within(plate)) << g->window << " " << src.what;
+				// the interactive rectangle is still the whole plate; the icon never leaves it
+				EXPECT_TRUE(plate.contains(img.x + img.w / 2, img.y + img.h / 2));
+			}
+		}
+	}
+}
+
+TEST(EnhancedHudLayout, AttackWarningLampIsInsideTheRadarFrameClearOfRadarAndButtons)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			const Rect lamp = physical(r, "WinUAttack");
+			EXPECT_TRUE(lamp.within(r.radarFrame)) << s.name;
+			EXPECT_FALSE(lamp.intersects(physical(r, "LeftHUD"))) << s.name;
+			for (const char *n : {"ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon", "PopupCommunicator"})
+				EXPECT_FALSE(lamp.intersects(physical(r, n))) << n << " " << s.name;
+			// big enough to read at a glance: at least 30 reference units wide
+			EXPECT_GE(kRadarFrame.w, 200);
+			EXPECT_GE(lamp.w * 100, int(30 * r.scale * 100 * 0.95)) << s.name;
+		}
 }

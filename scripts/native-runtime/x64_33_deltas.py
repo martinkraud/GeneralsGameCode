@@ -37,6 +37,17 @@ void WW3D::Set_Native_Vsync(bool enabled) {
         ("    unsigned Frames() const;\n    void Resize(PresentationSize dimensions); // X64.33: after the backend swap chain was resized\n",
          "    unsigned Frames() const;\n"),
     ],
+    # X64.36 (Enhanced gameplay HUD): the reviewed hooks in the push button image draw; no-ops unless Enhanced is active.
+    "Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp": [
+        ("""#include "GameClient/EnhancedHudImage.h"
+#include "GameClient/Gadget.h"
+""", """#include "GameClient/Gadget.h"
+"""),
+        ("""		// Enhanced HUD: registered windows draw their bitmap aspect-fitted and centred (no-op for Original)
+		EnhancedHudImage::fitImage( window, image, &start, &end );
+
+""", ""),
+    ],
     "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.cpp": [
         ("""void PresentationLifecycle::Resize(PresentationSize dimensions) {
     if(active || !dimensions.width || !dimensions.height || dimensions.width>16384 || dimensions.height>16384)
