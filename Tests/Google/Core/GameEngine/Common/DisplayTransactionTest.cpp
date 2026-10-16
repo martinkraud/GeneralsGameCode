@@ -591,7 +591,7 @@ TEST(ModernSettingsPages, DisplayAndGameplayControlsThatNeedTheMainMenuAreAllInT
 		EXPECT_GE(ownerOf(control), 0) << control;
 }
 
-TEST(ModernSettingsPages, TheAdvancedPopupStaysInsideThePanelBelowTheTitleAndNeverTouchesTheTabs)
+TEST(ModernSettingsPages, TheAdvancedPopupStaysInsideThePanelBelowTheTitleWhileTabsAndPageAreHidden)
 {
 	using namespace OptionsPageLayout;
 	const int measured[kCategoryCount] = {47, 55, 36, 56, 59, 52};
@@ -611,7 +611,10 @@ TEST(ModernSettingsPages, TheAdvancedPopupStaysInsideThePanelBelowTheTitleAndNev
 			EXPECT_TRUE(r.inside(g.panel)) << surface.width << "x" << surface.height << " " << percent;
 			EXPECT_GE(r.y, g.line.bottom()) << surface.width << "x" << surface.height << " " << percent;      // below the title rule
 			EXPECT_FALSE(r.intersects(g.title));
-			EXPECT_FALSE(r.intersects(g.tabs.strip));                                                         // tabs are not touched
+			// the popup is a sub-screen: it occupies the band of the tab strip and the page, which are hidden while it is open
+			// (OptionsTabs::setAdvancedOpen; contract-tested), so it can never share the screen with a visible tab
+			EXPECT_GE(r.y, g.title.bottom());
+			EXPECT_LE(r.bottom(), g.panel.bottom());
 			EXPECT_LE(std::abs((r.x - g.panel.x) - (g.panel.right() - r.right())), 1);                        // centred
 			EXPECT_TRUE(r.inside(OptionsPageLayout::Rect{0, 0, surface.width, surface.height}));                                 // on the surface
 		}
