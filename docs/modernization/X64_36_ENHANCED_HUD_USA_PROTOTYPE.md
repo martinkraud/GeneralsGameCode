@@ -110,7 +110,11 @@ beside the island. Left Original on purpose: superweapon countdown/status text a
   side test but ZH bring-up is out of scope and was not exercised.
 
 ## 9. Candidate and native test
-`build/dev-runtimes/native/Generals/x64-36-enhanced-hud-usa` (see the delivery report for commit and hashes).
+`build/dev-runtimes/native/Generals/x64-36-enhanced-hud-usa` (staged and preflighted, not run by the agent), built from
+`4067ccdd3`:
+* `game/generalsv.exe` SHA256 `AAC4EF7A6D1DF407B9838E599A0D4347B89816985C6588836751C2D49E99A794`
+* `game/generalsv.pdb` SHA256 `384DD8816FEBDEAC6336EF57A19A1A4AA9420373D114443AF40F35695111135F`
+Steam untouched.
 ```
 pwsh scripts\native-runtime\Invoke-NativeNormalLaunch.ps1 -Title Generals -Name x64-36-enhanced-hud-usa -RunNormalLaunch
 ```
