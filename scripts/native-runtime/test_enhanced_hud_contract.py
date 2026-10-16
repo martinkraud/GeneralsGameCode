@@ -351,6 +351,22 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertIn("s_purchaseHidden.insert(", bar)
         self.assertIn("( *it )->winHide( FALSE );", bar)
 
+    def test_blue_rims_are_state_not_decoration(self):
+        bar = text(BAR)
+        # the General entry button gets an outline only through the interaction model; no unconditional drawOpenRect on it
+        self.assertIn("EnhancedHudPanels::generalButtonOutline( interaction )", bar)
+        self.assertNotIn("if( pips > 0 )", bar)
+        self.assertIn("EnhancedHudPanels::generalNotificationLamp( points )", bar)
+        # the points readout has no surrounding rectangle
+        draw = bar[bar.index("void purchasePanelDraw( GameWindow *window, WinInstanceData * )"):]
+        self.assertNotIn("pr.w + 2 * P( 2 ) + 2", draw)
+        # power plates take their outline from the semantic role, not from ad hoc colours
+        self.assertEqual(draw.count("EnhancedHudPanels::powerOutline("), 3)
+        # the retail blinking highlight art is replaced only while Enhanced is active; Original keeps the retail flash
+        cb = text("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp")
+        self.assertIn("if(!m_genStarFlash || EnhancedHud::active())", cb)
+        self.assertIn("GadgetButtonSetEnabledImage(win, m_generalButtonHighlight);", cb)
+
     def test_battle_overview_is_enhanced_only_and_restores_the_retail_window(self):
         bar = text(BAR)
         self.assertIn("void EnhancedHudOverview::attach( GameWindow *root )", bar)

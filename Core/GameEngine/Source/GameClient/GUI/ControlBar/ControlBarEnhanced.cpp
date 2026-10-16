@@ -846,6 +846,19 @@ void pointerState( const HRect &r, bool *hover, bool *down )
 	*down = *hover && io->leftState == MBS_Down;
 }
 
+// Colour of a semantic outline role (EnhancedHudPanels::Outline). Blue (accent) is reserved for hover/pressed; the muted blue
+// marks an available action at rest; gold is ownership.
+Color outlineColor( EnhancedHudPanels::Outline o, const HudPalette &c )
+{
+	switch( o )
+	{
+		case EnhancedHudPanels::Outline::Active: return c.accent;
+		case EnhancedHudPanels::Outline::Muted: return c.accentDim;
+		case EnhancedHudPanels::Outline::Gold: return c.lit;
+		default: return c.shadow;
+	}
+}
+
 // The "under attack" warning lamp (accepted design). The retail window still flashes by toggling its enable state
 // (disabled = lit); this draws the lamp: a solid red plate with a white warning triangle when lit, dark idle lamp otherwise.
 bool drawAttackLamp( GameWindow *win, const HudPalette &c, bool *lit )
@@ -1263,8 +1276,25 @@ void drawEnhancedHudFrame()
 			const Int side = std::max<Int>( 2, P( 2 ) ), gap = std::max<Int>( 1, P( 1.2 ) );
 			const Int total = 5 * side + 4 * gap;
 			drawLedGroup( gr.x + ( gr.w - total ) / 2, gr.y + gr.h + std::max<Int>( 3, g ), 5, pips, c );
-			if( pips > 0 )
-				TheDisplay->drawOpenRect( gr.x - 1, gr.y - 1, gr.w + 2, gr.h + 2, 1, c.ready );
+			// the entry button: no outline at rest (it never looks keyboard-focused); blue only under the pointer, pressed = sunk
+			bool hover, down;
+			pointerState( gr, &hover, &down );
+			const EnhancedHudPanels::Interaction interaction = EnhancedHudPanels::interactionOf( hover, down );
+			if( EnhancedHudPanels::generalButtonOutline( interaction ) == EnhancedHudPanels::Outline::Active )
+				TheDisplay->drawOpenRect( gr.x - 1, gr.y - 1, gr.w + 2, gr.h + 2, 1, c.accent );
+			if( interaction == EnhancedHudPanels::Interaction::Pressed )
+			{
+				TheDisplay->drawFillRect( gr.x, gr.y, gr.w, std::max<Int>( 2, P( 1.5 ) ), c.shadow );
+				TheDisplay->drawFillRect( gr.x, gr.y, std::max<Int>( 2, P( 1.5 ) ), gr.h, c.shadow );
+			}
+			// unspent General Points: a small status lamp on the housing's upper corner (the pips below carry the count)
+			if( EnhancedHudPanels::generalNotificationLamp( points ) )
+			{
+				const Int lamp = std::max<Int>( 3, P( 4 ) );
+				const HRect lr = { gr.x + gr.w - lamp - std::max<Int>( 2, P( 2 ) ), gr.y + std::max<Int>( 2, P( 2 ) ), lamp, lamp };
+				TheDisplay->drawFillRect( lr.x - 1, lr.y - 1, lr.w + 2, lr.h + 2, c.shadow );
+				TheDisplay->drawFillRect( lr.x, lr.y, lr.w, lr.h, c.ready );
+			}
 		}
 	}
 	// (the Global Powers surface is not part of the island: see powersPanelDraw, drawn by the shortcut window itself)
@@ -1432,7 +1462,8 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 		drawRecess( pr, c, P( 1.5 ) );
 		if( points > 0 )
 		{
-			TheDisplay->drawOpenRect( pr.x - P( 2 ) - 1, pr.y - P( 2 ) - 1, pr.w + 2 * P( 2 ) + 2, pr.h + 2 * P( 2 ) + 2, 1, c.ready );
+			// an instrument, not a button: a status rail along the top and foot (no surrounding rectangle)
+			TheDisplay->drawFillRect( pr.x + 2, pr.y + 2, pr.w - 4, std::max<Int>( 2, P( 1.5 ) ), c.ready );
 			TheDisplay->drawFillRect( pr.x + 2, pr.y + pr.h - 4, pr.w - 4, std::max<Int>( 2, P( 1.5 ) ), c.ready );
 		}
 		drawLabel( "pop.gp", TheGameText->fetchOrSubstitute( "GUI:EnhancedGeneralPoints", L"GENERAL POINTS" ), pr.x + pr.w / 2, pr.y + P( 5 ), P( 8 ), TRUE,
@@ -1531,18 +1562,18 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 		switch( state )
 		{
 			case EnhancedHudPanels::PowerState::Available:
-				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), hover ? c.accent : c.ready, down, c );
+				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), outlineColor( EnhancedHudPanels::powerOutline( state, EnhancedHudPanels::interactionOf( hover, down ) ), c ), down, c );
 				if( th.stateRails )
 					TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ), c.ready );
 				break;
 			case EnhancedHudPanels::PowerState::Purchased:
-				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), c.lit, false, c );
+				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), outlineColor( EnhancedHudPanels::powerOutline( state, EnhancedHudPanels::interactionOf( hover, down ) ), c ), false, c );
 				if( th.stateRails )
 					TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ), c.lit );
 				break;
 			case EnhancedHudPanels::PowerState::NeedsPoints:
 				// prerequisites met but no General Point: engaged outline, flat plate, a dim pending lamp
-				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.controlLow ), hover ? c.accent : c.accentDim, false, c );
+				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.controlLow ), outlineColor( EnhancedHudPanels::powerOutline( state, EnhancedHudPanels::interactionOf( hover, down ) ), c ), false, c );
 				drawLedGroup( plate.x + plate.w - P( 6 ), plate.y + P( 2 ), 1, 0, c );
 				break;
 			default:

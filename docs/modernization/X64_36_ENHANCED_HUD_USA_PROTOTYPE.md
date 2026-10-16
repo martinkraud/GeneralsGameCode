@@ -662,3 +662,31 @@ transition test). Faction look comes from `EnhancedHudTheme`; layout is shared; 
 powers or unrelated/separated plates; chain depth/membership; detailed states. Interactive: placement/fit on 9 surfaces x 5 UI scales,
 16 powers + Done present/inside/non-overlapping with centre, corner and edge probes, the six hidden windows, transition. Contract:
 connectors only through `chainConnectors` + the science relation, read-only getter, restore of hidden windows.
+
+## 22. Refinement 11: USA final visual-state cleanup (after native review of `design6`: "very good")
+
+Geometry, hierarchy and every other surface are untouched; only the meaning of blue rims changed.
+
+**Audit of every blue border.**
+
+| where | source before | class |
+|---|---|---|
+| General entry button, permanent rectangle | `drawOpenRect(..., c.ready)` whenever points > 0 | B (available action) drawn like D (focus) - changed |
+| General entry button, flashing | retail `m_generalButtonHighlight` art swapped by `ControlBar::getStarImage` | G (inherited retail art) - suppressed only while Enhanced is active |
+| General entry button, hover/pressed | retail H/P bitmaps only | C/E - now also an Enhanced hover rim and pressed inset |
+| Rank/star module cells | gold rail (earned), `c.ready` fill line on the next cell | F/progress - kept |
+| XP gauge ticks | `c.accent` major tick | A (theme decoration) - kept |
+| General Points readout | full `c.ready` rectangle when points > 0 | B drawn like D - changed to top/foot status rails |
+| Power plates | available resting rim was `c.ready` (same as hover accent family) | B - changed: resting available is a muted rim with the blue rail, hover/pressed is the bright rim |
+| Needs-points plate | hover/rest shared the available colour | changed: neutral at rest, muted on hover, never bright |
+| Purchased plates | gold rim | F - kept |
+| Done / command keys / Global Powers / overview | hover-only accent rim | C - kept |
+
+No Win32 keyboard-focus drawing exists in the Enhanced paths (`winGetFocus` is never consulted); the "selected" look came from the
+rectangle above, the retail blink art and the bright resting rim of available powers.
+
+**Result.** Resting General button: no outline. Hover: blue rim. Pressed: sunk edge. Unspent points: a small blue status lamp on the
+housing plus the existing pips (the retail blink is suppressed in Enhanced only). Points readout: instrument rails, dim at zero,
+not clickable. Power states are separated by a semantic outline role (`EnhancedHudPanels::powerOutline`): locked none, needs points
+neutral, available muted at rest / active on hover-press, purchased gold; tests assert the roles and not the colours, so faction
+themes remain free to choose them. Original is untouched (every change is behind `EnhancedHud::active()` / the Enhanced draw hooks).

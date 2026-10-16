@@ -1308,3 +1308,49 @@ TEST(EnhancedHudPanels, DetailedPowerStateSeparatesLockedFromWaitingForPoints)
 	EXPECT_EQ(popupRequiredRank(2, 5), 5);        // the 5 star tier opens at rank 5 of the Generals rank table (never "locked forever")
 	EXPECT_EQ(popupRequiredRank(2, 3), 3);        // capped by a shorter table
 }
+
+// ---- visual state vocabulary: focus-like blue rims are never decoration ---------------------------------------------------------
+
+TEST(EnhancedHudPanels, GeneralButtonRestsWithoutAnOutlineAndRespondsToHoverAndPress)
+{
+	using namespace EnhancedHudPanels;
+	EXPECT_EQ(interactionOf(false, false), Interaction::Resting);
+	EXPECT_EQ(interactionOf(true, false), Interaction::Hover);
+	EXPECT_EQ(interactionOf(true, true), Interaction::Pressed);
+	EXPECT_EQ(interactionOf(false, true), Interaction::Pressed);
+	EXPECT_EQ(generalButtonOutline(Interaction::Resting), Outline::None);             // never looks permanently selected
+	EXPECT_NE(generalButtonOutline(Interaction::Hover), generalButtonOutline(Interaction::Resting));
+	EXPECT_NE(interactionOf(true, true), interactionOf(true, false));                 // pressed differs from hover
+}
+
+TEST(EnhancedHudPanels, UnspentPointsAreANotificationNotAFocusOutline)
+{
+	using namespace EnhancedHudPanels;
+	EXPECT_FALSE(generalNotificationLamp(0));
+	EXPECT_TRUE(generalNotificationLamp(1));
+	// the notification does not change the button outline at rest, whatever the points
+	EXPECT_EQ(generalButtonOutline(interactionOf(false, false)), Outline::None);
+	// the points readout is an instrument: emphasis only when points exist, and it is a rail (never an outline role)
+	EXPECT_FALSE(pointsReadoutRail(0));
+	EXPECT_TRUE(pointsReadoutRail(3));
+}
+
+TEST(EnhancedHudPanels, PowerStatesStayDistinctAtRestAndUnderTheCursor)
+{
+	using namespace EnhancedHudPanels;
+	const PowerState states[] = {PowerState::Available, PowerState::Purchased, PowerState::Locked, PowerState::NeedsPoints};
+	for (PowerState a : states)
+		for (PowerState b : states)
+			if (a != b)
+			{
+				EXPECT_TRUE(powerOutline(a, Interaction::Resting) != powerOutline(b, Interaction::Resting) ||
+				            a == PowerState::Locked || b == PowerState::Locked) << int(a) << " vs " << int(b);
+			}
+	EXPECT_EQ(powerOutline(PowerState::Locked, Interaction::Hover), Outline::None);   // locked never lights up
+	EXPECT_EQ(powerOutline(PowerState::Purchased, Interaction::Resting), Outline::Gold);
+	EXPECT_NE(powerOutline(PowerState::Available, Interaction::Resting), powerOutline(PowerState::Available, Interaction::Hover));
+	// bright blue only for a hover/press on an available power; at rest an available power is muted, not "selected"
+	EXPECT_EQ(powerOutline(PowerState::Available, Interaction::Resting), Outline::Muted);
+	EXPECT_EQ(powerOutline(PowerState::Available, Interaction::Pressed), Outline::Active);
+	EXPECT_NE(powerOutline(PowerState::NeedsPoints, Interaction::Hover), Outline::Active);
+}

@@ -65,6 +65,7 @@ int milestoneProgressPermille(int skillPoints, int levels, int slot, int count, 
 // Unspent General Points shown as lit pips (capped): `shown` of `slots`; more points than pips saturate.
 inline int pointPips(int points, int slots) { return points <= 0 ? 0 : (points < slots ? points : slots); }
 
+
 // ---- General Powers popup (GeneralsExpPoints.wnd) --------------------------------------------------------------------------
 // State of a power button, from the retail window flags the ControlBar already sets (ControlBar::updateContextPurchaseScience):
 //   enabled                          -> Available   (purchasable now: enough points, prerequisites met)
@@ -140,6 +141,30 @@ inline Rect popupScaled(const Rect &r, double scale)
 	return {static_cast<int>(std::lround(r.x * scale)), static_cast<int>(std::lround(r.y * scale)),
 	        static_cast<int>(std::lround(r.w * scale)), static_cast<int>(std::lround(r.h * scale))};
 }
+
+// ---- visual state vocabulary (resting / hover / pressed are interaction; available / purchased / locked / needs points are data) ----
+// A blue rim is never decoration: it appears only for hover/pressed (Active) or for an available action. Resting controls and
+// status modules carry a neutral or muted edge, so nothing looks permanently keyboard-focused or selected.
+enum class Interaction { Resting, Hover, Pressed };
+inline Interaction interactionOf(bool hover, bool down) { return down ? Interaction::Pressed : (hover ? Interaction::Hover : Interaction::Resting); }
+enum class Outline { None, Neutral, Muted, Active, Gold };
+// General Powers entry button: no outline at rest (its own art carries the identity); blue only while the pointer is on it.
+inline Outline generalButtonOutline(Interaction i) { return i == Interaction::Resting ? Outline::None : Outline::Active; }
+// Unspent General Points are announced by a status lamp (and the pips), never by an outline around the button.
+inline bool generalNotificationLamp(int points) { return points > 0; }
+// Outline of a power plate in the General Powers console.
+inline Outline powerOutline(PowerState state, Interaction i)
+{
+	switch (state)
+	{
+		case PowerState::Purchased: return Outline::Gold;
+		case PowerState::Available: return i == Interaction::Resting ? Outline::Muted : Outline::Active;
+		case PowerState::NeedsPoints: return i == Interaction::Resting ? Outline::Neutral : Outline::Muted;
+		default: return Outline::None;
+	}
+}
+// The General Points readout is an instrument: it never has a full outline; emphasis is a rail (points > 0) or none.
+inline bool pointsReadoutRail(int points) { return points > 0; }
 
 // Enhanced re-layout of the SAME windows (reference units, parent 440 x 500): a promotion / upgrade console, stacked in rank
 // order. Geometry follows the real content (audit of Science.ini / CommandSet.ini):

@@ -1731,8 +1731,9 @@ const Image *ControlBar::getStarImage()
 	GameWindow *win= TheWindowManager->winGetWindowFromId( nullptr, TheNameKeyGenerator->nameToKey( "ControlBar.wnd:ButtonGeneral" ) );
 	if(!win)
 		return nullptr;
-	if(!m_genStarFlash)
+	if(!m_genStarFlash || EnhancedHud::active())
 	{
+		// Enhanced HUD: unspent points are announced by the HUD's own status lamp, not by the blinking retail highlight art
 		GadgetButtonSetEnabledImage(win, m_generalButtonEnable);
 		return nullptr;
 	}
