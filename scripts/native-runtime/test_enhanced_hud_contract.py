@@ -311,7 +311,45 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertIn("s_purchaseWindow->winSetEnabledImage( 0, s_purchaseOriginalImage );", bar)
         draw = bar[bar.index("void purchasePanelDraw( GameWindow *window, WinInstanceData * )"):]
         self.assertIn("if( !EnhancedHud::active()", draw[:200])
-        self.assertIn("EnhancedHudPanels::powerState(", draw)
+        self.assertIn("EnhancedHudPanels::powerStateDetailed(", draw)
+
+    def test_popup_connectors_exist_only_for_real_science_prerequisites(self):
+        bar = text(BAR)
+        draw = bar[bar.index("void purchasePanelDraw( GameWindow *window, WinInstanceData * )"):]
+        draw = draw[:draw.index("// ---- Battle Overview")]
+        # a connector is produced only by chainConnectors, fed by the ScienceStore prerequisite relation (never by geometry alone)
+        self.assertEqual(draw.count("chainConnectors("), 1)
+        self.assertIn("TheScienceStore->getPrerequisiteSciences( plates[ b ].st, pre );", draw)
+        self.assertIn("std::find( pre.begin(), pre.end(), plates[ a ].st ) != pre.end()", draw)
+        # the only rail drawing sits inside the loop over the connectors that came back
+        self.assertIn("for( int i = 0; i < linkCount; ++i )", draw)
+        loop = draw[draw.index("for( int i = 0; i < linkCount; ++i )"):]
+        loop = loop[:loop.index("// plates (with chain step numerals)")]
+        self.assertIn("fillPolygon(", loop)
+        self.assertNotIn("drawLine(", draw[draw.index("const int linkCount"):draw.index("// plates (with chain step numerals)")])
+        panels = text("Core/GameEngine/Include/Common/EnhancedHudPanels.h")
+        fn = panels[panels.index("int chainConnectors("):]
+        fn = fn[:fn.index("// Depth of a power")]
+        self.assertIn("!isPrerequisite(a, b)", fn)
+        self.assertIn("between", fn)
+
+    def test_science_prerequisite_getter_is_read_only_in_both_titles(self):
+        for title in ("Generals", "GeneralsMD"):
+            h = text(f"{title}/Code/GameEngine/Include/Common/Science.h")
+            c = text(f"{title}/Code/GameEngine/Source/Common/RTS/Science.cpp")
+            self.assertIn("Bool getPrerequisiteSciences(ScienceType st, ScienceVec& out) const;", h)
+            body = c[c.index("Bool ScienceStore::getPrerequisiteSciences"):]
+            body = body[:body.index("}", body.index("return")) + 1]
+            self.assertIn("m_prereqSciences", body)
+            for forbidden in ("m_prereqSciences.push_back", "m_prereqSciences.clear", "m_prereqSciences =", "new "):
+                self.assertNotIn(forbidden, body)
+
+    def test_popup_rank_tiers_follow_rank_ini_and_hidden_windows_are_restored(self):
+        panels = text("Core/GameEngine/Include/Common/EnhancedHudPanels.h")
+        self.assertIn("constexpr int kPopupTierRank[3] = {1, 3, 5};", panels)
+        bar = text(BAR)
+        self.assertIn("s_purchaseHidden.insert(", bar)
+        self.assertIn("( *it )->winHide( FALSE );", bar)
 
     def test_battle_overview_is_enhanced_only_and_restores_the_retail_window(self):
         bar = text(BAR)

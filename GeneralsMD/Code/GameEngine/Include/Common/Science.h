@@ -103,6 +103,10 @@ public:
 
 	Int getSciencePurchaseCost(ScienceType science) const;
 
+	/** Read only: the prerequisite sciences (as read from Science.ini) of `st`, appended to `out`. Presentation code uses it to
+		show which sciences are upgrade steps of which; it does not evaluate or change any player state. */
+	Bool getPrerequisiteSciences(ScienceType st, ScienceVec& out) const;
+
 	ScienceType getScienceFromInternalName(const AsciiString& name) const;
 	AsciiString getInternalNameForScience(ScienceType science) const;
 

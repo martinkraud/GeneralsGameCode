@@ -271,6 +271,16 @@ Bool ScienceStore::getNameAndDescription(ScienceType st, UnicodeString& name, Un
 }
 
 //-----------------------------------------------------------------------------
+Bool ScienceStore::getPrerequisiteSciences(ScienceType st, ScienceVec& out) const
+{
+	const ScienceInfo* si = findScienceInfo(st);
+	if (!si)
+		return false;
+	out.insert(out.end(), si->m_prereqSciences.begin(), si->m_prereqSciences.end());
+	return true;
+}
+
+//-----------------------------------------------------------------------------
 Bool ScienceStore::playerHasPrereqsForScience(const Player* player, ScienceType st) const
 {
 	const ScienceInfo* si = findScienceInfo(st);

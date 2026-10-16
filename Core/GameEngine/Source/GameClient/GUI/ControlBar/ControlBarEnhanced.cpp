@@ -37,6 +37,7 @@
 #include "Common/Radar.h"
 #include "Common/EnhancedHudPanels.h"
 #include "Common/Energy.h"
+#include "Common/Science.h"
 #include "Common/GlobalData.h"
 #include "GameClient/DisplayString.h"
 #include "GameClient/DisplayStringManager.h"
@@ -48,6 +49,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <set>
@@ -1347,15 +1349,15 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 	const double u = r.w / (double)EnhancedHudPanels::kPopupNewW;
 	s_drawScale = std::max( 0.5, u );
 	// real, read-only state of the local player (the same numbers the retail popup shows)
+	Player *player = TheControlBar ? TheControlBar->getCurrentlyViewedPlayer() : nullptr;
 	Int rank = 1, levels = 1, points = 0, skill = 0, skillUp = 0;
-	if( TheControlBar )
-		if( Player *player = TheControlBar->getCurrentlyViewedPlayer() )
-		{
-			rank = player->getRankLevel();
-			points = player->getSciencePurchasePoints();
-			skill = player->getSkillPoints();
-			skillUp = player->getSkillPointsLevelUp();
-		}
+	if( player )
+	{
+		rank = player->getRankLevel();
+		points = player->getSciencePurchasePoints();
+		skill = player->getSkillPoints();
+		skillUp = player->getSkillPointsLevelUp();
+	}
 	if( TheRankInfoStore )
 		levels = TheRankInfoStore->getRankLevelCount();
 
@@ -1390,7 +1392,12 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 	for( int i = 0; i < 3; ++i )
 		drawModule( tiers[ i ], c, -1 );
 
-	// ---- header: experience track with the next rank, General Points readout --------------------------------------------------
+	// ---- header: rank, experience track with numbers and the next promotion, General Points -------------------------------------
+	{
+		UnicodeString rankText;
+		rankText.format( L"%ls %d / %d", TheGameText->fetchOrSubstitute( "GUI:EnhancedRank", L"RANK" ).str(), rank, levels );
+		drawLabel( "pop.rank", rankText, r.x + P( 216 ), r.y + P( 20 ), P( 9 ), FALSE, c.iconDim, 0, P( 100 ) );
+	}
 	if( GameWindow *bar = childByName( window, "GeneralsExpPoints.wnd:ProgressBarExperience" ) )
 	{
 		const HRect b = windowRect( bar );
@@ -1401,42 +1408,50 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 			const Int tx = b.x + b.w * i / 10;
 			TheDisplay->drawLine( tx, b.y + b.h - 2, tx, b.y + b.h - 2 - ( i == 5 ? 3 : 1 ), 1, i == 5 ? c.accent : c.accentDim );
 		}
-		// next rank (localised rank name of the retail table) and the real numbers; hidden at the top rank
-		const Int ny = b.y + b.h + P( 4 ), maxW = b.w + P( 12 );
+		const Int ty = b.y - P( 2 );
 		if( rank < levels )
 		{
+			UnicodeString numbers;
+			numbers.format( L"%d / %d", skill, skillUp );
+			drawLabel( "pop.xp", numbers, b.x + b.w + P( 10 ), b.y - P( 3 ), P( 10 ), TRUE, c.ready, 0, P( 66 ) );
 			AsciiString key;
 			key.format( "SCIENCE:Rank%d", rank + 1 );
 			UnicodeString next;
-			next.format( L"%ls", TheGameText->fetchOrSubstitute( "GUI:EnhancedNext", L"NEXT" ).str() );
-			next.concat( L"  " );
+			next.format( L"%ls  ", TheGameText->fetchOrSubstitute( "GUI:EnhancedNext", L"NEXT" ).str() );
 			next.concat( TheGameText->fetch( key ) );
-			drawLabel( "pop.next", next, b.x, ny, P( 8 ), FALSE, c.iconDim, 0, maxW * 6 / 10 );
-			UnicodeString numbers;
-			numbers.format( L"%d / %d", skill, skillUp );
-			drawLabel( "pop.xp", numbers, b.x + b.w, ny, P( 8 ), FALSE, c.ready, 2, maxW * 4 / 10 );
+			drawLabel( "pop.next", next, b.x, b.y + b.h + P( 6 ), P( 9 ), FALSE, c.icon, 0, P( 236 ) );
 		}
 		else
-			drawLabel( "pop.next", TheGameText->fetchOrSubstitute( "GUI:EnhancedMaxRank", L"MAXIMUM RANK" ), b.x, ny, P( 8 ), TRUE, c.lit, 0, maxW );
+			drawLabel( "pop.next", TheGameText->fetchOrSubstitute( "GUI:EnhancedMaxRank", L"MAXIMUM RANK" ), b.x, b.y + b.h + P( 6 ), P( 9 ), TRUE, c.lit, 0, P( 236 ) );
+		(void)ty;
 	}
-	if( GameWindow *count = childByName( window, "GeneralsExpPoints.wnd:StaticTextRankPointsAvailable" ) )
 	{
-		const HRect cr = inflate( windowRect( count ), P( 3 ) );
-		drawRaisedFrame( cr, P( 1.5 ), c, false );
-		drawRecess( cr, c, P( 1.2 ) );
+		// General Points: a dedicated readout - label, large number, rim and glow when points are unspent
+		const HRect pr = place( HRect{ 330, 14, 94, 70 } );
+		drawRaisedFrame( pr, P( 2 ), c, false );
+		drawRecess( pr, c, P( 1.5 ) );
 		if( points > 0 )
-			TheDisplay->drawOpenRect( cr.x - P( 1.5 ), cr.y - P( 1.5 ), cr.w + 2 * P( 1.5 ), cr.h + 2 * P( 1.5 ), 1, c.ready );
+		{
+			TheDisplay->drawOpenRect( pr.x - P( 2 ) - 1, pr.y - P( 2 ) - 1, pr.w + 2 * P( 2 ) + 2, pr.h + 2 * P( 2 ) + 2, 1, c.ready );
+			TheDisplay->drawFillRect( pr.x + 2, pr.y + pr.h - 4, pr.w - 4, std::max<Int>( 2, P( 1.5 ) ), c.ready );
+		}
+		drawLabel( "pop.gp", TheGameText->fetchOrSubstitute( "GUI:EnhancedGeneralPoints", L"GENERAL POINTS" ), pr.x + pr.w / 2, pr.y + P( 5 ), P( 8 ), TRUE,
+		           points > 0 ? c.icon : c.iconDim, 1, pr.w - P( 6 ) );
+		UnicodeString count;
+		count.format( L"%d", points );
+		drawLabel( "pop.gpn", count, pr.x + pr.w / 2, pr.y + P( 20 ), P( 30 ), TRUE, points > 0 ? c.ready : c.iconDim, 1, pr.w - P( 8 ) );
 	}
 
-	// ---- tiers: label with stars and a lock lamp ------------------------------------------------------------------------------
+	// ---- tiers: label with stars, rank lamp ----------------------------------------------------------------------------------------
 	static const char *const tierKey[ 3 ] = { "GUI:EnhancedTier1", "GUI:EnhancedTier3", "GUI:EnhancedTier5" };
-	static const wchar_t *const tierText[ 3 ] = { L"1 STAR GENERAL", L"3 STAR GENERAL", L"5 STAR GENERAL" };
+	static const wchar_t *const tierText[ 3 ] = { L"1 STAR POWERS", L"3 STAR POWERS", L"5 STAR POWERS" };
 	static const char *const labelKey[ 3 ] = { "pop.t1", "pop.t3", "pop.t5" };
 	static const char *const stateKey[ 3 ] = { "pop.s1", "pop.s3", "pop.s5" };
 	for( int i = 0; i < 3; ++i )
 	{
 		const HRect t = tiers[ i ];
-		const bool open = rank >= EnhancedHudPanels::kPopupTierRank[ i ];
+		const Int required = EnhancedHudPanels::popupRequiredRank( i, levels );
+		const bool open = rank >= required;
 		const Int starSide = P( 5 ), starGap = P( 2 );
 		Int sx = t.x + P( 10 );
 		for( int s = 0; s < EnhancedHudPanels::kPopupTierStars[ i ]; ++s )
@@ -1444,73 +1459,139 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 			fillStar( sx + starSide, t.y + P( 11 ), starSide, open ? c.lit : c.litDim );
 			sx += 2 * starSide + starGap;
 		}
-		drawLabel( labelKey[ i ], TheGameText->fetchOrSubstitute( tierKey[ i ], tierText[ i ] ), sx + P( 4 ), t.y + P( 5 ), P( 10 ), TRUE, open ? c.icon : c.iconDim, 0, t.x + t.w * 62 / 100 - sx );
-		const UnicodeString state = open ? TheGameText->fetchOrSubstitute( "GUI:EnhancedUnlocked", L"UNLOCKED" )
-		                                 : TheGameText->fetchOrSubstitute( "GUI:EnhancedLocked", L"LOCKED" );
-		drawLabel( stateKey[ i ], state, t.x + t.w - P( 10 ), t.y + P( 6 ), P( 8 ), TRUE, open ? c.ready : c.iconDim, 2, t.w * 30 / 100 );
-		drawLedGroup( t.x + t.w - P( 10 ) - t.w * 22 / 100, t.y + P( 8 ), 1, open ? 1 : 0, c );
+		drawLabel( labelKey[ i ], TheGameText->fetchOrSubstitute( tierKey[ i ], tierText[ i ] ), sx + P( 4 ), t.y + P( 5 ), P( 10 ), TRUE, open ? c.icon : c.iconDim, 0, t.x + t.w * 60 / 100 - sx );
+		UnicodeString state;
+		if( open )
+			state = TheGameText->fetchOrSubstitute( "GUI:EnhancedUnlocked", L"UNLOCKED" );
+		else
+			state.format( L"%ls %d", TheGameText->fetchOrSubstitute( "GUI:EnhancedRankNeeded", L"REQUIRES RANK" ).str(), required );
+		drawLabel( stateKey[ i ], state, t.x + t.w - P( 10 ), t.y + P( 6 ), P( 8 ), TRUE, open ? c.ready : c.iconDim, 2, t.w * 34 / 100 );
 	}
 
-	// ---- powers: chain channels and rails first, then the plates -----------------------------------------------------------------
-	struct Plate { GameWindow *w; HRect rect; EnhancedHudPanels::PowerState state; };
+	// ---- powers -------------------------------------------------------------------------------------------------------------------
+	struct Plate { GameWindow *w; HRect rect; ScienceType st; EnhancedHudPanels::PowerState state; };
 	std::vector<Plate> plates;
 	GameWindow *exitButton = childByName( window, "GeneralsExpPoints.wnd:ButtonExit" );
 	for( GameWindow *ch = window->winGetChild(); ch; ch = ch->winGetNext() )
 	{
 		if( ch->winIsHidden() || !BitIsSet( ch->winGetStyle(), GWS_PUSH_BUTTON ) || ch == exitButton )
 			continue;
-		Plate p = { ch, windowRect( ch ), EnhancedHudPanels::powerState( BitIsSet( ch->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false,
-		                                                              BitIsSet( ch->winGetStatus(), WIN_STATUS_ALWAYS_COLOR ) ? true : false ) };
+		ScienceType st = SCIENCE_INVALID;
+		if( const CommandButton *cb = (const CommandButton *)GadgetButtonGetData( ch ) )
+			if( !cb->getScienceVec().empty() )
+				st = cb->getScienceVec()[ 0 ];
+		const bool enabled = BitIsSet( ch->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false;
+		const bool owned = player && st != SCIENCE_INVALID && player->hasScience( st );
+		const bool prereqs = player && st != SCIENCE_INVALID && TheScienceStore && TheScienceStore->playerHasPrereqsForScience( player, st );
+		Plate p = { ch, windowRect( ch ), st, EnhancedHudPanels::powerStateDetailed( enabled, owned || BitIsSet( ch->winGetStatus(), WIN_STATUS_ALWAYS_COLOR ), prereqs ) };
 		plates.push_back( p );
 	}
-	// a chain = the visible powers of the 3-star grid that share a column (the retail command set puts the three levels of a
-	// science in one column); only real neighbours are joined
-	for( size_t i = 0; i < plates.size(); ++i )
+	// the real prerequisite relation between the shown powers (ScienceStore, read only)
+	const int count = (int)plates.size();
+	std::vector<HRect> rects( plates.size() );
+	for( int i = 0; i < count; ++i )
+		rects[ i ] = plates[ i ].rect;
+	auto isPrerequisite = [&]( int a, int b )
 	{
-		if( plates[ i ].rect.y < tiers[ 1 ].y || plates[ i ].rect.bottom() > tiers[ 1 ].bottom() )
-			continue;
-		GameWindow *belowWindow = nullptr;
-		Int belowY = 0x7fffffff;
-		HRect below = { 0, 0, 0, 0 };
-		EnhancedHudPanels::PowerState belowState = EnhancedHudPanels::PowerState::Locked;
-		for( size_t j = 0; j < plates.size(); ++j )
-			if( j != i && std::abs( plates[ j ].rect.x - plates[ i ].rect.x ) <= 2 && plates[ j ].rect.y > plates[ i ].rect.y && plates[ j ].rect.y < belowY )
-			{
-				belowWindow = plates[ j ].w;
-				belowY = plates[ j ].rect.y;
-				below = plates[ j ].rect;
-				belowState = plates[ j ].state;
-			}
-		if( !belowWindow )
-			continue;
-		const HRect a = plates[ i ].rect;
-		const Int cx = a.x + a.w / 2, railW = std::max<Int>( 2, P( 2 ) );
-		// recessed channel behind the pair, then the rail: gold when the upper level is owned (the next level follows from it)
-		drawRecess( HRect{ a.x - P( 3 ), a.y - P( 2 ), a.w + 2 * P( 3 ), below.bottom() - a.y + P( 4 ) }, c, P( 1 ) );
-		TheDisplay->drawFillRect( cx - railW / 2, a.bottom(), railW, std::max<Int>( 1, below.y - a.bottom() ),
-		                          plates[ i ].state == EnhancedHudPanels::PowerState::Purchased ? c.lit : c.accentDim );
-		(void)belowState;
+		if( !TheScienceStore || plates[ a ].st == SCIENCE_INVALID || plates[ b ].st == SCIENCE_INVALID )
+			return false;
+		ScienceVec pre;
+		TheScienceStore->getPrerequisiteSciences( plates[ b ].st, pre );
+		return std::find( pre.begin(), pre.end(), plates[ a ].st ) != pre.end();
+	};
+	EnhancedHudPanels::Connector links[ 24 ];
+	const int linkCount = count > 0 ? EnhancedHudPanels::chainConnectors( &rects[ 0 ], count, isPrerequisite, links, 24 ) : 0;
+	for( int i = 0; i < linkCount; ++i )
+	{
+		const Plate &a = plates[ links[ i ].from ], &b = plates[ links[ i ].to ];
+		const Int cx = a.rect.x + a.rect.w / 2, y0 = a.rect.bottom() + P( 3 ), y1 = b.rect.y - P( 3 );
+		const bool ownedB = b.state == EnhancedHudPanels::PowerState::Purchased;
+		const bool nextStep = a.state == EnhancedHudPanels::PowerState::Purchased && !ownedB;
+		const Color rail = ownedB ? c.lit : ( nextStep ? c.ready : c.accentDim );
+		const Int w = std::max<Int>( 2, P( 1.6 ) );
+		if( y1 > y0 )
+		{
+			TheDisplay->drawFillRect( cx - w / 2, y0, w, std::max<Int>( 1, y1 - y0 - P( 3 ) ), rail );
+			const Int ax[ 3 ] = { cx - P( 3 ), cx + P( 3 ), cx }, ay[ 3 ] = { y1 - P( 3 ), y1 - P( 3 ), y1 };
+			fillPolygon( ax, ay, 3, rail );
+		}
 	}
+	// plates (with chain step numerals) and the hovered power for the detail strip
 	const Int pk = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
-	for( size_t i = 0; i < plates.size(); ++i )
+	int hovered = -1;
+	for( int i = 0; i < count; ++i )
 	{
 		const HRect b = plates[ i ].rect;
 		bool hover, down;
-		pointerState( b, &hover, &down );
+		pointerState( inflate( b, P( 3 ) ), &hover, &down );
+		if( hover )
+			hovered = i;
 		const EnhancedHudPanels::PowerState state = plates[ i ].state;
 		const HRect plate = inflate( b, P( 3 ) );
-		const bool available = state == EnhancedHudPanels::PowerState::Available;
-		const bool purchased = state == EnhancedHudPanels::PowerState::Purchased;
-		if( !available && !purchased )
+		switch( state )
 		{
-			// locked: recessed and dimmed (the retail icon is drawn greyed by the button itself)
-			drawRecess( plate, c, P( 1.2 ) );
-			continue;
+			case EnhancedHudPanels::PowerState::Available:
+				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), hover ? c.accent : c.ready, down, c );
+				if( th.stateRails )
+					TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ), c.ready );
+				break;
+			case EnhancedHudPanels::PowerState::Purchased:
+				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), c.lit, false, c );
+				if( th.stateRails )
+					TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ), c.lit );
+				break;
+			case EnhancedHudPanels::PowerState::NeedsPoints:
+				// prerequisites met but no General Point: engaged outline, flat plate, a dim pending lamp
+				drawBevelPlate( plate, pk, CM_ALL, themeColor( th.controlLow ), hover ? c.accent : c.accentDim, false, c );
+				drawLedGroup( plate.x + plate.w - P( 6 ), plate.y + P( 2 ), 1, 0, c );
+				break;
+			default:
+				drawRecess( plate, c, P( 1.2 ) );        // locked by rank or by a missing upgrade step
+				break;
 		}
-		drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), available ? ( hover ? c.accent : c.ready ) : c.lit, down && available, c );
-		if( th.stateRails )
-			TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ),
-			                          purchased ? c.lit : c.ready );
+		if( EnhancedHudPanels::inChain( i, count, isPrerequisite ) )
+		{
+			static const wchar_t *const roman[ 5 ] = { L"I", L"II", L"III", L"IV", L"V" };
+			const int depth = std::min( 5, EnhancedHudPanels::chainDepth( i, count, isPrerequisite ) );
+			char key[ 16 ];
+			std::snprintf( key, sizeof( key ), "pop.n%d", i );
+			UnicodeString numeral;
+			numeral.format( L"%ls", roman[ depth - 1 ] );
+			drawLabel( key, numeral, plate.x + P( 5 ), plate.y + P( 2 ), P( 8 ), TRUE,
+			           state == EnhancedHudPanels::PowerState::Purchased ? c.lit : ( state == EnhancedHudPanels::PowerState::Available ? c.icon : c.iconDim ), 0, P( 22 ) );
+		}
+	}
+	// detail strip (5 star foot, between the power and Done): name, cost and requirements of the hovered power - real data only
+	{
+		const HRect strip = place( HRect{ 100, 442, 224, 38 } );
+		drawRecess( strip, c, P( 1.2 ) );
+		if( hovered >= 0 && TheScienceStore )
+		{
+			UnicodeString name, description;
+			if( TheScienceStore->getNameAndDescription( plates[ hovered ].st, name, description ) )
+				drawLabel( "pop.dn", name, strip.x + P( 6 ), strip.y + P( 3 ), P( 10 ), TRUE, c.icon, 0, strip.w - P( 12 ) );
+			UnicodeString line;
+			line.format( L"%ls %d", TheGameText->fetchOrSubstitute( "GUI:EnhancedCost", L"COST" ).str(), TheScienceStore->getSciencePurchaseCost( plates[ hovered ].st ) );
+			for( int a = 0; a < count; ++a )
+				if( a != hovered && isPrerequisite( a, hovered ) )
+				{
+					UnicodeString pre, preDesc;
+					if( TheScienceStore->getNameAndDescription( plates[ a ].st, pre, preDesc ) )
+					{
+						line.concat( L"   " );
+						line.concat( TheGameText->fetchOrSubstitute( "GUI:EnhancedRequires", L"REQUIRES" ) );
+						line.concat( L" " );
+						line.concat( pre );
+					}
+				}
+			int tier = 1;
+			if( plates[ hovered ].rect.y < tiers[ 1 ].y ) tier = 0;
+			else if( plates[ hovered ].rect.y >= tiers[ 2 ].y ) tier = 2;
+			UnicodeString rankPart;
+			rankPart.format( L"   %ls %d", TheGameText->fetchOrSubstitute( "GUI:EnhancedRank", L"RANK" ).str(), EnhancedHudPanels::popupRequiredRank( tier, levels ) );
+			line.concat( rankPart );
+			drawLabel( "pop.dl", line, strip.x + P( 6 ), strip.y + P( 20 ), P( 8 ), FALSE, c.iconDim, 0, strip.w - P( 12 ) );
+		}
 	}
 	// Done sits in the console's foot
 	if( exitButton && !exitButton->winIsHidden() )

@@ -980,6 +980,8 @@ TEST(EnhancedHudInteractive, GeneralPowersPopupKeepsTheThreeRankTiersAndTheScien
 	EXPECT_TRUE(screen(pc.tree.find("ButtonExit")).within(t5));
 	for (const char *n : {"StaticTextTitle", "StaticTextLevel", "Experience", "ProgressBarExperience", "RemainingSkillPoints", "StaticTextRankPointsAvailable"})
 		EXPECT_TRUE(screen(pc.tree.find(n)).within(head)) << n;
+	// the General Points readout (drawn by the skin over the hidden retail label + count) lies inside the header
+	EXPECT_TRUE(Rect(EnhancedHudPanels::popupScaled(Rect{330, 14, 94, 70}, f)).within(Rect{0, 0, int(std::lround(EnhancedHudPanels::kPopupNewW * f)), int(std::lround(EnhancedHudPanels::kPopupNewH * f))}));
 	// science chains: the 3 star grid keeps its 4 columns x 3 rows exactly (power i of a column stays above power i + 1)
 	for (int col = 0; col < 4; ++col)
 		for (int row = 0; row < 2; ++row)
@@ -993,12 +995,14 @@ TEST(EnhancedHudInteractive, GeneralPowersPopupKeepsTheThreeRankTiersAndTheScien
 	EXPECT_LE(head.bottom(), t1.y); EXPECT_LE(t1.bottom(), t3.y); EXPECT_LE(t3.bottom(), t5.y);
 	EXPECT_EQ(t1.x, t3.x); EXPECT_EQ(t3.x, t5.x); EXPECT_EQ(t1.w, t3.w);
 	EXPECT_LT(pc.place.rect.w, pc.place.rect.h);
-	EXPECT_LT(pc.place.rect.w * 100, s.w * 40);
+	EXPECT_LT(pc.place.rect.w * 100, s.w * 50);
 	// only the three retail tier header texts are hidden (replaced by short Enhanced labels); nothing else
-	for (const char *n : {"Rank1Required", "Rank3Required", "Rank8Required"})
+	const std::set<std::string> replaced = {"Rank1Required", "Rank3Required", "Rank8Required", "StaticTextLevel", "RemainingSkillPoints",
+	                                        "StaticTextRankPointsAvailable"};
+	for (const std::string &n : replaced)
 		EXPECT_TRUE(pc.tree.find(n)->hidden) << n;
 	for (Win *ch = pc.tree.master()->child; ch; ch = ch->next)
-		if (ch->name != "Rank1Required" && ch->name != "Rank3Required" && ch->name != "Rank8Required")
+		if (!replaced.count(ch->name))
 			EXPECT_FALSE(ch->hidden) << ch->name;
 	// the retail "Done" sits in the 5 star module's foot, to the right of its power
 	EXPECT_GT(screen(pc.tree.find("ButtonExit")).x, screen(pc.tree.find("ButtonRank8Number0")).right());
@@ -1024,4 +1028,63 @@ TEST(EnhancedHudInteractive, GeneralPowersPopupRetailRectanglesAreRecognisedExac
 	EXPECT_EQ(targets.size(), 28u);
 	// unknown windows are left alone
 	EXPECT_FALSE(EnhancedHudPanels::popupTarget({3, 3, 17, 17}).valid);
+}
+
+TEST(EnhancedHudInteractive, GeneralPowersPopupEnhancedOriginalEnhancedTransitionIsExact)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid)
+				continue;
+			PopupCase pc;
+			pc.tree.build(kPopup);
+			scaleLoaded(pc.tree, ls);
+			struct State { int x, y, w, h; bool hidden; };
+			std::map<Win *, State> retail;
+			for (Win *c = pc.tree.master(); c; c = c == pc.tree.master() ? c->child : c->next)
+				retail[c] = {c->lox, c->loy, c->w, c->h, c->hidden};
+			const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement(s.w, s.h, layout.island.y, ls);
+			auto original = [&pc](Win *w, int *out)
+			{
+				auto it = pc.orig.find(w);
+				if (it == pc.orig.end())
+					it = pc.orig.insert({w, {w->lox, w->loy, w->w, w->h}}).first;
+				for (int i = 0; i < 4; ++i)
+					out[i] = it->second[i];
+			};
+			auto snapshot = [&]()
+			{
+				std::map<Win *, State> m;
+				for (Win *c = pc.tree.master(); c; c = c == pc.tree.master() ? c->child : c->next)
+					m[c] = {c->lox, c->loy, c->w, c->h, c->hidden};
+				return m;
+			};
+			auto same = [](const std::map<Win *, State> &a, const std::map<Win *, State> &b)
+			{
+				for (const auto &kv : a)
+				{
+					const State &o = b.at(kv.first);
+					if (kv.second.x != o.x || kv.second.y != o.y || kv.second.w != o.w || kv.second.h != o.h || kv.second.hidden != o.hidden)
+						return false;
+				}
+				return true;
+			};
+			EnhancedHudWindows::applyPopupLayout<Win>(pc.tree.master(), place.rect, place.scale, original);
+			const auto enhanced = snapshot();
+			EXPECT_FALSE(same(retail, enhanced));
+			// Original: the remembered rectangles are restored and the windows the Enhanced layout hid are shown again
+			for (auto &kv : pc.orig)
+			{
+				kv.first->lox = kv.second[0]; kv.first->loy = kv.second[1]; kv.first->w = kv.second[2]; kv.first->h = kv.second[3];
+			}
+			for (auto &kv : retail)
+				kv.first->hidden = kv.second.hidden;
+			EXPECT_TRUE(same(retail, snapshot())) << s.w << "x" << s.h << " ui" << ui;
+			// Enhanced again gives the very same layout
+			EnhancedHudWindows::applyPopupLayout<Win>(pc.tree.master(), place.rect, place.scale, original);
+			EXPECT_TRUE(same(enhanced, snapshot())) << s.w << "x" << s.h << " ui" << ui;
+		}
 }

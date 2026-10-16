@@ -7,6 +7,7 @@
 #include "Common/EnhancedHudLayout.h"
 
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <cwchar>
 #include <cstring>
@@ -69,11 +70,62 @@ inline int pointPips(int points, int slots) { return points <= 0 ? 0 : (points <
 //   enabled                          -> Available   (purchasable now: enough points, prerequisites met)
 //   disabled + ALWAYS_COLOR          -> Purchased   (player->hasScience)
 //   disabled                         -> Locked      (not enough points / prerequisites / script disabled)
-enum class PowerState { Available, Purchased, Locked };
+enum class PowerState { Available, Purchased, Locked, NeedsPoints };
 inline PowerState powerState(bool enabled, bool alwaysColor)
 {
 	if (enabled) return PowerState::Available;
 	return alwaysColor ? PowerState::Purchased : PowerState::Locked;
+}
+// The same, with the one extra fact the retail enable flag folds together: a disabled, not owned power whose rank AND chain
+// prerequisites are met is not locked - it is waiting for a General Point (player->hasScience / ScienceStore prerequisites, both
+// read-only). Locked therefore always means "rank or an upgrade step is missing".
+inline PowerState powerStateDetailed(bool enabled, bool owned, bool prerequisitesMet)
+{
+	if (owned) return PowerState::Purchased;
+	if (enabled) return PowerState::Available;
+	return prerequisitesMet ? PowerState::NeedsPoints : PowerState::Locked;
+}
+
+// Upgrade connectors. `isPrerequisite(a, b)` is the REAL relation (science a is a prerequisite of science b, from
+// ScienceStore::getPrerequisiteSciences). A connector joins a to b only when that relation holds AND b is the plate directly
+// below a in the same column (nothing between them). Unrelated powers are never joined, however they are arranged.
+struct Connector { int from, to; };
+template <class IsPrerequisite>
+int chainConnectors(const Rect *rects, int count, IsPrerequisite &&isPrerequisite, Connector *out, int capacity)
+{
+	int n = 0;
+	for (int a = 0; a < count; ++a)
+		for (int b = 0; b < count; ++b)
+		{
+			if (a == b || !isPrerequisite(a, b)) continue;
+			if (std::abs(rects[a].x - rects[b].x) > 2 || rects[b].y < rects[a].bottom()) continue;
+			bool between = false;
+			for (int m = 0; m < count && !between; ++m)
+				if (m != a && m != b && std::abs(rects[m].x - rects[a].x) <= 2 && rects[m].y >= rects[a].bottom() && rects[m].bottom() <= rects[b].y)
+					between = true;
+			if (between || n >= capacity) continue;
+			out[n++] = {a, b};
+		}
+	return n;
+}
+// Depth of a power in its chain (1 = first step): 1 + the deepest prerequisite among the shown powers.
+template <class IsPrerequisite>
+int chainDepth(int index, int count, IsPrerequisite &&isPrerequisite, int guard = 8)
+{
+	if (guard <= 0) return 1;
+	int depth = 1;
+	for (int a = 0; a < count; ++a)
+		if (a != index && isPrerequisite(a, index))
+			depth = std::max(depth, 1 + chainDepth(a, count, isPrerequisite, guard - 1));
+	return depth;
+}
+// True when the power belongs to a chain (it has a prerequisite or a successor among the shown powers).
+template <class IsPrerequisite>
+bool inChain(int index, int count, IsPrerequisite &&isPrerequisite)
+{
+	for (int a = 0; a < count; ++a)
+		if (a != index && (isPrerequisite(a, index) || isPrerequisite(index, a))) return true;
+	return false;
 }
 
 // Retail layout of the popup relative to its parent window (GeneralsExpPoints.wnd at 800 x 600, parent 296 x 432). The
@@ -89,21 +141,25 @@ inline Rect popupScaled(const Rect &r, double scale)
 	        static_cast<int>(std::lround(r.w * scale)), static_cast<int>(std::lround(r.h * scale))};
 }
 
-// Enhanced re-layout of the SAME windows (reference units, parent 320 x 474): a promotion console, stacked in rank order.
-//   header   - rank name + numeric level, experience bar (+ next rank / numbers), remaining General Points
-//   1 star   - the three 1-star powers in a row
-//   3 star   - the 3-star powers as 4 chains (columns, three levels each, exactly as in the retail grid)
-//   5 star   - the 5-star power, and Done at the console's foot
-// The retail header texts ("RANK REQUIRED - n Star General") wrap badly in a compact module, so they are hidden in Enhanced and
-// replaced by short presentation-only tier labels; the real texts, their content and their windows are untouched.
-constexpr int kPopupNewW = 320, kPopupNewH = 474;
-constexpr Rect kPopupNewHeader = {8, 8, 304, 70};
-constexpr Rect kPopupNewTier1 = {8, 84, 304, 84};
-constexpr Rect kPopupNewTier3 = {8, 174, 304, 198};
-constexpr Rect kPopupNewTier5 = {8, 378, 304, 88};
-// rank level at which each tier opens (the retail command sets are named Rank1 / Rank3 / Rank8; the labels read 1 / 3 / 5 star)
-constexpr int kPopupTierRank[3] = {1, 3, 8};
+// Enhanced re-layout of the SAME windows (reference units, parent 440 x 500): a promotion / upgrade console, stacked in rank
+// order. Geometry follows the real content (audit of Science.ini / CommandSet.ini):
+//   1 star : 3 powers, none chained           3 star: Pathfinder + three chains (Paradrop, A-10, Repair, three steps each)
+//   5 star : 1 power (Daisy Cutter)           every power costs one General Point; rank 1 / 3 / 5 opens a tier
+// The 3 star grid keeps its four columns (a column is a chain); the steps of a chain are spaced so the connector between them
+// is readable. The retail tier header texts, "Level" and the points label/count are replaced by measured Enhanced readouts drawn
+// from the same real values (the retail windows are hidden and restored for Original).
+constexpr int kPopupNewW = 440, kPopupNewH = 508;
+constexpr Rect kPopupNewHeader = {8, 8, 424, 88};
+constexpr Rect kPopupNewTier1 = {8, 102, 424, 86};
+constexpr Rect kPopupNewTier3 = {8, 194, 424, 212};
+constexpr Rect kPopupNewTier5 = {8, 412, 424, 88};
+// rank level at which each tier opens: Rank.ini grants SCIENCE_Rank1 / 3 / 5 at ranks 1 / 3 / 5 and the powers of the tier require
+// that rank science (the command sets are legacy-named Rank1 / Rank3 / Rank8). Capped by the rank table at run time.
+constexpr int kPopupTierRank[3] = {1, 3, 5};
 constexpr int kPopupTierStars[3] = {1, 3, 5};
+// 3 star grid: 4 columns x 3 rows; column pitch and row pitch in reference units
+constexpr int kPopupGridX0 = 33, kPopupGridPitchX = 106, kPopupGridY0 = 226, kPopupGridPitchY = 62;
+inline int popupRequiredRank(int tier, int rankLevels) { return tier < 0 || tier > 2 ? 1 : (kPopupTierRank[tier] < rankLevels ? kPopupTierRank[tier] : rankLevels); }
 
 struct PopupTarget { bool valid; Rect rect; bool hide; };
 
@@ -112,6 +168,7 @@ inline bool popupSame(const Rect &r, int x, int y, int w, int h)
 {
 	return popupNear(r.x, x) && popupNear(r.y, y) && popupNear(r.w, w) && popupNear(r.h, h);
 }
+inline int popupClamp(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 // Enhanced target (reference units, relative to the new parent) of a retail window given its retail rectangle relative to the
 // retail parent. Windows that are not part of the retail GeneralsExpPoints.wnd layout are reported invalid and left alone.
@@ -120,26 +177,31 @@ inline PopupTarget popupTarget(const Rect &r)
 	struct Entry { int rx, ry, rw, rh; Rect to; bool hide; };
 	static const Entry table[] = {
 		{0, 0, 296, 34, kPopupNewHeader, false},                   // header decoration window
-		{8, 6, 160, 26, {18, 12, 170, 26}, false},                 // StaticTextTitle (rank name)
-		{176, 6, 113, 26, {192, 12, 104, 26}, false},              // StaticTextLevel
-		{8, 38, 160, 16, {18, 44, 66, 16}, false},                 // "Experience"
-		{8, 54, 167, 18, {86, 42, 100, 18}, false},                // experience bar housing
-		{11, 59, 161, 8, {89, 47, 94, 8}, false},                  // ProgressBarExperience
-		{174, 36, 84, 36, {192, 38, 84, 34}, false},               // "Remaining skill points"
-		{262, 40, 23, 31, {280, 42, 23, 31}, false},               // StaticTextRankPointsAvailable
-		{0, 76, 296, 24, {14, 88, 292, 24}, true},                 // 1 star header text (replaced by the tier label)
-		{0, 160, 296, 24, {14, 178, 292, 24}, true},               // 3 star header text
-		{0, 348, 296, 24, {14, 382, 292, 24}, true},               // 5 star header text
-		{198, 392, 88, 32, {216, 418, 88, 32}, false},             // ButtonExit
+		{8, 6, 160, 26, {18, 14, 190, 26}, false},                 // StaticTextTitle (rank name)
+		{176, 6, 113, 26, {216, 14, 100, 26}, true},               // StaticTextLevel (secondary: drawn as "RANK n / N")
+		{8, 38, 160, 16, {18, 52, 66, 16}, false},                 // "Experience"
+		{8, 54, 167, 18, {88, 50, 170, 18}, false},                // experience bar housing
+		{11, 59, 161, 8, {91, 55, 164, 8}, false},                 // ProgressBarExperience
+		{174, 36, 84, 36, {330, 14, 90, 34}, true},                // "Remaining skill points" (drawn as GENERAL POINTS)
+		{262, 40, 23, 31, {370, 48, 23, 31}, true},                // StaticTextRankPointsAvailable (drawn large)
+		{0, 76, 296, 24, {14, 106, 412, 24}, true},                // 1 star header text (replaced by the tier label)
+		{0, 160, 296, 24, {14, 198, 412, 24}, true},               // 3 star header text
+		{0, 348, 296, 24, {14, 416, 412, 24}, true},               // 5 star header text
+		{198, 392, 88, 32, {332, 452, 88, 32}, false},             // ButtonExit
 	};
 	for (const Entry &e : table)
 		if (popupSame(r, e.rx, e.ry, e.rw, e.rh))
 			return {true, e.to, e.hide};
 	if (popupNear(r.w, 56) && popupNear(r.h, 48))            // a power button
 	{
-		if (r.y < 160) return {true, {r.x + 48, r.y + 12, r.w, r.h}, false};     // 1 star row
-		if (r.y < 348) return {true, {r.x + 14, r.y + 18, r.w, r.h}, false};     // 3 star chains
-		return {true, {r.x + 14, r.y + 34, r.w, r.h}, false};                    // 5 star
+		if (r.y < 160)                                       // 1 star: three in a row, centred on the 4 column grid
+			return {true, {86 + 106 * popupClamp((r.x - 16 + 34) / 68, 0, 2), 132, r.w, r.h}, false};
+		if (r.y < 348)                                       // 3 star: column c, row k of the retail grid
+		{
+			const int col = popupClamp((r.x - 16 + 34) / 68, 0, 3), row = popupClamp((r.y - 188 + 26) / 52, 0, 2);
+			return {true, {kPopupGridX0 + kPopupGridPitchX * col, kPopupGridY0 + kPopupGridPitchY * row, r.w, r.h}, false};
+		}
+		return {true, {kPopupGridX0, 444, r.w, r.h}, false};                     // 5 star
 	}
 	return {false, {}, false};
 }
@@ -150,8 +212,8 @@ struct PopupPlacement { Rect rect; double scale; };
 inline PopupPlacement popupPlacement(int surfaceW, int surfaceH, int consoleTop, double uiScale)
 {
 	double f = uiScale > 0.0 ? uiScale : 1.0;
-	f = std::min(f, 0.95 * surfaceW / kPopupNewW);
-	f = std::min(f, 0.90 * surfaceH / kPopupNewH);
+	f = std::min(f, 0.90 * surfaceW / kPopupNewW);
+	f = std::min(f, 0.80 * surfaceH / kPopupNewH);
 	if (f < 0.25) f = 0.25;
 	const int w = static_cast<int>(std::lround(kPopupNewW * f)), h = static_cast<int>(std::lround(kPopupNewH * f));
 	const int x = (surfaceW - w) / 2;

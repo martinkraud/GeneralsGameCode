@@ -619,3 +619,46 @@ recognised exactly once, label fitting arithmetic, tier/rank constants.
 **Sequence after human acceptance (not done now):** freeze Shared Enhanced HUD Framework v1; keep USA as the reference; implement
 China (shared geometry, heavy-industrial construction language), native review; implement GLA (improvised language), native review;
 only then consider CP10 closure.
+
+## 21. Refinement 10: USA Design6 - General Powers / promotion console (after native review of `design5`: console rejected)
+
+Native review of Design5: main bottom HUD, Battle Overview, Global Powers edge dock, power meter and the USA visual language were
+accepted; the General Powers console was not. Shared Enhanced HUD Framework v1 stays UNFROZEN; CP10 stays IN REVIEW.
+
+**Audit of the retail UI (Science.ini, Rank.ini, CommandSet.ini, GeneralsExpPoints.wnd).** 14 USA powers in three tiers:
+1 star (rank 1): Paladin Tank, Stealth Fighter, Spy Drone - no prerequisites. 3 star (rank 3): Pathfinder (standalone) and three
+chains of three steps - Paradrop I > II > III, A-10 Strike I > II > III, Emergency Repair I > II > III. 5 star (rank 5): Daisy Cutter
+(standalone). Every power costs one General Point; `Rank.ini` has 5 ranks (the command sets are legacy-named Rank1/Rank3/Rank8, but the
+5 star tier opens at rank 5). A retail button is enabled = purchasable now, `ALWAYS_COLOR` = owned, otherwise disabled; the retail
+tooltip is the science name, description and cost.
+
+**What was wrong with Design5.** (1) The connector loop joined any lower button in the same column, including the 5 star power, drawing a
+long blue line across unrelated sections. (2) The tier lamp for the 5 star tier used rank 8, which does not exist, so it always read
+LOCKED. (3) A forced 320 px width squeezed the content instead of letting content size the console.
+
+**Design6 geometry.** Reference 440 x 500 (about 0.45 of a 1920 surface wide; placement fits to 90% of the width and 80% of the height,
+centred above the HUD, never fullscreen). Header (rank, XP track with `n / m`, NEXT promotion or MAXIMUM RANK, General Points readout),
+then stacked tiers 1/3/5 star, Done in the foot. The 3 star grid keeps four columns - a column is a chain - with a 58 unit row pitch so
+the connector between steps is readable. All 14 powers + Done stay retail buttons (purchase commands only come from them).
+
+**Chains.** A connector exists only between two shown powers when `ScienceStore::getPrerequisiteSciences` (new read-only getter, both
+titles) says one is a prerequisite of the other AND they are vertically adjacent in the same column with nothing between. Chained powers
+carry a step numeral I/II/III; the connector is gold when the upper step is owned and the lower one is not yet (next step) in blue.
+Pathfinder, the 1 star trio and the Daisy Cutter get no connector and no numeral.
+
+**General Points / XP.** The points readout is a dedicated module: label, large number; dim at zero, blue/gold with a rim when points are
+unspent; read-only. The XP track is always visible (recessed with ticks) with a real fill from the retail progress bar; Level n is
+secondary text ("RANK n / N").
+
+**States.** Locked (rank or an upgrade step missing: recessed, dim), Available (blue raised, hover rim, pressed), NeedsPoints (prerequisites
+met, no point: flat, engaged outline, pending lamp), Purchased (gold). A detail strip in the 5 star foot shows name, cost, required science and
+rank of the hovered power - real data only.
+
+**Original preservation.** The six retail windows replaced by the skin (Rank1/3/8Required, Level, points label and count) are hidden by
+the Enhanced layout only if they were shown, remembered, and unhidden for Original (Enhanced > Original > Enhanced is exact; mock
+transition test). Faction look comes from `EnhancedHudTheme`; layout is shared; China/GLA fall back to Original.
+
+**Tests.** Panels: tier ranks {1,3,5}; the 14 USA powers placed exactly once; exactly six real connectors; no connector for standalone
+powers or unrelated/separated plates; chain depth/membership; detailed states. Interactive: placement/fit on 9 surfaces x 5 UI scales,
+16 powers + Done present/inside/non-overlapping with centre, corner and edge probes, the six hidden windows, transition. Contract:
+connectors only through `chainConnectors` + the science relation, read-only getter, restore of hidden windows.

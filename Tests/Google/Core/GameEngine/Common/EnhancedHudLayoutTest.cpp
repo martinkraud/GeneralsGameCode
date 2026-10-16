@@ -1181,7 +1181,7 @@ TEST(EnhancedHudPanels, PopupTiersFollowTheRetailRankTiers)
 {
 	using namespace EnhancedHudPanels;
 	// tiers open at the ranks the retail command sets are named for and read 1 / 3 / 5 star
-	EXPECT_EQ(kPopupTierRank[0], 1); EXPECT_EQ(kPopupTierRank[1], 3); EXPECT_EQ(kPopupTierRank[2], 8);
+	EXPECT_EQ(kPopupTierRank[0], 1); EXPECT_EQ(kPopupTierRank[1], 3); EXPECT_EQ(kPopupTierRank[2], 5);   // SCIENCE_Rank1 / 3 / 5 (Rank.ini)
 	EXPECT_EQ(kPopupTierStars[0], 1); EXPECT_EQ(kPopupTierStars[1], 3); EXPECT_EQ(kPopupTierStars[2], 5);
 	const Rect m[4] = {kPopupNewHeader, kPopupNewTier1, kPopupNewTier3, kPopupNewTier5};
 	for (int i = 0; i < 4; ++i)
@@ -1194,4 +1194,117 @@ TEST(EnhancedHudPanels, PopupTiersFollowTheRetailRankTiers)
 		}
 	}
 	EXPECT_EQ(m[3].bottom() + 8, kPopupNewH);
+}
+
+// ---- the real USA General Powers hierarchy (audit of Science.ini / CommandSet.ini / Rank.ini) ----------------------------------
+
+namespace
+{
+struct UsaPower { const char *science; int tier; int col, row; const char *prerequisite; };
+// SCIENCE_AMERICA_CommandSetRank1 / Rank3 / Rank8 (slot -> position: 1 4 7 10 / 2 5 8 11 / 3 6 9 12) and the Science.ini
+// prerequisites (rank sciences omitted: every power of a tier requires SCIENCE_Rank1 / 3 / 5, cost 1 General Point each).
+const UsaPower kUsaPowers[] = {
+	{"PaladinTank", 0, 0, 0, nullptr}, {"StealthFighter", 0, 1, 0, nullptr}, {"SpyDrone", 0, 2, 0, nullptr},
+	{"Pathfinder", 1, 0, 0, nullptr},
+	{"Paradrop1", 1, 1, 0, nullptr}, {"Paradrop2", 1, 1, 1, "Paradrop1"}, {"Paradrop3", 1, 1, 2, "Paradrop2"},
+	{"A10Strike1", 1, 2, 0, nullptr}, {"A10Strike2", 1, 2, 1, "A10Strike1"}, {"A10Strike3", 1, 2, 2, "A10Strike2"},
+	{"EmergencyRepair1", 1, 3, 0, nullptr}, {"EmergencyRepair2", 1, 3, 1, "EmergencyRepair1"}, {"EmergencyRepair3", 1, 3, 2, "EmergencyRepair2"},
+	{"DaisyCutter", 2, 0, 0, nullptr},
+};
+}  // namespace
+
+TEST(EnhancedHudPanels, UsaPowerHierarchyIsRepresentedExactlyOnceWithOnlyRealConnectors)
+{
+	using namespace EnhancedHudPanels;
+	const int count = int(sizeof(kUsaPowers) / sizeof(kUsaPowers[0]));
+	EXPECT_EQ(count, 14);                                         // 3 + 10 + 1 powers
+	// retail rectangles (relative to the retail parent) -> Enhanced rectangles through the shared mapping
+	Rect rects[16];
+	for (int i = 0; i < count; ++i)
+	{
+		const UsaPower &p = kUsaPowers[i];
+		Rect retail;
+		if (p.tier == 0) retail = {16 + 68 * p.col, 104, 56, 48};
+		else if (p.tier == 1) retail = {16 + 68 * p.col, 188 + 52 * p.row, 56, 48};
+		else retail = {16, 376, 56, 48};
+		const PopupTarget t = popupTarget(retail);
+		ASSERT_TRUE(t.valid) << p.science;
+		rects[i] = t.rect;
+	}
+	// every power has its own place (represented exactly once)
+	for (int a = 0; a < count; ++a)
+		for (int b = 0; b < a; ++b)
+			EXPECT_FALSE(rects[a].intersects(rects[b])) << kUsaPowers[a].science << " vs " << kUsaPowers[b].science;
+	auto pre = [&](int a, int b)
+	{
+		return kUsaPowers[b].prerequisite && std::strcmp(kUsaPowers[b].prerequisite, kUsaPowers[a].science) == 0;
+	};
+	Connector links[32];
+	const int n = chainConnectors(rects, count, pre, links, 32);
+	EXPECT_EQ(n, 6);                                              // Paradrop 1-2-3, A-10 1-2-3, Repair 1-2-3: two links each
+	for (int i = 0; i < n; ++i)
+	{
+		// every drawn connector is a real prerequisite relation, vertically adjacent in the same column, and short
+		EXPECT_TRUE(pre(links[i].from, links[i].to));
+		const Rect &a = rects[links[i].from], &b = rects[links[i].to];
+		EXPECT_EQ(a.x, b.x);
+		EXPECT_EQ(b.y - a.bottom(), kPopupGridPitchY - 48);
+	}
+	// Pathfinder, the 1 star powers and the Daisy Cutter are never connected to anything
+	for (int i = 0; i < n; ++i)
+	{
+		const char *from = kUsaPowers[links[i].from].science, *to = kUsaPowers[links[i].to].science;
+		for (const char *loner : {"Pathfinder", "PaladinTank", "StealthFighter", "SpyDrone", "DaisyCutter"})
+		{
+			EXPECT_STRNE(from, loner);
+			EXPECT_STRNE(to, loner);
+		}
+	}
+	// chain steps: 1 / 2 / 3 within a chain, 1 for the others; chain membership matches the real relation
+	for (int i = 0; i < count; ++i)
+	{
+		const char *s = kUsaPowers[i].science;
+		const int depth = chainDepth(i, count, pre);
+		const bool chained = inChain(i, count, pre);
+		const size_t len = std::strlen(s);
+		const bool numbered = len > 0 && s[len - 1] >= '1' && s[len - 1] <= '3' && std::strncmp(s, "Paradrop", 8) * std::strncmp(s, "A10", 3) * std::strncmp(s, "Emergency", 9) == 0;
+		EXPECT_EQ(chained, numbered) << s;
+		if (numbered) EXPECT_EQ(depth, s[len - 1] - '0') << s;
+		else EXPECT_EQ(depth, 1) << s;
+	}
+}
+
+TEST(EnhancedHudPanels, ConnectorsRejectUnrelatedPowersWhateverTheArrangement)
+{
+	using namespace EnhancedHudPanels;
+	auto none = [](int, int) { return false; };
+	auto skip = [](int a, int b) { return a == 0 && b == 2; };
+	auto next = [](int a, int b) { return b == a + 1; };
+	// two stacked plates that are NOT related get no connector; related-but-separated plates (something between) neither
+	const Rect stacked[3] = {{0, 0, 56, 48}, {0, 62, 56, 48}, {0, 124, 56, 48}};
+	Connector out[8];
+	EXPECT_EQ(chainConnectors(stacked, 3, none, out, 8), 0);
+	EXPECT_EQ(chainConnectors(stacked, 3, skip, out, 8), 0);        // plate 1 is between 0 and 2
+	EXPECT_EQ(chainConnectors(stacked, 3, next, out, 8), 2);
+	// side by side plates (different columns) are never joined even if "related"
+	auto first = [](int a, int b) { return a == 0 && b == 1; };
+	const Rect sideBySide[2] = {{0, 0, 56, 48}, {100, 62, 56, 48}};
+	EXPECT_EQ(chainConnectors(sideBySide, 2, first, out, 8), 0);
+	// a plate far below another one in the same column is never joined without the relation
+	const Rect farApart[2] = {{33, 226, 56, 48}, {33, 444, 56, 48}};
+	EXPECT_EQ(chainConnectors(farApart, 2, none, out, 8), 0);
+}
+
+TEST(EnhancedHudPanels, DetailedPowerStateSeparatesLockedFromWaitingForPoints)
+{
+	using namespace EnhancedHudPanels;
+	EXPECT_EQ(powerStateDetailed(true, false, true), PowerState::Available);
+	EXPECT_EQ(powerStateDetailed(false, true, true), PowerState::Purchased);
+	EXPECT_EQ(powerStateDetailed(false, false, true), PowerState::NeedsPoints);      // rank and chain met, no General Point
+	EXPECT_EQ(powerStateDetailed(false, false, false), PowerState::Locked);          // rank or an upgrade step missing
+	EXPECT_EQ(powerStateDetailed(true, true, true), PowerState::Purchased);          // ownership wins
+	EXPECT_EQ(popupRequiredRank(0, 5), 1);
+	EXPECT_EQ(popupRequiredRank(1, 5), 3);
+	EXPECT_EQ(popupRequiredRank(2, 5), 5);        // the 5 star tier opens at rank 5 of the Generals rank table (never "locked forever")
+	EXPECT_EQ(popupRequiredRank(2, 3), 3);        // capped by a shorter table
 }
