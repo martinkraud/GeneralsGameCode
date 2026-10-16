@@ -1209,3 +1209,125 @@ TEST(EnhancedHudInteractive, TheOldTooltipPlacementReallyCoveredPowersOnSomeSurf
 	EXPECT_GT(covered, 0);
 }
 
+// ---- live Original <-> Enhanced switching inside one running match (X64.37 v3) ---------------------------------------------------------
+//
+// The presentation switch re-runs the control bar scheme for the same player: Enhanced moves the retail windows into the island
+// (remembering them first), Original puts the remembered retail geometry back. The mock below carries a game-state record that the
+// presentation code must never touch (selection, command state, economy, rank, Global Powers ...).
+
+namespace
+{
+struct MatchState
+{
+	std::vector<int> selected{101, 102, 205};
+	int commandContext = 3;
+	int cash = 2750, power = 12, rank = 3, xp = 1620, generalPoints = 2;
+	std::vector<int> purchased{11, 14};
+	std::vector<int> cooldownFrames{0, 90, 450};
+	int cameraX = 1200, cameraY = 800, frame = 31337;
+	bool operator==(const MatchState &o) const
+	{
+		return selected == o.selected && commandContext == o.commandContext && cash == o.cash && power == o.power && rank == o.rank &&
+		       xp == o.xp && generalPoints == o.generalPoints && purchased == o.purchased && cooldownFrames == o.cooldownFrames &&
+		       cameraX == o.cameraX && cameraY == o.cameraY && frame == o.frame;
+	}
+};
+struct Geometry { int x, y, w, h; bool hidden; };
+std::vector<Geometry> geometryOf(const Tree &t)
+{
+	std::vector<Geometry> g;
+	for (const auto &w : t.wins) g.push_back({w->lox, w->loy, w->w, w->h, w->hidden});
+	return g;
+}
+bool sameGeometry(const std::vector<Geometry> &a, const std::vector<Geometry> &b)
+{
+	if (a.size() != b.size()) return false;
+	for (size_t i = 0; i < a.size(); ++i)
+		if (a[i].x != b[i].x || a[i].y != b[i].y || a[i].w != b[i].w || a[i].h != b[i].h) return false;   // geometry: visibility belongs to the game
+	return true;
+}
+}  // namespace
+
+TEST(EnhancedHudInteractive, OriginalEnhancedOriginalEnhancedInOneMatchRestoresRetailAndKeepsTheGameState)
+{
+	EnhancedHud::setRequested(true);
+	for (const char *side : {"America", "China", "GLA"})
+	{
+		ASSERT_TRUE(EnhancedHud::update(true, false, side, 1920, 1200, layoutScaleFor(1920, 1200, DisplayGeometry::kAutoUiScale))) << side;
+		const Result layout = EnhancedHud::layout();
+		MatchState state;
+		const MatchState before = state;
+		Tree t;
+		t.build(kBar);
+		const std::vector<Geometry> retail = geometryOf(t);
+		std::map<Win *, Geometry> saved;
+		auto remember = [&saved](Win *w) { if (!saved.count(w)) saved[w] = {w->lox, w->loy, w->w, w->h, w->hidden}; };
+		auto toEnhanced = [&]() {
+			EnhancedHudWindows::apply<Win>(t.master(), layout, [&t](const char *n) { return t.find(n); }, remember,
+			                               [](Win *w) { return isDecorative(w); });
+		};
+		auto toOriginal = [&]() {
+			for (auto &kv : saved) { kv.first->lox = kv.second.x; kv.first->loy = kv.second.y; kv.first->w = kv.second.w; kv.first->h = kv.second.h;
+			                         kv.first->hidden = kv.second.hidden; }     // restoreStore also puts the remembered visibility back ...
+			showContext(t, "CommandWindow", "WinUnitSelected");               // ... and markUIDirty makes the game re-evaluate its context
+		};
+		toEnhanced();
+		showContext(t, "CommandWindow", "WinUnitSelected");        // the game's own context (visibility is not presentation)
+		const std::vector<Geometry> firstEnhanced = geometryOf(t);
+		EXPECT_FALSE(sameGeometry(firstEnhanced, retail)) << side;
+		for (int cycle = 0; cycle < 3; ++cycle)
+		{
+			toOriginal();
+			EXPECT_TRUE(sameGeometry(geometryOf(t), retail)) << side << " cycle " << cycle;          // exactly the retail layout again
+			// Original keeps its retail hit regions: every window of the untouched retail tree is hit exactly like in a fresh retail tree
+			{
+				Tree fresh;
+				fresh.build(kBar);
+				showContext(fresh, "CommandWindow", "WinUnitSelected");
+				for (size_t i = 0; i < fresh.wins.size(); ++i)
+				{
+					const Rect r = screen(fresh.wins[i].get());
+					if (r.w < 2 || r.h < 2) continue;
+					Win *expected = hitTest(fresh.master(), r.x + r.w / 2, r.y + r.h / 2);
+					Win *actual = hitTest(t.master(), r.x + r.w / 2, r.y + r.h / 2);
+					EXPECT_EQ(expected ? expected->name : std::string(), actual ? actual->name : std::string()) << side << " " << fresh.wins[i]->name;
+				}
+			}
+			toEnhanced();
+			showContext(t, "CommandWindow", "WinUnitSelected");
+			EXPECT_TRUE(sameGeometry(geometryOf(t), firstEnhanced)) << side << " cycle " << cycle;   // Enhanced is deterministic
+			for (int i = 1; i <= 12; ++i)
+			{
+				char name[24];
+				std::snprintf(name, sizeof(name), "ButtonCommand%02d", i);
+				Win *b = t.find(name);
+				if (!b || b->hidden) continue;
+				const Rect r = screen(b);
+				EXPECT_EQ(hitTest(t.master(), r.x + r.w / 2, r.y + r.h / 2), b) << side << " enhanced " << name;
+			}
+		}
+		EXPECT_TRUE(state == before) << side;                         // selection, economy, rank, Global Powers ... never touched
+	}
+	EnhancedHud::setRequested(false);
+	EnhancedHud::deactivate();
+}
+
+TEST(EnhancedHudInteractive, TheLiveInterfaceRequestFollowsTheSettingForEveryFactionAndNeverForUnsupportedSides)
+{
+	for (const char *side : {"America", "China", "GLA"})
+	{
+		EnhancedHud::setRequested(false);
+		EXPECT_FALSE(EnhancedHud::update(true, false, side, 1920, 1080, 1.5)) << side;       // Original
+		EnhancedHud::setRequested(true);
+		EXPECT_TRUE(EnhancedHud::update(true, false, side, 1920, 1080, 1.5)) << side;        // Enhanced, same match, same surface
+		EXPECT_STREQ(EnhancedHud::theme().name, std::strcmp(side, "America") == 0 ? "USA" : std::strcmp(side, "China") == 0 ? "China" : "GLA");
+		EnhancedHud::setRequested(false);
+		EXPECT_FALSE(EnhancedHud::update(true, false, side, 1920, 1080, 1.5)) << side;
+		EXPECT_FALSE(EnhancedHud::layout().valid);
+	}
+	// an observer / unsupported side is never Enhanced, whatever is requested
+	EnhancedHud::setRequested(true);
+	EXPECT_FALSE(EnhancedHud::update(true, false, "Observer", 1920, 1080, 1.5));
+	EnhancedHud::setRequested(false);
+	EnhancedHud::deactivate();
+}

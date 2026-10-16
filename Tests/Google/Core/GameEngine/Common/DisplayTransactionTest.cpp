@@ -581,10 +581,11 @@ TEST(ModernSettingsPages, ResolutionIsReadOnlyInBorderlessAndInAMatchAndSelectab
 TEST(ModernSettingsPages, DisplayAndGameplayControlsThatNeedTheMainMenuAreAllInTheGatingTable)
 {
 	using namespace OptionsPageLayout;
-	for (const char *control : {"ComboBoxResolution", "ModernMode", "ModernMonitor", "ModernUiScale", "ModernMotion", "ModernInterface", "ComboBoxDetail"})
+	for (const char *control : {"ComboBoxResolution", "ModernMode", "ModernMonitor", "ModernUiScale", "ModernMotion", "ComboBoxDetail"})
 		EXPECT_TRUE(mainMenuOnly(control)) << control;
-	// live everywhere: VSync, frame rate, volumes, mouse options
-	for (const char *control : {"ModernVsync", "ComboBoxFrameRateLimit", "SliderSFXVolume", "CheckAlternateMouse", "SliderScrollSpeed"})
+	// live everywhere (X64.37 v3): VSync, frame rate, Render Scale, the Original / Enhanced interface, volumes, mouse options
+	for (const char *control : {"ModernVsync", "ComboBoxFrameRateLimit", "ModernRenderScale", "ModernInterface", "SliderSFXVolume",
+	                            "CheckAlternateMouse", "SliderScrollSpeed"})
 		EXPECT_FALSE(mainMenuOnly(control)) << control;
 	// every gated control is on a page (so its label can carry the suffix)
 	for (const char *control : kMainMenuOnly)

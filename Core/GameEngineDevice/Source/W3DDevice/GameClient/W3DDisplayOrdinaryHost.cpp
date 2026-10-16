@@ -364,6 +364,9 @@ void W3DDisplay::initOrdinaryHostPresentation()
         DisplayRuntime::applyModeHook() = &NativeApplyDisplayMode;
         DisplayRuntime::sizeChoicesHook() = &NativeModernSizeChoicesFor;
         DisplayRuntime::vsyncHook() = [](bool enabled) { WW3D::Set_Native_Vsync(enabled); };
+        DisplayRuntime::renderScaleHook() = [](unsigned percent) {
+            if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) backend->Set_World_Render_Scale(percent);
+        };
         NativeRegisterPerformanceExtensions();
         if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
         EnhancedHud::setRequested(settings.enhancedHud);                  // Options > Interface; Original by default
@@ -439,6 +442,9 @@ void W3DDisplay::initOrdinaryHostPresentation()
     configuration.height = static_cast<unsigned>(displaySize.height);
     configuration.vsync = vsync;
     WW3D::Init_Native_Presentation(configuration);
+    if (modern && WorldRenderScale::active(DisplayRuntime::state().settings.renderScalePercent))
+        if (DisplayRuntime::RenderScaleFn setScale = DisplayRuntime::renderScaleHook())
+            setScale(DisplayRuntime::state().settings.renderScalePercent);        // the stored Render Scale, before the first frame
 
     m_2DRender = NEW Render2DClass;
     setWidth(displaySize.width);

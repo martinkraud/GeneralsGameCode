@@ -1650,3 +1650,106 @@ TEST(EnhancedHudTheme, GlaThemeIsFieldBuiltConstructionNotARecolour)
 	// mismatched plates stay subtle: the tint offset is small, so the module hierarchy is never inverted
 	EXPECT_LT(g.plateVariance, 12);
 }
+
+// ---- Global Powers: the compact dock (X64.37 v3) ------------------------------------------------------------------------------------
+//
+// Native finding at the lowest resolution: two Global Powers plates floated in the battlefield above the HUD. Cause: the retail
+// shortcut bar fills slots 0 .. n-1 from the left, the compact row positions slot k at k * pitch of a five slot row whose RIGHT end sits
+// at the island, so with n < 5 visible buttons the plates hung in the middle of the row, away from the island they belong to.
+
+namespace
+{
+const Surface kDockSurfaces[] = {{800, 600, ""}, {1024, 768, ""}, {1280, 720, ""}, {1280, 1024, ""}, {1366, 768, ""}, {1920, 1080, ""},
+                                 {1920, 1200, ""}, {2560, 1440, ""}, {3440, 1440, ""}, {5120, 1440, ""}, {1111, 777, ""}, {1777, 999, ""},
+                                 {1600, 1200, ""}, {2560, 1080, ""}};
+}  // namespace
+
+TEST(EnhancedHudGlobalPowers, TheCompactDockIsPackedAgainstTheIslandAndStaysOnTheSurface)
+{
+	int compactSurfaces = 0, sideSurfaces = 0;
+	for (const Surface &s : kDockSurfaces)
+		for (double scale : {0.75, 1.0, 1.5, 2.0, 3.0})
+		{
+			const Result l = EnhancedHudLayout::compute(s.w, s.h, scale);
+			ASSERT_TRUE(l.valid) << s.w << "x" << s.h;
+			if (!l.powerHorizontal)
+			{
+				// the accepted side dock is untouched where it fits: plates end exactly at the screen edge
+				++sideSurfaces;
+				EXPECT_EQ(l.powerEdgeRight, s.w) << s.w << "x" << s.h << " " << scale;
+				EXPECT_FALSE(EnhancedHudPanels::compactDock(l, 3, s.w).valid);
+				continue;
+			}
+			++compactSurfaces;
+			const int inset = EnhancedHudLayout::scaledRef(14, l.scale);
+			for (int n = 1; n <= 8; ++n)
+			{
+				const EnhancedHudPanels::CompactDock d = EnhancedHudPanels::compactDock(l, n, s.w);
+				ASSERT_TRUE(d.valid) << s.w << "x" << s.h << " n" << n;
+				const std::string tag = std::to_string(s.w) + "x" + std::to_string(s.h) + " scale " + std::to_string(scale) + " n" + std::to_string(n);
+				EXPECT_GE(d.plates.x, 0) << tag;                                           // on the surface
+				EXPECT_LE(d.plates.right(), s.w) << tag;
+				EXPECT_GE(d.plates.y, 0) << tag;
+				EXPECT_LE(d.plates.bottom(), l.island.y) << tag;                           // above the island, not over it
+				EXPECT_EQ(d.row.w, n * d.pitch) << tag;                                    // exactly as wide as its plates need
+				if (d.plates.x > 0)                                                         // not clamped by the surface edge
+					EXPECT_EQ(d.plates.right() + inset, std::min(l.island.right(), s.w)) << tag;   // docked at the island's right end
+				// attached: a rail joins the plates to the island's top edge
+				if (d.plates.bottom() < l.island.y)
+				{
+					EXPECT_EQ(d.rail.bottom(), l.island.y) << tag;
+					EXPECT_EQ(d.rail.y, d.plates.bottom()) << tag;
+					EXPECT_TRUE(d.rail.within(Rect{0, 0, s.w, s.h})) << tag;
+				}
+				// the plates of the n slots never overlap each other
+				const int plateW = d.plates.w - (n - 1) * d.pitch;
+				EXPECT_GT(plateW, 0) << tag;
+				EXPECT_LE(plateW, d.pitch) << tag;
+			}
+		}
+	EXPECT_GT(compactSurfaces, 0);
+	EXPECT_GT(sideSurfaces, 0);
+}
+
+TEST(EnhancedHudGlobalPowers, TheDockOnlyDependsOnTheSurfaceAndNeverOnTheFactionOrTheHistory)
+{
+	EnhancedHud::setRequested(true);
+	// compact -> large -> compact: the same surface always gives the same dock
+	const Surface order[] = {{800, 600, ""}, {2560, 1440, ""}, {1024, 768, ""}, {5120, 1440, ""}, {800, 600, ""}};
+	Rect first{};
+	for (const Surface &s : order)
+		for (const char *side : {"America", "China", "GLA"})
+		{
+			ASSERT_TRUE(EnhancedHud::update(true, false, side, s.w, s.h, 1.0)) << side;
+			const Result &l = EnhancedHud::layout();
+			const Result fresh = EnhancedHudLayout::compute(s.w, s.h, 1.0);
+			EXPECT_EQ(l.powerPanel.x, fresh.powerPanel.x);
+			EXPECT_EQ(l.powerPanel.y, fresh.powerPanel.y);
+			EXPECT_EQ(l.powerHorizontal, fresh.powerHorizontal);
+			if (s.w == 800 && std::strcmp(side, "America") == 0)
+			{
+				const Rect now = EnhancedHudPanels::compactDock(l, 2, s.w).plates;
+				if (first.empty()) first = now;
+				else { EXPECT_EQ(now.x, first.x); EXPECT_EQ(now.y, first.y); EXPECT_EQ(now.w, first.w); }
+			}
+		}
+	EnhancedHud::setRequested(false);
+	EnhancedHud::deactivate();
+}
+
+TEST(EnhancedHudGlobalPowers, TwoVisibleButtonsAtTheLowestResolutionTouchTheIsland)
+{
+	// the native screenshot: 800x600, two visible shortcut buttons
+	const Result l = EnhancedHudLayout::compute(800, 600, 1.0);
+	ASSERT_TRUE(l.valid);
+	ASSERT_TRUE(l.powerHorizontal);
+	const EnhancedHudPanels::CompactDock d = EnhancedHudPanels::compactDock(l, 2, 800);
+	ASSERT_TRUE(d.valid);
+	// the old placement: slots 0 and 1 of a row whose right end is the island's right end
+	const int oldRight = l.powerPanel.x + 1 * d.pitch + EnhancedHudLayout::scaledRef(EnhancedHudLayout::kPowerButtonX + EnhancedHudLayout::kPowerButtonW, l.scale);
+	EXPECT_LT(oldRight + 2 * d.pitch, l.island.right());                       // it floated well left of the island's right end
+	EXPECT_GT(d.plates.right(), oldRight);                                    // the packed plates are further right ...
+	EXPECT_GE(d.plates.right() + EnhancedHudLayout::scaledRef(14, l.scale), l.island.right() - 1);   // ... and end at the island
+	EXPECT_EQ(d.rail.bottom(), l.island.y);                                    // with a rail to the island's top edge
+}
+

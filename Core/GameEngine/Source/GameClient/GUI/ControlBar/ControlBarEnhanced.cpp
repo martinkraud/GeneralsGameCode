@@ -414,15 +414,31 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 	auto rememberWin = []( GameWindow *win ) { remember( s_powers, win ); };
 	if( layout.powerHorizontal )
 	{
-		// compact fallback: the same five shortcut buttons in a row (slot = the button's own index)
-		EnhancedHudWindows::applyPowerRow<GameWindow>( parent, panel, factor, original, rememberWin,
+		// compact fallback: the visible shortcut buttons (the retail bar fills slots 0..n-1 from the left) are packed against the
+		// island's right end by EnhancedHudPanels::compactDock, so they are docked to the HUD instead of floating in the battlefield
+		int visible = 0;
+		for( int i = 0; i < MAX_SPECIAL_POWER_SHORTCUTS; ++i )
+			if( m_specialPowerShortcutButtonParents[ i ] && !m_specialPowerShortcutButtonParents[ i ]->winIsHidden() )
+				++visible;
+		const Int surfaceW = TheDisplay ? (Int)TheDisplay->getWidth() : layout.island.right();
+		const EnhancedHudPanels::CompactDock dock = EnhancedHudPanels::compactDock( layout, visible > 0 ? visible : 1, surfaceW );
+		const EnhancedHudLayout::Rect fiveSlots = { dock.row.x, dock.row.y, dock.pitch * EnhancedHudLayout::kPowerCount, dock.row.h };
+		EnhancedHudWindows::applyPowerRow<GameWindow>( parent, dock.valid ? fiveSlots : panel, factor, original, rememberWin,
 			[this]( GameWindow *child )
 			{
+				int rank = 0;
 				for( int i = 0; i < MAX_SPECIAL_POWER_SHORTCUTS; ++i )
+				{
+					if( !m_specialPowerShortcutButtonParents[ i ] || m_specialPowerShortcutButtonParents[ i ]->winIsHidden() )
+						continue;
 					if( m_specialPowerShortcutButtonParents[ i ] == child )
-						return i;
-				return -1;
+						return rank;
+					++rank;
+				}
+				return 0;     // hidden slots take no place in the row
 			} );
+		if( dock.valid )
+			parent->winSetSize( dock.row.w, dock.row.h );     // the row is exactly as wide as the visible plates need
 	}
 	else
 		EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, panel, factor, original, rememberWin,
@@ -1045,6 +1061,28 @@ void powersPanelDraw( GameWindow *window, WinInstanceData * )
 	const HudPalette c = makePalette();
 	s_drawScale = l.scale;
 	const Int k = c.theme->plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( c.theme->plateCornerRef ) : 0;
+	if( l.powerHorizontal )
+	{
+		// compact dock: a mounting rail from the plates down to the island's top edge, so the row reads as part of the HUD
+		Int left = 0, right = 0, bottom = 0;
+		bool any = false;
+		for( GameWindow *slot = window->winGetChild(); slot; slot = slot->winGetNext() )
+		{
+			GameWindow *button = slot->winIsHidden() ? nullptr : slot->winGetChild();
+			if( !button || button->winIsHidden() )
+				continue;
+			const HRect plate = EnhancedHudLayout::powerPlateRect( windowRect( button ), l.scale );
+			left = any ? std::min( left, plate.x ) : plate.x;
+			right = any ? std::max( right, plate.right() ) : plate.right();
+			bottom = any ? std::max( bottom, plate.bottom() ) : plate.bottom();
+			any = true;
+		}
+		if( any && bottom < l.island.y )
+		{
+			const HRect rail = { left, bottom, right - left, l.island.y - bottom };
+			drawBevelPlate( rail, 0, CM_ALL, themeColor( c.theme->controlLow ), c.shadow, false, c );
+		}
+	}
 	for( GameWindow *slot = window->winGetChild(); slot; slot = slot->winGetNext() )
 	{
 		if( slot->winIsHidden() )

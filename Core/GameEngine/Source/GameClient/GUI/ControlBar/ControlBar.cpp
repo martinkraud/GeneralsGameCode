@@ -3588,6 +3588,8 @@ void ControlBar::populateSpecialPowerShortcut( Player *player)
 		}
 
 	}
+	if( EnhancedHud::active() )
+		applyEnhancedPowerShortcutLayout();   // Enhanced: the visible buttons just changed; the compact dock packs them (presentation only)
 	if(m_contextParent[ CP_MASTER ] && !m_contextParent[ CP_MASTER ]->winIsHidden() && m_specialPowerShortcutParent->winIsHidden())
 	{
 		showSpecialPowerShortcut();

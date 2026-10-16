@@ -15,6 +15,7 @@ unavailable (and says so) | **E** obsolete (removed / replaced) | **F** deferred
 | DISPLAY | Resolution | **A** (windowed, main menu); read-only in borderless and in a match (**D**) - the label says "(desktop size)" / "(main menu)" | Real list (see 3): windowed = standard + driver sizes that fit the work area of the chosen monitor, borderless = the desktop size only. Changes the real window and swap chain (`NativeApplyDisplayMode` -> `D3D11Backend::Resize`) inside an Apply/Keep/Revert transaction. In a match the display is kept; the label says "(main menu)". |
 | DISPLAY | Display Mode: Windowed / Borderless Fullscreen | **A** (main menu), **D** in a match | Real window style/position/size change inside the transaction. Exclusive fullscreen is **not offered** (section 4). |
 | DISPLAY | Monitor | **A** | Real `EnumDisplayMonitors` list ("1 (Primary)  2560 x 1440 @ 144 Hz"), stable identity by Windows device name; the row is shown only when more than one monitor is attached (no greyed row). |
+| DISPLAY | Render Scale (100 / 90 / 80 / 75 / 67 / 50 %, each with its effective internal resolution) | **A** (live everywhere, also in a match) | X64.37 v3. Real: the 3D world renders into an intermediate target of that size and is composited to the back buffer; HUD, text, tooltips, radar and the mouse stay in presentation space. See section 10. Default 100 % = the unchanged path. |
 | DISPLAY | UI Scale (Auto, 75..300 %) | **A** (main menu), **D** in a match | Real: `DisplayRuntime::setUiScalePercent` + shell/control-bar rebuild; part of the same transaction. |
 | DISPLAY | VSync | **A** | Live everywhere (`WW3D::Set_Native_Vsync`), persisted at once (not risky). |
 | DISPLAY | Frame Rate Limit | **A** | The single `FramePacer` limiter (X64.33); unchanged. |
@@ -29,7 +30,7 @@ unavailable (and says so) | **E** obsolete (removed / replaced) | **F** deferred
 | CONTROLS | Draw scroll anchor, Move scroll anchor | **A** (restored) | Retail checkboxes with live handlers that Modern Options had hidden; now on the page. |
 | CONTROLS | Keyboard Options button / key rebinding | **E** / **F** | The retail button opens `Menus/KeyboardOptionsMenu.wnd`, which does not exist in the Generals `Window.big` (Zero Hour only). Robust rebinding is a separate subsystem (input mapping, conflicts, persistence, in-match dispatch); a partial one would be fragile. Not shown, deferred. |
 | GAMEPLAY | Unit Motion (Original / Smooth) | **B** | Real (`GroundTranslation::setEnabled`), default Original; Smooth is still labelled experimental. Main menu only (labelled in a match). |
-| GAMEPLAY | Interface (Original / Enhanced) | **A** | Enhanced for USA, China and GLA (CP10); applies when the next match builds its control bar (labelled "main menu"). |
+| GAMEPLAY | Interface (Original / Enhanced) | **A** (live everywhere, also in a match) | Enhanced for USA, China and GLA (CP10). In a running match Accept switches the HUD in place (section 10); from the main menu it applies to the next match. |
 | GAMEPLAY | Language filter | **E** - not offered | v1 restored it, and native testing showed `MISSING: 'GUILanguageFilter'`: the checkbox's token `GUI:LanguageFilter` is Zero Hour vocabulary and does not exist in the Generals string file, and nothing in Generals reads `m_languageFilterPref` (the uses are commented out). A control with no label and no effect is removed from the page. |
 | GAMEPLAY | Use camera / Save camera ("Use saved camera in replays" / "Save camera in replays") | **A** (restored) | Retail handlers and Generals tokens; had been hidden by the Modern pages. |
 | NETWORK | LAN IP, online IP, firewall refresh / port override, HTTP proxy, send delay | **B** / **F** | The retail block moved whole; functional where networking exists, disabled in a match and online (retail rule). Re-flow and online modernization are explicitly out of scope. |
@@ -107,3 +108,69 @@ re-flow / online modernization.
 | In-match controls | Disabled by two lists in two places. | One table (`kMainMenuOnly`): the controls are disabled and their labels carry "(main menu)". |
 
 Bounded audit of all six tabs (no new features): DISPLAY - selection, rebuild-on-mode-change and gating verified in source; GRAPHICS - only Detail (+ the Advanced sub-screen, now bounded); AUDIO - no dropdowns, unchanged; CONTROLS - checkboxes now share the slider's panel; GAMEPLAY - the dropdown/checkbox overlap above; NETWORK - the retail block moved whole, its tokens exist, disabled in a match by the retail rule. No other missing token, overlapping control or non-persisting setting was found in the source.
+
+## 10. X64.37 v3: Render Scale, live changes in a match, live HUD switching, the compact Global Powers dock
+
+### 10.1 Display resolution vs render resolution
+* **Display resolution** = the size of the window client / swap chain = the presentation space. Windowed: selectable (the list of section 3).
+  Borderless Fullscreen: the monitor's desktop size, read-only (label "(desktop size)"); nothing pretends the desktop mode changed.
+* **Render resolution** = the size the 3D world is drawn at before it is composited into the presentation. It is independent of the display
+  resolution and of the UI scale (`RenderScaleSettings.RenderScaleAndUiScaleAreIndependentSystems`): the HUD does not grow when the world is
+  rendered smaller, the mouse keeps working in presentation coordinates, text and the 2D interface are never rendered at the lower size.
+
+### 10.2 Render Scale architecture (audit of the D3D11 path)
+* The D3D11 backend has exactly two submission kinds: `Submit_Render2D` (all UI, fonts, tooltips, radar, control bar, sentences) and
+  `Submit_World` (terrain, roads, bridges, shore, water, objects, particles, decals, shadows, shroud through `NativeWorldObjects` /
+  `NativeWorldEffects` / `HeightMap`). Both draw into the swap-chain back buffer; `W3DView::draw` renders the scene (`doRender`) before the
+  interface. That is the natural seam: world space vs presentation space.
+* Implementation (`D3D11Backend`, X64.37 v3; the pure arithmetic is `WW3D2/Backend/WorldRenderScale.h`): while the scale is below 100 %
+  every `Submit_World` draws into a lazily created colour + depth/stencil target of `round(size * percent)` (minimum 64 px, never above the
+  presentation size, aspect preserved) with its viewport mapped into it (projection unchanged: same aspect). The first 2D submission,
+  the present, the end of the scene and a readback first composite what the world drew into the back buffer with a bilinear full-screen
+  triangle, only inside the rectangle the world covered. The intermediate target is cleared with the last clear colour / depth at the start
+  of each picture, depth-only clears apply to it too, and a resize drops it (recreated at the new size).
+* Not implemented, by decision: DLSS / FSR / XeSS, temporal accumulation or reconstruction, frame generation, sharpening.
+* Limits: it is GPU work only (it does not help a CPU-bound simulation). A world draw after a 2D draw in the same picture is composited again
+  over the region (the engine draws the world first, then the interface; no interleaving was found in the native path). Visual quality and
+  the performance benefit are **not natively verified**.
+* Screenshots: `Readback_RGBA8` reads the back buffer after the composite, so a screenshot is the presented picture at display resolution
+  with the full-resolution interface (never the low-resolution world target).
+
+### 10.3 Live changes during a match: audit and support matrix
+What a display change touches (read from the source): `NativeApplyDisplayMode` (window, swap chain `ResizeBuffers`, `Display::setDisplayMode`:
+display size, 2D range, mouse limits, tactical-view proportions) is safe between frames. But the in-game windows are **created at match start
+from WND files with the geometry transform of that moment** (`parseScreenRect`): `ControlBar.wnd` (`InGameUI::createControlBar`),
+`ReplayControl.wnd`, `GeneralsExpPoints.wnd` and the shortcut bar / tooltip layouts (`ControlBar::init`), `InGamePopupMessage.wnd`.
+`InGameUI::recreateControlBar` replaces `ControlBar.wnd` and the `ControlBar` object (`delete TheControlBar; new ControlBar`) but not
+ReplayControl or the popup message, and the new object has none of the player-specific initialisation (`setControlBarSchemeByPlayer`,
+`initSpecialPowershortcutBar`) that `changeLocalPlayer` performs. Proving that mid-simulation (selection, command context, observer, the
+Enhanced HUD statics, the popup, tooltips) needs native evidence the project does not have, so these stay **main menu only**, labelled
+"(main menu)":
+
+| setting | in a match | reason |
+|---|---|---|
+| Render Scale | **live** | backend-internal; no window, layout or UI object changes |
+| VSync, Frame Rate Limit | **live** | already live (present flag / frame pacer) |
+| Interface (Original / Enhanced) | **live** | scheme re-init of the same player (10.4) |
+| Resolution, Display Mode, Monitor, UI Scale | main menu | the in-game windows above keep the old geometry; control-bar recreation mid-match is unproven |
+| Unit Motion | main menu | per-object interpolation snapshots start at match load; enabling them mid-match is not audited |
+| Detail | main menu | load-time LOD (retail rule) |
+
+### 10.4 Live Original <-> Enhanced HUD switching
+`ModernDisplayOptions::apply` -> `refreshHudPresentation()`: `ControlBar::setControlBarSchemeByPlayer(viewed player)` (observer template for
+an inactive player). The same-side branch calls `ControlBarScheme::init()`, which runs `EnhancedHud::update()` for the new request, replaces the
+scheme placement and then either `applyEnhancedLayout()` (windows remembered, moved into the island, Global Powers re-anchored, popup skinned) or
+`restoreOriginalLayout()` (remembered geometry and visibility back, draw functions and images restored); `markUIDirty()` makes the game
+re-evaluate its context. Nothing is destroyed or created: selection, command state, cash, power, rank, XP, General Points, purchased
+powers, cooldowns, radar, camera, groups, audio and the simulation are untouched (the control bar stage returns to its default). This is the
+proven mechanism of observer/player switching. Cancel does not call `apply`, so an unaccepted choice is not applied or persisted; Accept persists
+`InterfaceStyle` at once. Tested by mock-window cycles Original -> Enhanced -> Original -> Enhanced for USA, China and GLA (exact retail
+geometry and hit regions, deterministic Enhanced geometry, an untouched game-state record). **Not natively verified.**
+
+### 10.5 Compact Global Powers dock (native finding at 800x600)
+Cause (read from the code): the retail shortcut bar fills its slots from the left (`populateSpecialPowerShortcut`: `currentButton++`), the
+compact row positioned slot k at `k * pitch` of a five-slot row whose right end is the island's right end, and the row was applied only
+when the bar was created - before the buttons became visible. Two visible powers therefore hung in the middle of the row, away from the
+island. Fix (framework layout untouched, hash-pinned): `EnhancedHudPanels::compactDock` packs the visible plates against the island's right
+end (inset by the shoulder), the layout is re-applied after every populate, and the dock draws a mounting rail from the plates to the island's
+top edge. The side column on wider surfaces is unchanged. Identical for USA, China and GLA.

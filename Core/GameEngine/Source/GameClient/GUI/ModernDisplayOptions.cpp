@@ -26,7 +26,12 @@
 #include "GameClient/HeaderTemplate.h"
 #include "GameClient/InGameUI.h"
 #include "GameClient/Mouse.h"
+#include "GameClient/ControlBar.h"
 #include "GameClient/Shell.h"
+#include "GameLogic/GameLogic.h"
+#include "Common/Player.h"
+#include "Common/PlayerList.h"
+#include "Common/PlayerTemplate.h"
 
 #include <cstring>
 #include <map>
@@ -51,6 +56,7 @@ GameWindow *s_monitor = nullptr;
 GameWindow *s_mode = nullptr;
 GameWindow *s_uiScale = nullptr;
 GameWindow *s_vsync = nullptr;
+GameWindow *s_renderScale = nullptr;
 GameWindow *s_motion = nullptr;
 GameWindow *s_interface = nullptr;   // Original | Enhanced (applies from the next match; not live-switched)
 bool s_inMatch = false;
@@ -168,6 +174,7 @@ void syncFromRuntime()
 	select(s_monitor, DisplayRuntime::state().resolved.monitorIndex);
 	select(s_uiScale, uiScaleIndex(s.uiScalePercent));
 	select(s_vsync, s.vsync ? 1 : 0);
+	select(s_renderScale, WorldRenderScale::indexOf(s.renderScalePercent));
 	select(s_motion, GroundTranslation::isEnabled() ? 1 : 0);
 	select(s_interface, s.enhancedHud ? 1 : 0);
 }
@@ -315,6 +322,60 @@ void updateResolutionControl()
 	setLabelSuffix("OptionsMenu.wnd:ResolutionLabel", suffix);
 }
 
+// Presentation size the pending Display settings will have (Render Scale shows the internal resolution it gives at that size).
+DisplayGeometry::Size pendingPresentationSize()
+{
+	if (pendingBorderless() && !s_sizes.empty())
+		return s_sizes.front();                                   // borderless: the desktop size
+	const Int index = selected(s_resolution);
+	if (index >= 0 && index < static_cast<Int>(s_sizes.size()))
+		return s_sizes[static_cast<size_t>(index)];
+	return DisplayRuntime::state().resolved.client;
+}
+
+void refreshRenderScaleLabels()
+{
+	if (!s_renderScale)
+		return;
+	Int keep = selected(s_renderScale);
+	if (keep < 0)
+		keep = WorldRenderScale::indexOf(DisplayRuntime::state().settings.renderScalePercent);
+	const DisplayGeometry::Size size = pendingPresentationSize();
+	s_refreshing = true;
+	GadgetComboBoxReset(s_renderScale);
+	for (int i = 0; i < WorldRenderScale::kChoiceCount; ++i)
+	{
+		const std::string text = WorldRenderScale::label(WorldRenderScale::kChoices[i], static_cast<unsigned>(size.width), static_cast<unsigned>(size.height));
+		UnicodeString entry;
+		entry.translate(AsciiString(text.c_str()));
+		addEntry(s_renderScale, entry);
+	}
+	GadgetComboBoxSetSelectedPos(s_renderScale, keep);
+	s_refreshing = false;
+}
+
+// Live Original <-> Enhanced switch inside a running match: nothing is destroyed or rebuilt. The control bar's scheme is re-initialised for
+// the same player (the proven path of changeLocalPlayer / observer switching): EnhancedHud::update decides for the new request,
+// then the scheme places the retail windows and either moves them into the island (Enhanced) or puts the remembered retail
+// geometry back (Original). Selection, command state, cash, power, rank, XP, General Points, Global Powers and the simulation are
+// untouched; only the control bar stage returns to its default.
+void refreshHudPresentation()
+{
+	if (!TheControlBar)
+		return;
+	Player *viewed = TheControlBar->getCurrentlyViewedPlayer();
+	if (viewed && viewed->isPlayerActive())
+		TheControlBar->setControlBarSchemeByPlayer(viewed);
+	else if (ThePlayerTemplateStore)
+		TheControlBar->setControlBarSchemeByPlayerTemplate(ThePlayerTemplateStore->findPlayerTemplate(NAMEKEY("FactionObserver")));
+	TheControlBar->markUIDirty();
+}
+
+bool reallyInMatch()
+{
+	return TheGameLogic && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame();
+}
+
 void closeBox()
 {
 	if (s_box)
@@ -423,6 +484,10 @@ bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch
 	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:Off", L"Off"));
 	addEntry(s_vsync, TheGameText->FETCH_OR_SUBSTITUTE("GUI:On", L"On"));
 
+	caption("OptionsMenu.wnd:ModernRenderScaleLabel", L"Render Scale", "GUI:RenderScale");
+	s_renderScale = combo("OptionsMenu.wnd:ModernRenderScale", WorldRenderScale::kChoiceCount);
+	refreshRenderScaleLabels();
+
 	caption("OptionsMenu.wnd:ModernUiScaleLabel", L"UI Scale", "GUI:UIScale");
 	s_uiScale = combo("OptionsMenu.wnd:ModernUiScale", kUiScaleCount);
 	for (int i = 0; i < kUiScaleCount; ++i)
@@ -463,6 +528,7 @@ bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch
 
 	syncFromRuntime();
 	rebuildSizes(pendingBorderless(), pendingMonitor());
+	refreshRenderScaleLabels();
 	if (inMatch)
 	{
 		// A running match keeps its window and layouts: every control of the shared main-menu-only table is disabled AND its
@@ -504,11 +570,19 @@ void populateResolution(GameWindow *combo)
 	if (!s_resolution)
 		s_resolution = combo;
 	updateResolutionControl();
+	refreshRenderScaleLabels();
 }
 
 void onSelectionChanged(GameWindow *control)
 {
-	if (s_refreshing || !control || (control != s_mode && control != s_monitor) || !s_resolution)
+	if (s_refreshing || !control)
+		return;
+	if (control == s_resolution)
+	{
+		refreshRenderScaleLabels();           // the effective internal resolution follows the pending display size
+		return;
+	}
+	if ((control != s_mode && control != s_monitor) || !s_resolution)
 		return;
 	// the Resolution list follows the pending mode and monitor; the previous choice is kept when the new list offers it
 	const DisplayGeometry::Size previous = (selected(s_resolution) >= 0 && selected(s_resolution) < static_cast<Int>(s_sizes.size()))
@@ -519,6 +593,7 @@ void onSelectionChanged(GameWindow *control)
 		keep = DisplayRuntime::state().settings.resolution;
 	fillResolutionCombo(s_resolution, keep);
 	updateResolutionControl();
+	refreshRenderScaleLabels();
 }
 
 bool hasMultipleMonitors()
@@ -536,6 +611,7 @@ void reset()
 	// Defaults: automatic UI scale, vsync off, original unit motion; window mode and monitor are left as they are.
 	select(s_uiScale, 0);
 	select(s_vsync, 0);
+	select(s_renderScale, 0);   // 100 %
 	select(s_motion, 0);
 	select(s_interface, 0);   // Original
 }
@@ -566,8 +642,6 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 		if (scaleIndex >= 0 && scaleIndex < kUiScaleCount) requested.uiScalePercent = kUiScaleChoices[scaleIndex];
 		const Int motionIndex = selected(s_motion);
 		if (motionIndex >= 0) requested.smoothMotion = motionIndex == 1;
-		const Int interfaceIndex = selected(s_interface);
-		if (interfaceIndex >= 0) requested.enhancedHud = interfaceIndex == 1;
 		// windowed size: the combo (borderless always runs at the desktop size, the remembered windowed size is untouched)
 		const Int sizeIndex = selected(s_resolution);
 		if (requested.mode == WindowMode::Windowed && sizeIndex >= 0 && sizeIndex < static_cast<Int>(s_sizes.size()) &&
@@ -576,6 +650,12 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 	}
 	const Int vsyncIndex = selected(s_vsync);
 	if (vsyncIndex >= 0) requested.vsync = vsyncIndex == 1;
+	// live everywhere (also in a match): the HUD presentation and the Render Scale
+	const Int interfaceIndex = selected(s_interface);
+	if (interfaceIndex >= 0) requested.enhancedHud = interfaceIndex == 1;
+	const Int renderScaleIndex = selected(s_renderScale);
+	if (renderScaleIndex >= 0 && renderScaleIndex < WorldRenderScale::kChoiceCount)
+		requested.renderScalePercent = WorldRenderScale::kChoices[renderScaleIndex];
 
 	DisplayConfig::PersistPlan plan = DisplayConfig::planPersistence(state.stored, effective, requested);
 	bool relayout = false;
@@ -615,16 +695,26 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 			vsync(requested.vsync);
 		state.settings.vsync = requested.vsync;
 	}
+	if (requested.renderScalePercent != effective.renderScalePercent)
+	{
+		if (DisplayRuntime::RenderScaleFn scale = DisplayRuntime::renderScaleHook())
+			scale(requested.renderScalePercent);        // backend-internal: no layout, window or UI change
+		state.settings.renderScalePercent = requested.renderScalePercent;
+	}
 	if (!inMatch)
 	{
 		GroundTranslation::setEnabled(requested.smoothMotion);
 		state.settings.smoothMotion = requested.smoothMotion;
-		EnhancedHud::setRequested(requested.enhancedHud);   // takes effect when the next match builds its control bar
-		if (requested.enhancedHud != effective.enhancedHud)
-		{
-			state.settings.enhancedHud = requested.enhancedHud;
-			relayout = true;   // the control bar is rebuilt like for a UI scale change; the layout is chosen at its creation
-		}
+	}
+	EnhancedHud::setRequested(requested.enhancedHud);
+	if (requested.enhancedHud != effective.enhancedHud)
+	{
+		state.settings.enhancedHud = requested.enhancedHud;
+		if (reallyInMatch())
+			refreshHudPresentation();     // a running match switches at once, in place
+		else if (!inMatch)
+			relayout = true;              // main menu: the control bar is rebuilt like for a UI scale change
+		// (an online lobby has no control bar in use: the choice applies when the next match builds it)
 	}
 	return relayout;
 }
@@ -685,7 +775,7 @@ void update()
 
 void forget()
 {
-	s_panelHost = s_resolution = s_monitor = s_mode = s_uiScale = s_vsync = s_motion = s_interface = nullptr;
+	s_panelHost = s_resolution = s_monitor = s_mode = s_uiScale = s_vsync = s_renderScale = s_motion = s_interface = nullptr;
 	s_monitors.clear();
 	s_inMatch = false;
 	s_labelBase.clear();

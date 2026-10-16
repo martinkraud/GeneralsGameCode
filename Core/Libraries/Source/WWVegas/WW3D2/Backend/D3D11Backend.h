@@ -51,6 +51,11 @@ public:
     // Bounded validation readback, not an engine screenshot/readback migration.
     std::vector<unsigned char> Readback_RGBA8();
     void Resize(unsigned width, unsigned height);
+    // X64.37 v3 Render Scale: the 3D world (Submit_World) renders into an intermediate target of `percent` of the presentation size
+    // and is composited to the back buffer before the first 2D submission, the screenshot readback or the present; 2D, text and the
+    // back buffer itself stay at full resolution. 100 = off (the exact previous path). Takes effect on the next submission.
+    void Set_World_Render_Scale(unsigned percent);
+    unsigned World_Render_Scale() const;
     void Set_Vsync(bool enabled); // X64.33; takes effect on the next Present
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;

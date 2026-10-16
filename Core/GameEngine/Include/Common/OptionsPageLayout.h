@@ -77,9 +77,10 @@ struct PageItem
 };
 
 constexpr PageItem kDisplayItems[] = {
-	{"ResolutionLabel", "ComboBoxResolution", ControlKind::Combo},
 	{"ModernModeLabel", "ModernMode", ControlKind::Combo},
 	{"ModernMonitorLabel", "ModernMonitor", ControlKind::Combo},
+	{"ResolutionLabel", "ComboBoxResolution", ControlKind::Combo},
+	{"ModernRenderScaleLabel", "ModernRenderScale", ControlKind::Combo},      // X64.37 v3: internal 3D resolution, live everywhere
 	{"ModernUiScaleLabel", "ModernUiScale", ControlKind::Combo},
 	{"ModernVsyncLabel", "ModernVsync", ControlKind::Combo},
 	{"FrameRateLimitLabel", "ComboBoxFrameRateLimit", ControlKind::Combo},
@@ -121,8 +122,11 @@ constexpr HostedControl kReparented[] = {
 };
 
 // Controls that cannot change while a match is running (they need the main menu): they are disabled AND their label says so.
+// Lifecycle reasons (SETTINGS_COMPLETION_AUDIT.md section 10): resolution, mode, monitor and UI scale change the geometry the in-game
+// windows were created with (ControlBar, ReplayControl, popup message ...); Unit Motion has per-object snapshots that start at match
+// load; Detail is a load-time LOD. The Interface (HUD) and Render Scale are live in a match.
 constexpr const char *kMainMenuOnly[] = {"ComboBoxResolution", "ModernMode", "ModernMonitor", "ModernUiScale", "ModernMotion",
-                                         "ModernInterface", "ComboBoxDetail"};
+                                         "ComboBoxDetail"};
 inline bool mainMenuOnly(const char *control)
 {
 	for (const char *name : kMainMenuOnly)

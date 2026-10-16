@@ -43,6 +43,9 @@ using VsyncFn = void (*)(bool enabled);
 // Resolution sizes offered for a (not yet applied) mode on a monitor: windowed = sizes that fit the work area, borderless = the desktop.
 using SizeChoicesFn = void (*)(bool borderless, int monitorIndex, std::vector<DisplayGeometry::Size> &out);
 inline SizeChoicesFn &sizeChoicesHook() { static SizeChoicesFn fn = nullptr; return fn; }
+// Render Scale (percent of the presentation size for the 3D world); registered by the presentation owner.
+using RenderScaleFn = void (*)(unsigned percent);
+inline RenderScaleFn &renderScaleHook() { static RenderScaleFn fn = nullptr; return fn; }
 inline ApplyModeFn &applyModeHook() { static ApplyModeFn fn = nullptr; return fn; }
 inline VsyncFn &vsyncHook() { static VsyncFn fn = nullptr; return fn; }
 

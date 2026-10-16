@@ -150,8 +150,11 @@ class EnhancedHudContracts(unittest.TestCase):
                    "Generals/Code/GameEngine/Source/GameLogic/AI/AIPathfind.cpp",
                    "GeneralsMD/Code/GameEngine/Source/GameLogic/AI/AIPathfind.cpp")
         post = [l for l in out.split() if l.startswith(guarded)]
-        # X64.35 attribution/instrumentation lives before 4a8641178; nothing after it may touch the guarded trees
-        self.assertEqual(post, [], post)
+        # X64.35 attribution/instrumentation lives before 4a8641178; nothing after it may touch the guarded trees - except the one
+        # reviewed X64.37 v3 change: Render Scale (the intermediate world target, its composite, and its pure arithmetic header).
+        reviewed = ["Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp", "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
+                    "Core/Libraries/Source/WWVegas/WW3D2/Backend/WorldRenderScale.h"]
+        self.assertEqual(sorted(post), sorted(reviewed), post)
 
     def test_image_fitting_is_enhanced_only_and_hit_regions_are_untouched(self):
         bar = text(BAR)

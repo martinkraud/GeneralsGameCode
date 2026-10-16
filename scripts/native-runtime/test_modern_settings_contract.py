@@ -94,7 +94,7 @@ class ModernSettingsContracts(unittest.TestCase):
         names = re.findall(r'\{(?:nullptr|"[A-Za-z]+"), "([A-Za-z]+)", ControlKind', layout)
         self.assertGreaterEqual(len(names), 18)
         label_for = {"ComboBoxResolution": "Resolution", "ModernMode": "Display Mode", "ModernMonitor": "Monitor", "ModernUiScale": "UI Scale",
-                     "ModernVsync": "VSync", "ComboBoxFrameRateLimit": "Frame Rate Limit", "ComboBoxDetail": "Detail",
+                     "ModernVsync": "VSync", "ModernRenderScale": "Render Scale", "ComboBoxFrameRateLimit": "Frame Rate Limit", "ComboBoxDetail": "Detail",
                      "SliderSFXVolume": "SFX / Music / Voice volume", "SliderMusicVolume": "SFX / Music / Voice volume",
                      "SliderVoiceVolume": "SFX / Music / Voice volume", "CheckAlternateMouse": "Alternate Mouse",
                      "SliderScrollSpeed": "Scroll Speed", "CheckBoxDrawAnchor": "Draw scroll anchor", "CheckBoxMoveAnchor": "Move scroll anchor",
@@ -231,6 +231,70 @@ class ModernOptionsVocabulary(unittest.TestCase):
         self.assertIn("GUI:OptionsMainMenuOnly", src)
         # the in-match gating comes from the one shared table (disabled AND labelled)
         self.assertIn("OptionsPageLayout::mainMenuOnly(item.control)", src)
+
+
+class RenderScaleAndLiveChanges(unittest.TestCase):
+    """X64.37 v3: Render Scale lifecycle, live HUD switching, the compact Global Powers dock."""
+
+    BACKEND = "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp"
+
+    def test_render_scale_is_world_only_and_off_by_default(self):
+        src = read(self.BACKEND)
+        sw = src[src.index("void D3D11Backend::Submit_World("):src.index("impl->context->DrawIndexed(s.index_count, s.first_index, 0);")]
+        # 100 % is exactly the previous path; only a scale below 100 takes the intermediate target
+        self.assertIn("const bool scaled = WorldRenderScale::active(impl->worldScale);", sw)
+        self.assertIn("if (!scaled)" + NL + "        Set_Viewport(s.viewport);", sw)
+        self.assertIn("drawRtv = impl->lowRtv.Get();", sw)
+        self.assertIn("OMSetRenderTargets(1, &rtv, drawDsv);", sw)
+        # the 2D path, text, UI and the back buffer are never scaled: the composite runs BEFORE any 2D drawing, the present and a readback
+        draw2d = src[src.index("void D3D11Backend::Draw(const Render2DSubmission &s)"):src.index("impl->Buffer(impl->vertices")]
+        self.assertIn("impl->FlushWorld();", draw2d)
+        self.assertLess(draw2d.index("impl->FlushWorld();"), draw2d.index("Set_Viewport(s.viewport);"))
+        self.assertIn("impl->FlushWorld();" + NL + "    impl->lowFresh = true;", src)                  # Flip_To_Primary
+        self.assertIn("impl->FlushWorld();     // a screenshot is the presented picture", src)    # Readback_RGBA8
+        # resize drops the intermediate target (recreated at the new size)
+        resize = src[src.index("void D3D11Backend::Resize("):src.index("void D3D11Backend::Set_World_Render_Scale")]
+        self.assertIn("impl->ReleaseLow();", resize)
+        # the arithmetic is the pure header that the tests cover
+        self.assertIn("WorldRenderScale::internalSize(config.width, config.height, worldScale)", src)
+        # ordinary scaling only: no vendor upscaler, no temporal data
+        for word in ("DLSS", "FSR", "XeSS", "FidelityFX", "frame generation", "TAA"):
+            self.assertNotIn(word, src)
+
+    def test_render_scale_is_a_live_setting_everywhere(self):
+        opt = read(OPTIONS)
+        self.assertIn("DisplayRuntime::renderScaleHook()", read(HOST))
+        self.assertIn("requested.renderScalePercent = WorldRenderScale::kChoices[renderScaleIndex];", opt)
+        self.assertIn("scale(requested.renderScalePercent);", opt)
+        # not inside the main-menu-only branch and not a layout change
+        layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
+        self.assertNotIn('"ModernRenderScale"', layout[layout.index("constexpr const char *kMainMenuOnly"):layout.index("inline bool mainMenuOnly")])
+        self.assertNotIn('"ModernInterface"', layout[layout.index("constexpr const char *kMainMenuOnly"):layout.index("inline bool mainMenuOnly")])
+
+    def test_live_hud_switch_rebinds_the_scheme_instead_of_rebuilding_the_bar(self):
+        opt = read(OPTIONS)
+        fn = opt[opt.index("void refreshHudPresentation()"):opt.index("bool reallyInMatch()")]
+        self.assertIn("setControlBarSchemeByPlayer(viewed)", fn)
+        self.assertIn("markUIDirty()", fn)
+        self.assertNotIn("recreateControlBar", fn)
+        ap = opt[opt.index("bool apply(OptionPreferences &preferences"):opt.index("bool confirmationPending()")]
+        self.assertIn("if (reallyInMatch())" + NL + chr(9) * 3 + "refreshHudPresentation();", ap)
+        # the scheme init is the one place that chooses Enhanced or Original for the side
+        scheme = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp")
+        init = scheme[scheme.index("void ControlBarScheme::init()"):scheme.index("// Add an animation to the animation list")]
+        self.assertIn("EnhancedHud::update(", init)
+        self.assertIn("TheControlBar->applyEnhancedLayout();", init)
+        self.assertIn("TheControlBar->restoreOriginalLayout();", init)
+
+    def test_compact_global_powers_dock(self):
+        eng = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarEnhanced.cpp")
+        self.assertIn("EnhancedHudPanels::compactDock(", eng)
+        self.assertIn("parent->winSetSize( dock.row.w, dock.row.h );", eng)
+        cb = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp")
+        pop = cb[cb.index("void ControlBar::populateSpecialPowerShortcut"):cb.index("Bool ControlBar::hasAnyShortcutSelection()")]
+        self.assertIn("applyEnhancedPowerShortcutLayout();", pop)          # re-packed whenever the visible buttons change
+        self.assertLess(pop.index("applyEnhancedPowerShortcutLayout();"), pop.index("showSpecialPowerShortcut();"))
+        # the frozen layout is untouched (hash-pinned by test_framework_v1_shared_headers_are_frozen)
 
 
 if __name__ == "__main__":

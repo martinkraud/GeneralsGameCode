@@ -4,6 +4,7 @@
 #include "WW3D2/Texture2DCPUContent.h"
 #include "WW3D2/shader.h"
 #include "WWMath/vector3.h"
+#include "WorldRenderScale.h"
 #include <d3d11.h>
 #include <dxgi.h>
 #include <d3dcompiler.h>
@@ -204,6 +205,33 @@ float4 PSTerrain(PW p) : SV_TARGET {
     return float4(t.rgb * p.col.rgb, a);
 }
 )";
+// Render Scale composite: a full-screen triangle that bilinearly resamples the intermediate world target into the back buffer. The
+// pixel position in the back buffer divided by the presentation size is the texture coordinate in the (smaller) world target.
+static const char blitShaderSource[] = R"(
+cbuffer Blit : register(b0) { float2 fullSize; float2 padding; };
+Texture2D worldColor : register(t0);
+SamplerState worldSampler : register(s0);
+struct BlitOut { float4 pos : SV_Position; };
+BlitOut VSBlit(uint id : SV_VertexID) {
+    BlitOut o;
+    float2 uv = float2((id << 1) & 2, id & 2);
+    o.pos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    return o;
+}
+float4 PSBlit(BlitOut i) : SV_TARGET {
+    return worldColor.Sample(worldSampler, i.pos.xy / fullSize);
+}
+)";
+ComPtr<ID3DBlob> CompileBlit(const char *entry, const char *profile)
+{
+    ComPtr<ID3DBlob> code, errors;
+    HRESULT result = D3DCompile(blitShaderSource, sizeof(blitShaderSource) - 1, "D3D11Blit",
+        nullptr, nullptr, entry, profile, D3DCOMPILE_ENABLE_STRICTNESS, 0, &code, &errors);
+    if (FAILED(result) && errors)
+        throw std::runtime_error(std::string(static_cast<const char *>(errors->GetBufferPointer()), errors->GetBufferSize()));
+    Check(result, "D3DCompile blit");
+    return code;
+}
 ComPtr<ID3DBlob> CompileWorld(const char *entry, const char *profile)
 {
     ComPtr<ID3DBlob> code, errors;
@@ -384,6 +412,97 @@ struct D3D11Backend::Impl {
             Check(device->CreateTexture2D(&z, nullptr, &depthTexture), "Create depth buffer");
             Check(device->CreateDepthStencilView(depthTexture.Get(), nullptr, &dsv), "Create DSV");
         }
+    }
+    // ---- Render Scale (X64.37 v3) ---------------------------------------------------------------------------------------------
+    unsigned worldScale = 100;                       // percent; 100 = the unscaled path
+    ComPtr<ID3D11Texture2D> lowColor, lowDepth;
+    ComPtr<ID3D11RenderTargetView> lowRtv;
+    ComPtr<ID3D11ShaderResourceView> lowSrv;
+    ComPtr<ID3D11DepthStencilView> lowDsv;
+    unsigned lowW = 0, lowH = 0;
+    bool lowFresh = true;                            // the intermediate target must be cleared before the next world draw
+    bool lowActive = false;                          // world draws since the last composite
+    unsigned dirtyL = 0, dirtyT = 0, dirtyR = 0, dirtyB = 0;   // union of the world viewports (presentation pixels)
+    float lastClearColor[4] = {0, 0, 0, 0};
+    float lastClearZ = 1.0f;
+    unsigned lastClearStencil = 0;
+    ComPtr<ID3D11VertexShader> blitVS;
+    ComPtr<ID3D11PixelShader> blitPS;
+    ComPtr<ID3D11SamplerState> blitSampler;
+    ComPtr<ID3D11Buffer> blitCB;
+    void ReleaseLow()
+    {
+        lowRtv.Reset(); lowSrv.Reset(); lowDsv.Reset(); lowColor.Reset(); lowDepth.Reset();
+        lowW = lowH = 0; lowFresh = true; lowActive = false;
+    }
+    void EnsureLow()
+    {
+        const WorldRenderScale::Size want = WorldRenderScale::internalSize(config.width, config.height, worldScale);
+        if (lowColor && lowW == want.width && lowH == want.height) return;
+        ReleaseLow();
+        D3D11_TEXTURE2D_DESC c{};
+        c.Width = want.width; c.Height = want.height; c.MipLevels = c.ArraySize = 1;
+        c.Format = DXGI_FORMAT_R8G8B8A8_UNORM; c.SampleDesc.Count = 1;
+        c.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        Check(device->CreateTexture2D(&c, nullptr, &lowColor), "Create world render-scale target");
+        Check(device->CreateRenderTargetView(lowColor.Get(), nullptr, &lowRtv), "Create world render-scale RTV");
+        Check(device->CreateShaderResourceView(lowColor.Get(), nullptr, &lowSrv), "Create world render-scale SRV");
+        D3D11_TEXTURE2D_DESC z{};
+        z.Width = want.width; z.Height = want.height; z.MipLevels = z.ArraySize = 1;
+        z.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; z.SampleDesc.Count = 1;
+        z.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+        Check(device->CreateTexture2D(&z, nullptr, &lowDepth), "Create world render-scale depth");
+        Check(device->CreateDepthStencilView(lowDepth.Get(), nullptr, &lowDsv), "Create world render-scale DSV");
+        lowW = want.width; lowH = want.height; lowFresh = true; lowActive = false;
+    }
+    void EnsureBlit()
+    {
+        if (blitVS) return;
+        auto vsCode = CompileBlit("VSBlit", "vs_4_0");
+        Check(device->CreateVertexShader(vsCode->GetBufferPointer(), vsCode->GetBufferSize(), nullptr, &blitVS), "Create blit VS");
+        auto psCode = CompileBlit("PSBlit", "ps_4_0");
+        Check(device->CreatePixelShader(psCode->GetBufferPointer(), psCode->GetBufferSize(), nullptr, &blitPS), "Create blit PS");
+        D3D11_SAMPLER_DESC d{};
+        d.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+        d.AddressU = d.AddressV = d.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+        d.ComparisonFunc = D3D11_COMPARISON_NEVER; d.MaxAnisotropy = 1; d.MinLOD = 0; d.MaxLOD = D3D11_FLOAT32_MAX;
+        Check(device->CreateSamplerState(&d, &blitSampler), "Create blit sampler");
+        D3D11_BUFFER_DESC b{};
+        b.ByteWidth = 16; b.Usage = D3D11_USAGE_DEFAULT; b.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        Check(device->CreateBuffer(&b, nullptr, &blitCB), "Create blit constants");
+    }
+    // Resamples what the world draws produced into the back buffer (only the rectangle they covered), then forgets them. Called
+    // before anything else draws into the back buffer, before the present and before a readback.
+    void FlushWorld()
+    {
+        if (!lowActive || !lowSrv || !rtv) return;
+        lowActive = false;
+        EnsureBlit();
+        const float constants[4] = {static_cast<float>(config.width), static_cast<float>(config.height), 0, 0};
+        context->UpdateSubresource(blitCB.Get(), 0, nullptr, constants, 0, 0);
+        D3D11_VIEWPORT vp{static_cast<float>(dirtyL), static_cast<float>(dirtyT), static_cast<float>(dirtyR - dirtyL),
+                          static_cast<float>(dirtyB - dirtyT), 0.0f, 1.0f};
+        ID3D11RenderTargetView *target = rtv.Get();
+        context->OMSetRenderTargets(1, &target, nullptr);
+        context->OMSetBlendState(blendOpaque.Get(), nullptr, 0xffffffff);
+        context->OMSetDepthStencilState(depth.Get(), 0);
+        context->RSSetState(raster.Get());
+        context->RSSetViewports(1, &vp);
+        context->IASetInputLayout(nullptr);
+        context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        context->VSSetShader(blitVS.Get(), nullptr, 0);
+        context->GSSetShader(nullptr, nullptr, 0);
+        context->PSSetShader(blitPS.Get(), nullptr, 0);
+        ID3D11Buffer *cb = blitCB.Get();
+        context->PSSetConstantBuffers(0, 1, &cb);
+        ID3D11ShaderResourceView *view = lowSrv.Get();
+        ID3D11SamplerState *smp = blitSampler.Get();
+        context->PSSetShaderResources(0, 1, &view);
+        context->PSSetSamplers(0, 1, &smp);
+        context->Draw(3, 0);
+        ID3D11ShaderResourceView *none = nullptr;
+        context->PSSetShaderResources(0, 1, &none);     // the world target is rendered into again next
+        ++draws;
     }
     void EnsureWorld()
     {
@@ -803,6 +922,7 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
         s.index_count % 3 || !s.positions || !s.uvs || !s.colors || !s.indices ||
         !std::isfinite(s.z) || s.z < 0 || s.z > 1) Unsupported();
     for (int i = 0; i < s.index_count; ++i) if (s.indices[i] >= s.vertex_count) Unsupported();
+    impl->FlushWorld();     // Render Scale: the scaled world is in the back buffer before any 2D drawing over it
     Set_Viewport(s.viewport);
     impl->Buffer(impl->vertices, impl->vertexCapacity, s.vertex_count * sizeof(Vertex), D3D11_BIND_VERTEX_BUFFER);
     impl->Buffer(impl->indices, impl->indexCapacity, s.index_count * sizeof(unsigned short), D3D11_BIND_INDEX_BUFFER);
@@ -849,9 +969,11 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     impl->context->DrawIndexed(s.index_count, 0, 0); ++impl->draws;
 }
 void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene = true; }
-void D3D11Backend::End_Scene(bool flip) { if (!impl->scene) Unsupported(); impl->scene = false; if (flip) Flip_To_Primary(); }
+void D3D11Backend::End_Scene(bool flip) { if (!impl->scene) Unsupported(); impl->FlushWorld(); impl->scene = false; if (flip) Flip_To_Primary(); }
 void D3D11Backend::Flip_To_Primary() {
     if (!impl->swapchain) Unsupported();
+    impl->FlushWorld();
+    impl->lowFresh = true;      // the next picture starts clean
     impl->GpuEnd();
     HRESULT result;
     {
@@ -869,10 +991,16 @@ D3D11Backend::Presentation D3D11Backend::Last_Presentation() const { return impl
 void D3D11Backend::Clear(bool color, bool depth, const Vector3 &rgb, float alpha, float depth_value, unsigned stencil)
 {
     if (depth && !impl->dsv) Unsupported(); // depth clear needs the opt-in depth buffer
+    if (color) impl->lowActive = false;     // a colour clear starts a new picture: nothing pending may survive it
     if (color) { const float rgba[] = {rgb.X, rgb.Y, rgb.Z, alpha}; impl->context->ClearRenderTargetView(impl->rtv.Get(), rgba); }
+    if (color) { impl->lastClearColor[0] = rgb.X; impl->lastClearColor[1] = rgb.Y; impl->lastClearColor[2] = rgb.Z; impl->lastClearColor[3] = alpha;
+                 impl->lowFresh = true; }
     if (depth) {
         const float z = std::isfinite(depth_value) && depth_value >= 0 && depth_value <= 1 ? depth_value : 1.0f;
         impl->context->ClearDepthStencilView(impl->dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, z, static_cast<UINT8>(stencil));
+        impl->lastClearZ = z; impl->lastClearStencil = stencil;
+        if (impl->lowDsv && !color)       // a depth-only clear in the middle of a picture applies to the world target as well
+            impl->context->ClearDepthStencilView(impl->lowDsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, z, static_cast<UINT8>(stencil));
     }
 }
 void D3D11Backend::Set_Viewport(const RenderBackendViewport &v)
@@ -888,14 +1016,26 @@ void D3D11Backend::Set_Vsync(bool enabled) { impl->config.vsync = enabled; }
 void D3D11Backend::Resize(unsigned width, unsigned height)
 {
     if (impl->scene || !width || !height || width > 16384 || height > 16384) Unsupported();
+    impl->FlushWorld();
     impl->context->OMSetRenderTargets(0, nullptr, nullptr);
+    impl->ReleaseLow();     // recreated at the new size by the next world submission
     impl->rtv.Reset(); impl->target.Reset(); impl->dsv.Reset(); impl->depthTexture.Reset();
     if (impl->swapchain) Check(impl->swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0), "ResizeBuffers");
     impl->config.width = width; impl->config.height = height; impl->Target();
     Set_Viewport({0, 0, width, height, 0, 1});
 }
+void D3D11Backend::Set_World_Render_Scale(unsigned percent)
+{
+    const unsigned value = WorldRenderScale::sanitize(static_cast<int>(percent));
+    if (value == impl->worldScale) return;
+    impl->FlushWorld();
+    impl->worldScale = value;
+    impl->ReleaseLow();
+}
+unsigned D3D11Backend::World_Render_Scale() const { return impl->worldScale; }
 std::vector<unsigned char> D3D11Backend::Readback_RGBA8()
 {
+    impl->FlushWorld();     // a screenshot is the presented picture: the scaled world is composited first
     D3D11_TEXTURE2D_DESC d{}; impl->target->GetDesc(&d);
     d.BindFlags = 0; d.Usage = D3D11_USAGE_STAGING; d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
     ComPtr<ID3D11Texture2D> staging;
@@ -1046,7 +1186,43 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     for (int i = 0; i < 16; ++i)
         if (!std::isfinite(s.world[i]) || !std::isfinite(s.view[i]) || !std::isfinite(s.projection[i])) Unsupported();
     impl->EnsureWorld();
-    Set_Viewport(s.viewport);
+    // Render Scale: the world draws into the intermediate target with the viewport mapped into it (the projection is unchanged: the
+    // aspect ratio is the same). 100 % takes exactly the previous path.
+    const bool scaled = WorldRenderScale::active(impl->worldScale);
+    ID3D11RenderTargetView *drawRtv = impl->rtv.Get();
+    ID3D11DepthStencilView *drawDsv = impl->dsv.Get();
+    if (!scaled)
+        Set_Viewport(s.viewport);
+    else
+    {
+        if (!s.viewport.width || !s.viewport.height || s.viewport.x > impl->config.width || s.viewport.y > impl->config.height ||
+            s.viewport.width > impl->config.width - s.viewport.x || s.viewport.height > impl->config.height - s.viewport.y ||
+            !std::isfinite(s.viewport.min_z) || !std::isfinite(s.viewport.max_z) || s.viewport.min_z < 0 || s.viewport.max_z > 1 ||
+            s.viewport.min_z > s.viewport.max_z) Unsupported();
+        impl->EnsureLow();
+        drawRtv = impl->lowRtv.Get();
+        drawDsv = impl->lowDsv.Get();
+        if (impl->lowFresh)
+        {
+            impl->context->ClearRenderTargetView(drawRtv, impl->lastClearColor);
+            impl->context->ClearDepthStencilView(drawDsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, impl->lastClearZ,
+                                                 static_cast<UINT8>(impl->lastClearStencil));
+            impl->lowFresh = false;
+        }
+        const WorldRenderScale::Rect mapped = WorldRenderScale::mapRect({s.viewport.x, s.viewport.y, s.viewport.width, s.viewport.height},
+            impl->config.width, impl->config.height, impl->lowW, impl->lowH);
+        D3D11_VIEWPORT viewport{static_cast<float>(mapped.x), static_cast<float>(mapped.y), static_cast<float>(mapped.w),
+                                static_cast<float>(mapped.h), s.viewport.min_z, s.viewport.max_z};
+        impl->context->RSSetViewports(1, &viewport);
+        const unsigned r = s.viewport.x + s.viewport.width, b = s.viewport.y + s.viewport.height;
+        if (!impl->lowActive) { impl->dirtyL = s.viewport.x; impl->dirtyT = s.viewport.y; impl->dirtyR = r; impl->dirtyB = b; }
+        else
+        {
+            impl->dirtyL = std::min(impl->dirtyL, s.viewport.x); impl->dirtyT = std::min(impl->dirtyT, s.viewport.y);
+            impl->dirtyR = std::max(impl->dirtyR, r); impl->dirtyB = std::max(impl->dirtyB, b);
+        }
+        impl->lowActive = true;
+    }
 
     float wvp[16];
     Multiply(s.world, s.view, wvp);
@@ -1078,9 +1254,9 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
         Check(impl->device->CreateSamplerState(&d, &sampler), "Create world sampler");
     }
     const unsigned stride = sizeof(WorldVertexXYZDUV2), offset = 0;
-    auto *vb = g->vertices.Get(); auto *cb = impl->worldCB.Get(); auto *rtv = impl->rtv.Get();
+    auto *vb = g->vertices.Get(); auto *cb = impl->worldCB.Get(); auto *rtv = drawRtv;
     auto *srv = texture->view.Get(); auto *smp = sampler.Get();
-    impl->context->OMSetRenderTargets(1, &rtv, impl->dsv.Get());
+    impl->context->OMSetRenderTargets(1, &rtv, drawDsv);
     ID3D11BlendState *blendState = s.material == WorldMaterial::TerrainBlend ? impl->blend.Get() : impl->blendOpaque.Get();
     if (s.material == WorldMaterial::TerrainOverlay || water) {
         if (static_cast<size_t>(s.blend) >= static_cast<size_t>(WorldBlend::Count)) Unsupported();
@@ -1089,8 +1265,8 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     impl->context->OMSetBlendState(blendState,
                                    nullptr, 0xffffffff);
     ID3D11DepthStencilState *depthState = s.depth_write ? impl->depthWrite.Get() : impl->depthTestOnly.Get();
-    if (s.material == WorldMaterial::TerrainOverlay && s.stencil_once && impl->dsv) depthState = impl->depthStencilOnce.Get();
-    else if (s.material == WorldMaterial::TerrainOverlay && s.depth_always && impl->dsv) depthState = impl->depthAlways.Get();
+    if (s.material == WorldMaterial::TerrainOverlay && s.stencil_once && drawDsv) depthState = impl->depthStencilOnce.Get();
+    else if (s.material == WorldMaterial::TerrainOverlay && s.depth_always && drawDsv) depthState = impl->depthAlways.Get();
     impl->context->OMSetDepthStencilState(depthState, 0);
     impl->context->RSSetState(((s.material == WorldMaterial::TerrainOverlay || water) && s.double_sided) ? impl->worldRasterNoCull.Get()
                                                                                                          : impl->worldRaster.Get());
@@ -1114,7 +1290,7 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
     impl->context->PSSetShaderResources(0, 4, views);
     impl->context->PSSetSamplers(0, 4, samplers);
     {
-        impl->Note(Impl::SRtv, rtv); impl->Note(Impl::SDsv, impl->dsv.Get());
+        impl->Note(Impl::SRtv, rtv); impl->Note(Impl::SDsv, drawDsv);
         impl->Note(Impl::SBlend, blendState); impl->Note(Impl::SDepth, depthState);
         impl->Note(Impl::SRaster, (((s.material == WorldMaterial::TerrainOverlay || water) && s.double_sided)
                                    ? impl->worldRasterNoCull.Get() : impl->worldRaster.Get()));

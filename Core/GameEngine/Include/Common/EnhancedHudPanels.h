@@ -248,6 +248,45 @@ inline PopupPlacement popupPlacement(int surfaceW, int surfaceH, int consoleTop,
 	return {{x, y, w, h}, f};
 }
 
+// ---- Global Powers: the compact dock (X64.37 v3) -------------------------------------------------------------------------------
+// Where the layout cannot give the Global Powers a side column (the 4:3 family, or no vertical room), it provides a row panel above the
+// island. The retail shortcut bar fills its slots from the LEFT (visible buttons are packed into slots 0 .. n-1), so a row of five slots
+// with two visible buttons left them floating in the middle of the battlefield, away from the island. The compact dock instead packs the
+// visible plates against the island's right end, sits them on a mounting rail that reaches down to the island's top edge, and keeps every
+// plate on the surface. It never changes the frozen layout result: it only positions the shortcut windows inside it.
+struct CompactDock
+{
+	Rect row;             // the shortcut parent window (width = visible * pitch)
+	int pitch = 0;        // slot pitch of the row
+	Rect plates;          // union of the visible plates (button + plate margin)
+	Rect rail;            // mounting rail: from the plates down to the island's top edge (empty when they touch)
+	bool valid = false;
+};
+inline CompactDock compactDock(const EnhancedHudLayout::Result &l, int visible, int surfaceW)
+{
+	CompactDock d;
+	if (!l.valid || !l.powerHorizontal || visible <= 0 || l.powerPanel.w <= 0)
+		return d;
+	using namespace EnhancedHudLayout;
+	const int n = visible;
+	const int pitch = l.powerPanel.w / kPowerCount;
+	const int pm = std::max(2, static_cast<int>(std::lround(3 * l.scale)));
+	const int bx = scaledRef(kPowerButtonX, l.scale), bw = scaledRef(kPowerButtonW, l.scale);
+	const int by = scaledRef(kPowerButtonY, l.scale), bh = scaledRef(kPowerButtonH, l.scale);
+	const int inset = scaledRef(14, l.scale);                       // clears the shoulder / cap of every faction's island
+	const int right = std::min(l.island.right(), surfaceW) - inset;  // where the last plate ends
+	int x = right - ((n - 1) * pitch + bx + bw + pm);
+	x = std::max(x, pm - bx);                                       // the first plate stays on the surface
+	d.pitch = pitch;
+	d.row = {x, l.powerPanel.y, n * pitch, l.powerPanel.h};
+	const int left = x + bx - pm, top = d.row.y + by - pm, bottom = d.row.y + by + bh + pm;
+	const int plateRight = x + (n - 1) * pitch + bx + bw + pm;
+	d.plates = {left, top, plateRight - left, bottom - top};
+	d.rail = (bottom < l.island.y) ? Rect{left, bottom, plateRight - left, l.island.y - bottom} : Rect{};
+	d.valid = true;
+	return d;
+}
+
 // Where the retail hover tooltip (ControlBarPopupDescription) is placed. The tooltip window is an ENABLED window on top of the
 // others: whatever it covers loses the mouse. Over a General Powers button that is a loop - the tooltip appears, takes the mouse
 // from the button, the button's tooltip callback stops running, the layout hides itself, the button gets the mouse back, the
