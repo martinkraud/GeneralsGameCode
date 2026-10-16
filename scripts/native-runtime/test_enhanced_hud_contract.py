@@ -406,6 +406,21 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertNotIn("Faction::", bar)
         self.assertNotIn("EnhancedHud::faction()", bar)
 
+    def test_hover_tooltip_is_placed_clear_of_the_general_powers_console(self):
+        bar = text(BAR)
+        fn = bar[bar.index("Bool ControlBar::getEnhancedTooltipPosition"):]
+        fn = fn[:fn.index("}" + chr(10) + chr(10))]
+        # Original: the function is a no-op unless Enhanced is active (the retail placement code runs instead)
+        self.assertIn("if( !EnhancedHud::active() || !x || !y || !TheDisplay )", fn)
+        self.assertIn("return FALSE;", fn)
+        # Enhanced: the placement knows the real, currently shown popup rectangle and the pointer
+        self.assertIn("s_purchaseWindow == m_contextParent[ CP_PURCHASE_SCIENCE ]", fn)
+        self.assertIn("EnhancedHudPanels::tooltipPlacement(", fn)
+        self.assertIn("TheMouse->getMouseStatus()->pos", fn)
+        # presentation only: the tooltip content/logic is the retail code; only its position changes
+        retail = text("Core/GameEngine/Source/GameClient/GUI/GUICallbacks/ControlBarPopupDescription.cpp")
+        self.assertIn("getEnhancedTooltipPosition( size.x, size.y + diffSize, &enhancedX, &enhancedY )", retail)
+
     def test_battle_overview_is_enhanced_only_and_restores_the_retail_window(self):
         bar = text(BAR)
         self.assertIn("void EnhancedHudOverview::attach( GameWindow *root )", bar)

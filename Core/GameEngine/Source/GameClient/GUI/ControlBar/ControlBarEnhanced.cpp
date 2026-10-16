@@ -449,13 +449,33 @@ Bool ControlBar::getEnhancedTooltipPosition( Int width, Int height, Int *x, Int 
 	if( !EnhancedHud::active() || !x || !y || !TheDisplay )
 		return FALSE;
 	const EnhancedHudLayout::Result &layout = EnhancedHud::layout();
-	const Int surfaceW = (Int)TheDisplay->getWidth();
-	Int px = layout.commandFrame.x + ( layout.commandFrame.w - width ) / 2;
-	px = std::max( 0, std::min( px, surfaceW - width ) );
-	Int py = layout.island.y - height - 4;
-	py = std::max( 0, py );
-	*x = px;
-	*y = py;
+	const Int surfaceW = (Int)TheDisplay->getWidth(), surfaceH = (Int)TheDisplay->getHeight();
+	// While the General Powers popup is open the tooltip must not cover it (a covered button loses the mouse and the tooltip
+	// would flicker): placement keeps clear of the popup's real, current rectangle.
+	EnhancedHudLayout::Rect popup = { 0, 0, 0, 0 };
+	if( s_purchaseWindow && s_purchaseWindow == m_contextParent[ CP_PURCHASE_SCIENCE ] )
+	{
+		Bool shown = TRUE;
+		for( GameWindow *w = s_purchaseWindow; w; w = w->winGetParent() )
+			if( w->winIsHidden() )
+				shown = FALSE;
+		if( shown )
+		{
+			Int sx = 0, sy = 0, sw = 0, sh = 0;
+			s_purchaseWindow->winGetScreenPosition( &sx, &sy );
+			s_purchaseWindow->winGetSize( &sw, &sh );
+			popup = EnhancedHudLayout::Rect{ sx, sy, sw, sh };
+		}
+	}
+	Int cursorX = -1, cursorY = -1;
+	if( TheMouse )
+	{
+		cursorX = TheMouse->getMouseStatus()->pos.x;
+		cursorY = TheMouse->getMouseStatus()->pos.y;
+	}
+	const EnhancedHudLayout::Rect spot = EnhancedHudPanels::tooltipPlacement( surfaceW, surfaceH, layout.island, layout.commandFrame, width, height, popup, cursorX, cursorY );
+	*x = spot.x;
+	*y = spot.y;
 	return TRUE;
 }
 

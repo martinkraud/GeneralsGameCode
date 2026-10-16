@@ -75,3 +75,31 @@ differ. "Available" is red-orange (never the rank gold), purchased is gold, the 
   on the shared retail hierarchy that China uses unchanged.
 * Contracts: Framework v1 headers pinned by hash; shared headers name no faction; the renderer contains no faction test and every
   heavy-construction branch is a theme switch.
+
+## 4. Native review of v1 and the hover-tooltip flicker (fix 1)
+
+Native result: China visual direction ACCEPTED (not reopened). One defect: the hover information screen of the General Powers
+console flickered for some entries (reported: the two last ones on the left from the 3-star section downward).
+
+**Root cause (from the source, not a delay or redraw problem).** The info screen is the retail `ControlBarPopupDescription` layout.
+`GameWindowManager::processMouse` gives the mouse to the topmost ENABLED window under the pointer, and the tooltip callback of the
+button under it re-asserts `m_showBuildToolTipLayout` every frame (`ControlBar::update` clears it each frame; the layout hides itself
+when it is not re-asserted). In Enhanced the tooltip is placed above the island centred on the command frame
+(`getEnhancedTooltipPosition`); the General Powers console is also centred above the island, so on many surfaces the tooltip
+rectangle overlaps the console. When the tooltip appears over the button the pointer is on, the pointer now belongs to the tooltip
+window: the button no longer calls its tooltip callback, the layout hides itself, the button owns the pointer again, the tooltip delay
+elapses, the tooltip appears again - a loop with the tooltip visible for a frame or two. Which powers flicker depends on the
+tooltip's size (long descriptions are taller), the surface and the UI scale, which is why only some entries (and not the console's
+own detail strip, which is drawn, not a window) were affected. The USA console is shared and has the same overlap.
+
+**Fix.** `EnhancedHudPanels::tooltipPlacement`: with the popup open the tooltip is placed clear of the popup's real rectangle (right,
+left, between popup and island, above the popup, inside the island strip), and on compact surfaces where nothing is clear it is
+placed beside the pointer so it never contains the pointer. Without the popup the placement is exactly the previous one. Original
+never calls it (`getEnhancedTooltipPosition` returns FALSE unless Enhanced is active). No delays or redraw suppression were added;
+the Design6 information architecture is unchanged.
+
+**Tests.** `HoverTooltipNeverCoversAGeneralPowersButton` (9 surfaces x 5 UI scales x 4 tooltip heights x every power and Done x
+centre / corner / edge probes: the pointer is never under the tooltip; with room the tooltip clears the whole console),
+`TheOldTooltipPlacementReallyCoveredPowersOnSomeSurfaces` (documents the defect), contract
+`test_hover_tooltip_is_placed_clear_of_the_general_powers_console`. The behaviour itself (no flicker on screen) needs native
+verification.

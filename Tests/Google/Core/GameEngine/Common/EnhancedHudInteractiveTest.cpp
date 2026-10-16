@@ -1124,3 +1124,86 @@ TEST(EnhancedHudInteractive, FactionSwitchesNeverChangeThePopupGeometryOrLeaveRe
 	EnhancedHud::update(true, false, "America", 1920, 1200, 2.0);
 }
 
+// ---- hover tooltip vs. the General Powers console ----------------------------------------------------------------------------------
+//
+// Native defect (China, also true for USA): the hover tooltip flickered over some of the powers. Mechanism (GameWindowManager::
+// processMouse + ControlBar::showBuildTooltipLayout): the tooltip window is enabled and on top, so when it appears over the button
+// under the cursor the cursor now belongs to the tooltip; the button's tooltip callback stops running, the layout hides itself,
+// the button owns the mouse again, the delay elapses and the tooltip returns. The old placement (above the island, centred on the
+// command frame) overlapped the console. The test reproduces the failure condition: no power button may ever be covered.
+
+TEST(EnhancedHudInteractive, HoverTooltipNeverCoversAGeneralPowersButton)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid)
+				continue;
+			PopupCase pc;
+			buildPopup(pc, s, layout.island.y, ls);
+			const Rect popup = pc.place.rect;
+			// retail tooltip window: 224 x (>= 102) at 800x600, scaled with the resolution; longer descriptions make it taller
+			const double k = std::max(1.0, s.h / 600.0);
+			for (int extra : {0, 40, 120, 260})
+			{
+				const int tw = int(224 * k), th = int((102 + extra) * k);
+				const Rect old = {std::max(0, std::min(layout.commandFrame.x + (layout.commandFrame.w - tw) / 2, s.w - tw)),
+				                  std::max(0, layout.island.y - th - 4), tw, th};
+				const Rect tip = EnhancedHudPanels::tooltipPlacement(s.w, s.h, layout.island, layout.commandFrame, tw, th, popup);
+				EXPECT_TRUE(tip.within(Rect{0, 0, s.w, s.h})) << s.w << "x" << s.h << " ui" << ui << " extra" << extra;
+				bool oldHitAny = false;
+				for (Win *c = pc.tree.master()->child; c; c = c->next)
+				{
+					if (c->name.rfind("Button", 0) != 0)
+						continue;
+					const Rect b = screen(c);
+					// with room the tooltip clears the whole console; on a compact surface it may overlap the console elsewhere
+					if (s.w >= 1920 && extra <= 120)
+						EXPECT_FALSE(tip.intersects(b)) << c->name << " covered by the tooltip at " << s.w << "x" << s.h << " ui" << ui << " extra" << extra;
+					oldHitAny = oldHitAny || old.intersects(b);
+					// the failure mechanism: wherever the pointer is on a button, the tooltip never contains the pointer
+					for (const Probe &pr : insideProbes(b))
+					{
+						const Rect at = EnhancedHudPanels::tooltipPlacement(s.w, s.h, layout.island, layout.commandFrame, tw, th, popup, pr.x, pr.y);
+						EXPECT_FALSE(pr.x >= at.x && pr.x <= at.right() && pr.y >= at.y && pr.y <= at.bottom())
+							<< c->name << " " << pr.what << " under the tooltip at " << s.w << "x" << s.h << " ui" << ui << " extra" << extra;
+						EXPECT_TRUE(at.within(Rect{0, 0, s.w, s.h}));
+					}
+				}
+				// the placement without a popup is the unchanged standard one
+				const Rect plain = EnhancedHudPanels::tooltipPlacement(s.w, s.h, layout.island, layout.commandFrame, tw, th, Rect{0, 0, 0, 0});
+				EXPECT_TRUE(plain.x == old.x && plain.y == old.y);
+				(void)oldHitAny;
+			}
+		}
+}
+
+TEST(EnhancedHudInteractive, TheOldTooltipPlacementReallyCoveredPowersOnSomeSurfaces)
+{
+	// documents the defect: with the former placement some surface/tooltip combinations covered power buttons
+	int covered = 0;
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid)
+				continue;
+			PopupCase pc;
+			buildPopup(pc, s, layout.island.y, ls);
+			const double k = std::max(1.0, s.h / 600.0);
+			for (int extra : {0, 40, 120, 260})
+			{
+				const int tw = int(224 * k), th = int((102 + extra) * k);
+				const Rect old = {std::max(0, std::min(layout.commandFrame.x + (layout.commandFrame.w - tw) / 2, s.w - tw)),
+				                  std::max(0, layout.island.y - th - 4), tw, th};
+				for (Win *c = pc.tree.master()->child; c; c = c->next)
+					if (c->name.rfind("Button", 0) == 0 && old.intersects(screen(c)))
+						++covered;
+			}
+		}
+	EXPECT_GT(covered, 0);
+}
+

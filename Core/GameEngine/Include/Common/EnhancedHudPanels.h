@@ -248,6 +248,54 @@ inline PopupPlacement popupPlacement(int surfaceW, int surfaceH, int consoleTop,
 	return {{x, y, w, h}, f};
 }
 
+// Where the retail hover tooltip (ControlBarPopupDescription) is placed. The tooltip window is an ENABLED window on top of the
+// others: whatever it covers loses the mouse. Over a General Powers button that is a loop - the tooltip appears, takes the mouse
+// from the button, the button's tooltip callback stops running, the layout hides itself, the button gets the mouse back, the
+// delay elapses, the tooltip appears again - which is the visible flicker. The tooltip therefore must never cover the popup.
+// Default (no popup): above the island, centred on the command frame. With the popup open: beside it (right, then left), else
+// between the popup and the island, else above the popup, else inside the island strip; the first spot that clears the popup.
+inline int rectOverlapArea(const Rect &a, const Rect &b)
+{
+	const int w = std::min(a.right(), b.right()) - std::max(a.x, b.x), h = std::min(a.bottom(), b.bottom()) - std::max(a.y, b.y);
+	return w > 0 && h > 0 ? w * h : 0;
+}
+inline Rect tooltipPlacement(int surfaceW, int surfaceH, const Rect &island, const Rect &commandFrame, int w, int h, const Rect &popup,
+                             int cursorX = -1, int cursorY = -1)
+{
+	const int gap = 4;
+	auto clampX = [&](int x) { return std::max(0, std::min(x, surfaceW - w)); };
+	auto clampY = [&](int y) { return std::max(0, std::min(y, surfaceH - h)); };
+	const Rect standard = {clampX(commandFrame.x + (commandFrame.w - w) / 2), clampY(island.y - h - gap), w, h};
+	if (popup.w <= 0 || popup.h <= 0 || rectOverlapArea(standard, popup) == 0)
+		return standard;
+	const Rect candidates[5] = {
+		{popup.right() + gap, clampY(std::min(standard.y, popup.bottom() - h)), w, h},                    // right of the popup
+		{popup.x - gap - w, clampY(std::min(standard.y, popup.bottom() - h)), w, h},                      // left of the popup
+		{standard.x, popup.bottom() + gap, w, h},                                                          // between popup and island
+		{clampX(popup.x + (popup.w - w) / 2), popup.y - gap - h, w, h},                                    // above the popup
+		{standard.x, clampY(std::max(island.y, surfaceH - h)), w, h},                                      // inside the island strip
+	};
+	for (const Rect &c : candidates)
+		if (c.x >= 0 && c.y >= 0 && c.right() <= surfaceW && c.bottom() <= surfaceH && rectOverlapArea(c, popup) == 0)
+			return c;
+	// No clear spot (compact surfaces, tall tooltips): the tooltip may overlap the console but must never cover the pointer, or
+	// the pointer would leave the button it is on and the flicker would return. Beside the pointer, first spot inside the surface.
+	if (cursorX >= 0 && cursorY >= 0)
+	{
+		const int m = 28;                                                                                   // pointer + hot spot margin
+		const Rect byCursor[4] = {
+			{cursorX + m, clampY(cursorY - h / 2), w, h},                                                  // right
+			{cursorX - m - w, clampY(cursorY - h / 2), w, h},                                              // left
+			{clampX(cursorX - w / 2), cursorY + m, w, h},                                                  // below
+			{clampX(cursorX - w / 2), cursorY - m - h, w, h},                                              // above
+		};
+		for (const Rect &c : byCursor)
+			if (c.x >= 0 && c.y >= 0 && c.right() <= surfaceW && c.bottom() <= surfaceH && !(cursorX >= c.x - 2 && cursorX <= c.right() + 2 && cursorY >= c.y - 2 && cursorY <= c.bottom() + 2))
+				return c;
+	}
+	return standard;
+}
+
 // Largest point size <= base (never below minSize) at which text of width `widthAtBase` (measured at `base`) fits `maxWidth`.
 // Used by the label drawing so a label can never cross its module.
 inline int fitPointSize(int base, int minSize, int widthAtBase, int maxWidth)
