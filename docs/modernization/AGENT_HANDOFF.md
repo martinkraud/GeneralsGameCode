@@ -451,6 +451,16 @@ helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Presen
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
 
+## X64.41 Path line phase + Game Speed audit + R1 tooling (CP15, delivered)
+
+Read `X64_41_PATH_LINE_PHASE_AND_R1.md` and `RETAIL_GAME_SPEED_AUDIT.md`. Serial and exact; no threads. (A) `examineCellsCallback` memoizes, per search generation (`PathfindCellList::searchGeneration`, advanced by every `reset`) and per cell info
+(`m_lineGeneration/m_lineLayer`), that a cell passed the validity / zone / pinched / extent / `checkForMovement` / cliff checks and got its info; 80 % of callbacks are such repeats. Switches: `GENERALS_LINE_LEGACY=1` (no memo),
+`GENERALS_LINE_VERIFY=1` (re-run the full checks on every hit, `_exit(3)` on a difference), `GENERALS_LINE_TRACE_HASH=1` (digest of every decision), `GENERALS_SIM_PATHS=1|2|3` (per-search trace; 3 adds sub-timing). (B) Retail Normal = 30 logic frames/s
+(33.333 ms) proven for both titles; the retail Skirmish Game Speed slider (15..60, >60 uncapped) was the FPS cap because logic ran once per loop iteration; this fork decouples logic from render, so render FPS no longer changes speed; a future Game
+Speed must drive `FramePacer::setLogicTimeScaleFps`, default 30, campaign Normal-only. (C) `GENERALS_REPLAY_CRC_INTERVAL=n`, `GENERALS_CRC_TRACE[_OBJECTS]`, `scripts/diagnostics/{Compare-CrcTraces.py,Analyze-ReplayDiagnostic.ps1,Run-R1-Diagnostic.cmd}`;
+the staged `generalsv_r1diag.exe` is in the v4 candidate folder; the human step is 2 minutes (see the doc, section 12). `test_stage4b1_reference.py` is now a function-level contract with authorization tables and mutation tests.
+Tail after X64.41: periodic script tick (every 300 frames, 70-110 ms) and update-module spikes; path search is no longer the limiter.
+
 ## X64.40 Path-search investigation (CP14, delivered)
 
 Serial, exact, no threads. Read `X64_40_PATH_SEARCH_INVESTIGATION.md`. The retail A* open list walked from the head on every insertion; `OpenListIndex.h` (pure, differential-tested in `OpenListIndexTest`) answers the

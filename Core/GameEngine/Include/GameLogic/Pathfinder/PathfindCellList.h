@@ -29,16 +29,18 @@ class PathfindCellList
 	friend class PathfindCell;
 
 public:
-	PathfindCellList() : m_head(nullptr), m_tail(nullptr), m_index(nullptr) {}
+	PathfindCellList() : m_head(nullptr), m_tail(nullptr), m_index(nullptr), m_generation(1) {}
 
 #if RETAIL_COMPATIBLE_PATHFINDING
 	void reset(PathfindCell* newHead = nullptr);   // X64.40: defined in AIPathfind.cpp (restarts the open-list index together with the list)
 	void attachIndex(OpenListIndex<PathfindCell>* index) { m_index = index; }
 #else
-	void reset() { m_head = nullptr; m_tail = nullptr; }
+	void reset() { m_head = nullptr; m_tail = nullptr; ++m_generation; }
 #endif
 
 	PathfindCell* getHead() const { return m_head; }
+	// X64.41: increases with every reset, i.e. with every new search; per-search memos are valid only for the generation they were written in
+	UnsignedInt searchGeneration() const { return m_generation; }
 
 	Bool empty() const { return m_head == nullptr; }
 
@@ -47,5 +49,6 @@ public:
 private:
 	PathfindCell* m_head;
 	PathfindCell* m_tail;
+	UnsignedInt m_generation;
 	OpenListIndex<PathfindCell>* m_index;   // X64.40: exact accelerator of the retail insertion walk (null = the original walk only)
 };

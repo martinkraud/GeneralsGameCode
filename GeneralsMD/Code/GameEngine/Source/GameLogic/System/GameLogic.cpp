@@ -3781,6 +3781,8 @@ void GameLogic::update()
 		TheTerrainLogic->UPDATE();
 	}
 
+	diagnosticCrcTrace();   // X64.41: inert unless GENERALS_CRC_TRACE is set
+
 	// force CRC calculation, so we can keep a cache of the last N CRCs.  We do this right where the recorder
 	// would be getting the CRC anyway, so replays can get the CRCs from the exact instant in time as the original.
 	Bool isMPGameOrReplay = (TheRecorder && TheRecorder->isMultiplayer() && getGameMode() != GAME_SHELL && getGameMode() != GAME_NONE);
@@ -4319,6 +4321,66 @@ UnsignedInt GameLogic::getCRC( Int mode, AsciiString deepCRCFileName )
 		CRCGEN_LOG(("CRC for frame %d is 0x%8.8X", m_frame, theCRC));
 	}
 	return theCRC;
+}
+
+// ------------------------------------------------------------------------------------------------
+// X64.41 diagnostic (inert unless GENERALS_CRC_TRACE=<file> is set): one line per logic frame with the engine state CRC split into its components, and with
+// GENERALS_CRC_TRACE_OBJECTS=1 one line per object (ObjectID, template, CRC of that object's snapshot). It is taken at exactly the point where the replay CRC
+// is generated, so a live recording and its re-simulation produce comparable files; the first differing line names the frame, the component and the object.
+// It only reads state (the same snapshots GameLogic::getCRC reads) and is not compiled into any behavior when the variable is unset.
+// ------------------------------------------------------------------------------------------------
+void GameLogic::diagnosticCrcTrace()
+{
+	static int mode = -1;               // -1 unread, 0 off, 1 summary, 2 with objects
+	static FILE *file = nullptr;
+	if (mode < 0)
+	{
+		const char *path = getenv("GENERALS_CRC_TRACE");
+		mode = 0;
+		if (path && *path)
+		{
+			file = fopen(path, "ab");
+			if (file) { mode = getenv("GENERALS_CRC_TRACE_OBJECTS") ? 2 : 1; fprintf(file, "# crc trace started%s\n", mode == 2 ? " (with objects)" : ""); }
+		}
+	}
+	if (mode == 0 || !file || !isInGame() || isInShellGame()) return;
+
+	setFPMode();
+	LatchRestore<Bool> latch(inCRCGen, !isInGameLogicUpdate());
+
+	struct Crc
+	{
+		static UnsignedInt of(Snapshot *snapshot)
+		{
+			XferCRC *x = NEW XferCRC;
+			x->open("diagComponent");
+			x->xferSnapshot(snapshot);
+			x->close();
+			const UnsignedInt c = x->getCRC();
+			delete x;
+			return c;
+		}
+	};
+	UnsignedInt count = 0;
+	XferCRC *all = NEW XferCRC;
+	all->open("diagObjects");
+	for (Object *obj = m_objList; obj; obj = obj->getNextObject()) { all->xferSnapshot(obj); ++count; }
+	all->close();
+	const UnsignedInt objectsCrc = all->getCRC();
+	delete all;
+	const UnsignedInt partitionCrc = Crc::of(ThePartitionManager);
+	const UnsignedInt playersCrc = Crc::of(ThePlayerList);
+	const UnsignedInt aiCrc = Crc::of(TheAI);
+	fprintf(file, "F %u objects=%08X count=%u rng=%08X partition=%08X players=%08X ai=%08X\n", static_cast<unsigned>(m_frame), objectsCrc, count,
+		static_cast<unsigned>(GetGameLogicRandomSeedCRC()), partitionCrc, playersCrc, aiCrc);
+	if (mode == 2)
+	{
+		for (Object *obj = m_objList; obj; obj = obj->getNextObject())
+		{
+			fprintf(file, "O %u %u %s %08X\n", static_cast<unsigned>(m_frame), static_cast<unsigned>(obj->getID()), obj->getTemplate() ? obj->getTemplate()->getName().str() : "?", static_cast<unsigned>(Crc::of(obj)));
+		}
+	}
+	fflush(file);
 }
 
 // ------------------------------------------------------------------------------------------------

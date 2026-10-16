@@ -264,6 +264,10 @@ private:
 			if (envText("GENERALS_PATH_VERIFY")) line(f, " | %u insertions verified against the original walk", Pathfinder::openListVerifiedInserts());
 			line(f, "\n");
 			if (envText("GENERALS_PATH_TRACE_HASH")) line(f, "open list evolution digest: %016llX\n", Pathfinder::openListTraceDigest());
+			line(f, "line walk mode: %s | memo hits %llu", Pathfinder::lineModeName(), Pathfinder::lineMemoHits());
+			if (envText("GENERALS_LINE_VERIFY")) line(f, " | %llu memo hits re-verified with the full checks", Pathfinder::lineMemoVerified());
+			line(f, "\n");
+			if (envText("GENERALS_LINE_TRACE_HASH")) line(f, "line decision digest: %016llX\n", Pathfinder::lineTraceDigest());
 		}
 		if (m_recorder.deepPaths()) reportPaths(out, base);
 		if (FILE *f = fopen((base + "_fingerprint.txt").c_str(), "w"))
@@ -390,14 +394,14 @@ private:
 		{
 			if (!f) continue;
 			line(f, "top 25 slowest search samples (internal / ground / hierarchical / closest / attack / safe / patch / moveaway):\n");
-			line(f, "  %-12s %7s %-9s %-6s %-12s %7s %7s %8s %9s %9s %9s %9s %7s %7s %7s %s\n", "kind", "ms", "frame", "obj", "outcome", "pops", "opens", "info_new", "info_fail", "fwd_hops", "rev_hops", "cleaned", "layer", "human", "crusher", "from->to (world)");
+			line(f, "  %-12s %7s %-9s %-6s %-12s %7s %7s %8s %9s %9s %9s %9s %7s %7s %7s %9s %10s %s\n", "kind", "ms", "frame", "obj", "outcome", "pops", "opens", "info_new", "info_fail", "fwd_hops", "rev_hops", "cleaned", "layer", "human", "crusher", "line_walks", "callbacks", "from->to (world)");
 			size_t shown = 0;
 			for (const PathRec *r : sorted)
 			{
 				if (++shown > 25) break;
-				line(f, "  %-12s %7.2f %-9u %-6u %-12s %7.0f %7.0f %8.0f %9.0f %9.0f %9.0f %9.0f %7d %7d %7d (%.0f,%.0f)->(%.0f,%.0f)\n", kindName(r->kind), r->inclusiveMs, r->frame, r->object, outcomeName(r->outcome),
+				line(f, "  %-12s %7.2f %-9u %-6u %-12s %7.0f %7.0f %8.0f %9.0f %9.0f %9.0f %9.0f %7d %7d %7d %9.0f %10.0f (%.0f,%.0f)->(%.0f,%.0f)\n", kindName(r->kind), r->inclusiveMs, r->frame, r->object, outcomeName(r->outcome),
 					workOf(*r, PathWork::HeadPops), workOf(*r, PathWork::OpenInserts), workOf(*r, PathWork::InfoNew), workOf(*r, PathWork::InfoFailed), workOf(*r, PathWork::ForwardHops), workOf(*r, PathWork::ReverseHops), workOf(*r, PathWork::CleanedCells),
-					r->layer, r->human, r->crusher, r->fromX, r->fromY, r->toX, r->toY);
+					r->layer, r->human, r->crusher, workOf(*r, PathWork::LineCalls), workOf(*r, PathWork::LineCallbacks), r->fromX, r->fromY, r->toX, r->toY);
 			}
 		}
 		// ---- work distributions and correlations for the A* kernel (kind internal)
@@ -445,6 +449,39 @@ private:
 			line(f, "  outcome split (count / total ms): path %zu / %.1f | closest %zu / %.1f | null before work %zu / %.1f | null after work (exhausted the open list) %zu / %.1f | zone-rejected %zu / %.1f\n",
 				byOutcome[1], outcomeMs[1], byOutcome[2], outcomeMs[2], byOutcome[3], outcomeMs[3], byOutcome[4], outcomeMs[4], zoneRej, rejMs);
 			line(f, "  requester: human %zu / %.1f ms | computer %zu / %.1f ms\n", human, humanMs, computer, computerMs);
+		}
+		// ---- the line phase (examineNeighboringCells -> iterateCellsAlongLine -> examineCellsCallback), internal A* searches only
+		{
+			double totCalls = 0, totCb = 0, totKept = 0, totUpd = 0, totPops = 0, tValid = 0, tMove = 0, tUpd = 0;
+			double stops[8] = {0, 0, 0, 0, 0, 0, 0, 0};   // invalid, zone, pinched, extent, movement, fixed, cliff, alloc
+			std::vector<double> cbPerCall;
+			double bigCalls = 0, bigCb = 0, bigPops = 0, bigKept = 0, bigMs = 0;
+			for (const PathRec &r : m_pathRecs)
+			{
+				if (r.kind != PathKind::Internal) continue;
+				const double calls = workOf(r, PathWork::LineCalls), cb = workOf(r, PathWork::LineCallbacks), pops = workOf(r, PathWork::HeadPops);
+				totCalls += calls; totCb += cb; totPops += pops;
+				totKept += workOf(r, PathWork::LineKept); totUpd += workOf(r, PathWork::LineUpdated);
+				stops[0] += workOf(r, PathWork::LineStopInvalid); stops[1] += workOf(r, PathWork::LineStopZone); stops[2] += workOf(r, PathWork::LineStopPinched);
+				stops[3] += workOf(r, PathWork::LineStopExtent); stops[4] += workOf(r, PathWork::LineStopMovement); stops[5] += workOf(r, PathWork::LineStopFixed);
+				stops[6] += workOf(r, PathWork::LineStopCliff); stops[7] += workOf(r, PathWork::LineStopAlloc);
+				tValid += workOf(r, PathWork::LineTicksValid); tMove += workOf(r, PathWork::LineTicksMovement); tUpd += workOf(r, PathWork::LineTicksUpdate);
+				if (calls > 0) cbPerCall.push_back(cb / calls);
+				if (pops >= 20000) { bigCalls += calls; bigCb += cb; bigPops += pops; bigKept += workOf(r, PathWork::LineKept); bigMs += r.inclusiveMs; }
+			}
+			const double ms = 1000.0 / m_freq;
+			for (FILE *f : {out[0], out[1]})
+			{
+				if (!f) continue;
+				line(f, "line phase (internal A*): %.0f line walks for %.0f expansions | %.0f callbacks = %.2f per walk (p50 %.1f / p95 %.1f / p99 %.1f / max %.0f) | %.2f callbacks per expansion" "%s",
+					totCalls, totPops, totCb, totCalls > 0 ? totCb / totCalls : 0.0, percentile(cbPerCall, 50.0), percentile(cbPerCall, 95.0), percentile(cbPerCall, 99.0), percentile(cbPerCall, 100.0), totPops > 0 ? totCb / totPops : 0.0, "\n");
+				line(f, "  callback outcomes: kept (already on a list at <= cost, walk continues) %.0f (%.1f%%) | updated / inserted %.0f (%.1f%%) | walks stopped: invalid %.0f, zone %.0f, pinched %.0f, extent %.0f, movement %.0f, fixed %.0f, cliff %.0f, alloc %.0f\n",
+					totKept, totCb > 0 ? 100.0 * totKept / totCb : 0.0, totUpd, totCb > 0 ? 100.0 * totUpd / totCb : 0.0, stops[0], stops[1], stops[2], stops[3], stops[4], stops[5], stops[6], stops[7]);
+				line(f, "  searches expanding >= 20000 cells: %.0f callbacks for %.0f expansions in %.1f ms (%.2f callbacks / expansion, %.1f%% kept, %.3f us per callback)\n",
+					bigCb, bigPops, bigMs, bigPops > 0 ? bigCb / bigPops : 0.0, bigCb > 0 ? 100.0 * bigKept / bigCb : 0.0, bigCb > 0 ? 1000.0 * bigMs / bigCb : 0.0);
+				if (tValid + tMove + tUpd > 0)
+					line(f, "  line timing (GENERALS_SIM_PATHS=3, clock overhead included): validity checks %.1f ms | checkForMovement %.1f ms | cost / list update %.1f ms\n", tValid * ms, tMove * ms, tUpd * ms);
+			}
 		}
 		// ---- request wrappers: fallback split
 		{

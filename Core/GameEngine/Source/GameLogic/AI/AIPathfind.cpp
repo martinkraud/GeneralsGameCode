@@ -1191,6 +1191,8 @@ PathfindCellInfo *PathfindCellInfo::getACellInfo(PathfindCell *cell,const ICoord
 		info->m_closed = 0;
 		info->m_openKey = 0;
 		info->m_indexed = 0;
+		info->m_lineGeneration = 0;
+		info->m_lineLayer = 0;
 		info->m_obstacleID = INVALID_ID;
 		info->m_goalUnitID = INVALID_ID;
 		info->m_posUnitID = INVALID_ID;
@@ -1734,6 +1736,7 @@ void PathfindCellList::reset(PathfindCell* newHead)
 {
 	m_head = newHead;
 	m_tail = nullptr;
+	++m_generation;   // X64.41: a new search starts (or the last one was cleaned up)
 	if (m_index) {
 		m_index->clear();
 		if (s_useFixedPathfinding) {
@@ -6391,8 +6394,63 @@ bool Pathfinder::checkCellOutsideExtents(ICoord2D& cell) {
 }
 
 
+// X64.41: plain counters for the line walk, flushed to the path profile once per walk (and only when a path sample is active); the tick fields are only
+// filled when line timing is on (GENERALS_SIM_PATHS=3).
+struct ExamineLineStats
+{
+	UnsignedInt memoHits, callbacks, stopInvalid, stopZone, stopPinched, stopExtent, stopMovement, stopFixed, stopCliff, stopAlloc, kept, updated;
+	unsigned long long ticksValid, ticksMovement, ticksUpdate;
+};
+
+static bool lineTimingEnabled()
+{
+	static int on = -1;
+	if (on < 0) { const char *v = getenv("GENERALS_SIM_PATHS"); on = (v && atoi(v) >= 3) ? 1 : 0; }
+	return on == 1;
+}
+
+enum LineMode { LINE_MODE_FAST = 0, LINE_MODE_LEGACY = 1, LINE_MODE_VERIFY = 2 };
+static LineMode currentLineMode()
+{
+	static int mode = -1;
+	if (mode < 0)
+	{
+		const char *verify = getenv("GENERALS_LINE_VERIFY");
+		const char *legacy = getenv("GENERALS_LINE_LEGACY");
+		mode = (verify && *verify) ? LINE_MODE_VERIFY : ((legacy && *legacy) ? LINE_MODE_LEGACY : LINE_MODE_FAST);
+	}
+	return static_cast<LineMode>(mode);
+}
+static bool lineTraceEnabled()
+{
+	static int on = -1;
+	if (on < 0) { const char *v = getenv("GENERALS_LINE_TRACE_HASH"); on = (v && *v) ? 1 : 0; }
+	return on == 1;
+}
+static unsigned long long g_lineMemoHits = 0, g_lineMemoVerified = 0;
+static unsigned long long g_lineTrace = 1469598103934665603ull;
+static inline void lineTraceMix(Int x, Int y, unsigned code)
+{
+	const unsigned long long values[2] = {(static_cast<unsigned long long>(static_cast<unsigned>(x)) << 32) | static_cast<unsigned>(y), code};
+	for (int i = 0; i < 2; ++i) { g_lineTrace ^= values[i]; g_lineTrace *= 1099511628211ull; }
+}
+const char *Pathfinder::lineModeName()
+{
+	switch (currentLineMode()) {
+		case LINE_MODE_LEGACY: return "LEGACY (every callback runs the full checks)";
+		case LINE_MODE_VERIFY: return "VERIFY (memo hits re-run the full checks)";
+		default: return "default (per-search passability memo)";
+	}
+}
+unsigned long long Pathfinder::lineMemoHits() { return g_lineMemoHits; }
+unsigned long long Pathfinder::lineMemoVerified() { return g_lineMemoVerified; }
+unsigned long long Pathfinder::lineTraceDigest() { return g_lineTrace; }
+
 struct ExamineCellsStruct
 {
+	ExamineLineStats stats;
+	UnsignedInt					generation;
+	bool								useMemo, verify, trace;
 	Pathfinder					*thePathfinder;
 	LocomotorSurfaceTypeMask acceptableSurfaces;
 	Bool								centerInCell;
@@ -6408,56 +6466,97 @@ struct ExamineCellsStruct
 	ExamineCellsStruct* d = (ExamineCellsStruct*)userData;
 	if (d->thePathfinder->m_isTunneling) return 1; // abort.
 	if (from && to) {
+		++d->stats.callbacks;
+		const bool timed = lineTimingEnabled();
+		PerformanceProfile::Tick lapStart = timed ? PerformanceProfile::now() : 0;
+
+		// X64.41: whether this cell passes the checks below depends only on the cell and on the search parameters (object, surfaces, crusher, radius,
+		// human, goal), none of which change while one search runs, and not on the cell the walk comes from (apart from its layer, which the memo records).
+		// A cell that already passed in this search (the walk keeps re-visiting cells that are on the lists: ~80 % of all callbacks) skips straight to the
+		// cost handling, which is unchanged. GENERALS_LINE_VERIFY=1 runs the full checks on every memo hit and stops on the first difference.
+		const Int fromLayer = from->getLayer();
+		const bool memoHit = d->useMemo && to->hasLineVerdict(d->generation, fromLayer);
+		TCheckMovementInfo info;
+		if (!memoHit || d->verify)
+		{
+			Int stop = 0;   // 1 invalid, 2 zone, 3 pinched, 4 extent, 5 movement, 6 enemy / ally fixed, 7 cliff
 			if (!d->thePathfinder->validMovementPosition( d->isCrusher, d->acceptableSurfaces, to, from )) {
-				return 1;
+				stop = 1;
 			}
-			if ( (to->getLayer() == LAYER_GROUND) && !d->thePathfinder->m_zoneManager.isPassable(to_x, to_y) ) {
-				return 1;
+			else if ( (to->getLayer() == LAYER_GROUND) && !d->thePathfinder->m_zoneManager.isPassable(to_x, to_y) ) {
+				stop = 2;
 			}
-
-			if (to->getPinched()) {
-				return 1; // abort.
+			else if (to->getPinched()) {
+				stop = 3;
 			}
-			if (d->isHuman) {
+			else if (d->isHuman && (to_x < d->thePathfinder->m_logicalExtent.lo.x || to_y < d->thePathfinder->m_logicalExtent.lo.y ||
+															to_x > d->thePathfinder->m_logicalExtent.hi.x || to_y > d->thePathfinder->m_logicalExtent.hi.y)) {
 				// check if new cell is in logical map.	(computer can move off logical map)
-				if (to_x < d->thePathfinder->m_logicalExtent.lo.x) return 1; // abort
-				if (to_y < d->thePathfinder->m_logicalExtent.lo.y) return 1; // abort
-				if (to_x > d->thePathfinder->m_logicalExtent.hi.x) return 1; // abort
-				if (to_y > d->thePathfinder->m_logicalExtent.hi.y) return 1; // abort
+				stop = 4;
 			}
-			TCheckMovementInfo info;
-			info.cell.x = to_x;
-			info.cell.y = to_y;
-			info.layer = from->getLayer();
-			info.centerInCell = d->centerInCell;
-			info.radius = d->radius;
-			info.considerTransient = false;
-			info.acceptableSurfaces = d->acceptableSurfaces;
-			if (!d->thePathfinder->checkForMovement(d->obj, info)) {
-				return 1; //abort.
+			if (stop == 0)
+			{
+				if (timed) { const PerformanceProfile::Tick lapNow = PerformanceProfile::now(); d->stats.ticksValid += lapNow - lapStart; lapStart = lapNow; }
+				info.cell.x = to_x;
+				info.cell.y = to_y;
+				info.layer = from->getLayer();
+				info.centerInCell = d->centerInCell;
+				info.radius = d->radius;
+				info.considerTransient = false;
+				info.acceptableSurfaces = d->acceptableSurfaces;
+				const Bool movementOk = d->thePathfinder->checkForMovement(d->obj, info);
+				if (timed) { const PerformanceProfile::Tick lapNow = PerformanceProfile::now(); d->stats.ticksMovement += lapNow - lapStart; lapStart = lapNow; }
+				if (!movementOk) stop = 5;
+				else if (info.enemyFixed || info.allyFixedCount) stop = 6;
+				else if (to->getType() == PathfindCell::CELL_CLIFF ) stop = 7;
 			}
-
-			if (info.enemyFixed) {
-				return 1; //abort.
+			else if (timed) d->stats.ticksValid += PerformanceProfile::now() - lapStart;
+			if (memoHit)
+			{
+				// verify mode: the memo said "passes"; the full checks must agree
+				++g_lineMemoVerified;
+				if (stop != 0)
+				{
+					printf("LINE MEMO VERIFY MISMATCH at frame %u, cell (%d,%d) layer %d: memo says passable, the checks stop the walk (reason %d)\n",
+						static_cast<unsigned>(TheGameLogic->getFrame()), to_x, to_y, static_cast<int>(fromLayer), stop);
+					fflush(stdout);
+					_exit(3);
+				}
 			}
-
-			if (info.allyFixedCount) {
-				return 1; //abort.
+			else if (stop != 0)
+			{
+				switch (stop) {
+					case 1: ++d->stats.stopInvalid; break;
+					case 2: ++d->stats.stopZone; break;
+					case 3: ++d->stats.stopPinched; break;
+					case 4: ++d->stats.stopExtent; break;
+					case 5: ++d->stats.stopMovement; break;
+					case 6: ++d->stats.stopFixed; break;
+					default: ++d->stats.stopCliff; break;
+				}
+				if (d->trace) lineTraceMix(to_x, to_y, static_cast<unsigned>(stop));
+				return 1;
 			}
+		}
+		else
+		{
+			++g_lineMemoHits;
+			++d->stats.memoHits;
+		}
 
 			UnsignedInt newCostSoFar = from->getCostSoFar() + 0.5f*COST_ORTHOGONAL;
-			if (to->getType() == PathfindCell::CELL_CLIFF ) {
-				return 1;
-			}
 
 			ICoord2D newCellCoord;
 			newCellCoord.x = to_x;
 			newCellCoord.y = to_y;
 
 			if (!to->allocateInfo(newCellCoord)) {
+				++d->stats.stopAlloc;
 				// Out of cells for pathing...
+				if (d->trace) lineTraceMix(to_x, to_y, 8);
  				return 1;
 			}
+			if (!memoHit && d->useMemo) to->setLineVerdict(d->generation, fromLayer);
 			to->setBlockedByAlly(false);
 			Int costRemaining = 0;
 			costRemaining = to->costToGoal( d->goalCell );
@@ -6468,9 +6567,14 @@ struct ExamineCellsStruct
 			{
 				// already on one of the lists - if existing costSoFar is less,
 				// the new cell is on a longer path, so skip it
-				if (to->getCostSoFar() <= newCostSoFar)
+				if (to->getCostSoFar() <= newCostSoFar) {
+					++d->stats.kept; if (timed) d->stats.ticksUpdate += PerformanceProfile::now() - lapStart;
+					if (d->trace) lineTraceMix(to_x, to_y, 0);
 					return 0; // keep going.
+				}
 			}
+			++d->stats.updated;
+			if (d->trace) lineTraceMix(to_x, to_y, 9);
 
 			to->setCostSoFar(newCostSoFar);
 			// keep track of path we're building - point back to cell we moved here from
@@ -6487,6 +6591,7 @@ struct ExamineCellsStruct
 
 			// insert to in open list such that open list is sorted, smallest total path cost first
 			to->putOnSortedOpenList( d->thePathfinder->m_openList );
+			if (timed) d->stats.ticksUpdate += PerformanceProfile::now() - lapStart;
 	}
 
 	return 0;	// keep going
@@ -6514,12 +6619,37 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 			info.isHuman = isHuman;
 			info.isCrusher = isCrusher;
 			info.goalCell = goalCell;
+			memset(&info.stats, 0, sizeof(info.stats));
+			info.generation = m_openList.searchGeneration();
+			info.useMemo = currentLineMode() != LINE_MODE_LEGACY;
+			info.verify = currentLineMode() == LINE_MODE_VERIFY;
+			info.trace = lineTraceEnabled();
 			ICoord2D start, end;
 			start.x = parentCell->getXIndex();
 			start.y = parentCell->getYIndex();
 			end.x = goalCell->getXIndex();
 			end.y = goalCell->getYIndex();
 			{ PerformanceProfile::PathPhase linePhase(PerformanceProfile::PathPhaseKind::Line); iterateCellsAlongLine(start, end, parentCell->getLayer(), examineCellsCallback, &info); } // Stage4A.2 observer
+			if (PerformanceProfile::activePath)
+			{
+				using PerformanceProfile::PathWork;
+				PerformanceProfile::pathCount(PathWork::LineCalls);
+				PerformanceProfile::pathCount(PathWork::LineCallbacks, info.stats.callbacks);
+				PerformanceProfile::pathCount(PathWork::LineStopInvalid, info.stats.stopInvalid);
+				PerformanceProfile::pathCount(PathWork::LineStopZone, info.stats.stopZone);
+				PerformanceProfile::pathCount(PathWork::LineStopPinched, info.stats.stopPinched);
+				PerformanceProfile::pathCount(PathWork::LineStopExtent, info.stats.stopExtent);
+				PerformanceProfile::pathCount(PathWork::LineStopMovement, info.stats.stopMovement);
+				PerformanceProfile::pathCount(PathWork::LineStopFixed, info.stats.stopFixed);
+				PerformanceProfile::pathCount(PathWork::LineStopCliff, info.stats.stopCliff);
+				PerformanceProfile::pathCount(PathWork::LineStopAlloc, info.stats.stopAlloc);
+				PerformanceProfile::pathCount(PathWork::LineKept, info.stats.kept);
+				PerformanceProfile::pathCount(PathWork::LineMemoHits, info.stats.memoHits);
+				PerformanceProfile::pathCount(PathWork::LineUpdated, info.stats.updated);
+				PerformanceProfile::pathCount(PathWork::LineTicksValid, info.stats.ticksValid);
+				PerformanceProfile::pathCount(PathWork::LineTicksMovement, info.stats.ticksMovement);
+				PerformanceProfile::pathCount(PathWork::LineTicksUpdate, info.stats.ticksUpdate);
+			}
 		}
 
 		Int cellCount = 0;

@@ -232,3 +232,7 @@ search a speculation-with-validation project; the prerequisites (per-search scra
 
 **A. another serial pathfinding optimization**, aimed at the line phase: examine `iterateCellsAlongLine` / `examineCellsCallback` / `validMovementPosition` / `checkForMovement` for repeated object lookups and cache-hostile cell access in
 the 100 k-expansion exhausting searches (about 90 % of their remaining time), with the same oracle approach (hash of every pop and every path) - then re-measure. In parallel, one R1 session (DEBUG_CRC or interval override + a short recorded build).
+
+## Follow-up
+
+X64.41 (`X64_41_PATH_LINE_PHASE_AND_R1.md`) did the recommended serial line-phase work (an exact per-search passability memo) and replaced the stale `test_stage4b1_reference.py` described in section 13 by a function-level contract; section 17's remaining items (R1 localisation) now have tooling and wait for one short recording.

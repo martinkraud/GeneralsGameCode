@@ -26,11 +26,15 @@ def contains(haystack, needle):
     return norm(needle) in norm(haystack)
 # the exact X64.40 additions to the representation: (new text, text it replaces in the baseline)
 ALLOWED={
-    'PathfindCell.h':[('friend class PathfindCellList;','')],
-    'PathfindCellInfo.h':[('friend class PathfindCellList;',''),('UnsignedShort m_openKey;',''),('UnsignedInt m_indexed:1;','')],
+    'PathfindCell.h':[('friend class PathfindCellList;',''),
+                      ('inline Bool hasLineVerdict(UnsignedInt generation, Int layer) const { return m_info && m_info->m_lineGeneration == generation && m_info->m_lineLayer == layer; } inline void setLineVerdict(UnsignedInt generation, Int layer) { if (m_info) { m_info->m_lineGeneration = generation; m_info->m_lineLayer = static_cast<UnsignedByte>(layer); } }','')],
+    'PathfindCellInfo.h':[('friend class PathfindCellList;',''),('UnsignedShort m_openKey;',''),('UnsignedInt m_indexed:1;',''),('UnsignedInt m_lineGeneration;',''),('UnsignedByte m_lineLayer;','')],
     'PathfindCellList.h':[('#include "GameLogic/Pathfinder/OpenListIndex.h"',''),
-                          ('PathfindCellList() : m_head(nullptr), m_tail(nullptr), m_index(nullptr) {}','PathfindCellList() : m_head(nullptr), m_tail(nullptr) {}'),
+                          ('PathfindCellList() : m_head(nullptr), m_tail(nullptr), m_index(nullptr), m_generation(1) {}','PathfindCellList() : m_head(nullptr), m_tail(nullptr) {}'),
                           ('void reset(PathfindCell* newHead = nullptr); void attachIndex(OpenListIndex<PathfindCell>* index) { m_index = index; }','void reset(PathfindCell* newHead = nullptr) { m_head = newHead; m_tail = nullptr; }'),
+                          ('void reset() { m_head = nullptr; m_tail = nullptr; ++m_generation; }','void reset() { m_head = nullptr; m_tail = nullptr; }'),
+                          ('UnsignedInt searchGeneration() const { return m_generation; }',''),
+                          ('UnsignedInt m_generation;',''),
                           ('OpenListIndex<PathfindCell>* m_index;','')],
 }
 class RetailOpenListReference(unittest.TestCase):

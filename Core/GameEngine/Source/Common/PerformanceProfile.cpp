@@ -155,7 +155,8 @@ void reportPaths(const Recorder& r,const Metadata& meta,std::ostream& summary,st
 {
 	static const char* kinds[]={"request","internal","ground","hierarchical","closest","attack","safe","patch","move_away","queue","dispatch","reconstruction","cleanup","zones","zone_flags","obstacle"};
 	static const char* outcomes[]={"observed","returned_path","returned_closest","null_before_work","null_after_work"};
-	static const char* work[]={"open_head_pops","info_attempts","info_new","info_failed","open_inserts","forward_hops","reverse_hops","cleaned_cells","block_zone_queries","hierarchy_fallbacks"};
+	static const char* work[]={"open_head_pops","info_attempts","info_new","info_failed","open_inserts","forward_hops","reverse_hops","cleaned_cells","block_zone_queries","hierarchy_fallbacks",
+		"line_calls","line_callbacks","line_stop_invalid","line_stop_zone","line_stop_pinched","line_stop_extent","line_stop_movement","line_stop_fixed","line_stop_cliff","line_stop_alloc","line_kept","line_updated","line_memo_hits","line_ticks_valid","line_ticks_movement","line_ticks_update"};
 	static_assert(sizeof(kinds)/sizeof(*kinds)==static_cast<unsigned int>(PathKind::Count));
 	static_assert(sizeof(work)/sizeof(*work)==PathWorkCount);
 	paths.imbue(std::locale::classic());

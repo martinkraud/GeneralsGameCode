@@ -46,6 +46,8 @@ protected:
 	PathfindCell *m_cell;															///< Cell this info belongs to currently.
 
 	UnsignedShort m_totalCost, m_costSoFar;	///< cost estimates for A* search
+	UnsignedInt m_lineGeneration;														///< X64.41: search generation in which the line walk found this cell passable (see examineCellsCallback)
+	UnsignedByte m_lineLayer;															///< X64.41: the layer of the walk that recorded it
 	UnsignedShort m_openKey;															///< X64.40: the total cost the open-list index registered this node under (the cost may be improved while the node is still linked)
 
 	/// have to include cell's coordinates, since cells are often accessed via pointer only

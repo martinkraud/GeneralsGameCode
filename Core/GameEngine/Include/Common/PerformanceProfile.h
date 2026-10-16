@@ -67,7 +67,12 @@ enum class PathKind : unsigned int
 enum class PathWork : unsigned int
 {
 	HeadPops, InfoAttempts, InfoNew, InfoFailed, OpenInserts, ForwardHops, ReverseHops,
-	CleanedCells, BlockZoneQueries, HierarchyFallbacks, Count
+	CleanedCells, BlockZoneQueries, HierarchyFallbacks,
+	// X64.41 line-phase attribution (examineNeighboringCells -> iterateCellsAlongLine -> examineCellsCallback): calls of the line walk, callbacks invoked,
+	// why walks stopped, how many callbacks found the cell already on a list with a cost that is not worse (kept) or updated / inserted it, and - only when the
+	// timing mode is on - the ticks spent in the validity checks, in checkForMovement and in the cost/list update.
+	LineCalls, LineCallbacks, LineStopInvalid, LineStopZone, LineStopPinched, LineStopExtent, LineStopMovement, LineStopFixed, LineStopCliff, LineStopAlloc,
+	LineKept, LineUpdated, LineMemoHits, LineTicksValid, LineTicksMovement, LineTicksUpdate, Count
 };
 enum class PathOutcome : unsigned int { Observed, ReturnedPath, ReturnedClosest, NullBeforeWork, NullAfterWork };
 constexpr unsigned int PathWorkCount=static_cast<unsigned int>(PathWork::Count), MaxPaths=32768;

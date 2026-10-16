@@ -56,6 +56,19 @@ constexpr const UnsignedInt replayBufferBytes = 8192;
 
 Int REPLAY_CRC_INTERVAL = 100;
 
+// X64.41 diagnostic: GENERALS_REPLAY_CRC_INTERVAL=<n> makes a release build record (and generate) the replay CRC every n logic frames (the engine only offers
+// -ReplayCRCInterval in DEBUG_CRC builds). Unset = the normal interval.
+static Int diagnosticReplayCrcInterval()
+{
+	const char *v = getenv("GENERALS_REPLAY_CRC_INTERVAL");
+	if (v && *v)
+	{
+		const int n = atoi(v);
+		if (n >= 1 && n <= 1000) REPLAY_CRC_INTERVAL = n;
+	}
+	return REPLAY_CRC_INTERVAL;
+}
+
 const char *replayExtention = ".rep";
 const char *lastReplayFileName = "00000000";	// a name the user is unlikely to ever type, but won't cause panic & confusion
 
@@ -619,7 +632,7 @@ void RecorderClass::startRecording(GameDifficulty diff, GameMode originalGameMod
 	{
     if(TheSkirmishGameInfo)
     {
-			TheSkirmishGameInfo->setCRCInterval(REPLAY_CRC_INTERVAL);
+			TheSkirmishGameInfo->setCRCInterval(diagnosticReplayCrcInterval());
       theSlotList = GameInfoToAsciiString(TheSkirmishGameInfo);
       DEBUG_LOG(("GameInfo String: %s",theSlotList.str()));
 			localIndex = 0;
@@ -627,7 +640,7 @@ void RecorderClass::startRecording(GameDifficulty diff, GameMode originalGameMod
     else
     {
 		  // single player.  format the generic (empty) slotlist
-			m_gameInfo.setCRCInterval(REPLAY_CRC_INTERVAL);
+			m_gameInfo.setCRCInterval(diagnosticReplayCrcInterval());
 		  theSlotList = GameInfoToAsciiString(&m_gameInfo);
     }
 	}

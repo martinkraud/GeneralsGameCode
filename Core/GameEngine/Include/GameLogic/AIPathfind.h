@@ -126,6 +126,12 @@ public:
 	static unsigned long long openListWalkedHops();
 	static UnsignedInt openListVerifiedInserts();
 	static unsigned long long openListTraceDigest();
+	// X64.41 line phase: GENERALS_LINE_LEGACY=1 disables the per-search passability memo, GENERALS_LINE_VERIFY=1 re-runs the full checks for every memo hit and
+	// stops on the first difference, GENERALS_LINE_TRACE_HASH=1 hashes every line-walk decision.
+	static const char *lineModeName();
+	static unsigned long long lineMemoHits();
+	static unsigned long long lineMemoVerified();
+	static unsigned long long lineTraceDigest();
 // The following routines are private, but available through the doPathfind callback to aiInterface. jba.
 private:
 	virtual Path *findPath( Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from, const Coord3D *to) override;	///< Find a short, valid path between given locations

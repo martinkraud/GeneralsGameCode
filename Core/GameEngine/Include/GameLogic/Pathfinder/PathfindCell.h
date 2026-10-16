@@ -128,6 +128,9 @@ public:
 
 	inline Bool isBlockedByAlly() const;
 	inline void setBlockedByAlly(Bool blocked);
+	// X64.41: per-search memo of the line walk's passability verdict (valid while the open-list generation is unchanged; see examineCellsCallback)
+	inline Bool hasLineVerdict(UnsignedInt generation, Int layer) const { return m_info && m_info->m_lineGeneration == generation && m_info->m_lineLayer == layer; }
+	inline void setLineVerdict(UnsignedInt generation, Int layer) { if (m_info) { m_info->m_lineGeneration = generation; m_info->m_lineLayer = static_cast<UnsignedByte>(layer); } }
 
 	inline Bool getOpen() const {return m_info->m_open;}
 	inline Bool getClosed() const {return m_info->m_closed;}
