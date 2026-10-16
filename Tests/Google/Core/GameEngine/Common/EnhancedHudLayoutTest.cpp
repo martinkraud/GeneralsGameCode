@@ -952,6 +952,7 @@ TEST(EnhancedHudTheme, ThemeCanExpressShapeAndMaterialDifferencesBeyondColour)
 	heavy.fasteners = true;
 	heavy.seams = false;
 	heavy.bezelRef = 7;
+	heavy.windowCornerRef = 14;
 	heavy.wellDepthRef = 4;
 	EXPECT_TRUE(differsBeyondColour(usa(), heavy));            // a different construction language is
 	// the USA language itself: machined corners, fasteners, seams, vents, ticks, state rails, broken accent rail
@@ -1120,4 +1121,38 @@ TEST(EnhancedHudPanels, GameTimeAndMapNameAreFormattedFromSharedData)
 	mapDisplayName(nullptr, out, 32);                                              EXPECT_STREQ(out, L"");
 	wchar_t tiny[4];
 	EXPECT_EQ(mapDisplayName("Maps\\Long Name Here.map", tiny, 4), 3);              // never overruns
+}
+
+// ---- Power meter (refine 8) ------------------------------------------------------------------------------------------------
+
+TEST(EnhancedHudPanels, PowerMeterIsAPermanentSegmentedTrack)
+{
+	using namespace EnhancedHudPanels;
+	for (int width : {120, 213, 245, 400, 611})
+	{
+		EXPECT_EQ(powerSegmentX(0, width), 0);
+		EXPECT_EQ(powerSegmentX(kPowerSegments, width), width);
+		for (int i = 0; i < kPowerSegments; ++i)
+			EXPECT_LT(powerSegmentX(i, width), powerSegmentX(i + 1, width)) << width;      // every segment has width
+	}
+	EXPECT_GE(EnhancedHudPanels::kPowerSegments, 10);
+}
+
+TEST(EnhancedHudLayout, PowerMeterHasRoomForTrackSymbolAndSegments)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			const Rect meter = physical(r, "PowerWindow");
+			EXPECT_TRUE(meter.within(r.commandFrame)) << s.name;
+			EXPECT_FALSE(meter.intersects(r.cashFrame)) << s.name;
+			// the bolt symbol sits left of the meter, between the cash panel and the meter
+			const int boltLeft = meter.x - int(std::lround(17 * r.scale));
+			EXPECT_GE(boltLeft, r.cashFrame.right()) << s.name << " ui" << ui;
+			// thick enough to read as an instrument (never the old 7-unit hairline) and wide enough for its segments
+			EXPECT_GE(EnhancedHudPanels::kPowerSegments, 10);
+			EXPECT_GE(meter.h * 100, int(12 * r.scale * 100 * 0.9)) << s.name;
+			EXPECT_GE(meter.w / EnhancedHudPanels::kPowerSegments, 4) << s.name;
+		}
 }

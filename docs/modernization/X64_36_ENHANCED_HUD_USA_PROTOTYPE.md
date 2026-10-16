@@ -537,3 +537,48 @@ illumination, plate shapes. China/GLA fall back to Original; Europe/Russia are n
 
 **Limits.** Procedural placeholder art; labels use the game's Arial display strings (no faction typography yet); the popup/overview
 are skins on the retail layout (no re-layout); unavailable overview tabs wait for engine statistics that are safe to expose.
+
+## 19. Refinement 8: USA Design4 / Shared Framework candidate (after native review of `design3`: positive)
+Native result of Design3: bottom HUD, radar, selection, command bay, cash, Global Powers edge dock and Battle Overview accepted;
+two items remained: the power meter and the General Powers popup (still the retail layout with a new skin). Geometry stays frozen
+(`AcceptedMajorGeometryIsFrozen`); the popup is NOT part of the frozen geometry and is re-laid out. Status remains CP10 IN REVIEW;
+"Enhanced HUD Shared Framework v1" is NOT declared - it is the next step only if the human accepts this candidate.
+
+**Power meter.** `PowerWindow` (the retail gauge that carries the real production / consumption in the game's own green / yellow /
+red, and the retail tooltip) is now permanent instrumentation: taller (14 units instead of 7), in a raised housing with a recessed
+track of `kPowerSegments` = 20 segments that is ALWAYS drawn - an empty or nearly empty meter still reads as a meter. The gauge
+draw adds segment separators over fill and track through a gated hook (`EnhancedHudImage::drawGaugeSegments`, active only for the
+registered power window in Enhanced). A bolt symbol sits left of it: ready-blue while `Energy::hasSufficientPower()` (read only,
+the same state the gauge colours by), warning-red when not. No numbers are shown (the engine exposes the values, but the main HUD
+stays uncluttered) and nothing is written to any power state. Header ticks that did not mean anything were removed.
+
+**General Powers popup: real re-layout.** The retail popup is one 296 x 432 column. In Enhanced the SAME windows (texts, progress
+bar, 16 power buttons, exit) are moved by `EnhancedHudPanels::popupTarget` to a compact 536 x 300 console: header module (rank
+name and numeric level, experience label and bar, remaining General Points), 1-star tier top left, 5-star tier bottom left with
+Done, the 3-star grid on the right - its 4 columns x 3 rows are science chains and keep their exact relative arrangement. The popup is
+centred above the console (`popupPlacement`), sized from the UI scale and always reduced to fit the surface (<= 95 % width,
+<= 90 % height; typically < 30 % of the screen area), so it never goes full screen. "Level" is the numeric rank (1-5) beside the rank
+title, so both stay; nothing was hidden. Aspect-fitted icons; states: available = raised blue plate, purchased = raised gold plate,
+locked = recessed and dimmed, hover rim, pressed depressed; the retail bitmaps of the decoration windows are cleared and restored.
+Purchase logic, point costs, rank requirements, tooltips and command messages are the retail windows' and untouched; geometry is
+recorded before it changes and restored exactly (positions and sizes; the game owns shown/hidden). Tests (mock windows with the
+retail hierarchy and rectangles, 9 surfaces x 5 UI scales): all 16 powers + Done present, inside the popup, never overlapping, every
+probe point of every button hits that button, tiers/chains preserved, popup on the surface and centred. Original shows the retail popup.
+
+**HUD detail audit.** Reviewed for missing meaningful details; deliberately nothing was added beyond the power instrumentation:
+an empty command bay when nothing is selected is correct, no fake telemetry or buttons. Theme gained `windowCorner` so popup and
+overview construction can differ per faction.
+
+**Candidate shared framework (not frozen).** Macro-geometry and function that Design4 proposes to freeze if accepted:
+bottom island (1000 x 180 reference, 82 % width cap, bottom flush, centred), radar module and utility controls, selection
+module, header (cash + power meter), 12-slot command bay with retail slot indices, General module (entry, XP, milestone cells,
+point pips), Global Powers (column flush at the right edge, row on compact), General Powers popup structure (header, three tiers,
+chains), Battle Overview structure (PLAYERS only), hit-test and image-fit rules, UI scale, Original/Enhanced switch and restore.
+Acceptance criteria for freezing: human native acceptance of the candidate; matrix green; reference-guard set unchanged.
+
+**Faction design contract.** All factions share the framework; only the Theme (and later assets) differs, by construction language,
+not by colour. USA: advanced military electronics, precision-machined, dark navy/gunmetal, cool blue light, restrained gold rank,
+red only for warnings. China (later): heavy industrial military console - darker, heavier steel, thicker frames and ribs, reinforced
+edges, red status light with restrained amber/gold, monumental symmetry; NOT USA painted red. GLA (later): improvised field
+equipment - salvaged and patched plates, asymmetry, welded seams, exposed fasteners, rough cut corners, amber/green practical lamps,
+worn dark metal; NOT USA painted green; still as clear to use as USA (same grid, hit regions, hierarchy). Europe/Russia: future.

@@ -76,18 +76,90 @@ inline PowerState powerState(bool enabled, bool alwaysColor)
 	return alwaysColor ? PowerState::Purchased : PowerState::Locked;
 }
 
-// Retail layout of the popup relative to its parent window (GeneralsExpPoints.wnd at 800 x 600, parent 296 x 432). The popup
-// windows keep these positions (scaled with the parent); the Enhanced skin only draws behind them.
+// Retail layout of the popup relative to its parent window (GeneralsExpPoints.wnd at 800 x 600, parent 296 x 432). The
+// retail windows are one tall column: header, 1-star row, 3-star grid, 5-star row, exit.
 constexpr int kPopupW = 296, kPopupH = 432;
 constexpr Rect kPopupHeader = {0, 0, 296, 76};          // title, level, experience bar, remaining points
 constexpr Rect kPopupRank1 = {0, 76, 296, 84};          // "1 star" header text + three powers
-constexpr Rect kPopupRank3 = {0, 160, 296, 188};        // "3 star" header text + twelve powers (4 x 3)
+constexpr Rect kPopupRank3 = {0, 160, 296, 188};        // "3 star" header text + twelve powers (4 columns x 3 rows)
 constexpr Rect kPopupRank8 = {0, 348, 296, 84};         // "5 star" header text + one power + the exit button (same row)
 inline Rect popupScaled(const Rect &r, double scale)
 {
 	return {static_cast<int>(std::lround(r.x * scale)), static_cast<int>(std::lround(r.y * scale)),
 	        static_cast<int>(std::lround(r.w * scale)), static_cast<int>(std::lround(r.h * scale))};
 }
+
+// Enhanced re-layout of the SAME windows (reference units, parent 536 x 300): a compact console. The header carries rank,
+// experience and General Points; the three rank tiers stay obvious - 1 star (top left), 5 star (bottom left, with Done) and the
+// 3 star grid on the right (its 4 columns x 3 rows are science chains: the columns are kept exactly as in the retail layout, so
+// no power moves relative to the others in its chain).
+constexpr int kPopupNewW = 536, kPopupNewH = 300;
+constexpr Rect kPopupNewHeader = {12, 10, 512, 76};
+constexpr Rect kPopupNewTier1 = {12, 98, 216, 94};
+constexpr Rect kPopupNewTier5 = {12, 204, 216, 84};
+constexpr Rect kPopupNewTier3 = {240, 98, 284, 190};
+
+struct PopupTarget { bool valid; Rect rect; };
+
+inline bool popupNear(int a, int b) { return a - b <= 1 && b - a <= 1; }
+inline bool popupSame(const Rect &r, int x, int y, int w, int h)
+{
+	return popupNear(r.x, x) && popupNear(r.y, y) && popupNear(r.w, w) && popupNear(r.h, h);
+}
+
+// Enhanced target (reference units, relative to the new parent) of a retail window given its retail rectangle relative to the
+// retail parent. Windows that are not part of the retail GeneralsExpPoints.wnd layout are reported invalid and left alone.
+inline PopupTarget popupTarget(const Rect &r)
+{
+	struct Entry { int rx, ry, rw, rh; Rect to; };
+	static const Entry table[] = {
+		{0, 0, 296, 34, kPopupNewHeader},                    // header decoration window
+		{8, 6, 160, 26, {20, 14, 160, 26}},                  // StaticTextTitle (rank name)
+		{176, 6, 113, 26, {186, 14, 113, 26}},               // StaticTextLevel
+		{8, 38, 160, 16, {20, 46, 160, 16}},                 // "Experience"
+		{8, 54, 167, 18, {20, 64, 300, 18}},                 // experience bar housing
+		{11, 59, 161, 8, {23, 69, 294, 8}},                  // ProgressBarExperience
+		{174, 36, 84, 36, {404, 14, 84, 36}},                // "Remaining skill points"
+		{262, 40, 23, 31, {494, 18, 23, 31}},                // StaticTextRankPointsAvailable
+		{0, 76, 296, 24, {16, 102, 208, 24}},                // 1 star header text
+		{0, 160, 296, 24, {244, 102, 276, 24}},              // 3 star header text
+		{0, 348, 296, 24, {16, 208, 208, 24}},               // 5 star header text
+		{198, 392, 88, 32, {124, 240, 88, 32}},              // ButtonExit
+	};
+	for (const Entry &e : table)
+		if (popupSame(r, e.rx, e.ry, e.rw, e.rh))
+			return {true, e.to};
+	if (popupNear(r.w, 56) && popupNear(r.h, 48))            // a power button
+	{
+		if (r.y < 160) return {true, {r.x + 8, r.y + 28, r.w, r.h}};            // 1 star row
+		if (r.y < 348) return {true, {r.x + 236, r.y - 56, r.w, r.h}};          // 3 star grid
+		return {true, {r.x + 8, r.y - 138, r.w, r.h}};                          // 5 star
+	}
+	return {false, {}};
+}
+
+// Where the popup goes and how large it is drawn: the reference size times the UI scale, reduced so it always fits the
+// surface; centred in the battlefield above the console (or in the surface when there is no room above it).
+struct PopupPlacement { Rect rect; double scale; };
+inline PopupPlacement popupPlacement(int surfaceW, int surfaceH, int consoleTop, double uiScale)
+{
+	double f = uiScale > 0.0 ? uiScale : 1.0;
+	f = std::min(f, 0.95 * surfaceW / kPopupNewW);
+	f = std::min(f, 0.90 * surfaceH / kPopupNewH);
+	if (f < 0.25) f = 0.25;
+	const int w = static_cast<int>(std::lround(kPopupNewW * f)), h = static_cast<int>(std::lround(kPopupNewH * f));
+	const int x = (surfaceW - w) / 2;
+	int y = (consoleTop - h) / 2;
+	if (y < 0) y = std::max(0, (surfaceH - h) / 2);
+	if (y + h > surfaceH) y = std::max(0, surfaceH - h);
+	return {{x, y, w, h}, f};
+}
+
+// ---- Power meter (ControlBar PowerWindow) ------------------------------------------------------------------------------------
+// The meter is permanent console instrumentation: a recessed track of kPowerSegments segments is always drawn, whatever the
+// power state; the retail gauge (real production / consumption, green / yellow / red from the game's own state) fills it.
+constexpr int kPowerSegments = 20;
+inline int powerSegmentX(int index, int width) { return width * index / kPowerSegments; }
 
 // ---- Battle Overview (Diplomacy.wnd) ----------------------------------------------------------------------------------------
 //

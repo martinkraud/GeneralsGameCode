@@ -855,3 +855,162 @@ TEST(EnhancedHudInteractive, DrawnGlobalPowerPlatesEndExactlyAtTheScreenEdge)
 			}
 		}
 }
+
+// ---- General Powers popup re-layout (refine 8) -----------------------------------------------------------------------------
+
+namespace
+{
+// GeneralsExpPoints.wnd (retail, screen rectangles at 800 x 600): parent index -1, then its children in file order.
+const Def kPopup[] = {
+	{"GenExpParent", -1, 258, 3, 296, 432, false},
+	{"Header", 0, 258, 3, 296, 34, false},
+	{"Rank1Required", 0, 258, 79, 296, 24, false},
+	{"StaticTextLevel", 0, 434, 9, 113, 26, false},
+	{"ButtonExit", 0, 456, 395, 88, 32, false},
+	{"StaticTextTitle", 0, 266, 9, 160, 26, false},
+	{"ExpHousing", 0, 266, 57, 167, 18, false},
+	{"ProgressBarExperience", 0, 269, 62, 161, 8, false},
+	{"ButtonRank1Number0", 0, 274, 107, 56, 48, false},
+	{"ButtonRank1Number1", 0, 342, 107, 56, 48, false},
+	{"ButtonRank1Number2", 0, 410, 107, 56, 48, false},
+	{"ButtonRank3Number0", 0, 274, 191, 56, 48, false},
+	{"ButtonRank3Number1", 0, 274, 243, 56, 48, false},
+	{"ButtonRank3Number2", 0, 274, 295, 56, 48, false},
+	{"ButtonRank3Number3", 0, 342, 191, 56, 48, false},
+	{"ButtonRank3Number4", 0, 342, 243, 56, 48, false},
+	{"ButtonRank3Number5", 0, 342, 295, 56, 48, false},
+	{"ButtonRank3Number6", 0, 410, 191, 56, 48, false},
+	{"ButtonRank3Number7", 0, 410, 243, 56, 48, false},
+	{"ButtonRank3Number8", 0, 410, 295, 56, 48, false},
+	{"ButtonRank3Number9", 0, 478, 191, 56, 48, false},
+	{"ButtonRank3Number10", 0, 478, 243, 56, 48, false},
+	{"ButtonRank3Number11", 0, 478, 296, 56, 48, false},
+	{"ButtonRank8Number0", 0, 274, 379, 56, 48, false},
+	{"Experience", 0, 266, 41, 160, 16, false},
+	{"RemainingSkillPoints", 0, 432, 39, 84, 36, false},
+	{"StaticTextRankPointsAvailable", 0, 520, 43, 23, 31, false},
+	{"Rank3Required", 0, 258, 163, 296, 24, false},
+	{"Rank8Required", 0, 258, 351, 296, 24, false},
+};
+
+struct PopupCase { Tree tree; EnhancedHudPanels::PopupPlacement place; std::map<Win *, std::vector<int>> orig; };
+
+void buildPopup(PopupCase &pc, const Surface &s, int consoleTop, double ui)
+{
+	pc.tree.build(kPopup);
+	scaleLoaded(pc.tree, ui);
+	pc.place = EnhancedHudPanels::popupPlacement(s.w, s.h, consoleTop, ui);
+	auto original = [&pc](Win *w, int *out)
+	{
+		auto it = pc.orig.find(w);
+		if (it == pc.orig.end())
+			it = pc.orig.insert({w, {w->lox, w->loy, w->w, w->h}}).first;
+		for (int i = 0; i < 4; ++i)
+			out[i] = it->second[i];
+	};
+	EnhancedHudWindows::applyPopupLayout<Win>(pc.tree.master(), pc.place.rect, pc.place.scale, original);
+}
+}  // namespace
+
+TEST(EnhancedHudInteractive, GeneralPowersPopupKeepsEveryPowerAndPlacesItInsideItsSurface)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid)
+				continue;
+			PopupCase pc;
+			buildPopup(pc, s, layout.island.y, ls);
+			const Rect popup = pc.place.rect;
+			// the popup is on the surface and centred horizontally, never full screen
+			EXPECT_TRUE(popup.within(Rect{0, 0, s.w, s.h})) << s.w << "x" << s.h << " ui" << ui;
+			EXPECT_LE(std::abs((popup.x) - (s.w - popup.right())), 1);
+			EXPECT_LE(popup.w * 100, s.w * 95 + 100);
+			EXPECT_LE(popup.h * 100, s.h * 90 + 100);
+			// all 16 powers and the exit button are still there, inside the popup, none clipped by the parent
+			int powers = 0;
+			std::vector<Win *> buttons;
+			for (Win *c = pc.tree.master()->child; c; c = c->next)
+			{
+				const Rect r = screen(c);
+				EXPECT_TRUE(r.within(popup)) << c->name << " " << s.w << "x" << s.h << " ui" << ui;
+				if (c->name.rfind("ButtonRank", 0) == 0)
+					++powers;
+				if (c->name.rfind("Button", 0) == 0)
+					buttons.push_back(c);
+			}
+			EXPECT_EQ(powers, 16);
+			ASSERT_EQ(buttons.size(), 17u);
+			// buttons never overlap and every probe point inside a button hits that button (full plates)
+			for (size_t i = 0; i < buttons.size(); ++i)
+			{
+				const Rect a = screen(buttons[i]);
+				for (size_t j = 0; j < i; ++j)
+					EXPECT_FALSE(a.intersects(screen(buttons[j]))) << buttons[i]->name << " vs " << buttons[j]->name;
+				if (a.w < 4 || a.h < 4)
+					continue;
+				for (const Probe &p : insideProbes(a))
+					EXPECT_EQ(hitTest(pc.tree.master(), p.x, p.y), buttons[i]) << buttons[i]->name << " " << p.what;
+			}
+		}
+}
+
+TEST(EnhancedHudInteractive, GeneralPowersPopupKeepsTheThreeRankTiersAndTheScienceChains)
+{
+	const Surface s = {1920, 1200};
+	const double ls = layoutScaleFor(s.w, s.h, DisplayGeometry::kAutoUiScale);
+	const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+	PopupCase pc;
+	buildPopup(pc, s, layout.island.y, ls);
+	const double f = pc.place.scale;
+	auto tierRect = [&](const Rect &r) { return Rect{pc.place.rect.x + int(std::lround(r.x * f)), pc.place.rect.y + int(std::lround(r.y * f)),
+	                                                   int(std::lround(r.w * f)), int(std::lround(r.h * f))}; };
+	const Rect t1 = tierRect(EnhancedHudPanels::kPopupNewTier1), t3 = tierRect(EnhancedHudPanels::kPopupNewTier3),
+	           t5 = tierRect(EnhancedHudPanels::kPopupNewTier5), head = tierRect(EnhancedHudPanels::kPopupNewHeader);
+	// tiers do not overlap each other or the header
+	EXPECT_FALSE(t1.intersects(t3)); EXPECT_FALSE(t1.intersects(t5)); EXPECT_FALSE(t3.intersects(t5));
+	EXPECT_FALSE(head.intersects(t1)); EXPECT_FALSE(head.intersects(t3)); EXPECT_FALSE(head.intersects(t5));
+	for (int i = 0; i < 3; ++i)
+		EXPECT_TRUE(screen(pc.tree.find("ButtonRank1Number" + std::to_string(i))).within(t1)) << i;
+	for (int i = 0; i < 12; ++i)
+		EXPECT_TRUE(screen(pc.tree.find("ButtonRank3Number" + std::to_string(i))).within(t3)) << i;
+	EXPECT_TRUE(screen(pc.tree.find("ButtonRank8Number0")).within(t5));
+	EXPECT_TRUE(screen(pc.tree.find("ButtonExit")).within(t5));
+	for (const char *n : {"StaticTextTitle", "StaticTextLevel", "Experience", "ProgressBarExperience", "RemainingSkillPoints", "StaticTextRankPointsAvailable"})
+		EXPECT_TRUE(screen(pc.tree.find(n)).within(head)) << n;
+	// science chains: the 3 star grid keeps its 4 columns x 3 rows exactly (power i of a column stays above power i + 1)
+	for (int col = 0; col < 4; ++col)
+		for (int row = 0; row < 2; ++row)
+		{
+			const Rect up = screen(pc.tree.find("ButtonRank3Number" + std::to_string(col * 3 + row)));
+			const Rect down = screen(pc.tree.find("ButtonRank3Number" + std::to_string(col * 3 + row + 1)));
+			EXPECT_EQ(up.x, down.x) << col << "," << row;
+			EXPECT_LT(up.bottom(), down.y + 2);
+		}
+	// the popup is wider than tall (modern, compact) and much smaller than the retail column
+	EXPECT_GT(pc.place.rect.w, pc.place.rect.h);
+	EXPECT_LT(double(pc.place.rect.w) * pc.place.rect.h, 0.35 * s.w * s.h);
+}
+
+TEST(EnhancedHudInteractive, GeneralPowersPopupRetailRectanglesAreRecognisedExactlyOnce)
+{
+	// every retail window of the table maps to a target; nothing maps twice to the same place
+	std::vector<Rect> targets;
+	for (const Def &d : kPopup)
+	{
+		if (d.parent < 0)
+			continue;
+		const Rect retail = {d.x - 258, d.y - 3, d.w, d.h};
+		const EnhancedHudPanels::PopupTarget t = EnhancedHudPanels::popupTarget(retail);
+		ASSERT_TRUE(t.valid) << d.name;
+		for (const Rect &o : targets)
+			if (t.rect.x == o.x && t.rect.y == o.y && t.rect.w == o.w && t.rect.h == o.h)
+				ADD_FAILURE() << d.name << " collides with another window";
+		targets.push_back(t.rect);
+	}
+	EXPECT_EQ(targets.size(), 28u);
+	// unknown windows are left alone
+	EXPECT_FALSE(EnhancedHudPanels::popupTarget({3, 3, 17, 17}).valid);
+}

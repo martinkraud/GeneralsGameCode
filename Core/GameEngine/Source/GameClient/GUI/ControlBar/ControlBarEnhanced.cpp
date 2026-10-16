@@ -36,6 +36,7 @@
 #include "GameLogic/RankInfo.h"
 #include "Common/Radar.h"
 #include "Common/EnhancedHudPanels.h"
+#include "Common/Energy.h"
 #include "Common/GlobalData.h"
 #include "GameClient/DisplayString.h"
 #include "GameClient/DisplayStringManager.h"
@@ -108,10 +109,15 @@ namespace
 void powersPanelDraw( GameWindow *window, WinInstanceData *instData );
 void purchasePanelDraw( GameWindow *window, WinInstanceData *instData );
 void releaseTexts();
+Color themeColor( const EnhancedHudTheme::Rgba &c );
 GameWinDrawFunc s_powersOriginalDraw = nullptr;
 GameWindow *s_purchaseWindow = nullptr;            // the General Powers popup (skinned while Enhanced is active)
 GameWinDrawFunc s_purchaseOriginalDraw = nullptr;
 const Image *s_purchaseOriginalImage = nullptr;
+std::map<GameWindow *, Original> s_purchase;       // retail geometry of the popup windows (restored for Original)
+struct PopupArt { const Image *enabled; const Image *disabled; };
+std::map<GameWindow *, PopupArt> s_purchaseArt;      // retail bitmaps of popup decoration windows
+GameWindow *s_powerMeter = nullptr;                // the PowerWindow gauge (segment overlay)
 struct SlotArt { const Image *enabled; const Image *disabled; };
 std::map<GameWindow *, SlotArt> s_powerSlotArt;     // retail frame art of the shortcut slots (restored for Original)
 }
@@ -155,6 +161,15 @@ void EnhancedHudImage::fitImage( GameWindow *window, const Image *image, ICoord2
 	start->y = r.y;
 	end->x = r.right();
 	end->y = r.bottom();
+}
+
+void EnhancedHudImage::drawGaugeSegments( GameWindow *window, Int x, Int y, Int w, Int h )
+{
+	if( !window || !EnhancedHud::active() || window != s_powerMeter || !TheDisplay || w <= 0 || h <= 0 )
+		return;
+	const Color separator = themeColor( EnhancedHud::theme().bevelDark );
+	for( int i = 1; i < EnhancedHudPanels::kPowerSegments; ++i )
+		TheDisplay->drawLine( x + EnhancedHudPanels::powerSegmentX( i, w ), y, x + EnhancedHudPanels::powerSegmentX( i, w ), y + h, 1, separator );
 }
 
 Real EnhancedHudImage::gaugeScale( GameWindow *window, Int windowCross, Int imageCross )
@@ -240,8 +255,9 @@ void ControlBar::applyEnhancedLayout()
 		}
 	}
 
-	// General Powers popup: the retail windows stay; the retail background bitmap is replaced by the Enhanced skin (restored
-	// for Original) and the power icons are aspect-fitted inside their plates
+	// General Powers popup: the SAME retail windows are moved to a compact Enhanced layout (EnhancedHudPanels::popupTarget); the
+	// retail background and decoration bitmaps are replaced by the Enhanced skin (all restored for Original) and the power
+	// icons are aspect-fitted. Content, input, tooltips and purchase logic stay the retail windows'.
 	if( GameWindow *gen = m_contextParent[ CP_PURCHASE_SCIENCE ] )
 	{
 		if( s_purchaseWindow != gen )
@@ -249,15 +265,41 @@ void ControlBar::applyEnhancedLayout()
 			s_purchaseWindow = gen;
 			s_purchaseOriginalDraw = gen->winGetDrawFunc();
 			s_purchaseOriginalImage = nullptr;
+			s_purchase.clear();
+			s_purchaseArt.clear();
 		}
 		if( const Image *img = gen->winGetEnabledImage( 0 ) )
 			s_purchaseOriginalImage = img;
 		gen->winSetEnabledImage( 0, nullptr );
 		gen->winSetDrawFunc( purchasePanelDraw );
+		const Int surfaceW = TheDisplay ? (Int)TheDisplay->getWidth() : 800, surfaceH = TheDisplay ? (Int)TheDisplay->getHeight() : 600;
+		const double ui = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
+		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement( surfaceW, surfaceH, layout.island.y, ui );
+		EnhancedHudWindows::applyPopupLayout<GameWindow>( gen, place.rect, place.scale,
+			[]( GameWindow *w, int *out )
+			{
+				remember( s_purchase, w );
+				const Original &o = s_purchase[ w ];
+				out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
+			} );
 		for( GameWindow *ch = gen->winGetChild(); ch; ch = ch->winGetNext() )
-			if( BitIsSet( ch->winGetStyle(), GWS_PUSH_BUTTON ) && ch->winGetWindowId() != TheNameKeyGenerator->nameToKey( "GeneralsExpPoints.wnd:ButtonExit" ) )
+		{
+			const UnsignedInt style = ch->winGetStyle();
+			if( BitIsSet( style, GWS_STATIC_TEXT ) || ( style & GWS_USER_WINDOW ) )
+			{
+				if( s_purchaseArt.find( ch ) == s_purchaseArt.end() )
+				{
+					PopupArt art = { ch->winGetEnabledImage( 0 ), ch->winGetDisabledImage( 0 ) };
+					s_purchaseArt[ ch ] = art;
+				}
+				ch->winSetEnabledImage( 0, nullptr );
+				ch->winSetDisabledImage( 0, nullptr );
+			}
+			if( BitIsSet( style, GWS_PUSH_BUTTON ) && ch->winGetWindowId() != TheNameKeyGenerator->nameToKey( "GeneralsExpPoints.wnd:ButtonExit" ) )
 				EnhancedHudImage::registerAspectFit( ch );
+		}
 	}
+	s_powerMeter = barWindow( "PowerWindow" );
 
 	applyEnhancedPowerShortcutLayout();
 }
@@ -275,7 +317,21 @@ void ControlBar::restoreOriginalLayout()
 		if( s_purchaseOriginalDraw )
 			s_purchaseWindow->winSetDrawFunc( s_purchaseOriginalDraw );
 		s_purchaseWindow->winSetEnabledImage( 0, s_purchaseOriginalImage );
+		// geometry only (the popup's own shown / hidden state belongs to the game and is left alone)
+		for( std::map<GameWindow *, Original>::const_iterator it = s_purchase.begin(); it != s_purchase.end(); ++it )
+		{
+			it->first->winSetPosition( it->second.pos.x, it->second.pos.y );
+			it->first->winSetSize( it->second.size.x, it->second.size.y );
+		}
+		for( std::map<GameWindow *, PopupArt>::const_iterator it = s_purchaseArt.begin(); it != s_purchaseArt.end(); ++it )
+		{
+			it->first->winSetEnabledImage( 0, it->second.enabled );
+			it->first->winSetDisabledImage( 0, it->second.disabled );
+		}
 	}
+	s_purchase.clear();
+	s_purchaseArt.clear();
+	s_powerMeter = nullptr;
 	s_purchaseWindow = nullptr;
 	s_purchaseOriginalDraw = nullptr;
 	s_purchaseOriginalImage = nullptr;
@@ -666,6 +722,37 @@ void fillStar( Int cx, Int cy, Int outer, Color color )
 	}
 }
 
+// Filled polygon (even-odd scanline), used for the power symbol.
+void fillPolygon( const Int *xs, const Int *ys, int n, Color color )
+{
+	Int top = ys[ 0 ], bottom = ys[ 0 ];
+	for( int i = 1; i < n; ++i ) { top = std::min( top, ys[ i ] ); bottom = std::max( bottom, ys[ i ] ); }
+	for( Int y = top; y <= bottom; ++y )
+	{
+		Int cross[ 16 ];
+		int count = 0;
+		for( int i = 0; i < n && count < 15; ++i )
+		{
+			const int j = ( i + 1 ) % n;
+			if( ( ys[ i ] <= y && ys[ j ] > y ) || ( ys[ j ] <= y && ys[ i ] > y ) )
+				cross[ count++ ] = xs[ i ] + ( y - ys[ i ] ) * ( xs[ j ] - xs[ i ] ) / ( ys[ j ] - ys[ i ] );
+		}
+		std::sort( cross, cross + count );
+		for( int k = 0; k + 1 < count; k += 2 )
+			TheDisplay->drawLine( cross[ k ], y, cross[ k + 1 ], y, 1, color );
+	}
+}
+
+// Electrical bolt symbol inside `r`.
+void drawBolt( const HRect &r, Color color )
+{
+	if( r.w < 4 || r.h < 4 )
+		return;
+	const Int px[ 6 ] = { r.x + r.w * 6 / 10, r.x + r.w * 1 / 10, r.x + r.w * 5 / 10, r.x + r.w * 3 / 10, r.x + r.w * 9 / 10, r.x + r.w * 5 / 10 };
+	const Int py[ 6 ] = { r.y, r.y + r.h * 55 / 100, r.y + r.h * 55 / 100, r.y + r.h - 1, r.y + r.h * 38 / 100, r.y + r.h * 38 / 100 };
+	fillPolygon( px, py, 6, color );
+}
+
 enum Glyph { GLYPH_OPTIONS, GLYPH_WORKER, GLYPH_BEACON, GLYPH_COMMS };
 
 void drawGlyph( Glyph glyph, const HRect &r, Color color )
@@ -698,13 +785,13 @@ void drawGlyph( Glyph glyph, const HRect &r, Color color )
 	}
 }
 
-const int kHudWinCount = 8 + 12;
+const int kHudWinCount = 8 + 12 + 1;
 GameWindow *s_hudWin[ kHudWinCount ];     // 0 radar, 1-4 utility buttons, 5 XP trough, 6 attack lamp, 7 CommandWindow, 8.. command buttons
 const char *const s_hudWinNames[ kHudWinCount ] = { "LeftHUD", "ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon",
                                          "PopupCommunicator", "ExpBarForeground", "WinUAttack", "CommandWindow",
                                          "ButtonCommand01", "ButtonCommand02", "ButtonCommand03", "ButtonCommand04",
                                          "ButtonCommand05", "ButtonCommand06", "ButtonCommand07", "ButtonCommand08",
-                                         "ButtonCommand09", "ButtonCommand10", "ButtonCommand11", "ButtonCommand12" };
+                                         "ButtonCommand09", "ButtonCommand10", "ButtonCommand11", "ButtonCommand12", "PowerWindow" };
 
 bool windowChainShown( GameWindow *win )
 {
@@ -997,15 +1084,28 @@ void drawEnhancedHudFrame()
 		                      l.commandFrame.right() - ( l.cashFrame.x - l.commandFrame.x ) - ( l.cashFrame.x - cg ) + cg,
 		                      l.cashFrame.h + 2 * cg };
 		drawRecess( strip, c );
-		if( th.tickMarks )
-		{
-			// header rail ticks under the power gauge side of the strip
-			for( int i = 0; i < 12; ++i )
+		// POWER METER: permanent instrumentation. A raised housing around a recessed track of kPowerSegments segments is ALWAYS
+		// drawn (empty capacity stays visible); the retail gauge - the game's real production / consumption in its own green /
+		// yellow / red - fills it, and segment separators are drawn over fill and track by the gauge draw. The bolt symbol is
+		// ready-blue while power is sufficient and warning-red when it is not (Energy::hasSufficientPower, read only).
+		if( GameWindow *pw = s_hudWin[ 20 ] )
+			if( !pw->winIsHidden() )
 			{
-				const Int tx = l.cashFrame.right() + P( 8 ) + i * ( strip.right() - l.cashFrame.right() - P( 16 ) ) / 12;
-				TheDisplay->drawLine( tx, strip.y + strip.h - cg - 1, tx, strip.y + strip.h - 2, 1, i % 4 == 0 ? c.accent : c.accentDim );
+				const HRect m = windowRect( pw );
+				drawRaisedFrame( m, std::max<Int>( 2, P( 1.5 ) ), c, false );
+				drawRecess( m, c, P( 1.2 ) );
+				for( int i = 0; i < EnhancedHudPanels::kPowerSegments; ++i )
+				{
+					const Int x0 = m.x + EnhancedHudPanels::powerSegmentX( i, m.w ), x1 = m.x + EnhancedHudPanels::powerSegmentX( i + 1, m.w );
+					TheDisplay->drawFillRect( x0 + 1, m.y + 2, std::max<Int>( 1, x1 - x0 - 1 ), std::max<Int>( 1, m.h - 4 ), c.panelLow );
+				}
+				bool sufficient = true;
+				if( TheControlBar )
+					if( Player *player = TheControlBar->getCurrentlyViewedPlayer() )
+						if( Energy *energy = player->getEnergy() )
+							sufficient = energy->hasSufficientPower();
+				drawBolt( HRect{ m.x - P( 17 ), m.y - 1, P( 12 ), m.h + 2 }, sufficient ? c.ready : c.warning );
 			}
-		}
 		if( !l.cashFrame.empty() )
 		{
 			// compact military data readout: raised bezel, deep dark display, blue status edge, status segments
@@ -1214,25 +1314,31 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 	const HudPalette c = makePalette();
 	const EnhancedHudTheme::Theme &th = *c.theme;
 	const HRect r = windowRect( window );
-	const double u = r.w / (double)EnhancedHudPanels::kPopupW;
+	const double u = r.w / (double)EnhancedHudPanels::kPopupNewW;
 	s_drawScale = std::max( 0.5, u );
-	const Int k = P( 8 );
+	const Int k = th.windowCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.windowCornerRef ) : 0;
 	fillChassis( r, k, c );
 	edgeChamfered( r, k, CM_TOP, c.shadow );
 	TheDisplay->drawLine( r.x + k + 1, r.y + 1, r.x + r.w - k - 2, r.y + 1, 1, c.highlight );
-	const HRect sections[ 4 ] = { EnhancedHudPanels::kPopupHeader, EnhancedHudPanels::kPopupRank1, EnhancedHudPanels::kPopupRank3,
-	                             EnhancedHudPanels::kPopupRank8 };
+	// header module (rank, experience, General Points) and one recessed module per rank tier
+	const HRect modules[ 4 ] = { EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewHeader, u ),
+	                             EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewTier1, u ),
+	                             EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewTier3, u ),
+	                             EnhancedHudPanels::popupScaled( EnhancedHudPanels::kPopupNewTier5, u ) };
 	for( int i = 0; i < 4; ++i )
-	{
-		const HRect s = EnhancedHudPanels::popupScaled( sections[ i ], u );
-		drawModule( HRect{ r.x + s.x + P( 6 ), r.y + s.y + P( 4 ), s.w - 2 * P( 6 ), s.h - P( 7 ) }, c, i == 0 ? 3 : -1 );
-	}
+		drawModule( HRect{ r.x + modules[ i ].x, r.y + modules[ i ].y, modules[ i ].w, modules[ i ].h }, c, i == 0 ? 3 : -1 );
 	// the experience bar sits in a raised housing
 	if( GameWindow *bar = childByName( window, "GeneralsExpPoints.wnd:ProgressBarExperience" ) )
 	{
 		const HRect b = windowRect( bar );
 		drawRaisedFrame( b, P( 2.5 ), c, false );
 		drawRecess( b, c, P( 1.5 ) );
+		if( th.tickMarks )
+			for( int i = 1; i < 10; ++i )
+			{
+				const Int tx = b.x + b.w * i / 10;
+				TheDisplay->drawLine( tx, b.y + b.h - 2, tx, b.y + b.h - 2 - ( i == 5 ? 3 : 1 ), 1, i == 5 ? c.accent : c.accentDim );
+			}
 	}
 	GameWindow *exitButton = childByName( window, "GeneralsExpPoints.wnd:ButtonExit" );
 	const Int pk = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
@@ -1253,11 +1359,16 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 		const HRect plate = inflate( b, P( 3 ) );
 		const bool available = state == EnhancedHudPanels::PowerState::Available;
 		const bool purchased = state == EnhancedHudPanels::PowerState::Purchased;
-		drawBevelPlate( plate, pk, CM_ALL, available || purchased ? themeColor( th.control ) : themeColor( th.controlLow ),
-		                available ? ( hover ? c.accent : c.ready ) : ( purchased ? c.lit : c.shadow ), down && available, c );
+		if( !available && !purchased )
+		{
+			// locked: recessed and desaturated
+			drawRecess( plate, c, P( 1.2 ) );
+			continue;
+		}
+		drawBevelPlate( plate, pk, CM_ALL, themeColor( th.control ), available ? ( hover ? c.accent : c.ready ) : c.lit, down && available, c );
 		if( th.stateRails )
 			TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ),
-			                          purchased ? c.lit : ( available ? c.ready : c.shadow ) );
+			                          purchased ? c.lit : c.ready );
 	}
 }
 
@@ -1276,7 +1387,7 @@ void overviewDraw( GameWindow *window, WinInstanceData * )
 	const HRect r = windowRect( window );
 	const double u = r.w / (double)EnhancedHudPanels::kOverviewW;
 	s_drawScale = std::max( 0.5, u );
-	const Int k = P( 8 );
+	const Int k = th.windowCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.windowCornerRef ) : 0;
 	fillChassis( r, k, c );
 	edgeChamfered( r, k, CM_TOP, c.shadow );
 	TheDisplay->drawLine( r.x + k + 1, r.y + 1, r.x + r.w - k - 2, r.y + 1, 1, c.highlight );

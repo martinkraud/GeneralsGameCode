@@ -220,7 +220,7 @@ inline const NamedPlacement *placements(int &count)
 		{"PopupCommunicator",    {206, 567,  30,  22}, {188, 110,  32,  26}, false},
 		// header: money / power
 		{"MoneyDisplay",         {360, 437,  79,  19}, {413,  12, 144,  22}, false},
-		{"PowerWindow",          {261, 473, 283,   7}, {570,  17, 263,   7}, false},
+		{"PowerWindow",          {261, 473, 283,   7}, {588,  13, 245,  14}, false},
 		// XP group
 		{"ButtonGeneral",        {736, 433,  56,  41}, {898,  14,  88,  39}, false},
 		{"ExpBarForeground",     {766, 484,  21, 107}, {857,  16,  34, 148}, false},

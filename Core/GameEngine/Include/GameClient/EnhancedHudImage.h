@@ -20,4 +20,7 @@ void fitImage( GameWindow *window, const Image *image, ICoord2D *start, ICoord2D
 
 // Gauge draw: uniform tile scale (window cross extent / native tile cross extent); 1.0 for Original or unregistered windows.
 Real gaugeScale( GameWindow *window, Int windowCross, Int imageCross );
+
+// Power meter: segment separators drawn over the gauge (no-op for Original / other windows).
+void drawGaugeSegments( GameWindow *window, Int x, Int y, Int w, Int h );
 }

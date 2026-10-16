@@ -14,6 +14,7 @@
 #pragma once
 
 #include "Common/EnhancedHudLayout.h"
+#include "Common/EnhancedHudPanels.h"
 
 #include <set>
 #include <vector>
@@ -194,6 +195,31 @@ void applyPowerRow(Win *parent, const Rect &row, double factor, Original &&origi
 	std::set<Win *> all;
 	collectSubtree(parent, all);
 	fitContainers(parent, parent, all, remember);
+}
+
+// The General Powers popup: the same windows are moved to the Enhanced layout (EnhancedHudPanels::popupTarget). `original(w, int[4])`
+// returns the remembered retail rectangle {x, y, w, h} relative to the parent; `placement` is the popup's screen rectangle and
+// `f` the scale of the reference layout. Windows the layout does not know keep their retail place. No state is touched.
+template <class Win, class Original>
+void applyPopupLayout(Win *parent, const Rect &placement, double f, Original &&original)
+{
+	int po[4] = {0, 0, 0, 0};
+	original(parent, po);
+	const double s0 = po[2] > 0 ? po[2] / static_cast<double>(EnhancedHudPanels::kPopupW) : 1.0;
+	parent->winSetPosition(placement.x, placement.y);
+	parent->winSetSize(placement.w, placement.h);
+	for (Win *child = parent->winGetChild(); child; child = child->winGetNext())
+	{
+		int co[4] = {0, 0, 0, 0};
+		original(child, co);
+		const Rect retail = {static_cast<int>(std::lround(co[0] / s0)), static_cast<int>(std::lround(co[1] / s0)),
+		                     static_cast<int>(std::lround(co[2] / s0)), static_cast<int>(std::lround(co[3] / s0))};
+		const EnhancedHudPanels::PopupTarget t = EnhancedHudPanels::popupTarget(retail);
+		if (!t.valid)
+			continue;
+		child->winSetPosition(static_cast<int>(std::lround(t.rect.x * f)), static_cast<int>(std::lround(t.rect.y * f)));
+		child->winSetSize(static_cast<int>(std::lround(t.rect.w * f)), static_cast<int>(std::lround(t.rect.h * f)));
+	}
 }
 
 // Places every window of the layout tables below `master` (the island), then makes the tree consistent.

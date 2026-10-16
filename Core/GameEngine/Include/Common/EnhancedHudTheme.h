@@ -62,6 +62,8 @@ struct Theme
 	bool brushedChassis;      // fine horizontal grain on the chassis (material texture)
 	bool junctionRibs;        // raised structural ribs between modules: the modules read as windows in one chassis
 	bool moduleLeds;          // small illuminated segment group in each module header
+	Corner windowCorner;      // outer corner profile of the General Powers popup and the Battle Overview
+	int windowCornerRef;      // its size in reference units
 };
 
 // True when two themes differ in more than colour (shape / material language). Used by tests and tools to keep a new
@@ -73,7 +75,8 @@ inline bool differsBeyondColour(const Theme &a, const Theme &b)
 	       a.bevelModules != b.bevelModules || a.fasteners != b.fasteners || a.seams != b.seams || a.vents != b.vents ||
 	       a.tickMarks != b.tickMarks || a.stateRails != b.stateRails ||
 	       a.bezelRef != b.bezelRef || a.wellDepthRef != b.wellDepthRef || a.brushedChassis != b.brushedChassis ||
-	       a.junctionRibs != b.junctionRibs || a.moduleLeds != b.moduleLeds;
+	       a.junctionRibs != b.junctionRibs || a.moduleLeds != b.moduleLeds ||
+	       a.windowCorner != b.windowCorner || a.windowCornerRef != b.windowCornerRef;
 }
 
 // USA Theme (Design2): a precision-manufactured command console. Depth hierarchy, darkest last:
@@ -101,6 +104,7 @@ inline const Theme &usa()
 		/* stateRails */ true,
 		/* bezel   */ 5, /* wellDepth */ 2,
 		/* grain   */ true, /* ribs */ true, /* moduleLeds */ true,
+		/* popup/overview window corner */ Corner::Chamfer, 8,
 	};
 	return t;
 }

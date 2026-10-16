@@ -250,6 +250,8 @@ void W3DPowerDraw( GameWindow *window, WinInstanceData *instData )
 //		end.y = start.y + size.y;
 //		TheWindowManager->winDrawImage(endBar, start.x, start.y, end.x, end.y);
 	}
+	// Enhanced: segment separators over fill and empty track (no-op for Original)
+	EnhancedHudImage::drawGaugeSegments( window, pos.x, pos.y, size.x, size.y );
 	Int posXstart;
 	Int posXend;
 	Real consumptionForNeedle = (consumption == 1) ? 1.5f : INT_TO_REAL(consumption);//Log(1) == 0, but we need to show something for 1 power used.

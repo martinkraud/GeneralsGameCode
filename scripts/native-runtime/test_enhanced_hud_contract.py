@@ -261,7 +261,7 @@ class EnhancedHudContracts(unittest.TestCase):
         frame = bar[bar.index("void drawEnhancedHudFrame()"):]
         for field in ("th.shellCorner", "th.fasteners", "th.seams", "th.tickMarks", "th.junctionRibs", "th.bezelRef", "th.moduleLeds"):
             self.assertIn(field, frame)
-        for field in ("th.brushedChassis", "th.bevelModules", "th.vents"):
+        for field in ("th.brushedChassis", "th.bevelModules", "th.vents", "th.windowCorner"):
             self.assertIn(field, bar)
         self.assertIn("c.theme->stateRails", bar)
         self.assertIn("c.theme->plateCorner", bar)
@@ -336,6 +336,39 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertIn('{OverviewTab::Army, "ARMY", false,', panels)
         self.assertIn('{OverviewTab::Economy, "ECONOMY", false,', panels)
         self.assertIn('{OverviewTab::Combat, "COMBAT", false,', panels)
+
+
+    def test_popup_relayout_moves_the_retail_windows_and_restores_them(self):
+        bar = text(BAR)
+        self.assertIn("EnhancedHudWindows::applyPopupLayout<GameWindow>( gen, place.rect, place.scale,", bar)
+        # geometry is recorded before it changes and put back for Original (positions and sizes only; hidden state is the game's)
+        self.assertIn("it->first->winSetPosition( it->second.pos.x, it->second.pos.y );", bar)
+        self.assertIn("it->first->winSetSize( it->second.size.x, it->second.size.y );", bar)
+        win = text("Core/GameEngine/Include/Common/EnhancedHudWindows.h")
+        body = win[win.index("void applyPopupLayout("):]
+        body = body[:body.index("// Places every window of the layout tables")]
+        # the layout only places windows: no creation, destruction, command or state change
+        for forbidden in ("winCreate", "winDestroy", "winEnable", "winHide", "setControlCommand", "GadgetButton", "winSetUserData"):
+            self.assertNotIn(forbidden, body)
+        self.assertIn("winSetPosition", body)
+        self.assertIn("winSetSize", body)
+
+    def test_power_meter_is_permanent_and_reads_only_existing_state(self):
+        bar = text(BAR)
+        frame = bar[bar.index("void drawEnhancedHudFrame()"):]
+        meter = frame[frame.index("POWER METER"):]
+        meter = meter[:meter.index("HRect cells[ 12 ];")]
+        # the track is drawn from the window rectangle alone: it does not depend on any power value being non zero
+        self.assertIn("kPowerSegments", meter)
+        self.assertIn("drawRecess( m, c, P( 1.2 ) );", meter)
+        self.assertIn("energy->hasSufficientPower()", meter)
+        for forbidden in ("getProduction", "getConsumption", "addProduction", "addConsumption", "setEnergy", "adjust"):
+            self.assertNotIn(forbidden, meter)
+        # the separators are drawn by the retail gauge function through a gated hook; the tooltip window is the same window
+        w3d = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/GUICallbacks/W3DControlBar.cpp")
+        self.assertIn("EnhancedHudImage::drawGaugeSegments( window, pos.x, pos.y, size.x, size.y );", w3d)
+        self.assertIn("if( !window || !EnhancedHud::active() || window != s_powerMeter", bar)
+        self.assertIn('{"PowerWindow",', text("Core/GameEngine/Include/Common/EnhancedHudLayout.h"))
 
 
 if __name__ == "__main__":
