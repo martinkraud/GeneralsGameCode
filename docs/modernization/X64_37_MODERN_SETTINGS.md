@@ -1,6 +1,6 @@
 # X64.37 Modern Display / Settings completion (CP11)
 
-Status: **IN PROGRESS - candidate staged for native review** (`x64-37-modern-settings-v1`). CP10 (Enhanced HUD) closed first
+Status: **IN PROGRESS - candidate staged for native review** (`x64-37-modern-settings-v1`, fixes in `x64-37-modern-settings-v2`). CP10 (Enhanced HUD) closed first
 (`X64_36_CP10_CLOSEOUT.md`). The full control-by-control audit is `SETTINGS_COMPLETION_AUDIT.md`.
 
 ## What changed
@@ -27,3 +27,10 @@ mode + monitor + scale), `DisplayMonitors.*` (name before index, reordering, dis
 borderless desktop only, driver modes, labels, refresh semantics), `DisplayGeometryChanges.*` (Enhanced HUD across surface changes and
 back to Original, UI scale vs surface), the existing Display* / OptionsPageLayout / Enhanced HUD suites (800x600 ... 5120x1440 and odd
 sizes), and `scripts/native-runtime/test_modern_settings_contract.py`.
+
+## v2 (native findings of v1)
+
+Interface dropdown unreachable (sibling checkboxes over the open list: restored checkboxes now share the page's host panel), Advanced
+Display panel overlapping the tab strip (now a sub-screen with the tabs hidden), `MISSING: 'GUILanguageFilter'` (Zero Hour token; control
+removed), borderless resolution made visibly read-only with its reason, one table for the in-match "(main menu)" gating. Details and the
+six-tab audit: `SETTINGS_COMPLETION_AUDIT.md` section 9. CP11 stays IN REVIEW.

@@ -476,7 +476,7 @@ TEST(OptionsPageLayout, EveryControlIsOwnedByExactlyOnePage)
 	}
 	EXPECT_EQ(ownerOf("SliderGamma"), -1);                  // not offered: the D3D11 backend has no gamma stage (audit F)
 	EXPECT_EQ(ownerOf("ComboBoxDetail"), static_cast<int>(Category::Graphics));
-	EXPECT_EQ(ownerOf("CheckLanguageFilter"), static_cast<int>(Category::Gameplay));    // retail options that were hidden are back
+	EXPECT_EQ(ownerOf("CheckLanguageFilter"), -1);          // no Generals vocabulary (GUI:LanguageFilter) and no consumer: not offered
 	EXPECT_EQ(ownerOf("CheckBoxUseCamera"), static_cast<int>(Category::Gameplay));
 	EXPECT_EQ(ownerOf("CheckBoxSaveCamera"), static_cast<int>(Category::Gameplay));
 	EXPECT_EQ(ownerOf("CheckBoxDrawAnchor"), static_cast<int>(Category::Controls));

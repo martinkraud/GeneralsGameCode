@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace OptionsPageLayout
 {
@@ -99,13 +100,46 @@ constexpr PageItem kControlsItems[] = {
 	{nullptr, "CheckBoxDrawAnchor", ControlKind::Check},     // retail options that Modern Options used to hide: all have live handlers
 	{nullptr, "CheckBoxMoveAnchor", ControlKind::Check},
 };
+// Checkboxes first, dropdowns last: a dropdown opens downwards over the rows below it. (The language filter checkbox is not offered:
+// its text token GUI:LanguageFilter does not exist in the Generals vocabulary and nothing in Generals reads the preference.)
 constexpr PageItem kGameplayItems[] = {
-	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
-	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA, China, GLA)
-	{nullptr, "CheckLanguageFilter", ControlKind::Check},
 	{nullptr, "CheckBoxUseCamera", ControlKind::Check},
 	{nullptr, "CheckBoxSaveCamera", ControlKind::Check},
+	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
+	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA, China, GLA)
 };
+
+// Retail checkboxes that Modern Options restored. In the retail layout they are children of the Options root, not of the panel that
+// hosts the page's other controls; a sibling of the host panel that overlaps an open dropdown takes its clicks (X64.37 native finding:
+// "Enhanced" could not be selected). They are moved into the host panel of their page so every control of a page shares one parent.
+struct HostedControl { const char *control; const char *hostPanel; };
+constexpr HostedControl kReparented[] = {
+	{"CheckBoxUseCamera", "VideoParent"},
+	{"CheckBoxSaveCamera", "VideoParent"},
+	{"CheckBoxDrawAnchor", "ScrollParent"},
+	{"CheckBoxMoveAnchor", "ScrollParent"},
+};
+
+// Controls that cannot change while a match is running (they need the main menu): they are disabled AND their label says so.
+constexpr const char *kMainMenuOnly[] = {"ComboBoxResolution", "ModernMode", "ModernMonitor", "ModernUiScale", "ModernMotion",
+                                         "ModernInterface", "ComboBoxDetail"};
+inline bool mainMenuOnly(const char *control)
+{
+	for (const char *name : kMainMenuOnly)
+		if (control && std::strcmp(name, control) == 0) return true;
+	return false;
+}
+
+// The Resolution control: selectable only in a windowed main-menu session; borderless runs at the desktop size, which the control
+// shows read-only with the reason in its label.
+enum class ResolutionReason { None, DesktopSize, MainMenuOnly };
+struct ResolutionControlState { bool enabled; ResolutionReason reason; };
+inline ResolutionControlState resolutionControl(bool borderless, bool inMatch)
+{
+	if (inMatch) return {false, ResolutionReason::MainMenuOnly};
+	if (borderless) return {false, ResolutionReason::DesktopSize};
+	return {true, ResolutionReason::None};
+}
 
 struct PageTable
 {
@@ -291,6 +325,21 @@ inline PanelGeometry computePanel(const int measured[kCategoryCount], double sca
 	const int inflate = scaled(8, scale);
 	g.container = {g.panel.x - inflate, g.panel.y - inflate, g.panel.w + 2 * inflate, g.panel.h + 2 * inflate};
 	return g;
+}
+
+// The retail Advanced Display panel (485 x 492 reference units) while it is open: centred horizontally in the Modern panel and below
+// the title rule, so it never touches the title or the tab strip (which are hidden while it is open). Clamped inside the panel.
+inline Rect advancedPopupRect(const PanelGeometry &g, int popupW, int popupH, double scale)
+{
+	Rect r;
+	r.w = popupW;
+	r.h = popupH;
+	r.x = g.panel.x + (g.panel.w - popupW) / 2;
+	const int minY = g.line.bottom() + scaled(6, scale), maxBottom = g.panel.bottom() - scaled(8, scale);
+	r.y = minY;
+	if (r.y + popupH > maxBottom)
+		r.y = maxBottom - popupH;
+	return r;
 }
 
 }  // namespace OptionsPageLayout

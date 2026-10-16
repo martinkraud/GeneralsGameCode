@@ -12,7 +12,7 @@ unavailable (and says so) | **E** obsolete (removed / replaced) | **F** deferred
 
 | page | control | class | evidence / disposition |
 |---|---|---|---|
-| DISPLAY | Resolution | **A** (main menu), **D** in a match | Real list (see 3): windowed = standard + driver sizes that fit the work area of the chosen monitor, borderless = the desktop size only. Changes the real window and swap chain (`NativeApplyDisplayMode` -> `D3D11Backend::Resize`) inside an Apply/Keep/Revert transaction. In a match the display is kept; the label says "(main menu)". |
+| DISPLAY | Resolution | **A** (windowed, main menu); read-only in borderless and in a match (**D**) - the label says "(desktop size)" / "(main menu)" | Real list (see 3): windowed = standard + driver sizes that fit the work area of the chosen monitor, borderless = the desktop size only. Changes the real window and swap chain (`NativeApplyDisplayMode` -> `D3D11Backend::Resize`) inside an Apply/Keep/Revert transaction. In a match the display is kept; the label says "(main menu)". |
 | DISPLAY | Display Mode: Windowed / Borderless Fullscreen | **A** (main menu), **D** in a match | Real window style/position/size change inside the transaction. Exclusive fullscreen is **not offered** (section 4). |
 | DISPLAY | Monitor | **A** | Real `EnumDisplayMonitors` list ("1 (Primary)  2560 x 1440 @ 144 Hz"), stable identity by Windows device name; the row is shown only when more than one monitor is attached (no greyed row). |
 | DISPLAY | UI Scale (Auto, 75..300 %) | **A** (main menu), **D** in a match | Real: `DisplayRuntime::setUiScalePercent` + shell/control-bar rebuild; part of the same transaction. |
@@ -30,8 +30,8 @@ unavailable (and says so) | **E** obsolete (removed / replaced) | **F** deferred
 | CONTROLS | Keyboard Options button / key rebinding | **E** / **F** | The retail button opens `Menus/KeyboardOptionsMenu.wnd`, which does not exist in the Generals `Window.big` (Zero Hour only). Robust rebinding is a separate subsystem (input mapping, conflicts, persistence, in-match dispatch); a partial one would be fragile. Not shown, deferred. |
 | GAMEPLAY | Unit Motion (Original / Smooth) | **B** | Real (`GroundTranslation::setEnabled`), default Original; Smooth is still labelled experimental. Main menu only (labelled in a match). |
 | GAMEPLAY | Interface (Original / Enhanced) | **A** | Enhanced for USA, China and GLA (CP10); applies when the next match builds its control bar (labelled "main menu"). |
-| GAMEPLAY | Language filter | **A** (restored) | Retail handler; had been hidden by the Modern pages. |
-| GAMEPLAY | Use camera / Save camera | **A** (restored) | Retail handlers; had been hidden by the Modern pages. |
+| GAMEPLAY | Language filter | **E** - not offered | v1 restored it, and native testing showed `MISSING: 'GUILanguageFilter'`: the checkbox's token `GUI:LanguageFilter` is Zero Hour vocabulary and does not exist in the Generals string file, and nothing in Generals reads `m_languageFilterPref` (the uses are commented out). A control with no label and no effect is removed from the page. |
+| GAMEPLAY | Use camera / Save camera ("Use saved camera in replays" / "Save camera in replays") | **A** (restored) | Retail handlers and Generals tokens; had been hidden by the Modern pages. |
 | NETWORK | LAN IP, online IP, firewall refresh / port override, HTTP proxy, send delay | **B** / **F** | The retail block moved whole; functional where networking exists, disabled in a match and online (retail rule). Re-flow and online modernization are explicitly out of scope. |
 | footer | Defaults / Accept / Back | **A** | Defaults never touches display settings. |
 
@@ -95,3 +95,15 @@ that needs native evidence and is deferred (the retail game also locks resolutio
 
 Exclusive fullscreen and a refresh-rate selector; in-match display changes; gamma/brightness; anti-aliasing; key rebinding; Network page
 re-flow / online modernization.
+
+## 9. v2 native findings (x64-37-modern-settings-v1) and the six-tab audit
+
+| finding | root cause | fix |
+|---|---|---|
+| **Interface: "Enhanced" could not be selected** | v1 restored four retail checkboxes (camera, scroll anchors) that are children of the Options root, while the page's dropdowns live in the host panel. The Interface dropdown is the last row, so its list opens over the rows below - and a sibling window of the host panel that overlaps an open dropdown takes its clicks (`GameWindow::winPointInChild` returns the first child whose rectangle contains the point; `winBringToTop` only orders siblings). Before v1 nothing overlapped the list. The persistence path (`planPersistence` -> `InterfaceStyle`, `EnhancedHud::setRequested`, next match) was verified correct and is now covered by tests. | The restored checkboxes are moved into the host panel of their page (`OptionsPageLayout::kReparented`, `winSetParent`), checkboxes come before dropdowns in every page table, and a test enforces the order. |
+| **Advanced Display panel overlapped the tab strip** | The retail panel (485 x 492 reference units) was centred in the 568 unit Modern panel and covered the tab strip and header while the page, tabs and Back / Accept / Defaults stayed visible around it. | It is a sub-screen: positioned below the title rule (`advancedPopupRect`, inside the panel at every scale and surface), the tab strip, the page and the bottom row are hidden while it is open and restored on its Accept / Cancel. Its settings are untouched. |
+| **`MISSING: 'GUILanguageFilter'`** | see the Language filter row. Every other token of every control on the Modern pages was checked against the Generals string file. | control removed; a contract test checks all page-control tokens against the installed Generals data (skipped when it is absent) and that runtime captions can only use `FETCH_OR_SUBSTITUTE`. |
+| Borderless resolution looked broken | By design the list is only the desktop size, but the combo looked selectable. | Disabled with the reason in its label ("(desktop size)"); windowed stays selectable; in a match the label says "(main menu)". |
+| In-match controls | Disabled by two lists in two places. | One table (`kMainMenuOnly`): the controls are disabled and their labels carry "(main menu)". |
+
+Bounded audit of all six tabs (no new features): DISPLAY - selection, rebuild-on-mode-change and gating verified in source; GRAPHICS - only Detail (+ the Advanced sub-screen, now bounded); AUDIO - no dropdowns, unchanged; CONTROLS - checkboxes now share the slider's panel; GAMEPLAY - the dropdown/checkbox overlap above; NETWORK - the retail block moved whole, its tokens exist, disabled in a match by the retail rule. No other missing token, overlapping control or non-persisting setting was found in the source.

@@ -895,11 +895,13 @@ static void DestroyOptionsLayout() {
 static void showAdvancedOptions()
 {
 	WinAdvancedDisplay->winHide(FALSE);
+	OptionsTabs::setAdvancedOpen(true);      // Modern Experience: a sub-screen of the panel (no-op in Classic)
 }
 
 static void acceptAdvancedOptions()
 {
 	WinAdvancedDisplay->winHide(TRUE);
+	OptionsTabs::setAdvancedOpen(FALSE);     // Modern Experience: back to the page (no-op in Classic)
 }
 
 static void cancelAdvancedOptions()
@@ -908,6 +910,7 @@ static void cancelAdvancedOptions()
 	GadgetComboBoxSetSelectedPos(comboBoxDetail, (Int)TheGameLODManager->getStaticLODLevel());
 
 	WinAdvancedDisplay->winHide(TRUE);
+	OptionsTabs::setAdvancedOpen(FALSE);     // Modern Experience: back to the page (no-op in Classic)
 }
 
 // TheSuperHackers @tweak Now prints additional version information in the version label.

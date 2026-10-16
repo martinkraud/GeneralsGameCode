@@ -15,6 +15,7 @@
 #include "Common/ModernExperience.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionPreferences.h"
+#include "Common/OptionsPageLayout.h"
 #include "Common/StartupDiagnostics.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetLayering.h"
@@ -27,6 +28,9 @@
 #include "GameClient/Mouse.h"
 #include "GameClient/Shell.h"
 
+#include <cstring>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace
@@ -270,17 +274,45 @@ void fillResolutionCombo(GameWindow *combo, DisplayGeometry::Size keep)
 	s_refreshing = false;
 }
 
-// A label suffix for a control that cannot change during a match (so a disabled control always says why).
-void markMainMenuOnly(const char *labelName)
+// Labels get a suffix that says why their control cannot be changed ("(main menu)", "(desktop size)"). The retail label text is
+// remembered once per Options session so a suffix is always appended to the original text and can be removed again.
+std::map<std::string, UnicodeString> s_labelBase;
+
+void setLabelSuffix(const char *labelName, const UnicodeString &suffix)
 {
 	GameWindow *label = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY(labelName));
 	if (!label)
 		return;
-	UnicodeString text = GadgetStaticTextGetText(label);
-	if (text.isEmpty())
-		return;
-	text.concat(TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsMainMenuOnly", L" (main menu)"));
+	std::map<std::string, UnicodeString>::iterator it = s_labelBase.find(labelName);
+	if (it == s_labelBase.end())
+	{
+		const UnicodeString current = GadgetStaticTextGetText(label);
+		if (current.isEmpty())
+			return;
+		it = s_labelBase.insert(std::make_pair(std::string(labelName), current)).first;
+	}
+	UnicodeString text = it->second;
+	text.concat(suffix);
 	GadgetStaticTextSetText(label, text);
+}
+
+UnicodeString mainMenuSuffix()
+{
+	return TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsMainMenuOnly", L" (main menu)");
+}
+
+// Resolution control: selectable in a windowed main-menu session; read-only (and saying why) in borderless and in a match.
+void updateResolutionControl()
+{
+	const OptionsPageLayout::ResolutionControlState state = OptionsPageLayout::resolutionControl(pendingBorderless(), s_inMatch);
+	if (s_resolution)
+		s_resolution->winEnable(state.enabled ? TRUE : FALSE);
+	UnicodeString suffix;
+	if (state.reason == OptionsPageLayout::ResolutionReason::MainMenuOnly)
+		suffix = mainMenuSuffix();
+	else if (state.reason == OptionsPageLayout::ResolutionReason::DesktopSize)
+		suffix = TheGameText->FETCH_OR_SUBSTITUTE("GUI:ResolutionDesktopSize", L" (desktop size)");
+	setLabelSuffix("OptionsMenu.wnd:ResolutionLabel", suffix);
 }
 
 void closeBox()
@@ -345,6 +377,7 @@ namespace ModernDisplayOptions
 bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch)
 {
 	forget();
+	s_labelBase.clear();
 	if (!DisplayRuntime::modern() || ModernExperience::classic() || !resolutionCombo)
 		return false;
 	GameWindow *label = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("OptionsMenu.wnd:ResolutionLabel"));
@@ -432,13 +465,29 @@ bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch
 	rebuildSizes(pendingBorderless(), pendingMonitor());
 	if (inMatch)
 	{
-		// A running match keeps its window and layouts; the controls say so instead of silently greying out.
-		for (GameWindow *w : { s_monitor, s_mode, s_uiScale, s_motion, s_interface, s_resolution })
-			if (w) w->winEnable(FALSE);
-		for (const char *labelName : { "OptionsMenu.wnd:ResolutionLabel", "OptionsMenu.wnd:ModernModeLabel", "OptionsMenu.wnd:ModernMonitorLabel",
-		                               "OptionsMenu.wnd:ModernUiScaleLabel", "OptionsMenu.wnd:ModernMotionLabel", "OptionsMenu.wnd:ModernInterfaceLabel" })
-			markMainMenuOnly(labelName);
+		// A running match keeps its window and layouts: every control of the shared main-menu-only table is disabled AND its
+		// label says "(main menu)" (the Resolution label is handled by updateResolutionControl).
+		for (const OptionsPageLayout::Category category : { OptionsPageLayout::Category::Display, OptionsPageLayout::Category::Graphics,
+		                                                    OptionsPageLayout::Category::Gameplay })
+		{
+			const OptionsPageLayout::PageTable table = OptionsPageLayout::pageItems(category);
+			for (int i = 0; i < table.count; ++i)
+			{
+				const OptionsPageLayout::PageItem &item = table.items[i];
+				if (!OptionsPageLayout::mainMenuOnly(item.control) || std::strcmp(item.control, "ComboBoxResolution") == 0)
+					continue;
+				std::string control = std::string("OptionsMenu.wnd:") + item.control;
+				if (GameWindow *w = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY(control.c_str())))
+					w->winEnable(FALSE);
+				if (item.label)
+				{
+					std::string label = std::string("OptionsMenu.wnd:") + item.label;
+					setLabelSuffix(label.c_str(), mainMenuSuffix());
+				}
+			}
+		}
 	}
+	updateResolutionControl();
 	return true;
 }
 
@@ -454,6 +503,7 @@ void populateResolution(GameWindow *combo)
 	fillResolutionCombo(combo, keep);
 	if (!s_resolution)
 		s_resolution = combo;
+	updateResolutionControl();
 }
 
 void onSelectionChanged(GameWindow *control)
@@ -468,6 +518,7 @@ void onSelectionChanged(GameWindow *control)
 	if (!pendingBorderless() && !keep.valid())
 		keep = DisplayRuntime::state().settings.resolution;
 	fillResolutionCombo(s_resolution, keep);
+	updateResolutionControl();
 }
 
 bool hasMultipleMonitors()
@@ -637,6 +688,7 @@ void forget()
 	s_panelHost = s_resolution = s_monitor = s_mode = s_uiScale = s_vsync = s_motion = s_interface = nullptr;
 	s_monitors.clear();
 	s_inMatch = false;
+	s_labelBase.clear();
 	// s_sizes, the transaction and the message box outlive the Options screen on purpose: the confirmation is shown after it closed
 }
 

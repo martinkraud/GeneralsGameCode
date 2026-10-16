@@ -15,6 +15,9 @@ bool create();
 // Tab button routing from OptionsMenuSystem: true when `controlId` was one of the tabs.
 bool onButton(int controlId);
 
+// Shows/hides the Advanced Display panel as a sub-screen of the Modern panel (title and tabs never collide with it).
+void setAdvancedOpen(bool open);
+
 // The Options screen is closing; windows belong to the layout.
 void forget();
 

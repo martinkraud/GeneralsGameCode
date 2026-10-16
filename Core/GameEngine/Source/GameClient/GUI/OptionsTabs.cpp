@@ -386,6 +386,15 @@ bool create()
 	while (s_root->winGetParent())
 		s_root = s_root->winGetParent();
 
+	// restored retail checkboxes join the host panel of their page (one parent per page; see OptionsPageLayout::kReparented)
+	for (const OptionsPageLayout::HostedControl &h : OptionsPageLayout::kReparented)
+	{
+		GameWindow *control = byName(h.control);
+		GameWindow *host = byName(h.hostPanel);
+		if (control && host && control->winGetParent() != host)
+			control->winSetParent(host);
+	}
+
 	Int cx, cy, cw, ch;
 	s_canvas->winGetScreenPosition(&cx, &cy);
 	s_canvas->winGetSize(&cw, &ch);
@@ -472,6 +481,41 @@ bool create()
 		s_geom.captionsFit ? 1 : 0);
 	StartupDiagnostics::checkpoint("options_tabs", "complete", detail);
 	return true;
+}
+
+// The Advanced Display panel opens as a sub-screen of the Modern panel: below the title rule, centred, with the tab strip, the page
+// and the Defaults / Accept / Back row hidden underneath so nothing can collide with it. Closing it restores the page.
+void setAdvancedOpen(bool open)
+{
+	if (s_active < 0 || !s_popup)
+		return;
+	if (open)
+	{
+		Int pw = 0, ph = 0;
+		s_popup->winGetSize(&pw, &ph);
+		const Rect r = advancedPopupRect(s_geom, pw, ph, s_scale);
+		place(s_popup, Rect{r.x, r.y, pw, ph});
+		Visibility v;
+		v.activeCategory = -1;
+		const char *const keep[] = {"OptionsMenuParent", "OptionsMenuParentOld", "Line"};
+		for (size_t i = 0; i < sizeof(kChrome) / sizeof(kChrome[0]); ++i)
+			v.chrome[i] = keyOf("NotAnOptionsWindow");      // a name nothing has: an unused slot must not match unnamed windows
+		for (size_t i = 0; i < sizeof(keep) / sizeof(keep[0]); ++i)
+			v.chrome[i] = keyOf(keep[i]);
+		apply(s_root, v, false);
+		for (int i = 0; i < kCategoryCount; ++i)
+			if (s_tabs[i])
+				s_tabs[i]->winHide(TRUE);
+		s_popup->winHide(FALSE);
+		s_popup->winBringToTop();
+	}
+	else
+	{
+		for (int i = 0; i < kCategoryCount; ++i)
+			if (s_tabs[i])
+				s_tabs[i]->winHide(FALSE);
+		showCategory(s_active);
+	}
 }
 
 bool onButton(int controlId)

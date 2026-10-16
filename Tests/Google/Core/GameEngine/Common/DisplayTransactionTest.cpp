@@ -25,6 +25,7 @@
 #include "Common/DisplaySettings.h"
 #include "Common/DisplayTransaction.h"
 #include "Common/EnhancedHud.h"
+#include "Common/OptionsPageLayout.h"
 
 #include <algorithm>
 #include <functional>
@@ -468,5 +469,150 @@ TEST(DisplayGeometryChanges, UiScaleCombinesWithTheNewSurfaceWithoutLeavingTheCa
 			EXPECT_LE(l.canvas.right(), s.width) << s.width << "x" << s.height << " " << percent;
 			EXPECT_LE(l.canvas.bottom(), s.height) << s.width << "x" << s.height << " " << percent;
 			EXPECT_GE(l.canvas.x, 0);
+		}
+}
+
+// ---- X64.37 native findings: Interface selector, Advanced popup, gating ----------------------------------------------------------
+
+TEST(ModernSettingsInterface, OriginalToEnhancedToOriginalPersistsAndDrivesTheHud)
+{
+	// Options > Gameplay > Interface: the player selects Enhanced and presses Accept (main menu, nothing else changed)
+	Settings stored;
+	stored.explicitSettings = true;
+	Settings effective = stored;
+	Settings requested = effective;
+	requested.enhancedHud = true;
+	PersistPlan plan = planPersistence(stored, effective, requested);
+	EXPECT_FALSE(plan.riskyChanged);                              // no Keep / Revert dialog for the interface
+	EXPECT_TRUE(plan.immediate.enhancedHud);                      // persisted at once
+	KeyValues file;
+	store(plan.immediate, file);
+	EXPECT_EQ(file["InterfaceStyle"], "Enhanced");
+	// restart: the stored value comes back and requests Enhanced
+	const Settings reloaded = load(file, false);
+	EXPECT_TRUE(reloaded.enhancedHud);
+	EnhancedHud::setRequested(reloaded.enhancedHud);
+	for (const char *side : {"America", "China", "GLA"})
+	{
+		EXPECT_TRUE(EnhancedHud::update(true, false, side, 1920, 1080, 1.5)) << side;      // the next match builds the Enhanced HUD
+		EXPECT_TRUE(EnhancedHud::active());
+	}
+	// reopening Options shows Enhanced: the combo index mirrors the setting
+	EXPECT_EQ(reloaded.enhancedHud ? 1 : 0, 1);
+	// and back to Original
+	effective = reloaded;
+	requested = effective;
+	requested.enhancedHud = false;
+	plan = planPersistence(reloaded, effective, requested);
+	EXPECT_FALSE(plan.immediate.enhancedHud);
+	store(plan.immediate, file);
+	EXPECT_EQ(file["InterfaceStyle"], "Original");
+	EnhancedHud::setRequested(load(file, false).enhancedHud);
+	EXPECT_FALSE(EnhancedHud::update(true, false, "America", 1920, 1080, 1.5));
+	EXPECT_FALSE(EnhancedHud::active());
+	EnhancedHud::setRequested(false);
+	EnhancedHud::deactivate();
+}
+
+TEST(ModernSettingsInterface, ChangingTheInterfaceDoesNotTouchTheRiskyDisplayFields)
+{
+	Settings stored;
+	stored.explicitSettings = true;
+	stored.mode = WindowMode::Borderless;
+	stored.monitorName = "\.\DISPLAY2";
+	stored.uiScalePercent = 150;
+	Settings requested = stored;
+	requested.enhancedHud = true;
+	const PersistPlan plan = planPersistence(stored, stored, requested);
+	EXPECT_EQ(plan.immediate.mode, WindowMode::Borderless);
+	EXPECT_EQ(plan.immediate.monitorName, stored.monitorName);
+	EXPECT_EQ(plan.immediate.uiScalePercent, 150);
+}
+
+TEST(ModernSettingsPages, EveryPageHasOneParentPerControlGroupAndDropdownsComeLast)
+{
+	using namespace OptionsPageLayout;
+	// a dropdown opens downwards over the rows below it: on every page all checkboxes come before the first dropdown
+	for (int c = 0; c < kCategoryCount; ++c)
+	{
+		const PageTable t = pageItems(static_cast<Category>(c));
+		bool seenCombo = false;
+		for (int i = 0; i < t.count; ++i)
+		{
+			if (t.items[i].kind == ControlKind::Combo) seenCombo = true;
+			else if (t.items[i].kind == ControlKind::Check) EXPECT_FALSE(seenCombo) << t.items[i].control << " follows a dropdown";
+		}
+	}
+	// restored retail checkboxes live in the host panel of their page
+	for (const HostedControl &h : kReparented)
+	{
+		const int page = ownerOf(h.control);
+		ASSERT_GE(page, 0) << h.control;
+		const char *expected = page == static_cast<int>(Category::Gameplay) ? "VideoParent" : "ScrollParent";
+		EXPECT_STREQ(h.hostPanel, expected) << h.control;
+	}
+	// the language filter has no Generals vocabulary and no consumer: it is on no page
+	EXPECT_EQ(ownerOf("CheckLanguageFilter"), -1);
+}
+
+TEST(ModernSettingsPages, ResolutionIsReadOnlyInBorderlessAndInAMatchAndSelectableInWindowedMainMenu)
+{
+	using namespace OptionsPageLayout;
+	ResolutionControlState s = resolutionControl(false, false);
+	EXPECT_TRUE(s.enabled);
+	EXPECT_EQ(s.reason, ResolutionReason::None);
+	s = resolutionControl(true, false);
+	EXPECT_FALSE(s.enabled);
+	EXPECT_EQ(s.reason, ResolutionReason::DesktopSize);            // the label says why
+	s = resolutionControl(false, true);
+	EXPECT_FALSE(s.enabled);
+	EXPECT_EQ(s.reason, ResolutionReason::MainMenuOnly);
+	s = resolutionControl(true, true);
+	EXPECT_FALSE(s.enabled);
+	EXPECT_EQ(s.reason, ResolutionReason::MainMenuOnly);          // a match wins: the main menu is needed first
+	// borderless offers exactly the desktop size (no fake modes), windowed offers a list
+	Monitor m = monitor(L"\\\\.\\DISPLAY1", 0, 2560, 1440, true);
+	const std::vector<Size> borderless = sizeChoices(m, WindowMode::Borderless, 16, 39);
+	ASSERT_EQ(borderless.size(), 1u);
+	EXPECT_EQ(borderless[0], (Size{2560, 1440}));
+	EXPECT_GT(sizeChoices(m, WindowMode::Windowed, 16, 39).size(), 5u);
+}
+
+TEST(ModernSettingsPages, DisplayAndGameplayControlsThatNeedTheMainMenuAreAllInTheGatingTable)
+{
+	using namespace OptionsPageLayout;
+	for (const char *control : {"ComboBoxResolution", "ModernMode", "ModernMonitor", "ModernUiScale", "ModernMotion", "ModernInterface", "ComboBoxDetail"})
+		EXPECT_TRUE(mainMenuOnly(control)) << control;
+	// live everywhere: VSync, frame rate, volumes, mouse options
+	for (const char *control : {"ModernVsync", "ComboBoxFrameRateLimit", "SliderSFXVolume", "CheckAlternateMouse", "SliderScrollSpeed"})
+		EXPECT_FALSE(mainMenuOnly(control)) << control;
+	// every gated control is on a page (so its label can carry the suffix)
+	for (const char *control : kMainMenuOnly)
+		EXPECT_GE(ownerOf(control), 0) << control;
+}
+
+TEST(ModernSettingsPages, TheAdvancedPopupStaysInsideThePanelBelowTheTitleAndNeverTouchesTheTabs)
+{
+	using namespace OptionsPageLayout;
+	const int measured[kCategoryCount] = {47, 55, 36, 56, 59, 52};
+	const Size surfaces[] = {{800, 600}, {1024, 768}, {1920, 1080}, {2560, 1440}, {3440, 1440}, {5120, 1440}, {1111, 777}};
+	for (const Size &surface : surfaces)
+		for (int percent : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200, 300})
+		{
+			const DisplayGeometry::Layout layout = DisplayGeometry::computeLayout(surface, percent);
+			const double scale = layout.scale();
+			int scaledMeasured[kCategoryCount];
+			for (int i = 0; i < kCategoryCount; ++i) scaledMeasured[i] = static_cast<int>(measured[i] * scale + 0.5);
+			const PanelGeometry g = computePanel(scaledMeasured, scale, layout.canvas.x + scaled(400, scale), layout.canvas.y);
+			const int pw = scaled(485, scale), ph = scaled(492, scale);              // the retail popup at this scale
+			const OptionsPageLayout::Rect r = advancedPopupRect(g, pw, ph, scale);
+			const char *where = "";
+			(void)where;
+			EXPECT_TRUE(r.inside(g.panel)) << surface.width << "x" << surface.height << " " << percent;
+			EXPECT_GE(r.y, g.line.bottom()) << surface.width << "x" << surface.height << " " << percent;      // below the title rule
+			EXPECT_FALSE(r.intersects(g.title));
+			EXPECT_FALSE(r.intersects(g.tabs.strip));                                                         // tabs are not touched
+			EXPECT_LE(std::abs((r.x - g.panel.x) - (g.panel.right() - r.right())), 1);                        // centred
+			EXPECT_TRUE(r.inside(OptionsPageLayout::Rect{0, 0, surface.width, surface.height}));                                 // on the surface
 		}
 }
