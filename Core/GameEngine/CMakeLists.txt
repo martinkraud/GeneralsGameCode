@@ -159,6 +159,7 @@ set(GAMEENGINE_SRC
     Include/GameClient/ControlBar.h
     Include/Common/EnhancedHud.h
     Include/Common/EnhancedHudLayout.h
+    Include/Common/EnhancedHudWindows.h
     Include/GameClient/ControlBarResizer.h
     Include/GameClient/ControlBarScheme.h
     Include/GameClient/Credits.h

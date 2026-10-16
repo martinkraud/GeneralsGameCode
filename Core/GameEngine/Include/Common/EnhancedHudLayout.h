@@ -169,6 +169,11 @@ inline const NamedPlacement *placements(int &count)
 		{"ButtonSmall",          {592, 436,  31,  21}, {0, 0, 0, 0}, true},
 		{"ButtonMedium",         {625, 439,  31,  21}, {0, 0, 0, 0}, true},
 		{"ButtonLarge",          {666, 445,  48,  28}, {0, 0, 0, 0}, true},
+		// retail draw markers: no input, but a no-input window under the cursor still swallows the click. They are kept
+		// (their draw callbacks stay wired) as 1 x 1 windows in the island's top-left corner, clear of every control.
+		{"BackgroundMarker",     {  8, 595,   5,   5}, {  0,  0,   1,   1}, false},
+		{"ForegroundMarker",     {  0, 595,   5,   5}, {  0,  0,   1,   1}, false},
+		{"OnTopDraw",            {  3, 593,  31,   7}, {  0,  0,   1,   1}, false},
 	};
 	count = static_cast<int>(sizeof(table) / sizeof(table[0]));
 	return table;

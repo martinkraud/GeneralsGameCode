@@ -100,6 +100,23 @@ class EnhancedHudContracts(unittest.TestCase):
         cb = text("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp")
         self.assertIn("if( EnhancedHud::active() )\n\t\tapplyEnhancedPowerShortcutLayout();", cb)
 
+    def test_one_shared_placement_mechanism_keeps_drawn_and_interactive_geometry_equal(self):
+        # X64.36 hit-test fix: the engine and the unit tests run the same template (no separate hitboxes)
+        hdr = text("Core/GameEngine/Include/Common/EnhancedHudWindows.h")
+        self.assertIn("fitContainers(master, master, placed, remember);", hdr)
+        self.assertIn("void applyPowerColumn(", hdr)
+        bar = text(BAR)
+        self.assertIn("EnhancedHudWindows::apply<GameWindow>(", bar)
+        self.assertIn("EnhancedHudWindows::applyPowerColumn<GameWindow>(", bar)
+        # the engine file no longer carries a private placement helper
+        self.assertNotIn("void placeAbsolute(", bar)
+        # the unit test drives the same header with GameWindow's position/hit-test semantics
+        t = text("Tests/Google/Core/GameEngine/Common/EnhancedHudInteractiveTest.cpp")
+        self.assertIn("EnhancedHudWindows::apply<Win>(", t)
+        self.assertIn("pointInChild", t)
+        for name in ("CenterBackground", "ButtonCommand01", "ButtonGeneral", "LeftHUD", "ButtonCommand5"):
+            self.assertIn(name, t)
+
 
 if __name__ == "__main__":
     unittest.main()

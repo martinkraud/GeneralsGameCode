@@ -20,6 +20,7 @@
 
 #include "Common/DisplayRuntime.h"
 #include "Common/EnhancedHud.h"
+#include "Common/EnhancedHudWindows.h"
 #include "Common/NameKeyGenerator.h"
 #include "GameClient/ControlBar.h"
 #include "GameClient/Display.h"
@@ -66,31 +67,6 @@ GameWindow *barWindow( const char *name )
 	return TheWindowManager->winGetWindowFromId( nullptr, TheNameKeyGenerator->nameToKey( full ) );
 }
 
-// Moves/sizes a window so that its screen rectangle is `rect` (positions are parent relative).
-void placeAbsolute( GameWindow *win, const EnhancedHudLayout::Rect &rect )
-{
-	if( !win )
-		return;
-	Int px = 0, py = 0;
-	if( GameWindow *parent = win->winGetParent() )
-		parent->winGetScreenPosition( &px, &py );
-	win->winSetPosition( rect.x - px, rect.y - py );
-	win->winSetSize( rect.w, rect.h );
-}
-
-// Scales a window subtree around its parent origin by `factor`, from the remembered originals (idempotent).
-void scaleSubtree( std::map<GameWindow *, Original> &store, GameWindow *win, double factor )
-{
-	for( GameWindow *child = win->winGetChild(); child; child = child->winGetNext() )
-	{
-		remember( store, child );
-		const Original &o = store[ child ];
-		child->winSetPosition( (Int)(o.pos.x * factor + 0.5), (Int)(o.pos.y * factor + 0.5) );
-		child->winSetSize( (Int)(o.size.x * factor + 0.5), (Int)(o.size.y * factor + 0.5) );
-		scaleSubtree( store, child, factor );
-	}
-}
-
 void restoreStore( std::map<GameWindow *, Original> &store )
 {
 	for( std::map<GameWindow *, Original>::iterator it = store.begin(); it != store.end(); ++it )
@@ -121,67 +97,22 @@ void ControlBar::applyEnhancedLayout()
 	}
 	const EnhancedHudLayout::Result &layout = EnhancedHud::layout();
 
-	// 1. the master window becomes the island (bottom flush, centred, bounded); everything else is its descendant
-	remember( s_bar, master );
-	master->winSetPosition( layout.island.x, layout.island.y );
-	master->winSetSize( layout.island.w, layout.island.h );
+	// 1.-3. the master window becomes the island (bottom flush, centred, bounded), the table windows are placed and the
+	//       containers are fitted around their children so the interactive regions equal the drawn ones. This is the same
+	//       code the hit-test unit tests run (Common/EnhancedHudWindows.h).
 	m_defaultControlBarPosition.x = layout.island.x;
 	m_defaultControlBarPosition.y = layout.island.y;
-
-	// 2. windows with an explicit Enhanced placement
-	int count = 0;
-	const EnhancedHudLayout::NamedPlacement *table = EnhancedHudLayout::placements( count );
-	for( int i = 0; i < count; ++i )
-	{
-		GameWindow *win = barWindow( table[ i ].window );
-		if( !win )
-			continue;
-		remember( s_bar, win );
-		if( table[ i ].hide )
+	EnhancedHudWindows::apply<GameWindow>( master, layout,
+		[]( const char *name ) { return barWindow( name ); },
+		[]( GameWindow *win ) { remember( s_bar, win ); },
+		[]( GameWindow *win )
 		{
-			win->winHide( TRUE );
-			continue;
-		}
-		placeAbsolute( win, EnhancedHudLayout::toPhysical( layout, table[ i ].dst ) );
-	}
-
-	// 3. the info group and the command group (translations / the 1.10 x grid), containers before children
-	auto placeGroup = [&]( const EnhancedHudLayout::GroupWindow *group, int groupCount )
-	{
-		for( int i = 0; i < groupCount; ++i )
-		{
-			EnhancedHudLayout::Rect dst;
-			Bool hide = FALSE;
-			if( !EnhancedHudLayout::destinationFor( group[ i ].window, dst, hide ) )
-				continue;
-			GameWindow *win = barWindow( group[ i ].window );
-			if( !win )
-				continue;
-			remember( s_bar, win );
-			placeAbsolute( win, EnhancedHudLayout::toPhysical( layout, dst ) );
-		}
-	};
-	int groupCount = 0;
-	const EnhancedHudLayout::GroupWindow *info = EnhancedHudLayout::infoGroup( groupCount );
-	placeGroup( info, groupCount );
-	const EnhancedHudLayout::GroupWindow *command = EnhancedHudLayout::commandGroup( groupCount );
-	placeGroup( command, groupCount );
-
-	// 4. decorative retail art windows have no Enhanced counterpart: hide the childless ones so they can neither draw
-	//    nor take clicks outside the island (they were authored for the 800 px band)
-	for( GameWindow *child = master->winGetChild(); child; child = child->winGetNext() )
-	{
-		if( child->winGetChild() != nullptr || child->winIsHidden() )
-			continue;
-		const Bool art = child->winGetWindowId() == TheNameKeyGenerator->nameToKey( "ControlBar.wnd:Munkee" ) ||
-		                 child->winGetWindowId() == TheNameKeyGenerator->nameToKey( "ControlBar.wnd:CenterBackground" ) ||
-		                 child->winGetWindowId() == TheNameKeyGenerator->nameToKey( "ControlBar.wnd:" );
-		if( art )
-		{
-			remember( s_bar, child );
-			child->winHide( TRUE );
-		}
-	}
+			// decorative retail art windows: Munkee, CenterBackground and the unnamed art panels
+			const Int id = win->winGetWindowId();
+			return id == TheNameKeyGenerator->nameToKey( "ControlBar.wnd:Munkee" ) ||
+			       id == TheNameKeyGenerator->nameToKey( "ControlBar.wnd:CenterBackground" ) ||
+			       id == TheNameKeyGenerator->nameToKey( "ControlBar.wnd:" );
+		} );
 
 	applyEnhancedPowerShortcutLayout();
 }
@@ -226,15 +157,19 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 		s_powersParent = parent;
 	}
 	const EnhancedHudLayout::Result &layout = EnhancedHud::layout();
-	remember( s_powers, parent );
-	const Original &o = s_powers[ parent ];
-	parent->winSetPosition( layout.powerColumn.x, layout.powerColumn.y );
+	const EnhancedHudLayout::Rect column = layout.powerColumn;
 	// the column is scaled uniformly: its children keep their relationships (original sizes were created at the
 	// modern layout scale; the island scale may be smaller on narrow surfaces)
 	const double layoutScale = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
 	const double factor = layout.scale / layoutScale;
-	parent->winSetSize( (Int)(o.size.x * factor + 0.5), (Int)(o.size.y * factor + 0.5) );
-	scaleSubtree( s_powers, parent, factor );
+	EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, column, factor,
+		[]( GameWindow *win, int *out )
+		{
+			remember( s_powers, win );
+			const Original &o = s_powers[ win ];
+			out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
+		},
+		[]( GameWindow *win ) { remember( s_powers, win ); } );
 }
 
 //-----------------------------------------------------------------------------

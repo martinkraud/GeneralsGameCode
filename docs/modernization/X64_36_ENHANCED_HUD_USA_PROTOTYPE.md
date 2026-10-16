@@ -1,6 +1,6 @@
 # X64.36 Enhanced Gameplay UI - USA prototype (CP10)
 
-Status: **offline batch complete, candidate staged and preflighted, awaiting human native review. NOT accepted.**
+Status: **IN REVIEW. First native review found a systematic command/build hit-test bug (fixed in the follow-up batch below); awaiting a second native review. NOT accepted.**
 No native execution was performed by the agent. Baseline: `fa4675c36` (X64.35 / CP9 ACCEPTED AND CLOSED).
 
 ## 1. Purpose
@@ -124,3 +124,60 @@ pwsh scripts\native-runtime\Invoke-NativeNormalLaunch.ps1 -Title Generals -Name 
    one other UI Scale (Options > Display).
 3. Try one non-USA faction with Enhanced selected: it must show the Original bar.
 4. Answer: would I rather play with Enhanced? what felt wrong (list)? does it still feel like Generals?
+
+## 10. Native review 1 - command/build hit-test defect (root cause and fix)
+**Observation (human, `x64-36-enhanced-hud-usa`):** the Enhanced HUD rendered correctly, but on the top row of the
+command/build grid (incl. the bulldozer production button) the visible upper part of every button did not register
+clicks; the lower part did.
+
+**Root cause (coordinate path).** `ControlBar.wnd` nests the command windows and all twelve buttons as
+`ControlBarParent > CenterBackground > CommandWindow > ButtonCommandNN`. `CenterBackground` is an unplaced art container
+with the retail rectangle (0,479)-(800,600), i.e. island-relative (0,63) 800 x 121 *unscaled* pixels. The Enhanced layout
+placed the children with `placeAbsolute` (screen rectangle -> parent-relative offset), which is why they were *drawn*
+exactly right whatever their ancestors were. But `GameWindow` hit testing (`GameWindowManager::getWindowUnderCursor` ->
+`GameWindow::winPointInChild`) descends the tree: a child can only be hit inside every ancestor's region. The interactive
+region of each button was therefore its rectangle intersected with the stale 800 x 121 `CenterBackground` rectangle, whose
+top edge is at 63 px below the island top while the scaled top row starts at 44 x scale: the part of the top row above 63 px
+(scale < 1.43; 19 px dead at scale 1.0) never reached the button, and at larger scales the grid ran past x = 800.
+Visual and interactive geometry diverged because only the drawn rectangle had been mapped.
+
+**Audit of the other moved windows.** Radar/`LeftHUD`, `ButtonGeneral`, the XP bar, the utility buttons, `MoneyDisplay`,
+`PowerWindow` and the selection block (`RightHUD > WinUnitSelected/ProductionQueueWindow`, cameo, upgrades, queue buttons)
+are children of a window the layout places, so they were not clipped. Two further defects of the same family were found
+and fixed:
+* descendants of the command containers that had no table entry (beacon text/buttons, cancel-construction button,
+  observer player lists, OCL timer sell button) kept their retail size/offset and landed over the General button and
+  outside the island;
+* the three NO_INPUT draw markers (`BackgroundMarker`, `ForegroundMarker`, `OnTopDraw`) keep their retail island-relative
+  offsets and sat over the bottom-left corner of the radar; `GameWindowManager` *discards* a click whose topmost window is
+  NO_INPUT, so those pixels were dead.
+
+**Fix (shared mechanism, no separate hitboxes).** `Common/EnhancedHudWindows.h` (templated over the GameWindow position
+API, used by the engine and the tests):
+1. `apply()` places the table windows, then maps unplaced descendants of the command containers with the same
+   `commandMap` as the grid (their retail screen rectangles are read before anything moves), then
+2. `fitContainers()` (post-order) makes every container contain its children on screen: a placed container is extended if
+   needed, an unplaced one (CenterBackground) is replaced by the bounding box of its children, children keep their screen
+   rectangles;
+3. the draw markers are table entries (1 x 1 at the island corner; their draw callbacks stay wired);
+4. the special-power column uses `applyPowerColumn()` (uniform scale + the same container fit).
+Everything is recorded by the existing remember/restore store, so Original is restored exactly; with Original selected no
+Enhanced code path runs (`restoreOriginalLayout()` is a strict no-op), so the Original control bar is byte-for-byte the
+same as before.
+
+**Tests that would have caught it** (`EnhancedHudInteractiveTest.cpp`, 9 tests): a mock window tree with GameWindow
+position/size/hit-test semantics and the real ControlBar.wnd / GenPowersShortcutBarUS.wnd hierarchy and retail rectangles,
+9 surfaces (800x600 ... 5120x1440) x 5 UI scales x every command context x both unit contexts: every point inside a
+visible leaf's rectangle (centre, four corners, four edge midpoints) hits that window, points just outside do not; the
+12 buttons hit exactly their layout rectangle; radar, General, XP, utility buttons and a special-power button; containers
+contain their children; no NO_INPUT marker overlaps a control; and a regression test that reproduces the old
+placement-without-fit and proves the harness detects it.
+
+## 11. Visual review notes (recorded, NOT addressed in this batch)
+From the first native look; deliberately left for the next iteration:
+* large unused / empty centre area of the island;
+* the command/build area lacks strong visual grouping;
+* radar proportions need refinement;
+* the XP/General region needs better integration;
+* the special-power column looks visually detached from the island;
+* the procedural frame is prototype quality (final artwork deferred).
