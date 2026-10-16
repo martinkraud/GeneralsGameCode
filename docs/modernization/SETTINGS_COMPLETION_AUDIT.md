@@ -239,3 +239,8 @@ anything drawn through `Submit_World` is inside the scaled world and aligned by 
 Main Menu -> Game -> Main Menu -> Game, abandoned pictures, scale transitions), the arithmetic, and source contracts including the evaluated
 winding of the composite triangle against a culling raster state (`test_composite_triangle_is_not_culled`). **Not verified by it:** the actual
 D3D11 pixels. That needs the native retest.
+
+## 12. Native result of v4
+
+v4 passed the human native test: Render Scale now renders the world correctly (the section 11 fix was confirmed), settings are usable and
+Interface selection works. Settings completion is ACCEPTED AND CLOSED.

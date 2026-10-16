@@ -451,6 +451,16 @@ helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Presen
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
 
+## X64.37 Modern Display / Settings (CP11, ACCEPTED AND CLOSED 2026-10-16)
+
+Human native test of `x64-37-modern-settings-v4` (`8d4f6838d`): settings are usable, Interface selection works, Render Scale works (the v3
+black world was the composite triangle culled by the UI raster state; v4 gave the composite its own `CULL_NONE` state, an explicit end of
+the world phase and a tested per-picture lifecycle). CP11 is closed; do not reopen settings unless a regression appears. Record:
+`X64_37_MODERN_SETTINGS.md`, `SETTINGS_COMPLETION_AUDIT.md` (section 11).
+
+Known deferred renderer issue: **helicopter shadow culling** (projected shadows vanish when the helicopter leaves the camera frustum
+although the footprint should still be visible) - recorded in `ENHANCED_HUD_POLISH_BACKLOG.md` ("Renderer backlog"); not part of X64.38.
+
 ## X64.36 Enhanced gameplay UI (CP10, ACCEPTED AND CLOSED 2026-10-17)
 
 Presentation-only: `Options > Gameplay > Interface: Original | Enhanced` (key `InterfaceStyle`, default Original). Enhanced is

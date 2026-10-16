@@ -1,6 +1,6 @@
 # X64.37 Modern Display / Settings completion (CP11)
 
-Status: **IN PROGRESS - candidate staged for native review** (`x64-37-modern-settings-v1`, fixes in `-v2`, final round `x64-37-modern-settings-v3`, Render Scale fix `x64-37-modern-settings-v4`). CP10 (Enhanced HUD) closed first
+Status: **ACCEPTED AND CLOSED 2026-10-16** - human native test of v4 (`8d4f6838d`) passed (`x64-37-modern-settings-v1`, fixes in `-v2`, final round `x64-37-modern-settings-v3`, Render Scale fix `x64-37-modern-settings-v4`). CP10 (Enhanced HUD) closed first
 (`X64_36_CP10_CLOSEOUT.md`). The full control-by-control audit is `SETTINGS_COMPLETION_AUDIT.md`.
 
 ## What changed
@@ -48,3 +48,9 @@ v3: compact dock, live HUD switching and the settings UI were staged for review;
 (`SETTINGS_COMPLETION_AUDIT.md` section 11: the composite triangle was culled by the UI raster state). v4 fixes the composite, adds an explicit
 end-of-world-phase and a tested per-picture lifecycle, and keeps 100 % on the reference path. Render Scale is not natively verified. CP11 stays
 IN REVIEW.
+
+## Native acceptance (v4, `8d4f6838d`)
+
+The human native test of `x64-37-modern-settings-v4` passed: settings usable, Interface selection works, Render Scale works, the v3 black
+world is gone. CP11 is ACCEPTED AND CLOSED; settings are not reopened unless a regression appears. The earlier "CP11 stays IN REVIEW" note
+above is superseded.
