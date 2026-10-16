@@ -56,6 +56,11 @@ public:
     // back buffer itself stay at full resolution. 100 = off (the exact previous path). Takes effect on the next submission.
     void Set_World_Render_Scale(unsigned percent);
     unsigned World_Render_Scale() const;
+    // The explicit end of the world phase of a picture (W3DDisplay::draw calls it right after drawViews()): whatever the world drew at the
+    // reduced size is composited into the back buffer NOW, before any interface drawing. The first 2D submission, the end of the scene and
+    // a readback composite as well (defence in depth); a composite with nothing pending does nothing.
+    void End_World_Phase();
+    void World_Scale_Counters(unsigned &scaled_world_submits, unsigned &composites) const;   // native triage
     void Set_Vsync(bool enabled); // X64.33; takes effect on the next Present
     unsigned Texture_Creations() const;
     unsigned Buffer_Creations() const;

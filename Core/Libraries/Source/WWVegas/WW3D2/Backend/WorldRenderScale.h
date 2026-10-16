@@ -66,9 +66,47 @@ inline std::string label(unsigned percent, unsigned width, unsigned height)
 	return std::to_string(percent) + "% (" + std::to_string(s.width) + " x " + std::to_string(s.height) + ")";
 }
 
+struct Rect { unsigned x = 0, y = 0, w = 0, h = 0; };
+
+// The per-picture lifecycle of the intermediate world target, as a pure state machine (the backend delegates its decisions to it, so
+// the tests exercise the real logic): when the target must be cleared, when something is waiting to be composited and over which
+// rectangle, and the events that end a picture. One picture = Begin_Scene .. present.
+struct PassTracker
+{
+	bool fresh = true;        // the next world draw must clear the intermediate target first
+	bool active = false;      // world draws are waiting to be composited
+	unsigned left = 0, top = 0, right = 0, bottom = 0;
+
+	// A world draw covering a rectangle of the presentation space. Returns true when the target must be cleared before it.
+	bool onWorldDraw(unsigned x, unsigned y, unsigned w, unsigned h)
+	{
+		const bool clear = fresh;
+		fresh = false;
+		if (!active) { left = x; top = y; right = x + w; bottom = y + h; }
+		else
+		{
+			left = left < x ? left : x; top = top < y ? top : y;
+			right = right > x + w ? right : x + w; bottom = bottom > y + h ? bottom : y + h;
+		}
+		active = true;
+		return clear;
+	}
+	// The composite point (first 2D submission, end of the world phase, end of scene, readback): the rectangle to resample, once.
+	bool takeComposite(Rect &out)
+	{
+		if (!active) return false;
+		active = false;
+		out = {left, top, right - left, bottom - top};
+		return true;
+	}
+	void onColorClear() { fresh = true; active = false; }     // a new picture starts: nothing pending may survive it
+	void onBeginScene() { fresh = true; active = false; }     // no state survives from a previous picture or scene
+	void onPresented() { fresh = true; }
+	void reset() { fresh = true; active = false; }            // resize, scale change, device change
+};
+
 // Maps a rectangle of the presentation space into the intermediate target (floor on the near edge, ceil on the far edge so the
 // scaled rectangle always covers the original one; clamped to the target; never empty).
-struct Rect { unsigned x = 0, y = 0, w = 0, h = 0; };
 inline Rect mapRect(const Rect &r, unsigned fullW, unsigned fullH, unsigned lowW, unsigned lowH)
 {
 	if (fullW == 0 || fullH == 0 || lowW == 0 || lowH == 0) return {};

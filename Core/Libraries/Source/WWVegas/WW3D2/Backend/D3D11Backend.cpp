@@ -420,9 +420,10 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11ShaderResourceView> lowSrv;
     ComPtr<ID3D11DepthStencilView> lowDsv;
     unsigned lowW = 0, lowH = 0;
-    bool lowFresh = true;                            // the intermediate target must be cleared before the next world draw
-    bool lowActive = false;                          // world draws since the last composite
-    unsigned dirtyL = 0, dirtyT = 0, dirtyR = 0, dirtyB = 0;   // union of the world viewports (presentation pixels)
+    WorldRenderScale::PassTracker pass;              // per-picture lifecycle of the intermediate target (pure, tested)
+    unsigned scaledSubmits = 0, composites = 0;      // counters for the native triage log
+    bool announcedSubmit = false, announcedComposite = false;
+    ComPtr<ID3D11RasterizerState> blitRaster;        // the composite triangle must not depend on the UI raster state's winding
     float lastClearColor[4] = {0, 0, 0, 0};
     float lastClearZ = 1.0f;
     unsigned lastClearStencil = 0;
@@ -433,7 +434,7 @@ struct D3D11Backend::Impl {
     void ReleaseLow()
     {
         lowRtv.Reset(); lowSrv.Reset(); lowDsv.Reset(); lowColor.Reset(); lowDepth.Reset();
-        lowW = lowH = 0; lowFresh = true; lowActive = false;
+        lowW = lowH = 0; pass.reset();
     }
     void EnsureLow()
     {
@@ -453,7 +454,7 @@ struct D3D11Backend::Impl {
         z.BindFlags = D3D11_BIND_DEPTH_STENCIL;
         Check(device->CreateTexture2D(&z, nullptr, &lowDepth), "Create world render-scale depth");
         Check(device->CreateDepthStencilView(lowDepth.Get(), nullptr, &lowDsv), "Create world render-scale DSV");
-        lowW = want.width; lowH = want.height; lowFresh = true; lowActive = false;
+        lowW = want.width; lowH = want.height; pass.reset();
     }
     void EnsureBlit()
     {
@@ -470,23 +471,28 @@ struct D3D11Backend::Impl {
         D3D11_BUFFER_DESC b{};
         b.ByteWidth = 16; b.Usage = D3D11_USAGE_DEFAULT; b.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         Check(device->CreateBuffer(&b, nullptr, &blitCB), "Create blit constants");
+        // The UI raster state is CULL_BACK with FrontCounterClockwise = TRUE (legacy D3D winding); the full-screen triangle is wound
+        // the other way and was culled entirely in X64.37 v3 (black world). The composite owns its state: no culling at all.
+        D3D11_RASTERIZER_DESC r{}; r.FillMode = D3D11_FILL_SOLID; r.CullMode = D3D11_CULL_NONE; r.DepthClipEnable = TRUE;
+        Check(device->CreateRasterizerState(&r, &blitRaster), "Create blit raster state");
     }
     // Resamples what the world draws produced into the back buffer (only the rectangle they covered), then forgets them. Called
     // before anything else draws into the back buffer, before the present and before a readback.
     void FlushWorld()
     {
-        if (!lowActive || !lowSrv || !rtv) return;
-        lowActive = false;
+        if (worldScale >= 100 || !lowSrv || !rtv) return;      // 100 %: the reference lifecycle, nothing to do
+        WorldRenderScale::Rect area;
+        if (!pass.takeComposite(area)) return;
         EnsureBlit();
         const float constants[4] = {static_cast<float>(config.width), static_cast<float>(config.height), 0, 0};
         context->UpdateSubresource(blitCB.Get(), 0, nullptr, constants, 0, 0);
-        D3D11_VIEWPORT vp{static_cast<float>(dirtyL), static_cast<float>(dirtyT), static_cast<float>(dirtyR - dirtyL),
-                          static_cast<float>(dirtyB - dirtyT), 0.0f, 1.0f};
+        D3D11_VIEWPORT vp{static_cast<float>(area.x), static_cast<float>(area.y), static_cast<float>(area.w), static_cast<float>(area.h),
+                          0.0f, 1.0f};
         ID3D11RenderTargetView *target = rtv.Get();
         context->OMSetRenderTargets(1, &target, nullptr);
         context->OMSetBlendState(blendOpaque.Get(), nullptr, 0xffffffff);
         context->OMSetDepthStencilState(depth.Get(), 0);
-        context->RSSetState(raster.Get());
+        context->RSSetState(blitRaster.Get());
         context->RSSetViewports(1, &vp);
         context->IASetInputLayout(nullptr);
         context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -502,7 +508,15 @@ struct D3D11Backend::Impl {
         context->Draw(3, 0);
         ID3D11ShaderResourceView *none = nullptr;
         context->PSSetShaderResources(0, 1, &none);     // the world target is rendered into again next
-        ++draws;
+        ++draws; ++composites;
+        if (!announcedComposite && config.diagnostic)
+        {
+            announcedComposite = true;
+            char detail[160];
+            std::snprintf(detail, sizeof(detail), "composite area=%u,%u %ux%u from %ux%u into %ux%u", area.x, area.y, area.w, area.h, lowW, lowH,
+                          config.width, config.height);
+            config.diagnostic(config.diagnostic_context, "render_scale", "composite", detail, 0);
+        }
     }
     void EnsureWorld()
     {
@@ -968,12 +982,14 @@ void D3D11Backend::Draw(const Render2DSubmission &s)
     }
     impl->context->DrawIndexed(s.index_count, 0, 0); ++impl->draws;
 }
-void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene = true; }
+void D3D11Backend::Begin_Scene() { if (impl->scene) Unsupported(); impl->scene = true; impl->pass.onBeginScene(); }
+void D3D11Backend::End_World_Phase() { impl->FlushWorld(); }
+void D3D11Backend::World_Scale_Counters(unsigned &submits, unsigned &composites) const { submits = impl->scaledSubmits; composites = impl->composites; }
 void D3D11Backend::End_Scene(bool flip) { if (!impl->scene) Unsupported(); impl->FlushWorld(); impl->scene = false; if (flip) Flip_To_Primary(); }
 void D3D11Backend::Flip_To_Primary() {
     if (!impl->swapchain) Unsupported();
     impl->FlushWorld();
-    impl->lowFresh = true;      // the next picture starts clean
+    impl->pass.onPresented();      // the next picture starts clean
     impl->GpuEnd();
     HRESULT result;
     {
@@ -991,10 +1007,9 @@ D3D11Backend::Presentation D3D11Backend::Last_Presentation() const { return impl
 void D3D11Backend::Clear(bool color, bool depth, const Vector3 &rgb, float alpha, float depth_value, unsigned stencil)
 {
     if (depth && !impl->dsv) Unsupported(); // depth clear needs the opt-in depth buffer
-    if (color) impl->lowActive = false;     // a colour clear starts a new picture: nothing pending may survive it
+    if (color) impl->pass.onColorClear();     // a colour clear starts a new picture: nothing pending may survive it
     if (color) { const float rgba[] = {rgb.X, rgb.Y, rgb.Z, alpha}; impl->context->ClearRenderTargetView(impl->rtv.Get(), rgba); }
-    if (color) { impl->lastClearColor[0] = rgb.X; impl->lastClearColor[1] = rgb.Y; impl->lastClearColor[2] = rgb.Z; impl->lastClearColor[3] = alpha;
-                 impl->lowFresh = true; }
+    if (color) { impl->lastClearColor[0] = rgb.X; impl->lastClearColor[1] = rgb.Y; impl->lastClearColor[2] = rgb.Z; impl->lastClearColor[3] = alpha; }
     if (depth) {
         const float z = std::isfinite(depth_value) && depth_value >= 0 && depth_value <= 1 ? depth_value : 1.0f;
         impl->context->ClearDepthStencilView(impl->dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, z, static_cast<UINT8>(stencil));
@@ -1202,26 +1217,26 @@ void D3D11Backend::Submit_World(const WorldSubmission &s)
         impl->EnsureLow();
         drawRtv = impl->lowRtv.Get();
         drawDsv = impl->lowDsv.Get();
-        if (impl->lowFresh)
+        if (impl->pass.onWorldDraw(s.viewport.x, s.viewport.y, s.viewport.width, s.viewport.height))
         {
             impl->context->ClearRenderTargetView(drawRtv, impl->lastClearColor);
             impl->context->ClearDepthStencilView(drawDsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, impl->lastClearZ,
                                                  static_cast<UINT8>(impl->lastClearStencil));
-            impl->lowFresh = false;
+        }
+        ++impl->scaledSubmits;
+        if (!impl->announcedSubmit && impl->config.diagnostic)
+        {
+            impl->announcedSubmit = true;
+            char detail[160];
+            std::snprintf(detail, sizeof(detail), "world draws go to %ux%u (%u%% of %ux%u)", impl->lowW, impl->lowH, impl->worldScale,
+                          impl->config.width, impl->config.height);
+            impl->config.diagnostic(impl->config.diagnostic_context, "render_scale", "world_target", detail, 0);
         }
         const WorldRenderScale::Rect mapped = WorldRenderScale::mapRect({s.viewport.x, s.viewport.y, s.viewport.width, s.viewport.height},
             impl->config.width, impl->config.height, impl->lowW, impl->lowH);
         D3D11_VIEWPORT viewport{static_cast<float>(mapped.x), static_cast<float>(mapped.y), static_cast<float>(mapped.w),
                                 static_cast<float>(mapped.h), s.viewport.min_z, s.viewport.max_z};
         impl->context->RSSetViewports(1, &viewport);
-        const unsigned r = s.viewport.x + s.viewport.width, b = s.viewport.y + s.viewport.height;
-        if (!impl->lowActive) { impl->dirtyL = s.viewport.x; impl->dirtyT = s.viewport.y; impl->dirtyR = r; impl->dirtyB = b; }
-        else
-        {
-            impl->dirtyL = std::min(impl->dirtyL, s.viewport.x); impl->dirtyT = std::min(impl->dirtyT, s.viewport.y);
-            impl->dirtyR = std::max(impl->dirtyR, r); impl->dirtyB = std::max(impl->dirtyB, b);
-        }
-        impl->lowActive = true;
     }
 
     float wvp[16];

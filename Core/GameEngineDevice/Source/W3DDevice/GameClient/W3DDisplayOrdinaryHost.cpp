@@ -313,6 +313,14 @@ void NativeSampleRenderCounters()
         PerformanceProfile::count(PerformanceProfile::Counter::ParticlesLive, TheParticleSystemManager->getParticleCount());
 }
 
+// X64.37 v4: the explicit end of the world phase of a picture (called by W3DDisplay::draw right after drawViews()). With Render Scale below
+// 100 % the reduced-resolution world is composited into the back buffer here, before the interface draws; at 100 % it does nothing.
+void NativeEndWorldPhase()
+{
+    if (!DisplayRuntime::modern()) return;
+    if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) backend->End_World_Phase();
+}
+
 // Resolution list for a (possibly not yet applied) mode on a monitor (Modern Experience only): real, fitting sizes.
 static void NativeModernSizeChoicesFor(bool borderless, int monitorIndex, std::vector<DisplayGeometry::Size> &out)
 {

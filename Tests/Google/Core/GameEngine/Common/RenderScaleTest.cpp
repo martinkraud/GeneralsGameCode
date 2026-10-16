@@ -190,3 +190,142 @@ TEST(RenderScaleSettings, RenderScaleAndUiScaleAreIndependentSystems)
 	EXPECT_EQ(plan.afterKeep.renderScalePercent, 67u);                     // ... the render scale is untouched either way
 	EXPECT_EQ(plan.immediate.renderScalePercent, 67u);
 }
+
+// ---- the per-picture lifecycle of the intermediate world target (X64.37 v4) ----------------------------------------------------------
+//
+// X64.37 v3 passed every arithmetic test and rendered a black world natively: the composite triangle was culled by the UI raster state
+// (CULL_BACK, FrontCounterClockwise) - invisible to arithmetic. These tests cover the lifecycle decisions the backend delegates to
+// WorldRenderScale::PassTracker; the GPU output itself (winding, raster state) is covered by the source contract
+// test_modern_settings_contract.py::test_composite_triangle_is_not_culled and by the native retest, NOT by this harness.
+
+namespace
+{
+// One picture the way the native renderer drives it: Begin_Render (colour clear + Begin_Scene), the world phase, the composite, UI, present.
+struct Frame
+{
+	int clears = 0, composites = 0;
+	WorldRenderScale::Rect composited;
+};
+Frame runPicture(WorldRenderScale::PassTracker &t, const WorldRenderScale::Rect *worldDraws, int count)
+{
+	Frame f;
+	t.onColorClear();
+	t.onBeginScene();
+	for (int i = 0; i < count; ++i)
+		f.clears += t.onWorldDraw(worldDraws[i].x, worldDraws[i].y, worldDraws[i].w, worldDraws[i].h) ? 1 : 0;
+	WorldRenderScale::Rect out;
+	if (t.takeComposite(out)) { ++f.composites; f.composited = out; }          // End_World_Phase / the first 2D submission
+	WorldRenderScale::Rect again;
+	EXPECT_FALSE(t.takeComposite(again));                                       // the UI that follows finds nothing pending
+	t.onPresented();
+	return f;
+}
+}  // namespace
+
+TEST(WorldRenderScalePass, AWorldPictureClearsOnceAndCompositesOnceOverTheUnionOfItsViewports)
+{
+	WorldRenderScale::PassTracker t;
+	const WorldRenderScale::Rect draws[] = {{0, 0, 1920, 1000}, {0, 0, 1920, 1000}, {100, 50, 400, 300}};
+	const Frame f = runPicture(t, draws, 3);
+	EXPECT_EQ(f.clears, 1);                       // the intermediate target is cleared by the first world draw only
+	EXPECT_EQ(f.composites, 1);
+	EXPECT_EQ(f.composited.x, 0u); EXPECT_EQ(f.composited.y, 0u);
+	EXPECT_EQ(f.composited.w, 1920u); EXPECT_EQ(f.composited.h, 1000u);
+}
+
+TEST(WorldRenderScalePass, MainMenuGameMainMenuGameLeavesNothingPendingAndEveryPictureStartsClean)
+{
+	WorldRenderScale::PassTracker t;
+	const WorldRenderScale::Rect menu[] = {{0, 0, 1920, 1200}};               // shell map behind the menu
+	const WorldRenderScale::Rect game[] = {{0, 0, 1920, 1000}};               // tactical view above the control bar
+	for (int round = 0; round < 3; ++round)
+	{
+		for (const auto *scene : {menu, game, menu, game})
+		{
+			const Frame f = runPicture(t, scene, 1);
+			EXPECT_EQ(f.clears, 1) << round;
+			EXPECT_EQ(f.composites, 1) << round;
+			EXPECT_FALSE(t.active);                                                // no scaled target "active" after the composite
+		}
+		// a frontend picture with no world at all (a pure 2D screen) composites nothing
+		t.onColorClear(); t.onBeginScene();
+		WorldRenderScale::Rect none;
+		EXPECT_FALSE(t.takeComposite(none));
+		t.onPresented();
+	}
+}
+
+TEST(WorldRenderScalePass, AbandonedOrInterruptedPicturesNeverLeakIntoTheNextOne)
+{
+	WorldRenderScale::PassTracker t;
+	t.onBeginScene();
+	t.onWorldDraw(0, 0, 800, 480);                // a picture whose composite never happened (device lost, scene change, exception)
+	EXPECT_TRUE(t.active);
+	t.onBeginScene();                             // the next Begin_Scene discards it
+	EXPECT_FALSE(t.active);
+	EXPECT_TRUE(t.fresh);
+	// a colour clear after world draws (a new picture) discards what was pending
+	t.onWorldDraw(0, 0, 800, 480);
+	t.onColorClear();
+	WorldRenderScale::Rect out;
+	EXPECT_FALSE(t.takeComposite(out));
+	// a resize / scale change resets everything
+	t.onWorldDraw(0, 0, 800, 480);
+	t.reset();
+	EXPECT_FALSE(t.takeComposite(out));
+	EXPECT_TRUE(t.fresh);
+}
+
+TEST(WorldRenderScalePass, ASecondWorldBatchAfterTheCompositeDoesNotClearTheFirst)
+{
+	// the engine never interleaves, but if it did the already composited content must not be wiped by a second clear
+	WorldRenderScale::PassTracker t;
+	t.onColorClear(); t.onBeginScene();
+	EXPECT_TRUE(t.onWorldDraw(0, 0, 100, 100));
+	WorldRenderScale::Rect out;
+	EXPECT_TRUE(t.takeComposite(out));
+	EXPECT_FALSE(t.onWorldDraw(50, 50, 100, 100));
+	EXPECT_TRUE(t.takeComposite(out));
+	EXPECT_EQ(out.x, 50u);
+}
+
+TEST(WorldRenderScalePass, ScaleTransitionsBetweenPicturesAreIndependent)
+{
+	// 100 -> 75 -> 100 -> 50 -> 100: the percent decides per submission whether the tracker is used at all; the tracker itself carries
+	// no scale, so a transition can never leave a half-state behind.
+	WorldRenderScale::PassTracker t;
+	const WorldRenderScale::Rect draws[] = {{0, 0, 1920, 1000}};
+	for (unsigned percent : {100u, 75u, 100u, 50u, 100u, 67u, 100u})
+	{
+		if (!WorldRenderScale::active(percent))
+		{
+			// the reference path: the tracker is never consulted, and it is idle
+			EXPECT_FALSE(t.active) << percent;
+			continue;
+		}
+		const Frame f = runPicture(t, draws, 1);
+		EXPECT_EQ(f.composites, 1) << percent;
+		t.reset();                                  // Set_World_Render_Scale releases the target
+		EXPECT_TRUE(t.fresh);
+		EXPECT_FALSE(t.active);
+	}
+}
+
+TEST(WorldRenderScalePass, TheCompositeRectangleStaysInsideThePresentationSpaceItWasDrawnIn)
+{
+	WorldRenderScale::PassTracker t;
+	t.onBeginScene();
+	t.onWorldDraw(0, 0, 2560, 1100);
+	WorldRenderScale::Rect out;
+	ASSERT_TRUE(t.takeComposite(out));
+	EXPECT_LE(out.x + out.w, 2560u);
+	EXPECT_LE(out.y + out.h, 1440u);
+	// and maps into every intermediate target size without leaving it
+	for (unsigned percent : WorldRenderScale::kChoices)
+	{
+		const WorldRenderScale::Size low = WorldRenderScale::internalSize(2560, 1440, percent);
+		const WorldRenderScale::Rect m = WorldRenderScale::mapRect(out, 2560, 1440, low.width, low.height);
+		EXPECT_LE(m.x + m.w, low.width);
+		EXPECT_LE(m.y + m.h, low.height);
+	}
+}

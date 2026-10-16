@@ -1,6 +1,6 @@
 # X64.37 Modern Display / Settings completion (CP11)
 
-Status: **IN PROGRESS - candidate staged for native review** (`x64-37-modern-settings-v1`, fixes in `-v2`, final round `x64-37-modern-settings-v3`). CP10 (Enhanced HUD) closed first
+Status: **IN PROGRESS - candidate staged for native review** (`x64-37-modern-settings-v1`, fixes in `-v2`, final round `x64-37-modern-settings-v3`, Render Scale fix `x64-37-modern-settings-v4`). CP10 (Enhanced HUD) closed first
 (`X64_36_CP10_CLOSEOUT.md`). The full control-by-control audit is `SETTINGS_COMPLETION_AUDIT.md`.
 
 ## What changed
@@ -41,3 +41,10 @@ Compact Global Powers dock, real Render Scale (internal 3D resolution, presentat
 and an evidence-based live-change matrix (Render Scale, VSync, frame limit and the HUD are live; resolution / mode / monitor / UI scale stay
 main-menu-only with the concrete lifecycle reason). Architecture, matrix and limits: `SETTINGS_COMPLETION_AUDIT.md` section 10. Nothing in v3
 is natively verified. CP11 stays IN REVIEW.
+
+## v3 native result and v4
+
+v3: compact dock, live HUD switching and the settings UI were staged for review; **Render Scale failed natively with a black world**
+(`SETTINGS_COMPLETION_AUDIT.md` section 11: the composite triangle was culled by the UI raster state). v4 fixes the composite, adds an explicit
+end-of-world-phase and a tested per-picture lifecycle, and keeps 100 % on the reference path. Render Scale is not natively verified. CP11 stays
+IN REVIEW.

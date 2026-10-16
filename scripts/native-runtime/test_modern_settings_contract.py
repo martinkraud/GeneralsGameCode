@@ -250,7 +250,7 @@ class RenderScaleAndLiveChanges(unittest.TestCase):
         draw2d = src[src.index("void D3D11Backend::Draw(const Render2DSubmission &s)"):src.index("impl->Buffer(impl->vertices")]
         self.assertIn("impl->FlushWorld();", draw2d)
         self.assertLess(draw2d.index("impl->FlushWorld();"), draw2d.index("Set_Viewport(s.viewport);"))
-        self.assertIn("impl->FlushWorld();" + NL + "    impl->lowFresh = true;", src)                  # Flip_To_Primary
+        self.assertIn("impl->FlushWorld();" + NL + "    impl->pass.onPresented();", src)               # Flip_To_Primary
         self.assertIn("impl->FlushWorld();     // a screenshot is the presented picture", src)    # Readback_RGBA8
         # resize drops the intermediate target (recreated at the new size)
         resize = src[src.index("void D3D11Backend::Resize("):src.index("void D3D11Backend::Set_World_Render_Scale")]
@@ -260,6 +260,71 @@ class RenderScaleAndLiveChanges(unittest.TestCase):
         # ordinary scaling only: no vendor upscaler, no temporal data
         for word in ("DLSS", "FSR", "XeSS", "FidelityFX", "frame generation", "TAA"):
             self.assertNotIn(word, src)
+
+    def test_composite_triangle_is_not_culled(self):
+        # X64.37 v3 native failure: a black world. The UI raster state is CULL_BACK + FrontCounterClockwise = TRUE; the full-screen composite
+        # triangle was wound clockwise, so it was culled completely. Evaluate the vertex shader's own formula, derive the winding, and
+        # require that the composite either cannot be culled or is front facing under the backend's convention.
+        src = read(self.BACKEND)
+        hlsl = src[src.index("static const char blitShaderSource[]"):src.index("ComPtr<ID3DBlob> CompileBlit")]
+        uv_formula = re.search(r"float2 uv = float2\(\(id << 1\) & 2, id & 2\);", hlsl)
+        pos_formula = re.search(r"o\.pos = float4\(uv \* float2\(([-\d.]+), ([-\d.]+)\) \+ float2\(([-\d.]+), ([-\d.]+)\), 0\.0, 1\.0\);", hlsl)
+        self.assertTrue(uv_formula and pos_formula, "composite vertex formula not recognised - update this contract with the shader")
+        sx, sy, ox, oy = (float(v) for v in pos_formula.groups())
+        pts = []
+        for vid in range(3):
+            u, v = float((vid << 1) & 2), float(vid & 2)
+            pts.append((u * sx + ox, v * sy + oy))
+        area = sum(pts[i][0] * pts[(i + 1) % 3][1] - pts[(i + 1) % 3][0] * pts[i][1] for i in range(3)) / 2.0   # >0: counter-clockwise (y up)
+        self.assertNotEqual(area, 0.0)
+        # the triangle covers the whole clip square (so the viewport rectangle is what limits it)
+        for corner in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            (x0, y0), (x1, y1), (x2, y2) = pts
+            d = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2)
+            a = ((y1 - y2) * (corner[0] - x2) + (x2 - x1) * (corner[1] - y2)) / d
+            b = ((y2 - y0) * (corner[0] - x2) + (x0 - x2) * (corner[1] - y2)) / d
+            self.assertTrue(a >= -1e-9 and b >= -1e-9 and 1 - a - b >= -1e-9, "corner %s not covered" % (corner,))
+        # the raster state the composite binds: its own, and it must not cull
+        flush = src[src.index("void FlushWorld()"):src.index("void EnsureWorld()")]
+        self.assertIn("RSSetState(blitRaster.Get());", flush)
+        self.assertNotIn("RSSetState(raster.Get());", flush)
+        raster = src[src.index("Create blit raster state") - 400:src.index("Create blit raster state")]
+        self.assertIn("D3D11_CULL_NONE", raster)
+        # the UI raster state is the one that culls this winding: keeping the lesson machine-checkable
+        ui = re.search(r"CullMode = D3D11_CULL_BACK;\s*r\.FrontCounterClockwise = TRUE;", src)
+        if ui and area < 0:
+            self.assertIn("D3D11_CULL_NONE", raster)
+
+    def test_the_world_phase_has_an_explicit_end_before_the_interface(self):
+        disp = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp")
+        body = disp[disp.index("void W3DDisplay::draw()"):]
+        self.assertLess(body.index("drawViews();"), body.index("NativeEndWorldPhase();"))
+        self.assertLess(body.index("NativeEndWorldPhase();"), body.index("TheInGameUI->DRAW();"))
+        self.assertIn("backend->End_World_Phase();", read(HOST))
+        src = read(self.BACKEND)
+        # defence in depth: the first 2D submission, the end of the scene, the present and a readback composite as well
+        self.assertIn("impl->pass.onBeginScene();", src)                      # no state survives into a new picture (scene transitions)
+        self.assertIn("impl->pass.onColorClear();", src)
+        self.assertIn("impl->pass.onPresented();", src)
+        self.assertIn("impl->pass.onWorldDraw(", src)
+        self.assertIn("pass.takeComposite(area)", src)
+
+    def test_one_hundred_percent_is_the_reference_lifecycle(self):
+        src = read(self.BACKEND)
+        flush = src[src.index("void FlushWorld()"):src.index("void EnsureWorld()")]
+        self.assertIn("if (worldScale >= 100 || !lowSrv || !rtv) return;", flush)
+        sw = src[src.index("void D3D11Backend::Submit_World("):src.index("impl->context->DrawIndexed(s.index_count, s.first_index, 0);")]
+        # the intermediate target, its clear and its viewport live only in the scaled branch
+        branch = sw[sw.index("const bool scaled"):sw.index("float wvp[16];")]
+        self.assertIn("if (!scaled)", branch)
+        self.assertEqual(branch.count("EnsureLow()"), 1)
+        before = branch[:branch.index("else")]
+        self.assertNotIn("lowRtv", before)
+        # setting 100 releases the target
+        self.assertIn("impl->ReleaseLow();", src[src.index("void D3D11Backend::Set_World_Render_Scale"):src.index("unsigned D3D11Backend::World_Render_Scale")])
+        # and the triage log names what happened (first scaled world draw and first composite)
+        self.assertIn('"render_scale", "world_target"', src)
+        self.assertIn('"render_scale", "composite"', src)
 
     def test_render_scale_is_a_live_setting_everywhere(self):
         opt = read(OPTIONS)

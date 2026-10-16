@@ -174,3 +174,68 @@ when the bar was created - before the buttons became visible. Two visible powers
 island. Fix (framework layout untouched, hash-pinned): `EnhancedHudPanels::compactDock` packs the visible plates against the island's right
 end (inset by the shoulder), the layout is re-applied after every populate, and the dock draws a mounting rail from the plates to the island's
 top edge. The side column on wider surfaces is unchanged. Identical for USA, China and GLA.
+
+## 11. v3 native failure: black world with Render Scale 75 % (recorded; fixed in v4, NOT yet natively verified)
+
+**Native evidence (x64-37-modern-settings-v3, 1920x1200 borderless, 75 % = 1440x900, 120 FPS limit):** the whole 3D world black in a
+Skirmish while the Enhanced HUD, radar, Global Powers, selection circle and FPS overlay rendered correctly; after leaving the match the main
+menu background (a shell-map world) was black as well, with the 2D menu frame, logo and buttons intact. The Options arithmetic and labels were
+correct. Render Scale was **not** natively successful in v3.
+
+**Root cause (from the source):** the composite that resamples the reduced world target into the back buffer draws one full-screen
+triangle generated in the vertex shader, wound clockwise. It bound the backend's shared UI raster state, which is `CULL_BACK` with
+`FrontCounterClockwise = TRUE` (the legacy D3D winding the 2D and world paths are authored for). The triangle was therefore back-facing and
+**culled completely**: the composite ran, sampled a valid world target, and wrote nothing, so the back buffer kept its clear colour (black)
+and everything drawn afterwards at full resolution (UI, radar, overlays) looked fine. The main menu was black for the same reason, not because
+of state leaking out of gameplay: the shell map is a real 3D world drawn through the same `drawViews()` / `Submit_World` path, and the
+setting was still 75 %.
+
+**Why the automated tests passed:** they covered the arithmetic, the settings and source-text contracts; nothing could observe pixels or
+rasterizer state, and no test modelled the winding of a generated triangle against the raster state it was bound with.
+
+**Fix (v4):** the composite owns a dedicated raster state (`CULL_NONE`, `blitRaster`) so it cannot depend on a winding convention; the
+per-picture lifecycle of the intermediate target is a pure state machine (`WorldRenderScale::PassTracker`) that the backend delegates to and
+the tests exercise; the end of the world phase is now explicit (`D3D11Backend::End_World_Phase`, called by `W3DDisplay::draw` right after
+`drawViews()`, via `NativeEndWorldPhase`), with the first 2D submission, end of scene, present and readback kept as defence in depth;
+`Begin_Scene` resets the tracker so nothing survives from an earlier picture or scene; 100 % returns before any of it (`FlushWorld` exits at
+`worldScale >= 100`, the intermediate target does not exist). First scaled world draw and first composite write a `render_scale` line to the
+native log (`world_target`, `composite`) so a retest can prove both happened.
+
+**Native pass order found in the source (`W3DDisplay::draw`):** `WW3D::Begin_Render` (colour + depth clear, `Begin_Scene`) -> `drawViews()`
+(all world: `W3DView::draw` -> `doRender`: terrain, roads, bridges, shore, water, objects, particles, decals, shadows, shroud, every one a
+`Submit_World`; only `HeightMap.cpp` and `NativeWorldObjects.cpp` call it) -> `TheInGameUI->DRAW()` / `TheGameClient->DRAW()` / mouse / video /
+letterbox / debug text (all `Submit_Render2D`) -> `WW3D::End_Render` (`End_Scene` + present). Screenshots read the back buffer afterwards.
+
+**The 20 questions, answered from the source:**
+
+| # | answer |
+|---|---|
+| 1 | the reduced colour+depth target is bound by `Submit_World` itself (`OMSetRenderTargets(1, &rtv, drawDsv)` per draw), from the first scaled world draw of a picture |
+| 2 | every world pass: all 3D goes through `Submit_World` (two producer files), so yes |
+| 3 | cleared by the first world draw of a picture with the last `Clear` colour / depth (`PassTracker::fresh`) |
+| 4 | a matching D24S8 target, bound with the colour target; depth-only clears are mirrored to it |
+| 5 | not unbound explicitly: every later draw (2D `Draw`, the next `Submit_World`) binds its own targets; the composite binds the back buffer |
+| 6 | yes: the composite binds the back buffer RTV with no DSV before sampling |
+| 7 | the SRV of the same texture that was the RTV, correct |
+| 8 | no alias: the RTV is unbound by `OMSetRenderTargets(back buffer)` first, and the SRV slot is cleared afterwards |
+| 9 | yes, whenever a scaled world draw happened (counted and logged in v4) |
+| 10 | the composite sets its own viewport (the union of the world viewports); no raster state enables the scissor test; every draw sets its viewport |
+| 11 | **this was the defect**: raster state. Blend / depth / shaders / IA are set completely by the composite and by every draw |
+| 12 | no: the only colour clear is in `Begin_Render`, before the world |
+| 13 | no world pass after a 2D submission was found; 2D overlays inside `W3DView::draw` (debug paths) composite first |
+| 14 | the menu background is the shell-map world: `Submit_World` through the same path (the 2D frontend windows are `Submit_Render2D`) |
+| 15 | no state leaked: the scale persisted and the shell map takes the same path; v4 additionally resets the tracker at every `Begin_Scene` |
+| 16 | see 15 |
+| 17 | present/end-of-scene composited a valid target; the triangle was culled |
+| 18 | the triangle covers the whole clip square (checked by the contract); the viewport limits it to the world rectangle |
+| 19 | yes: `SV_Position.xy / presentation size`, target sized by `internalSize` |
+| 20 | `EnsureLow` recreates on a size mismatch; `Resize` and a scale change release it and reset the tracker |
+
+Radar, HUD, text, the selection circle and the overlays are `Submit_Render2D` (they stayed correct in v3, which is the evidence), so they are
+full-resolution presentation. Overlays computed from the world (`worldToScreen`) use the presentation-space camera viewport and stay attached;
+anything drawn through `Submit_World` is inside the scaled world and aligned by construction (same projection, viewport mapped).
+
+**Verified by the harness:** the lifecycle decisions (`WorldRenderScalePass.*`: one clear and one composite per picture, no leak across
+Main Menu -> Game -> Main Menu -> Game, abandoned pictures, scale transitions), the arithmetic, and source contracts including the evaluated
+winding of the composite triangle against a culling raster state (`test_composite_triangle_is_not_culled`). **Not verified by it:** the actual
+D3D11 pixels. That needs the native retest.

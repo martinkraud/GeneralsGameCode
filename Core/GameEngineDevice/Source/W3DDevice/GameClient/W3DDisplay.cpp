@@ -500,6 +500,7 @@ extern void NativeSampleRenderCounters();
 // X64.33 Modern Experience (W3DDisplayOrdinaryHost.cpp)
 extern bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, int monitorIndex);
 extern void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out);
+extern void NativeEndWorldPhase();
 #endif
 
 // TheSuperHackers @tweak valeronm 20/03/2025 No longer filters resolutions by a 4:3 aspect ratio.
@@ -2152,6 +2153,9 @@ AGAIN:
 
 				// draw all views of the world
 				drawViews();
+#if defined(_WIN64)
+				NativeEndWorldPhase();   // X64.37 v4: explicit end of the world phase (Render Scale composites here, before the interface)
+#endif
 
 				// draw the user interface
 				TheInGameUI->DRAW();
