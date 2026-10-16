@@ -291,7 +291,9 @@ TEST(EnhancedHudLayout, OnlyImplementedFactionsAreSupportedAndEverythingElseFall
 	EXPECT_FALSE(supportsSide("AmericaSmall"));
 	EXPECT_TRUE(supportsSide("China"));
 	EXPECT_TRUE(supportsSide("ChinaTankGeneral"));
-	for (const char *side : {"GLA", "ChinaSmall", "GLASmall", "Observer", "", "Russia", "Europe", "GLAToxinGeneral"})
+	EXPECT_TRUE(supportsSide("GLA"));
+	EXPECT_TRUE(supportsSide("GLAToxinGeneral"));
+	for (const char *side : {"ChinaSmall", "GLASmall", "Observer", "", "Russia", "Europe"})
 		EXPECT_FALSE(supportsSide(side)) << side;
 	EXPECT_FALSE(supportsSide(nullptr));
 
@@ -301,7 +303,8 @@ TEST(EnhancedHudLayout, OnlyImplementedFactionsAreSupportedAndEverythingElseFall
 	EXPECT_FALSE(shouldBeActive(true, false, false, "America", 1920, 1200));    // not the modern display
 	EXPECT_FALSE(shouldBeActive(true, true, true, "America", 1920, 1200));      // -classic
 	EXPECT_TRUE(shouldBeActive(true, true, false, "China", 1920, 1200));
-	EXPECT_FALSE(shouldBeActive(true, true, false, "GLA", 1920, 1200));         // unsupported faction
+	EXPECT_TRUE(shouldBeActive(true, true, false, "GLA", 1920, 1200));
+	EXPECT_FALSE(shouldBeActive(true, true, false, "Russia", 1920, 1200));      // unsupported faction
 	EXPECT_FALSE(shouldBeActive(true, true, false, "America", 320, 200));       // surface too small
 }
 
@@ -315,7 +318,7 @@ TEST(EnhancedHudLayout, RuntimeSwitchFallsBackAndNeverInventsALayout)
 	EXPECT_TRUE(EnhancedHud::update(true, false, "America", 1920, 1200, 2.0));
 	EXPECT_TRUE(EnhancedHud::active());
 	EXPECT_EQ(EnhancedHud::layout().island.bottom(), 1200);
-	EXPECT_FALSE(EnhancedHud::update(true, false, "GLA", 1920, 1200, 2.0));    // unsupported: Original, no fake layout
+	EXPECT_FALSE(EnhancedHud::update(true, false, "Russia", 1920, 1200, 2.0));    // unsupported: Original, no fake layout
 	EXPECT_FALSE(EnhancedHud::active());
 	EXPECT_FALSE(EnhancedHud::layout().valid);
 	EnhancedHud::setRequested(false);
@@ -733,7 +736,7 @@ namespace
 double luminance(const EnhancedHudTheme::Rgba &c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
 }  // namespace
 
-TEST(EnhancedHudTheme, FactionsAreRecognisedAndOnlyUsaAndChinaAreImplemented)
+TEST(EnhancedHudTheme, FactionsAreRecognisedAndUsaChinaAndGlaAreImplemented)
 {
 	using namespace EnhancedHudTheme;
 	EXPECT_EQ(factionOfSide("America"), Faction::Usa);
@@ -748,11 +751,15 @@ TEST(EnhancedHudTheme, FactionsAreRecognisedAndOnlyUsaAndChinaAreImplemented)
 	EXPECT_EQ(factionOfSide(nullptr), Faction::Unknown);
 	EXPECT_TRUE(implemented(Faction::Usa));
 	EXPECT_TRUE(implemented(Faction::China));
-	for (Faction f : {Faction::Gla, Faction::Europe, Faction::Russia, Faction::Unknown})
+	EXPECT_TRUE(implemented(Faction::Gla));
+	for (Faction f : {Faction::Europe, Faction::Russia, Faction::Unknown})
 		EXPECT_FALSE(implemented(f));
 	// unimplemented factions never get an Enhanced HUD (Original is used), whatever they are called
-	for (const char *side : {"GLA", "GLAStealthGeneral", "Europe", "Russia", "Observer"})
+	for (const char *side : {"Europe", "Russia", "Observer"})
 		EXPECT_FALSE(supportsSide(side)) << side;
+	EXPECT_TRUE(supportsSide("GLA"));
+	EXPECT_TRUE(supportsSide("GLAStealthGeneral"));
+	EXPECT_FALSE(supportsSide("GLASmall"));
 	EXPECT_TRUE(supportsSide("America"));
 	EXPECT_TRUE(supportsSide("China"));
 	EXPECT_TRUE(supportsSide("ChinaInfantryGeneral"));
@@ -766,9 +773,10 @@ TEST(EnhancedHudTheme, ThemeIsPresentationDataOnly)
 	// plain data: copyable, standard layout (nothing a faction could use to change gameplay)
 	static_assert(std::is_trivially_copyable<Theme>::value, "theme must be plain data");
 	static_assert(std::is_standard_layout<Theme>::value, "theme must be plain data");
-	for (Faction f : {Faction::Usa, Faction::Gla, Faction::Europe, Faction::Russia, Faction::Unknown})
+	for (Faction f : {Faction::Usa, Faction::Europe, Faction::Russia, Faction::Unknown})
 		EXPECT_STREQ(themeFor(f).name, "USA");           // safe default until a faction implements its own theme
 	EXPECT_STREQ(themeFor(Faction::China).name, "China");
+	EXPECT_STREQ(themeFor(Faction::Gla).name, "GLA");
 	EXPECT_STREQ(usa().name, "USA");
 }
 
@@ -813,8 +821,11 @@ TEST(EnhancedHudTheme, LiveStateFollowsTheSideAndNeverChangesLayout)
 	EXPECT_EQ(EnhancedHud::faction(), EnhancedHudTheme::Faction::China);
 	EXPECT_TRUE(EnhancedHud::active());
 	EXPECT_EQ(EnhancedHud::layout().island.w, usaLayout.island.w);      // the layout is the same for China
-	EXPECT_FALSE(EnhancedHud::update(true, false, "GLA", 1920, 1200, 2.0));
+	EXPECT_TRUE(EnhancedHud::update(true, false, "GLA", 1920, 1200, 2.0));
 	EXPECT_EQ(EnhancedHud::faction(), EnhancedHudTheme::Faction::Gla);
+	EXPECT_TRUE(EnhancedHud::active());
+	EXPECT_EQ(EnhancedHud::layout().island.w, usaLayout.island.w);      // and for GLA
+	EXPECT_FALSE(EnhancedHud::update(true, false, "Russia", 1920, 1200, 2.0));
 	EXPECT_FALSE(EnhancedHud::active());
 	EnhancedHud::setRequested(false);
 	EnhancedHud::update(true, false, "America", 1920, 1200, 2.0);
@@ -1376,7 +1387,7 @@ TEST(EnhancedHudFramework, VersionOneIsFrozenAndTheLayoutDoesNotDependOnTheFacti
 	for (const Surface &s : {Surface{1920, 1080}, Surface{800, 600}, Surface{3440, 1440}, Surface{5120, 1440}})
 	{
 		const Result reference = EnhancedHudLayout::compute(s.w, s.h, 1.0);
-		for (const char *side : {"America", "China"})
+		for (const char *side : {"America", "China", "GLA"})
 		{
 			ASSERT_TRUE(EnhancedHud::update(true, false, side, s.w, s.h, 1.0)) << side;
 			const Result &r = EnhancedHud::layout();
@@ -1396,11 +1407,12 @@ TEST(EnhancedHudFramework, VersionOneIsFrozenAndTheLayoutDoesNotDependOnTheFacti
 TEST(EnhancedHudFramework, EveryImplementedFactionIsMoreThanARecolourOfTheReference)
 {
 	using namespace EnhancedHudTheme;
-	for (Faction f : {Faction::China})
+	for (Faction f : {Faction::China, Faction::Gla})
 	{
 		ASSERT_TRUE(implemented(f));
 		EXPECT_TRUE(differsBeyondColour(themeFor(f), usa())) << int(f);
 	}
+	EXPECT_TRUE(differsBeyondColour(china(), gla()));
 }
 
 // ---- China (audit of Science.ini / CommandSet.ini / Rank.ini of the retail Generals data) ----------------------------------------
@@ -1524,3 +1536,117 @@ TEST(EnhancedHudTheme, ChinaThemeIsAHeavyConstructionNotARecolour)
 	EXPECT_GT(std::abs(int(c.ready.g) - int(c.rankLit.g)), 60);
 }
 
+// ---- GLA (audit of Science.ini / CommandSet.ini / Rank.ini / Object INI of the retail Generals data) -------------------------------
+
+namespace
+{
+// SCIENCE_GLA_CommandSetRank1 / Rank3 / Rank8 and the Science.ini prerequisites; one General Point each; tiers open at Rank 1 / 3 / 5.
+const UsaPower kGlaPowers[] = {
+	{"ScudLauncher", 0, 0, 0, nullptr}, {"MarauderTank", 0, 1, 0, nullptr}, {"TechnicalTraining", 0, 2, 0, nullptr},
+	{"Hijacker", 1, 0, 0, nullptr},
+	{"RebelAmbush1", 1, 1, 0, nullptr}, {"RebelAmbush2", 1, 1, 1, "RebelAmbush1"}, {"RebelAmbush3", 1, 1, 2, "RebelAmbush2"},
+	{"CashBounty1", 1, 2, 0, nullptr}, {"CashBounty2", 1, 2, 1, "CashBounty1"}, {"CashBounty3", 1, 2, 2, "CashBounty2"},
+	{"EmergencyRepair1", 1, 3, 0, nullptr}, {"EmergencyRepair2", 1, 3, 1, "EmergencyRepair1"}, {"EmergencyRepair3", 1, 3, 2, "EmergencyRepair2"},
+	{"AnthraxBomb", 2, 0, 0, nullptr},
+};
+}  // namespace
+
+TEST(EnhancedHudPanels, GlaPowerHierarchyIsRepresentedExactlyOnceWithOnlyRealConnectors)
+{
+	using namespace EnhancedHudPanels;
+	const int count = int(sizeof(kGlaPowers) / sizeof(kGlaPowers[0]));
+	EXPECT_EQ(count, 14);
+	Rect rects[16];
+	for (int i = 0; i < count; ++i)
+	{
+		const UsaPower &p = kGlaPowers[i];
+		Rect retail;
+		if (p.tier == 0) retail = {16 + 68 * p.col, 104, 56, 48};
+		else if (p.tier == 1) retail = {16 + 68 * p.col, 188 + 52 * p.row, 56, 48};
+		else retail = {16, 376, 56, 48};
+		const PopupTarget t = popupTarget(retail);
+		ASSERT_TRUE(t.valid) << p.science;
+		rects[i] = t.rect;
+	}
+	for (int a = 0; a < count; ++a)
+		for (int b = 0; b < a; ++b)
+			EXPECT_FALSE(rects[a].intersects(rects[b])) << kGlaPowers[a].science << " vs " << kGlaPowers[b].science;
+	auto pre = [&](int a, int b)
+	{
+		return kGlaPowers[b].prerequisite && std::strcmp(kGlaPowers[b].prerequisite, kGlaPowers[a].science) == 0;
+	};
+	Connector links[32];
+	const int n = chainConnectors(rects, count, pre, links, 32);
+	EXPECT_EQ(n, 6);                                              // Rebel Ambush, Cash Bounty, Emergency Repair: two links each
+	for (int i = 0; i < n; ++i)
+	{
+		EXPECT_TRUE(pre(links[i].from, links[i].to));
+		EXPECT_EQ(rects[links[i].from].x, rects[links[i].to].x);
+		for (const char *loner : {"ScudLauncher", "MarauderTank", "TechnicalTraining", "Hijacker", "AnthraxBomb"})
+		{
+			EXPECT_STRNE(kGlaPowers[links[i].from].science, loner);
+			EXPECT_STRNE(kGlaPowers[links[i].to].science, loner);
+		}
+	}
+	for (int i = 0; i < count; ++i)
+	{
+		const char *name = kGlaPowers[i].science;
+		const size_t len = std::strlen(name);
+		const bool numbered = std::strstr(name, "Ambush") || std::strstr(name, "Bounty") || std::strstr(name, "EmergencyRepair");
+		EXPECT_EQ(inChain(i, count, pre), numbered) << name;
+		EXPECT_EQ(chainDepth(i, count, pre), numbered ? name[len - 1] - '0' : 1) << name;
+		EXPECT_EQ(popupRequiredRank(kGlaPowers[i].tier, 5), kPopupTierRank[kGlaPowers[i].tier]);
+	}
+	// the three audited trees are distinct data on one shared grid; the only shared power is Emergency Repair
+	for (int i = 0; i < count; ++i)
+		for (int j = 0; j < count; ++j)
+			if (std::strcmp(kGlaPowers[i].science, kChinaPowers[j].science) == 0 || std::strcmp(kGlaPowers[i].science, kUsaPowers[j].science) == 0)
+				EXPECT_TRUE(std::strncmp(kGlaPowers[i].science, "EmergencyRepair", 15) == 0) << kGlaPowers[i].science;
+}
+
+TEST(EnhancedHudTheme, GlaThemeIsFieldBuiltConstructionNotARecolour)
+{
+	using namespace EnhancedHudTheme;
+	const Theme &g = gla(), &u = usa(), &c = china();
+	EXPECT_TRUE(differsBeyondColour(g, u));
+	EXPECT_TRUE(differsBeyondColour(g, c));
+	// the accepted themes carry none of the field-built switches
+	for (const Theme *t : {&u, &c})
+		EXPECT_TRUE(t->plateVariance == 0 && !t->weldBeads && !t->patches && !t->gussets && !t->asymmetricShell && !t->powerIdle);
+	EXPECT_TRUE(g.plateVariance > 0 && g.weldBeads && g.patches && g.gussets && g.asymmetricShell && g.powerIdle);
+	EXPECT_FALSE(g.heavyBevel || g.rivets || g.cornerCaps || g.moduleBrackets || g.girder);     // not China's heavy plate construction
+	EXPECT_EQ(g.plateCorner, Corner::Square);
+	EXPECT_EQ(g.shellCorner, Corner::Chamfer);
+	EXPECT_FALSE(g.seams);                                                                       // welds replace machined seams
+	// accepted USA / China colour roles are frozen
+	EXPECT_EQ(u.accent.b, 208);
+	EXPECT_EQ(u.ready.b, 236);
+	EXPECT_EQ(c.accent.r, 196);
+	EXPECT_EQ(c.warning.g, 158);
+	// readable hierarchy and content contrast
+	EXPECT_LT(luminance(g.plate), 70.0);
+	EXPECT_LT(luminance(g.well), luminance(g.moduleLow));
+	EXPECT_LT(luminance(g.moduleLow), luminance(g.module));
+	EXPECT_LT(luminance(g.module), luminance(g.plate));
+	EXPECT_GT(luminance(g.control), luminance(g.plate));
+	EXPECT_GT(luminance(g.control), luminance(g.controlLow));
+	for (const Rgba *surface : {&g.plate, &g.module, &g.moduleLow, &g.well, &g.control})
+	{
+		EXPECT_GT(luminance(g.icon) - luminance(*surface), 100.0);
+		EXPECT_GT(luminance(g.rankLit) - luminance(*surface), 100.0);
+		EXPECT_GT(luminance(g.ready) - luminance(*surface), 60.0);
+		EXPECT_GT(luminance(g.accent) - luminance(*surface), 60.0);
+	}
+	// restrained green accent (not neon), gold for rank, a red-orange alarm: distinct roles
+	EXPECT_GT(g.accent.g, g.accent.r + 30);
+	EXPECT_GT(g.accent.g, g.accent.b + 80);
+	EXPECT_LT(g.accent.g, 215);
+	EXPECT_GT(g.ready.g, g.ready.r + 30);
+	EXPECT_GT(g.warning.r, 220);
+	EXPECT_LT(g.warning.g, 110);
+	EXPECT_GT(std::abs(int(g.ready.r) - int(g.rankLit.r)), 60);
+	EXPECT_LT(luminance(g.warningDark), luminance(g.warning));
+	EXPECT_GT(std::abs(luminance(g.warning) - luminance(g.warningInk)), 100.0);
+	// mismatched plates stay subtle: the tint offset is small, so the module hierarchy is never inverted
+	EXPECT_LT(g.plateVariance, 12);
+}

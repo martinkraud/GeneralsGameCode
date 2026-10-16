@@ -51,8 +51,8 @@ all shared tests run unchanged with the faction active.
 * USA Enhanced HUD (`201b126b1`): native review PASS (bottom HUD, Battle Overview, Global Powers dock, power meter, General Powers
   console, visual-state cleanup). Small visual refinements may follow in a future cross-faction polish pass; USA prototyping is not
   reopened.
-* China: requires native acceptance (not yet reviewed).
-* GLA: requires native acceptance (not started; begins only after China passes).
+* China (`dac818a0d`, v2 after the hover-tooltip fix): native review PASS.
+* GLA: implemented (`X64_36_ENHANCED_HUD_GLA.md`), awaiting native acceptance.
 * Original preservation: re-verified with every candidate.
 
 ## 4. Sequence

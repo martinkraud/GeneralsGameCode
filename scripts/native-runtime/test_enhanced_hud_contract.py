@@ -223,7 +223,7 @@ class EnhancedHudContracts(unittest.TestCase):
             self.assertNotIn(forbidden, th)
         for fac in ("Usa", "China", "Gla", "Europe", "Russia"):
             self.assertIn(fac, th)
-        self.assertIn("inline bool implemented(Faction f) { return f == Faction::Usa || f == Faction::China; }", th)
+        self.assertIn("inline bool implemented(Faction f) { return f == Faction::Usa || f == Faction::China || f == Faction::Gla; }", th)
         bar = text(BAR)
         # all colours come from the theme: the renderer has exactly one GameMakeColor (the Rgba conversion)
         self.assertEqual(bar.count("GameMakeColor("), 1)
@@ -421,6 +421,27 @@ class EnhancedHudContracts(unittest.TestCase):
         retail = text("Core/GameEngine/Source/GameClient/GUI/GUICallbacks/ControlBarPopupDescription.cpp")
         self.assertIn("getEnhancedTooltipPosition( size.x, size.y + diffSize, &enhancedX, &enhancedY )", retail)
 
+    def test_gla_theme_is_field_built_construction_and_the_renderer_stays_faction_blind(self):
+        th = text("Core/GameEngine/Include/Common/EnhancedHudTheme.h")
+        gla = th[th.index("inline const Theme &gla()"):]
+        gla = gla[:gla.index(chr(10) + "}" + chr(10))]
+        usa = th[th.index("inline const Theme &usa()"):th.index("inline const Theme &china()")]
+        china = th[th.index("inline const Theme &china()"):th.index("inline const Theme &gla()")]
+        # field-built switches exist only for GLA; USA and China (accepted) carry none
+        self.assertIn("/* plateVariance, weldBeads, patches, gussets, asymmetricShell, powerIdle */ 7, true, true, true, true, true,", gla)
+        for accepted in (usa, china):
+            self.assertIn("/* plateVariance, weldBeads, patches, gussets, asymmetricShell, powerIdle */ 0, false, false, false, false, false,", accepted)
+        # not China's heavy plate construction
+        self.assertIn("/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ false, false, false, false, false,", gla)
+        bar = text(BAR)
+        for flag in ("th.plateVariance", "th.gussets", "th.weldBeads", "th.patches", "th.asymmetricShell", "th.powerIdle"):
+            self.assertIn(flag, bar)
+        self.assertNotIn("Faction::", bar)
+        self.assertNotIn("EnhancedHud::faction()", bar)
+        # tooltip placement is shared and faction independent
+        panels = text("Core/GameEngine/Include/Common/EnhancedHudPanels.h")
+        self.assertNotIn("Faction", panels)
+
     def test_battle_overview_is_enhanced_only_and_restores_the_retail_window(self):
         bar = text(BAR)
         self.assertIn("void EnhancedHudOverview::attach( GameWindow *root )", bar)
@@ -476,8 +497,12 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertIn("kPowerSegments", meter)
         self.assertIn("drawRecess( m, c, P( 1.2 ) );", meter)
         self.assertIn("energy->hasSufficientPower()", meter)
-        for forbidden in ("getProduction", "getConsumption", "addProduction", "addConsumption", "setEnergy", "adjust"):
+        for forbidden in ("addProduction", "addConsumption", "setEnergy", "adjust"):
             self.assertNotIn(forbidden, meter)
+        # read-only values are used only to colour the bolt (a faction without a grid shows an empty grid as idle); the track never depends on them
+        self.assertEqual(meter.count("getProduction()"), 1)
+        self.assertEqual(meter.count("getConsumption()"), 1)
+        self.assertLess(meter.index("kPowerSegments"), meter.index("getProduction()"))
         # the separators are drawn by the retail gauge function through a gated hook; the tooltip window is the same window
         w3d = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/GUICallbacks/W3DControlBar.cpp")
         self.assertIn("EnhancedHudImage::drawGaugeSegments( window, pos.x, pos.y, size.x, size.y );", w3d)

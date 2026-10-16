@@ -1,6 +1,6 @@
 # X64.36 Enhanced HUD - China (v1 candidate)
 
-Status: **staged for native human review** (`x64-36-enhanced-hud-china-v1`). GLA is not started and begins only after China
+Status: **ACCEPTED** after native review of v2 (`x64-36-enhanced-hud-china-v2`, `dac818a0d`; v1 `f2b34c909` had the hover-tooltip flicker fixed in v2). GLA is not started and begins only after China
 passes. CP10 stays IN REVIEW. Shared Enhanced HUD Framework v1 is FROZEN (`ENHANCED_HUD_FRAMEWORK_V1.md`); USA is the reference
 and is untouched (every new construction switch is false in the USA theme).
 

@@ -12,7 +12,7 @@
 //   command/XP/power behaviour        warning/ready/disabled colours
 //   hit testing, image fitting        (later) textures, emblem, typography, popup styling
 //
-// Implemented: USA (reference), China. GLA, Europe and Russia are recognised but not implemented yet: for them `implemented()` is
+// Implemented: USA (reference), China, GLA. Europe and Russia are recognised but not implemented yet: for them `implemented()` is
 // false, Enhanced stays off (the Original control bar is used) and `themeFor()` returns the USA theme only as a safe default
 // for tools/tests - no placeholder art is invented. Adding a faction = add a Theme constant, flip `implemented()`; no HUD
 // logic is copied. Europe/Russia are not retail sides; they enter through `factionOfSide` when their side names exist.
@@ -70,6 +70,13 @@ struct Theme
 	bool cornerCaps;          // raised square caps on the shell's top corners and on the General Powers / overview corners
 	bool moduleBrackets;      // reinforcing brackets on the corners of recessed modules
 	bool girder;              // a riveted structural girder band across the top of the chassis
+	// ---- field-built (improvised) construction vocabulary (all zero / false for USA and China) -----------------------------
+	int plateVariance;        // 0 = identical module plates; > 0 = deterministic per-module tint offsets (mismatched plates)
+	bool weldBeads;           // welded seams: rows of small bead ripples along ribs and module feet
+	bool patches;             // riveted repair plates straddling some of the gaps between modules (asymmetric)
+	bool gussets;             // triangular reinforcing gussets on two diagonal corners of every module
+	bool asymmetricShell;     // only one top shoulder of the shell is cut; the other stays square
+	bool powerIdle;           // the faction has no electrical grid: an empty grid (0 / 0) is shown as idle, never as "ready"
 };
 
 // True when two themes differ in more than colour (shape / material language). Used by tests and tools to keep a new
@@ -83,7 +90,9 @@ inline bool differsBeyondColour(const Theme &a, const Theme &b)
 	       a.bezelRef != b.bezelRef || a.wellDepthRef != b.wellDepthRef || a.brushedChassis != b.brushedChassis ||
 	       a.junctionRibs != b.junctionRibs || a.moduleLeds != b.moduleLeds ||
 	       a.windowCorner != b.windowCorner || a.windowCornerRef != b.windowCornerRef || a.heavyBevel != b.heavyBevel ||
-	       a.rivets != b.rivets || a.cornerCaps != b.cornerCaps || a.moduleBrackets != b.moduleBrackets || a.girder != b.girder;
+	       a.rivets != b.rivets || a.cornerCaps != b.cornerCaps || a.moduleBrackets != b.moduleBrackets || a.girder != b.girder ||
+	       a.plateVariance != b.plateVariance || a.weldBeads != b.weldBeads || a.patches != b.patches || a.gussets != b.gussets ||
+	       a.asymmetricShell != b.asymmetricShell || a.powerIdle != b.powerIdle;
 }
 
 // USA Theme (Design2): a precision-manufactured command console. Depth hierarchy, darkest last:
@@ -113,6 +122,7 @@ inline const Theme &usa()
 		/* grain   */ true, /* ribs */ true, /* moduleLeds */ true,
 		/* popup/overview window corner */ Corner::Chamfer, 8,
 		/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ false, false, false, false, false,
+		/* plateVariance, weldBeads, patches, gussets, asymmetricShell, powerIdle */ 0, false, false, false, false, false,
 	};
 	return t;
 }
@@ -142,6 +152,38 @@ inline const Theme &china()
 		/* grain   */ false, /* ribs */ true, /* moduleLeds */ true,
 		/* popup/overview window corner */ Corner::Square, 0,
 		/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ true, true, true, true, true,
+		/* plateVariance, weldBeads, patches, gussets, asymmetricShell, powerIdle */ 0, false, false, false, false, false,
+	};
+	return t;
+}
+
+// GLA Theme: improvised but functional command equipment, assembled from salvaged military and civilian hardware. Same regions and
+// behaviour as every faction; the identity is the construction: module plates that are deliberately not identical (deterministic
+// tint offsets), welded seams (bead ripples), riveted repair plates straddling some module gaps, triangular gussets on two diagonal
+// corners of each module, a shell with one cut shoulder and one square one, a salvaged radiator grille. Dark neutral brown-grey
+// structure, restrained olive/leaf green for available and hover, amber-gold only for rank and notifications, red-orange for the
+// alarm. GLA buildings have no electrical grid (retail: every GLA object has EnergyProduction 0), so an empty grid is shown idle.
+inline const Theme &gla()
+{
+	static const Theme t = {
+		"GLA",
+		/* plate     */ {37, 35, 30, 255}, /* plateBand */ {53, 50, 42, 255}, /* module */ {25, 24, 20, 255},
+		/* moduleLow */ {18, 17, 14, 255}, /* well */ {9, 9, 7, 255},        /* wellEdge */ {68, 62, 50, 255},
+		/* outline   */ {29, 27, 22, 255}, /* accent */ {140, 196, 76, 255}, /* accentDim */ {64, 86, 36, 255},
+		/* bevelLight*/ {118, 108, 88, 255}, /* bevelDark */ {7, 6, 4, 255},
+		/* icon      */ {220, 214, 192, 255}, /* iconDim */ {118, 110, 92, 255},
+		/* rankLit   */ {238, 190, 74, 255},  /* rankDim */ {64, 58, 44, 255},
+		/* ready     */ {118, 178, 66, 255},  /* warning */ {238, 84, 40, 255}, /* warningDark */ {82, 26, 12, 255},
+		/* warningInk*/ {255, 244, 232, 255},
+		/* control   */ {58, 55, 46, 255}, /* controlLow */ {40, 38, 32, 255}, /* chassisLine */ {46, 43, 36, 255},
+		/* shell   */ Corner::Chamfer, 10, /* module */ Corner::Chamfer, 2, /* plate */ Corner::Square, 0,
+		/* bevel   */ true, /* fasteners */ true, /* seams */ false, /* vents */ true, /* ticks */ true,
+		/* stateRails */ true,
+		/* bezel   */ 5, /* wellDepth */ 2,
+		/* grain   */ true, /* ribs */ true, /* moduleLeds */ true,
+		/* popup/overview window corner */ Corner::Chamfer, 6,
+		/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ false, false, false, false, false,
+		/* plateVariance, weldBeads, patches, gussets, asymmetricShell, powerIdle */ 7, true, true, true, true, true,
 	};
 	return t;
 }
@@ -160,11 +202,12 @@ inline Faction factionOfSide(const char *side)
 }
 
 // Only factions with a real theme get the Enhanced HUD; every other faction keeps the Original control bar.
-inline bool implemented(Faction f) { return f == Faction::Usa || f == Faction::China; }
+inline bool implemented(Faction f) { return f == Faction::Usa || f == Faction::China || f == Faction::Gla; }
 
 inline const Theme &themeFor(Faction f)
 {
 	if (f == Faction::China) return china();
+	if (f == Faction::Gla) return gla();
 	return usa();            // future factions add their own constant here; until then the safe default is USA
 }
 

@@ -1097,10 +1097,12 @@ TEST(EnhancedHudInteractive, FactionSwitchesNeverChangeThePopupGeometryOrLeaveRe
 	const Surface s = kSurfaces[0];
 	const double ls = layoutScaleFor(s.w, s.h, 2);
 	std::vector<Rect> popups;
-	for (const char *side : {"America", "China", "GLA", "China", "America"})
+	for (const char *side : {"America", "China", "GLA", "Russia", "GLA", "China", "America"})
 	{
 		const bool active = EnhancedHud::update(true, false, side, s.w, s.h, ls);
-		EXPECT_EQ(active, std::strcmp(side, "GLA") != 0) << side;
+		EXPECT_EQ(active, std::strcmp(side, "Russia") != 0) << side;
+		if (active)
+			EXPECT_STREQ(EnhancedHud::theme().name, std::strcmp(side, "America") == 0 ? "USA" : (std::strcmp(side, "China") == 0 ? "China" : "GLA")) << side;
 		if (!active)
 		{
 			EXPECT_FALSE(EnhancedHud::active());
@@ -1117,7 +1119,7 @@ TEST(EnhancedHudInteractive, FactionSwitchesNeverChangeThePopupGeometryOrLeaveRe
 				EXPECT_EQ(hitTest(pc.tree.master(), r.x + r.w / 2, r.y + r.h / 2), c) << side << " " << c->name;
 			}
 	}
-	ASSERT_EQ(popups.size(), 4u);
+	ASSERT_EQ(popups.size(), 6u);
 	for (const Rect &r : popups)
 		EXPECT_TRUE(r.x == popups[0].x && r.y == popups[0].y && r.w == popups[0].w && r.h == popups[0].h);
 	EnhancedHud::setRequested(false);

@@ -720,6 +720,43 @@ void drawRaisedFrame( const HRect &inner, Int thickness, const HudPalette &c, bo
 	drawBevelPlate( outer, k, CM_ALL, lit ? c.warningDark : themeColor( th.control ), lit ? c.warning : c.shadow, false, c );
 }
 
+// Field-built construction helpers (themes with plateVariance / weldBeads / gussets). All deterministic: the same rectangle always
+// gets the same look, so nothing shimmers between frames.
+int plateVariant( const HRect &r )
+{
+	return ( ( r.x / 3 ) * 31 + ( r.y / 3 ) * 17 + ( r.w / 3 ) * 7 ) % 3;      // 0, 1, 2
+}
+
+Color shadeRgba( const EnhancedHudTheme::Rgba &c, int delta )
+{
+	EnhancedHudTheme::Rgba m = c;
+	m.r = (unsigned char)std::max( 0, std::min( 255, (int)c.r + delta ) );
+	m.g = (unsigned char)std::max( 0, std::min( 255, (int)c.g + delta ) );
+	m.b = (unsigned char)std::max( 0, std::min( 255, (int)c.b + delta ) );
+	return themeColor( m );
+}
+
+// A welded seam: a row (or column) of small bead ripples, every other one offset by a pixel.
+void drawWeldBead( Int x, Int y, Int length, bool vertical, const HudPalette &c )
+{
+	const Int step = std::max<Int>( 3, P( 2.5 ) ), size = std::max<Int>( 1, P( 1.2 ) );
+	int i = 0;
+	for( Int t = 0; t + size <= length; t += step, ++i )
+	{
+		const Int off = ( i & 1 ) ? 1 : 0;
+		if( vertical )
+		{
+			TheDisplay->drawFillRect( x + off, y + t, size + 1, size, c.wellEdge );
+			TheDisplay->drawFillRect( x + off, y + t + size, size + 1, 1, c.shadow );
+		}
+		else
+		{
+			TheDisplay->drawFillRect( x + t, y + off, size, size + 1, c.wellEdge );
+			TheDisplay->drawFillRect( x + t + size, y + off, 1, size + 1, c.shadow );
+		}
+	}
+}
+
 // Raised square caps on the four corners of a pop-up window (popup / overview), for themes with reinforced shoulders.
 void drawWindowCaps( const HRect &r, const HudPalette &c )
 {
@@ -739,7 +776,7 @@ void drawModule( const HRect &r, const HudPalette &c, int litLeds, bool vents = 
 	if( r.w < 8 || r.h < 8 )
 		return;
 	const Int k = th.moduleCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.moduleCornerRef ) : 0;
-	fillChamfered( r, k, CM_ALL, c.panel );
+	fillChamfered( r, k, CM_ALL, th.plateVariance > 0 ? shadeRgba( th.module, ( plateVariant( r ) - 1 ) * th.plateVariance ) : c.panel );
 	const Int depth = P( th.wellDepthRef );
 	if( th.bevelModules )
 	{
@@ -765,6 +802,19 @@ void drawModule( const HRect &r, const HudPalette &c, int litLeds, bool vents = 
 		TheDisplay->drawFillRect( xrv, ybv, thick, arm, bracket );
 		TheDisplay->drawLine( xl, yt, xl + arm - 1, yt, 1, c.highlight );
 		TheDisplay->drawLine( xr, yt, xr + arm - 1, yt, 1, c.highlight );
+	}
+	if( th.gussets && r.w > P( 30 ) && r.h > P( 30 ) )
+	{
+		// triangular reinforcing gussets on two diagonal corners (top-left and bottom-right): modest, deliberate asymmetry
+		const Int g = P( 7 );
+		const Color gusset = themeColor( th.control );
+		for( Int i = 0; i < g; ++i )
+		{
+			TheDisplay->drawFillRect( r.x, r.y + i, g - i, 1, gusset );
+			TheDisplay->drawFillRect( r.x + r.w - ( g - i ), r.y + r.h - 1 - i, g - i, 1, gusset );
+		}
+		TheDisplay->drawLine( r.x, r.y + g, r.x + g, r.y, 1, c.highlight );
+		TheDisplay->drawLine( r.x + r.w - g, r.y + r.h - 1, r.x + r.w - 1, r.y + r.h - 1 - g, 1, c.shadow );
 	}
 	// header band (slightly darker than the panel) carrying the status lights
 	const Int headH = P( 11 );
@@ -1056,10 +1106,12 @@ void drawEnhancedHudFrame()
 	// 1. LEVEL 0 - CHASSIS: one gunmetal shell (graded, finely grained) with stepped machined top corners and a lit top edge.
 	//    The bottom is square and flush with the screen. Raised structural ribs in the gaps between the modules make the
 	//    modules read as panels set into ONE chassis instead of four boxes that touch.
-	fillChassis( isl, shellK, c );
-	edgeChamfered( isl, shellK, CM_TOP, c.shadow );
-	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 1, isl.x + isl.w - shellK - 2, isl.y + 1, 1, c.highlight );
-	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 2, isl.x + isl.w - shellK - 2, isl.y + 2, 1, themeColor( th.plateBand ) );
+	const int shellMask = th.asymmetricShell ? CM_TL : CM_TOP;      // field-built: one cut shoulder, one square
+	const Int shellKR = th.asymmetricShell ? 0 : shellK;
+	fillChassis( isl, shellK, c, shellMask );
+	edgeChamfered( isl, shellK, shellMask, c.shadow );
+	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 1, isl.x + isl.w - shellKR - 2, isl.y + 1, 1, c.highlight );
+	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 2, isl.x + isl.w - shellKR - 2, isl.y + 2, 1, themeColor( th.plateBand ) );
 	if( th.girder )
 	{
 		// a riveted structural girder across the top margin (modules are drawn over anything that reaches them)
@@ -1093,6 +1145,12 @@ void drawEnhancedHudFrame()
 			if( th.rivets )
 				for( Int y = rib.y + P( 14 ); y < rib.y + rib.h - P( 8 ); y += P( 22 ) )
 					drawScrew( rib.x + rib.w / 2, y, c );
+			if( th.weldBeads )
+			{
+				// welded seams: beads along the rib's two edges, offset against each other (not mirrored)
+				drawWeldBead( rib.x + 1, rib.y + P( 12 ), rib.h - P( 22 ), true, c );
+				drawWeldBead( rib.x + rib.w - 3, rib.y + P( 20 ), rib.h - P( 34 ), true, c );
+			}
 		}
 	}
 	if( th.vents )
@@ -1114,6 +1172,23 @@ void drawEnhancedHudFrame()
 	drawModule( mods[ 1 ], c, 2, true );
 	drawModule( mods[ 2 ], c, 3 );
 	drawModule( mods[ 3 ], c, 2, true );
+	if( th.patches )
+	{
+		// riveted repair plates straddling two of the three module gaps (a different height on each: asymmetric)
+		static const int patchGap[ 2 ] = { 0, 2 };
+		static const int patchTop[ 2 ] = { 62, 24 };
+		for( int n = 0; n < 2; ++n )
+		{
+			const int gi = patchGap[ n ];
+			const Int gx = mods[ gi ].right(), gw = mods[ gi + 1 ].x - mods[ gi ].right();
+			if( gw < 3 )
+				continue;
+			const HRect patch = { gx - P( 2 ), isl.y + P( patchTop[ n ] ), gw + P( 4 ), P( 26 ) };
+			drawBevelPlate( patch, 0, CM_ALL, shadeRgba( th.control, n == 0 ? 8 : -6 ), c.shadow, false, c );
+			drawScrew( patch.x + patch.w / 2, patch.y + P( 4 ), c );
+			drawScrew( patch.x + patch.w / 2, patch.y + patch.h - P( 5 ), c );
+		}
+	}
 	if( th.cornerCaps )
 	{
 		// raised square caps on the top shoulders of the shell (the margin around the modules is 8 reference units)
@@ -1228,12 +1303,17 @@ void drawEnhancedHudFrame()
 					const Int x0 = m.x + EnhancedHudPanels::powerSegmentX( i, m.w ), x1 = m.x + EnhancedHudPanels::powerSegmentX( i + 1, m.w );
 					TheDisplay->drawFillRect( x0 + 1, m.y + 2, std::max<Int>( 1, x1 - x0 - 1 ), std::max<Int>( 1, m.h - 4 ), c.panelLow );
 				}
-				bool sufficient = true;
+				bool sufficient = true, gridEmpty = false;
 				if( TheControlBar )
 					if( Player *player = TheControlBar->getCurrentlyViewedPlayer() )
 						if( Energy *energy = player->getEnergy() )
+						{
 							sufficient = energy->hasSufficientPower();
-				drawBolt( HRect{ m.x - P( 17 ), m.y - 1, P( 12 ), m.h + 2 }, sufficient ? c.ready : c.warning );
+							gridEmpty = energy->getProduction() == 0 && energy->getConsumption() == 0;
+						}
+				// a faction without an electrical grid (powerIdle) shows an empty grid as idle, never as ready
+				const Color bolt = ( th.powerIdle && gridEmpty ) ? c.iconDim : ( sufficient ? c.ready : c.warning );
+				drawBolt( HRect{ m.x - P( 17 ), m.y - 1, P( 12 ), m.h + 2 }, bolt );
 			}
 		if( !l.cashFrame.empty() )
 		{
