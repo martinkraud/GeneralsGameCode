@@ -21,7 +21,7 @@
 
 #include "Common/DisplayGeometry.h"
 #include "Common/DisplayModes.h"
-#include "WW3D2/Backend/WorldRenderScale.h"
+#include "../../../Libraries/Source/WWVegas/WW3D2/Backend/WorldRenderScale.h"   // pure header; relative so every target that includes this file finds it
 
 #include <algorithm>
 #include <cctype>
