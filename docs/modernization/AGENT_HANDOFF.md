@@ -461,8 +461,8 @@ Speed must drive `FramePacer::setLogicTimeScaleFps`, default 30, campaign Normal
 the staged `generalsv_r1diag.exe` is in the v4 candidate folder; the human step is 2 minutes (see the doc, section 12). `test_stage4b1_reference.py` is now a function-level contract with authorization tables and mutation tests.
 Tail after X64.41: periodic script tick (every 300 frames, 70-110 ms) and update-module spikes; path search is no longer the limiter.
 
-## X64.41 follow-up: R1 root cause
-R1 (live recording diverging from its re-simulation) = Generals replay header lacked the Skirmish starting cash (`SC=` exists only in the Zero Hour options string); live used 50000, resim 10000, human could not afford the War Factory at frame 1458. Fixed in `Recorder.cpp` (SC written only when non-default). Not a simulation nondeterminism. See `X64_41_PATH_LINE_PHASE_AND_R1.md` section 15.
+## X64.41 follow-up: R1 root cause (CLOSED)
+R1 (live recording diverging from its re-simulation) = Generals replay header lacked the Skirmish starting cash (`SC=` exists only in the Zero Hour options string); live used 50000, resim 10000, human could not afford the War Factory at frame 1458. Fixed in `Recorder.cpp` (SC written only when non-default). Not a simulation nondeterminism. See `X64_41_PATH_LINE_PHASE_AND_R1.md` sections 15 and 15.1. Closed after a human native test of `dff555c24` (SC=50000 in header, replay clean) and the full validation matrix; fingerprint `74F2CB528BED42ED` unchanged. Next: X64.42 (periodic script tick + update-module spikes), not started.
 
 ## X64.40 Path-search investigation (CP14, delivered)
 

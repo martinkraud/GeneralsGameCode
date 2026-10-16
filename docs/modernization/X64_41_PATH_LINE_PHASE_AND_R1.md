@@ -197,7 +197,7 @@ Evidence now points away from pathfinding: the worst tick is the **periodic scri
 tick (which script action, which object scans - the `logic_scripts` exclusive time has no sub-attribution yet), then apply the same method (counters, exactness oracle, serial fix). In parallel: close R1 with the diagnostic recording. Parallel
 pathfinding remains unjustified (the remaining 75 ms search is smaller than the script tick).
 
-## 15. R1 resolved (follow-up): the Generals replay header did not record the Skirmish starting cash
+## 15. R1 resolved and CLOSED: the Generals replay header did not record the Skirmish starting cash
 
 The two staged recordings were analysed with the new tooling. First divergent frame 1459; the command at logic frame 1458 is the human's `MSG_DOZER_CONSTRUCT` (War Factory). A temporary env-gated trace of `onDozerConstruct` / `BuildAssistant::buildObjectNow` / `DozerAIUpdate::construct` (removed again, not committed) showed the re-simulation rejecting it with `canMakeUnit == CANMAKE_NO_MONEY`: the human had **0** money at frame 1458, the live game had at least 2000.
 
@@ -208,3 +208,10 @@ Proof: re-running the same replay with starting cash forced to 50000 gives `NO D
 Fix (replay format only, no gameplay change): `RecorderClass::startRecording` (Generals) now inserts `;SC=<cash>` into the Skirmish options string **only when the starting cash differs from the default**, so default-cash replays are byte-identical to before; LAN / GameSpy strings are untouched; `ParseAsciiStringToGameInfo` already parsed `SC=` in both titles. Replays recorded before this fix with non-default cash cannot be replayed exactly (cash unknown; patching `;SC=<n>` into the header repairs them).
 
 Consequences: the R1 divergence was **not** a simulation nondeterminism; the earlier "simple scenario deterministic" result is consistent (default cash). The remaining determinism risks of section 9 are unchanged. Not yet verified: a fresh live recording with the fix (the writer path is covered by the equivalence above, not by a native run); the next human native test can confirm by recording a non-default-cash Skirmish and replaying it.
+
+### 15.1 Closure evidence (human native test of `dff555c24`)
+
+- The human recorded a new Skirmish (Lone Eagle, 50000 Starting Cash) with the staged build (`generalsv_fixcash.exe`, `Run-StartingCash-Test.cmd`) and replayed it: no CRC mismatch, no replay problem (1:56 of game time, CRC every frame).
+- The generated header was inspected: `M=03maps/lone eagle;MC=4E5678CC;MS=237764;SD=239185390;C=1;SC=50000;S=...` - `SC=50000` is present, right after `C=1`.
+- Full validation after `dff555c24`: Win64 and Win32 builds; ctest 16/16 (Win64) and 23/23 (Win32); gtests 416 (g) / 415 (z) on Win64 and 378 / 378 on Win32; 21 Python contract / performance tests (including `test_stage4b1_reference.py`, `test_stage4b3_reference.py`, `test_skirmish_match_options_contract.py`, `test_ordinary_menu_contract.py`); 10 PowerShell workflow tests; heavy benchmark fingerprint `74F2CB528BED42ED` (2400 checkpoints) unchanged with the final executable.
+- R1 is closed. It was a replay-format omission, not a simulation nondeterminism. Open (unrelated) determinism risks are those of section 9.
