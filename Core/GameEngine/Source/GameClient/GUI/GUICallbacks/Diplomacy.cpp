@@ -39,6 +39,7 @@
 #include "GameClient/AnimateWindowManager.h"
 #include "GameClient/Diplomacy.h"
 #include "GameClient/DisconnectMenu.h"
+#include "GameClient/EnhancedHudOverview.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/Gadget.h"
 #include "GameClient/GadgetCheckBox.h"
@@ -242,10 +243,13 @@ void ShowDiplomacy( Bool immediate )
 	}
 	theLayout->hide(FALSE);
 
+	// Enhanced: skin the overview (or restore the retail look); the retail windows and logic stay in charge
+	EnhancedHudOverview::attach( theWindow );
+
 	radioButtonInGame->winHide(TRUE);
 	radioButtonBuddies->winHide(TRUE);
 	GadgetRadioSetSelection(radioButtonInGame, FALSE);
-	if (TheRecorder->isMultiplayer())
+	if (TheRecorder->isMultiplayer() || EnhancedHudOverview::showPlayerTable())
 	{
 		winInGame->winHide(FALSE);
 		winBuddies->winHide(TRUE);
@@ -284,6 +288,7 @@ void ResetDiplomacy()
 	if(theLayout)
 	{
 		TheInGameUI->unregisterWindowLayout(theLayout);
+		EnhancedHudOverview::forget(theWindow, FALSE);
 		theLayout->destroyWindows();
 		deleteInstance(theLayout);
 		InitBuddyControls(-1);

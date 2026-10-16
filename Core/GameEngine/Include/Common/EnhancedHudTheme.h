@@ -97,7 +97,7 @@ inline const Theme &usa()
 		/* warningInk*/ {255, 255, 255, 255},
 		/* control   */ {46, 58, 80, 255}, /* controlLow */ {31, 39, 55, 255}, /* chassisLine */ {37, 46, 62, 255},
 		/* shell   */ Corner::Chamfer, 14, /* module */ Corner::Chamfer, 4, /* plate */ Corner::Chamfer, 3,
-		/* bevel   */ true, /* fasteners */ true, /* seams */ true, /* vents */ false, /* ticks */ true,
+		/* bevel   */ true, /* fasteners */ true, /* seams */ true, /* vents */ true, /* ticks */ true,
 		/* stateRails */ true,
 		/* bezel   */ 5, /* wellDepth */ 2,
 		/* grain   */ true, /* ribs */ true, /* moduleLeds */ true,

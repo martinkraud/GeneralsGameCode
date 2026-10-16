@@ -14,6 +14,7 @@
 #include "Common/EnhancedHudImageFit.h"
 #include "Common/EnhancedHudTheme.h"
 #include "Common/EnhancedHudLayout.h"
+#include "Common/EnhancedHudPanels.h"
 #include "Common/OptionsPageLayout.h"
 
 #include <cmath>
@@ -959,11 +960,164 @@ TEST(EnhancedHudTheme, ThemeCanExpressShapeAndMaterialDifferencesBeyondColour)
 	EXPECT_EQ(t.moduleCorner, Corner::Chamfer);
 	EXPECT_EQ(t.plateCorner, Corner::Chamfer);
 	EXPECT_TRUE(t.fasteners && t.seams && t.tickMarks && t.stateRails);
-	EXPECT_FALSE(t.vents);                          // detail only where it serves a purpose
+	EXPECT_TRUE(t.vents);                           // grilles only on the end cap and two module headers (see renderer)
 	EXPECT_GT(t.bezelRef, t.wellDepthRef);        // the radar bezel is a stronger surround than an ordinary well
 	// shape parameters are small, bounded reference units (a theme cannot reshape the layout)
 	EXPECT_LE(t.shellCornerRef, 16);
 	EXPECT_LE(t.moduleCornerRef, 8);
 	EXPECT_LE(t.plateCornerRef, 6);
 	EXPECT_LE(t.bezelRef, 8);
+}
+
+// ---- General milestones, popup and Battle Overview models (refine 7) ----------------------------------------------------
+
+TEST(EnhancedHudPanels, FourCellsAreRankMilestonesWithRealMeaning)
+{
+	using namespace EnhancedHudPanels;
+	// Generals: 5 rank levels -> milestones at ranks 2, 3, 4, 5
+	EXPECT_EQ(milestoneCount(5), 4);
+	for (int i = 0; i < 4; ++i)
+		EXPECT_EQ(milestoneRank(5, i, 4), i + 2);
+	// Zero Hour style: 10 levels -> quartiles of the ladder, ending at the top rank
+	EXPECT_EQ(milestoneCount(10), 4);
+	int previous = 1;
+	for (int i = 0; i < 4; ++i)
+	{
+		const int rank = milestoneRank(10, i, 4);
+		EXPECT_GT(rank, previous);
+		previous = rank;
+	}
+	EXPECT_EQ(milestoneRank(10, 3, 4), 10);
+	EXPECT_EQ(milestoneCount(1), 0);
+	EXPECT_EQ(milestoneCount(2), 1);
+	EXPECT_EQ(milestoneCount(3), 2);
+	// exactly one "next" cell, earned before it, locked after it, for every rank
+	for (int levels : {2, 3, 5, 8, 10})
+		for (int rank = 1; rank <= levels; ++rank)
+		{
+			const int count = milestoneCount(levels);
+			int earned = 0, next = 0, locked = 0;
+			for (int i = 0; i < count; ++i)
+			{
+				const Milestone m = milestoneState(rank, levels, i, count);
+				earned += m == Milestone::Earned;
+				next += m == Milestone::Next;
+				locked += m == Milestone::Locked;
+			}
+			EXPECT_LE(next, 1) << levels << "/" << rank;
+			EXPECT_EQ(earned + next + locked, count);
+			if (rank == levels)
+				EXPECT_EQ(earned, count) << levels;               // top rank: everything earned
+			if (rank == 1)
+				EXPECT_EQ(earned, 0) << levels;                   // fresh General: nothing earned
+		}
+}
+
+TEST(EnhancedHudPanels, MilestoneProgressIsTheRealSkillPointFraction)
+{
+	using namespace EnhancedHudPanels;
+	const auto needed = [](int level) { return 100 * (level - 1); };       // cumulative skill points per level
+	// 5 levels: milestone 0 is rank 2 (needs 100), milestone 1 is rank 3 (needs 200) ...
+	EXPECT_EQ(milestoneProgressPermille(0, 5, 0, 4, needed), 0);
+	EXPECT_EQ(milestoneProgressPermille(50, 5, 0, 4, needed), 500);
+	EXPECT_EQ(milestoneProgressPermille(100, 5, 0, 4, needed), 1000);
+	EXPECT_EQ(milestoneProgressPermille(150, 5, 1, 4, needed), 500);
+	EXPECT_EQ(milestoneProgressPermille(99999, 5, 1, 4, needed), 1000);
+	EXPECT_EQ(milestoneProgressPermille(-5, 5, 1, 4, needed), 0);
+	// degenerate tables never divide by zero
+	EXPECT_EQ(milestoneProgressPermille(10, 5, 0, 4, [](int) { return 7; }), 0);
+	// General Points pips: zero means none, more than the pips saturates
+	EXPECT_EQ(pointPips(0, 5), 0);
+	EXPECT_EQ(pointPips(-3, 5), 0);
+	EXPECT_EQ(pointPips(2, 5), 2);
+	EXPECT_EQ(pointPips(40, 5), 5);
+}
+
+TEST(EnhancedHudPanels, PowerStateMapsTheRetailWindowFlags)
+{
+	using namespace EnhancedHudPanels;
+	EXPECT_EQ(powerState(true, false), PowerState::Available);
+	EXPECT_EQ(powerState(true, true), PowerState::Available);       // enabled always wins (purchasable)
+	EXPECT_EQ(powerState(false, true), PowerState::Purchased);      // disabled + ALWAYS_COLOR = player->hasScience
+	EXPECT_EQ(powerState(false, false), PowerState::Locked);
+}
+
+TEST(EnhancedHudPanels, PopupSectionsHoldEveryRetailWindowOfGeneralsExpPoints)
+{
+	using namespace EnhancedHudPanels;
+	struct Item { const char *name; Rect r; int section; };      // retail rectangles relative to the parent (296 x 432)
+	const Item items[] = {
+		{"StaticTextTitle", {8, 6, 160, 26}, 0},          {"StaticTextLevel", {176, 6, 113, 26}, 0},
+		{"Experience label", {8, 38, 160, 16}, 0},        {"ExpBarHousing", {8, 54, 167, 18}, 0},
+		{"ProgressBarExperience", {11, 59, 161, 8}, 0},   {"RemainingSkillPoints", {174, 36, 84, 36}, 0},
+		{"RankPointsAvailable", {262, 40, 23, 31}, 0},
+		{"Rank1 header", {0, 76, 296, 24}, 1},            {"ButtonRank1Number0", {16, 104, 56, 48}, 1},
+		{"ButtonRank1Number1", {84, 104, 56, 48}, 1},     {"ButtonRank1Number2", {152, 104, 56, 48}, 1},
+		{"Rank3 header", {0, 160, 296, 24}, 2},           {"ButtonRank3Number0", {16, 188, 56, 48}, 2},
+		{"ButtonRank3Number2", {16, 292, 56, 48}, 2},     {"ButtonRank3Number9", {220, 188, 56, 48}, 2},
+		{"ButtonRank3Number11", {220, 293, 56, 48}, 2},   {"Rank8 header", {0, 348, 296, 24}, 3},
+		{"ButtonRank8Number0", {16, 376, 56, 48}, 3},     {"ButtonExit", {198, 392, 88, 32}, 3},
+	};
+	const Rect sections[4] = {kPopupHeader, kPopupRank1, kPopupRank3, kPopupRank8};
+	for (const Item &it : items)
+	{
+		EXPECT_TRUE(it.r.within(sections[it.section])) << it.name;
+		for (int s = 0; s < 4; ++s)
+			if (s != it.section)
+				EXPECT_FALSE(it.r.intersects(sections[s])) << it.name << " vs section " << s;
+		EXPECT_TRUE(it.r.within(Rect{0, 0, kPopupW, kPopupH})) << it.name;
+	}
+	// the sections tile the popup top to bottom without gaps or overlap
+	EXPECT_EQ(sections[0].bottom(), sections[1].y);
+	EXPECT_EQ(sections[1].bottom(), sections[2].y);
+	EXPECT_EQ(sections[2].bottom(), sections[3].y);
+	EXPECT_EQ(sections[3].bottom(), kPopupH);
+	// scaling keeps containment
+	for (double u : {0.87, 1.0, 1.57, 2.25})
+		for (const Item &it : items)
+			EXPECT_TRUE(popupScaled(it.r, u).within(popupScaled(Rect{0, 0, kPopupW, kPopupH}, u) ) ) << it.name << " " << u;
+}
+
+TEST(EnhancedHudPanels, BattleOverviewShowsOnlyDataThatExistsAndIsSafe)
+{
+	using namespace EnhancedHudPanels;
+	int n = 0;
+	const OverviewTabInfo *tabs = overviewTabs(n);
+	ASSERT_EQ(n, 4);
+	EXPECT_TRUE(tabs[0].available);
+	EXPECT_STREQ(tabs[0].label, "PLAYERS");
+	EXPECT_EQ(availableOverviewTabs(), 1);                    // no fake ARMY / ECONOMY / COMBAT statistics
+	for (int i = 1; i < n; ++i)
+	{
+		EXPECT_FALSE(tabs[i].available) << tabs[i].label;
+		EXPECT_GT(std::strlen(tabs[i].reason), 10u) << tabs[i].label;   // every missing tab documents why
+	}
+	// the retail rows (8 slots) all fit the table module
+	const Rect table = kOverviewTable;
+	for (int row = 0; row < kOverviewRows; ++row)
+	{
+		const Rect r = {8, kOverviewRowY0 + row * kOverviewRowPitch, 408, 24};
+		EXPECT_TRUE(r.within(table)) << row;
+	}
+	EXPECT_TRUE(kOverviewFooter.y >= table.bottom());
+	EXPECT_TRUE(kOverviewFooter.bottom() <= kOverviewH);
+	// the retail Done button (324,366 92x27) sits in the footer
+	EXPECT_TRUE((Rect{324, 366, 92, 27}).within(kOverviewFooter));
+}
+
+TEST(EnhancedHudPanels, GameTimeAndMapNameAreFormattedFromSharedData)
+{
+	using namespace EnhancedHudPanels;
+	wchar_t out[32];
+	formatGameTime(0, 30, out, 32);                    EXPECT_STREQ(out, L"00:00:00");
+	formatGameTime(30 * 61, 30, out, 32);              EXPECT_STREQ(out, L"00:01:01");
+	formatGameTime(30LL * 3600 * 2 + 30 * 75, 30, out, 32);   EXPECT_STREQ(out, L"02:01:15");
+	formatGameTime(-5, 30, out, 32);                   EXPECT_STREQ(out, L"00:00:00");
+	EXPECT_EQ(formatGameTime(100, 0, out, 32), 0);     // invalid rate
+	mapDisplayName("Maps\\Tournament Desert\\Tournament Desert.map", out, 32);   EXPECT_STREQ(out, L"Tournament Desert");
+	mapDisplayName("Maps/Alpine Assault/Alpine Assault.map", out, 32);             EXPECT_STREQ(out, L"Alpine Assault");
+	mapDisplayName("plain", out, 32);                                              EXPECT_STREQ(out, L"plain");
+	mapDisplayName(nullptr, out, 32);                                              EXPECT_STREQ(out, L"");
+	wchar_t tiny[4];
+	EXPECT_EQ(mapDisplayName("Maps\\Long Name Here.map", tiny, 4), 3);              // never overruns
 }

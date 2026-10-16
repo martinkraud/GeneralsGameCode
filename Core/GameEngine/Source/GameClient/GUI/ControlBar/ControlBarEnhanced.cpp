@@ -35,6 +35,15 @@
 #include "Common/Player.h"
 #include "GameLogic/RankInfo.h"
 #include "Common/Radar.h"
+#include "Common/EnhancedHudPanels.h"
+#include "Common/GlobalData.h"
+#include "GameClient/DisplayString.h"
+#include "GameClient/DisplayStringManager.h"
+#include "GameClient/EnhancedHudOverview.h"
+#include "GameClient/GameFont.h"
+#include "GameClient/GameText.h"
+#include "GameLogic/GameLogic.h"
+#include "GameNetwork/GameInfo.h"
 
 #include <algorithm>
 #include <cmath>
@@ -42,6 +51,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -96,7 +106,12 @@ void restoreStore( std::map<GameWindow *, Original> &store )
 namespace
 {
 void powersPanelDraw( GameWindow *window, WinInstanceData *instData );
+void purchasePanelDraw( GameWindow *window, WinInstanceData *instData );
+void releaseTexts();
 GameWinDrawFunc s_powersOriginalDraw = nullptr;
+GameWindow *s_purchaseWindow = nullptr;            // the General Powers popup (skinned while Enhanced is active)
+GameWinDrawFunc s_purchaseOriginalDraw = nullptr;
+const Image *s_purchaseOriginalImage = nullptr;
 struct SlotArt { const Image *enabled; const Image *disabled; };
 std::map<GameWindow *, SlotArt> s_powerSlotArt;     // retail frame art of the shortcut slots (restored for Original)
 }
@@ -225,6 +240,25 @@ void ControlBar::applyEnhancedLayout()
 		}
 	}
 
+	// General Powers popup: the retail windows stay; the retail background bitmap is replaced by the Enhanced skin (restored
+	// for Original) and the power icons are aspect-fitted inside their plates
+	if( GameWindow *gen = m_contextParent[ CP_PURCHASE_SCIENCE ] )
+	{
+		if( s_purchaseWindow != gen )
+		{
+			s_purchaseWindow = gen;
+			s_purchaseOriginalDraw = gen->winGetDrawFunc();
+			s_purchaseOriginalImage = nullptr;
+		}
+		if( const Image *img = gen->winGetEnabledImage( 0 ) )
+			s_purchaseOriginalImage = img;
+		gen->winSetEnabledImage( 0, nullptr );
+		gen->winSetDrawFunc( purchasePanelDraw );
+		for( GameWindow *ch = gen->winGetChild(); ch; ch = ch->winGetNext() )
+			if( BitIsSet( ch->winGetStyle(), GWS_PUSH_BUTTON ) && ch->winGetWindowId() != TheNameKeyGenerator->nameToKey( "GeneralsExpPoints.wnd:ButtonExit" ) )
+				EnhancedHudImage::registerAspectFit( ch );
+	}
+
 	applyEnhancedPowerShortcutLayout();
 }
 
@@ -235,6 +269,16 @@ void ControlBar::restoreOriginalLayout()
 	if( s_barMaster == nullptr && s_powersParent == nullptr )
 		return;
 	EnhancedHudImage::clear();
+	releaseTexts();
+	if( s_purchaseWindow && s_purchaseWindow == m_contextParent[ CP_PURCHASE_SCIENCE ] )
+	{
+		if( s_purchaseOriginalDraw )
+			s_purchaseWindow->winSetDrawFunc( s_purchaseOriginalDraw );
+		s_purchaseWindow->winSetEnabledImage( 0, s_purchaseOriginalImage );
+	}
+	s_purchaseWindow = nullptr;
+	s_purchaseOriginalDraw = nullptr;
+	s_purchaseOriginalImage = nullptr;
 	if( s_barMaster && s_barMaster == m_contextParent[ CP_MASTER ] && !s_bar.empty() )
 	{
 		const std::map<GameWindow *, Original>::const_iterator master = s_bar.find( s_barMaster );
@@ -563,7 +607,7 @@ void drawRaisedFrame( const HRect &inner, Int thickness, const HudPalette &c, bo
 
 // A module of the console (level 1): a recessed panel set into the chassis - inner shadow on the top/left, a faint lit lip on
 // the bottom/right, machined corners, and a header band with a small group of status lights.
-void drawModule( const HRect &r, const HudPalette &c, int litLeds )
+void drawModule( const HRect &r, const HudPalette &c, int litLeds, bool vents = false )
 {
 	const EnhancedHudTheme::Theme &th = *c.theme;
 	if( r.w < 8 || r.h < 8 )
@@ -582,9 +626,9 @@ void drawModule( const HRect &r, const HudPalette &c, int litLeds )
 	// header band (slightly darker than the panel) carrying the status lights
 	const Int headH = P( 11 );
 	TheDisplay->drawFillRect( r.x + depth, r.y + depth, r.w - 2 * depth - 1, headH, themeColor( th.moduleLow ) );
-	if( th.vents )
+	if( th.vents && vents )
 		drawVents( r.x + r.w - P( 30 ), r.y + depth + P( 2 ), P( 20 ), std::max<Int>( 4, headH - P( 4 ) ), 3, c );
-	if( th.moduleLeds )
+	if( th.moduleLeds && litLeds >= 0 )
 		drawLedGroup( r.x + P( 9 ), r.y + depth + ( headH - std::max<Int>( 2, P( 2 ) ) ) / 2, 3, litLeds, c );
 }
 
@@ -850,6 +894,13 @@ void drawEnhancedHudFrame()
 			TheDisplay->drawFillRect( rib.x + rib.w / 2 - 1, rib.y + P( 2 ), 2, std::max<Int>( 2, P( 2 ) ), c.ready );
 		}
 	}
+	if( th.vents )
+	{
+		// asymmetric end caps: a small ventilation grille at the left end, a pair of power lamps at the right end
+		drawVents( isl.x + P( 2.5 ), isl.y + isl.h / 2 - P( 9 ), P( 5 ), P( 18 ), 5, c );
+		drawLedGroup( isl.x + isl.w - P( 7 ), isl.y + P( 18 ), 1, 1, c );
+		drawLedGroup( isl.x + isl.w - P( 7 ), isl.y + P( 22 ), 1, 0, c );
+	}
 	if( th.fasteners )
 	{
 		// two corner fasteners only, at the flush bottom corners
@@ -859,9 +910,9 @@ void drawEnhancedHudFrame()
 
 	// 2. LEVEL 1 - MODULES: recessed panels set into the chassis. The lit status lights show which subsystems are powered.
 	drawModule( mods[ 0 ], c, 3 );
-	drawModule( mods[ 1 ], c, 2 );
+	drawModule( mods[ 1 ], c, 2, true );
 	drawModule( mods[ 2 ], c, 3 );
-	drawModule( mods[ 3 ], c, 2 );
+	drawModule( mods[ 3 ], c, 2, true );
 
 	// 3. RADAR MODULE. The radar keeps the map's aspect ratio and (by retail design, W3DRadar::draw) paints the unused part
 	//    of its window opaque black. In Enhanced the radar WINDOW is fitted to the map's aspect inside the module's radar
@@ -1034,13 +1085,17 @@ void drawEnhancedHudFrame()
 			drawRecess( gr, c );
 		}
 
-		Int rank = 1, levels = 1;
+		Int rank = 1, levels = 1, points = 0, skill = 0;
 		if( TheControlBar )
 			if( Player *player = TheControlBar->getCurrentlyViewedPlayer() )
+			{
 				rank = player->getRankLevel();
+				points = player->getSciencePurchasePoints();
+				skill = player->getSkillPoints();
+			}
 		if( TheRankInfoStore )
 			levels = TheRankInfoStore->getRankLevelCount();
-		const int slots = EnhancedHudLayout::rankSlotCount( levels );
+		const int slots = EnhancedHudPanels::milestoneCount( levels );
 		const Int k = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
 		if( slots > 0 )
 		{
@@ -1049,12 +1104,14 @@ void drawEnhancedHudFrame()
 				rankBay = EnhancedHudWindows::unionOf( rankBay, EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankSlot( i ) ) );
 			drawRecess( inflate( rankBay, std::max<Int>( 2, g / 2 ) ), c );
 		}
+		// The four cells are the General's promotion milestones (EnhancedHudPanels): earned = raised plate, gold star and gold
+		// rail; next = recessed cell that fills with the REAL xp progress toward it; later = recessed, dim star.
 		for( int i = 0; i < slots; ++i )
 		{
-			const bool reached = rank >= i + 2;
+			const EnhancedHudPanels::Milestone state = EnhancedHudPanels::milestoneState( rank, levels, i, slots );
 			const HRect slot = EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankSlot( i ) );
 			const HRect star = EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankStar( i ) );
-			if( reached )
+			if( state == EnhancedHudPanels::Milestone::Earned )
 			{
 				drawBevelPlate( slot, k, CM_ALL, themeColor( th.control ), c.shadow, false, c );
 				if( th.stateRails )
@@ -1064,9 +1121,295 @@ void drawEnhancedHudFrame()
 			{
 				TheDisplay->drawFillRect( slot.x, slot.y, slot.w, slot.h, c.panelLow );
 				TheDisplay->drawLine( slot.x, slot.y, slot.x + slot.w - 1, slot.y, 1, c.shadow );
+				if( state == EnhancedHudPanels::Milestone::Next && TheRankInfoStore )
+				{
+					const int permille = EnhancedHudPanels::milestoneProgressPermille( skill, levels, i, slots,
+						[]( int level ) { const RankInfo *info = TheRankInfoStore->getRankInfo( level ); return info ? info->m_skillPointsNeeded : 0; } );
+					const Int fill = ( slot.h - 4 ) * permille / 1000;
+					if( fill > 0 )
+						TheDisplay->drawFillRect( slot.x + 2, slot.y + slot.h - 2 - fill, slot.w - 4, fill, c.accentDim );
+					TheDisplay->drawLine( slot.x + 2, slot.y + slot.h - 2 - fill, slot.x + slot.w - 3, slot.y + slot.h - 2 - fill, 1, c.ready );
+				}
 			}
-			fillStar( star.x + star.w / 2, star.y + star.h / 2, std::max( 2, star.h / 2 ), reached ? c.lit : c.litDim );
+			fillStar( star.x + star.w / 2, star.y + star.h / 2, std::max( 2, star.h / 2 ),
+			          state == EnhancedHudPanels::Milestone::Earned ? c.lit : ( state == EnhancedHudPanels::Milestone::Next ? c.iconDim : c.litDim ) );
+		}
+		// unspent General Points: lit pips between the entry and the milestones (blue = available to spend; gold stays rank)
+		if( EnhancedHudLayout::destinationFor( "ButtonGeneral", dst, hide ) )
+		{
+			const HRect gr = EnhancedHudLayout::toPhysical( l, dst );
+			const int pips = EnhancedHudPanels::pointPips( points, 5 );
+			const Int side = std::max<Int>( 2, P( 2 ) ), gap = std::max<Int>( 1, P( 1.2 ) );
+			const Int total = 5 * side + 4 * gap;
+			drawLedGroup( gr.x + ( gr.w - total ) / 2, gr.y + gr.h + std::max<Int>( 3, g ), 5, pips, c );
+			if( pips > 0 )
+				TheDisplay->drawOpenRect( gr.x - 1, gr.y - 1, gr.w + 2, gr.h + 2, 1, c.ready );
 		}
 	}
 	// (the Global Powers surface is not part of the island: see powersPanelDraw, drawn by the shortcut window itself)
+}
+
+//-----------------------------------------------------------------------------
+// Text, the General Powers popup skin and the Battle Overview skin. All of it reuses the primitives above: the same Theme, the
+// same chassis / recessed module / raised control construction; the retail windows (texts, buttons, lists) stay in charge of
+// content and input, the skin only draws behind them. Nothing here changes what the popup or the overview does.
+namespace
+{
+
+struct TextEntry { DisplayString *ds; Int size; Bool bold; };
+std::map<std::string, TextEntry> s_texts;
+
+void releaseTexts()
+{
+	for( std::map<std::string, TextEntry>::iterator it = s_texts.begin(); it != s_texts.end(); ++it )
+		if( it->second.ds && TheDisplayStringManager )
+			TheDisplayStringManager->freeDisplayString( it->second.ds );
+	s_texts.clear();
+}
+
+// align: 0 = x is the left edge, 1 = centre, 2 = right edge. Uses the game's own font library and display strings.
+void drawLabel( const char *key, const UnicodeString &text, Int x, Int y, Int size, Bool bold, Color color, int align )
+{
+	if( !TheDisplayStringManager || !TheFontLibrary )
+		return;
+	TextEntry &e = s_texts[ key ];
+	if( !e.ds )
+	{
+		e.ds = TheDisplayStringManager->newDisplayString();
+		e.size = 0;
+		e.bold = FALSE;
+	}
+	if( !e.ds )
+		return;
+	if( e.size != size || e.bold != bold )
+	{
+		e.ds->setFont( TheFontLibrary->getFont( AsciiString( "Arial" ), size, bold ) );
+		e.size = size;
+		e.bold = bold;
+	}
+	if( e.ds->getText().compare( text ) != 0 )
+		e.ds->setText( text );
+	Int w = 0, h = 0;
+	e.ds->getSize( &w, &h );
+	if( align == 1 )
+		x -= w / 2;
+	else if( align == 2 )
+		x -= w;
+	e.ds->draw( x, y, color, themeColor( EnhancedHud::theme().bevelDark ) );
+}
+
+GameWindow *childByName( GameWindow *parent, const char *fullName )
+{
+	return TheWindowManager->winGetWindowFromId( parent, TheNameKeyGenerator->nameToKey( fullName ) );
+}
+
+// ---- General Powers popup (GeneralsExpPoints.wnd) --------------------------------------------------------------------------
+// The retail popup keeps its windows, texts, progress bar and buttons; the skin is the parent's draw function: a chassis with a
+// header module and one recessed module per rank section, a raised housing around the experience bar and a raised plate
+// behind every visible power. Plate state comes from the flags the ControlBar already sets (available / purchased / locked).
+void purchasePanelDraw( GameWindow *window, WinInstanceData * )
+{
+	if( !EnhancedHud::active() || !TheDisplay || !window )
+		return;
+	const HudPalette c = makePalette();
+	const EnhancedHudTheme::Theme &th = *c.theme;
+	const HRect r = windowRect( window );
+	const double u = r.w / (double)EnhancedHudPanels::kPopupW;
+	s_drawScale = std::max( 0.5, u );
+	const Int k = P( 8 );
+	fillChassis( r, k, c );
+	edgeChamfered( r, k, CM_TOP, c.shadow );
+	TheDisplay->drawLine( r.x + k + 1, r.y + 1, r.x + r.w - k - 2, r.y + 1, 1, c.highlight );
+	const HRect sections[ 4 ] = { EnhancedHudPanels::kPopupHeader, EnhancedHudPanels::kPopupRank1, EnhancedHudPanels::kPopupRank3,
+	                             EnhancedHudPanels::kPopupRank8 };
+	for( int i = 0; i < 4; ++i )
+	{
+		const HRect s = EnhancedHudPanels::popupScaled( sections[ i ], u );
+		drawModule( HRect{ r.x + s.x + P( 6 ), r.y + s.y + P( 4 ), s.w - 2 * P( 6 ), s.h - P( 7 ) }, c, i == 0 ? 3 : -1 );
+	}
+	// the experience bar sits in a raised housing
+	if( GameWindow *bar = childByName( window, "GeneralsExpPoints.wnd:ProgressBarExperience" ) )
+	{
+		const HRect b = windowRect( bar );
+		drawRaisedFrame( b, P( 2.5 ), c, false );
+		drawRecess( b, c, P( 1.5 ) );
+	}
+	GameWindow *exitButton = childByName( window, "GeneralsExpPoints.wnd:ButtonExit" );
+	const Int pk = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
+	for( GameWindow *ch = window->winGetChild(); ch; ch = ch->winGetNext() )
+	{
+		if( ch->winIsHidden() || !BitIsSet( ch->winGetStyle(), GWS_PUSH_BUTTON ) )
+			continue;
+		const HRect b = windowRect( ch );
+		bool hover, down;
+		pointerState( b, &hover, &down );
+		if( ch == exitButton )
+		{
+			drawBevelPlate( inflate( b, P( 2 ) ), pk, CM_ALL, themeColor( th.control ), hover ? c.accent : c.shadow, down, c );
+			continue;
+		}
+		const EnhancedHudPanels::PowerState state = EnhancedHudPanels::powerState(
+			BitIsSet( ch->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false, BitIsSet( ch->winGetStatus(), WIN_STATUS_ALWAYS_COLOR ) ? true : false );
+		const HRect plate = inflate( b, P( 3 ) );
+		const bool available = state == EnhancedHudPanels::PowerState::Available;
+		const bool purchased = state == EnhancedHudPanels::PowerState::Purchased;
+		drawBevelPlate( plate, pk, CM_ALL, available || purchased ? themeColor( th.control ) : themeColor( th.controlLow ),
+		                available ? ( hover ? c.accent : c.ready ) : ( purchased ? c.lit : c.shadow ), down && available, c );
+		if( th.stateRails )
+			TheDisplay->drawFillRect( plate.x + pk + 1, plate.y + plate.h - 3, plate.w - 2 * pk - 2, std::max<Int>( 1, P( 1 ) ),
+			                          purchased ? c.lit : ( available ? c.ready : c.shadow ) );
+	}
+}
+
+// ---- Battle Overview (Diplomacy.wnd) ---------------------------------------------------------------------------------------
+GameWindow *s_overviewRoot = nullptr;
+GameWinDrawFunc s_overviewDraw = nullptr;
+struct WindowArt { const Image *enabled; const Image *disabled; };
+std::map<GameWindow *, WindowArt> s_overviewArt;
+
+void overviewDraw( GameWindow *window, WinInstanceData * )
+{
+	if( !EnhancedHud::active() || !TheDisplay || !window )
+		return;
+	const HudPalette c = makePalette();
+	const EnhancedHudTheme::Theme &th = *c.theme;
+	const HRect r = windowRect( window );
+	const double u = r.w / (double)EnhancedHudPanels::kOverviewW;
+	s_drawScale = std::max( 0.5, u );
+	const Int k = P( 8 );
+	fillChassis( r, k, c );
+	edgeChamfered( r, k, CM_TOP, c.shadow );
+	TheDisplay->drawLine( r.x + k + 1, r.y + 1, r.x + r.w - k - 2, r.y + 1, 1, c.highlight );
+
+	// header band: title, map, elapsed game time (both shared by every player)
+	const HRect hs = EnhancedHudPanels::popupScaled( EnhancedHudPanels::kOverviewHeader, u );
+	const HRect header = { r.x + P( 8 ), r.y + P( 6 ), r.w - P( 16 ), std::max<Int>( P( 22 ), hs.h - P( 8 ) ) };
+	drawRecess( header, c, P( 1.5 ) );
+	TheDisplay->drawFillRect( header.x + 1, header.y + 1, std::max<Int>( 2, P( 1.5 ) ), header.h - 2, c.accent );
+	const Int ty = header.y + ( header.h - P( 12 ) ) / 2 - 1;
+	drawLabel( "ov.title", TheGameText->fetchOrSubstitute( "GUI:BattleOverview", L"BATTLE OVERVIEW" ), header.x + P( 10 ), ty, P( 12 ), TRUE, c.icon, 0 );
+	wchar_t timeText[ 24 ], mapText[ 96 ];
+	EnhancedHudPanels::formatGameTime( TheGameLogic ? TheGameLogic->getFrame() : 0, LOGICFRAMES_PER_SECOND, timeText, 24 );
+	UnicodeString time;
+	time.format( L"%ls", timeText );
+	drawLabel( "ov.time", time, header.x + header.w - P( 8 ), ty, P( 12 ), TRUE, c.ready, 2 );
+	mapText[ 0 ] = 0;
+	if( TheGameInfo )
+		EnhancedHudPanels::mapDisplayName( TheGameInfo->getMap().str(), mapText, 96 );
+	if( mapText[ 0 ] )
+	{
+		UnicodeString map;
+		map.format( L"%ls", mapText );
+		drawLabel( "ov.map", map, header.x + header.w / 2, ty + 1, P( 10 ), FALSE, c.iconDim, 1 );
+	}
+
+	// tab strip: only tabs whose data exists are drawn (today: PLAYERS)
+	{
+		int n = 0;
+		Int tx = r.x + P( 12 );
+		const Int tabY = r.y + hs.h + P( 2 );
+		for( const EnhancedHudPanels::OverviewTabInfo *tab = EnhancedHudPanels::overviewTabs( n ); n-- > 0; ++tab )
+		{
+			if( !tab->available )
+				continue;
+			UnicodeString label;
+			label.translate( AsciiString( tab->label ) );
+			const HRect tabRect = { tx, tabY, P( 72 ), P( 17 ) };
+			drawBevelPlate( tabRect, P( 3 ), CM_TOP, themeColor( th.control ), c.shadow, false, c );
+			TheDisplay->drawFillRect( tabRect.x + P( 4 ), tabRect.y + tabRect.h - 3, tabRect.w - P( 8 ), std::max<Int>( 1, P( 1 ) ), c.ready );
+			drawLabel( "ov.tab", label, tabRect.x + tabRect.w / 2, tabRect.y + P( 3 ), P( 9 ), TRUE, c.icon, 1 );
+			tx += tabRect.w + P( 4 );
+		}
+	}
+
+	// player table module and a plate behind every visible row
+	const HRect ts = EnhancedHudPanels::popupScaled( EnhancedHudPanels::kOverviewTable, u );
+	drawModule( HRect{ r.x + ts.x + P( 4 ), r.y + ts.y + P( 12 ), ts.w - P( 8 ), ts.h - P( 8 ) }, c, -1 );
+	const Int rowPitch = (Int)( EnhancedHudPanels::kOverviewRowPitch * u + 0.5 );
+	for( int row = 0; row < EnhancedHudPanels::kOverviewRows; ++row )
+	{
+		AsciiString name;
+		name.format( "Diplomacy.wnd:StaticTextPlayer%d", row );
+		GameWindow *player = childByName( window, name.str() );
+		if( !player || player->winIsHidden() )
+			continue;
+		const HRect pr = windowRect( player );
+		const HRect strip = { r.x + ts.x + P( 10 ), pr.y - P( 3 ), ts.w - P( 20 ), rowPitch - P( 4 ) };
+		drawRecess( strip, c, P( 1 ) );
+		if( th.stateRails )
+			TheDisplay->drawFillRect( strip.x + 1, strip.y + 2, std::max<Int>( 2, P( 1.5 ) ), strip.h - 4, row % 2 == 0 ? c.accentDim : c.outline );
+	}
+	// footer: the retail Done / hide button gets a raised housing
+	if( GameWindow *hide = childByName( window, "Diplomacy.wnd:ButtonHide" ) )
+		if( !hide->winIsHidden() )
+		{
+			const HRect b = windowRect( hide );
+			bool hover, down;
+			pointerState( b, &hover, &down );
+			drawBevelPlate( inflate( b, P( 2 ) ), P( 3 ), CM_ALL, themeColor( th.control ), hover ? c.accent : c.shadow, down, c );
+		}
+}
+
+}  // namespace
+
+//-----------------------------------------------------------------------------
+void EnhancedHudOverview::attach( GameWindow *root )
+{
+	if( !root )
+		return;
+	if( !EnhancedHud::active() )
+	{
+		forget( root, TRUE );
+		return;
+	}
+	if( s_overviewRoot == root )
+		return;
+	forget( s_overviewRoot, FALSE );
+	s_overviewRoot = root;
+	s_overviewDraw = root->winGetDrawFunc();
+	s_overviewArt.clear();
+	// the retail background and the column-title bars are bitmaps; the skin replaces them (restored for Original)
+	std::vector<GameWindow *> stack( 1, root );
+	while( !stack.empty() )
+	{
+		GameWindow *w = stack.back();
+		stack.pop_back();
+		const UnsignedInt style = w->winGetStyle();
+		if( w == root || BitIsSet( style, GWS_STATIC_TEXT ) || ( style & GWS_USER_WINDOW ) )
+		{
+			WindowArt art = { w->winGetEnabledImage( 0 ), w->winGetDisabledImage( 0 ) };
+			s_overviewArt[ w ] = art;
+			w->winSetEnabledImage( 0, nullptr );
+			w->winSetDisabledImage( 0, nullptr );
+		}
+		for( GameWindow *ch = w->winGetChild(); ch; ch = ch->winGetNext() )
+			stack.push_back( ch );
+	}
+	root->winSetDrawFunc( overviewDraw );
+}
+
+void EnhancedHudOverview::forget( GameWindow *root, Bool restore )
+{
+	if( !root || root != s_overviewRoot )
+		return;
+	if( restore )
+	{
+		for( std::map<GameWindow *, WindowArt>::const_iterator it = s_overviewArt.begin(); it != s_overviewArt.end(); ++it )
+		{
+			it->first->winSetEnabledImage( 0, it->second.enabled );
+			it->first->winSetDisabledImage( 0, it->second.disabled );
+		}
+		if( s_overviewDraw )
+			root->winSetDrawFunc( s_overviewDraw );
+	}
+	s_overviewArt.clear();
+	s_overviewRoot = nullptr;
+	s_overviewDraw = nullptr;
+}
+
+Bool EnhancedHudOverview::showPlayerTable()
+{
+	// Enhanced shows the player table in skirmish too (retail shows the briefing list there): the data is the slot list every
+	// player already saw in the setup screen plus the alive/defeated status the retail list shows in multiplayer
+	return EnhancedHud::active() && TheGameLogic && TheGameLogic->getGameMode() == GAME_SKIRMISH && TheGameInfo ? TRUE : FALSE;
 }

@@ -22,11 +22,14 @@ SCHEME = "Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp"
 class EnhancedHudContracts(unittest.TestCase):
     def test_enhanced_code_is_presentation_only(self):
         s = text(BAR)
-        for forbidden in ("TheMessageStream", "GameMessage", "appendMessage", "TheGameLogic", "processCommandUI",
-                          "ThePlayerList", "doSpecialPower", "TheBuildAssistant", "getSkillPoints", "setRankLevel",
+        for forbidden in ("TheMessageStream", "GameMessage", "appendMessage", "processCommandUI",
+                          "ThePlayerList", "doSpecialPower", "TheBuildAssistant", "setRankLevel",
                           "addSkillPoints", "setSkillPoints", "getMoney()->", "withdraw", "deposit",
                           "MSG_", "Xfer", "TheRandom", "GameLogicRandom"):
             self.assertNotIn(forbidden, s, forbidden)
+        # the only simulation reads allowed are the shared elapsed time and the game mode (Battle Overview header / skirmish table)
+        for use in re.findall(r"TheGameLogic->(\w+)", s):
+            self.assertIn(use, ("getFrame", "getGameMode"), use)
         # it only moves/sizes/hides windows and draws rectangles
         for allowed in ("winSetPosition", "winSetSize", "winHide", "drawFillRect"):
             self.assertIn(allowed, s)
@@ -289,6 +292,50 @@ class EnhancedHudContracts(unittest.TestCase):
         lay = text("Core/GameEngine/Include/Common/EnhancedHudLayout.h")
         self.assertIn("r.powerEdgeRight = surfaceW;", lay)
         self.assertNotIn("const int inset = 1;", lay)
+
+
+    def test_general_milestones_popup_and_overview_are_presentation_only(self):
+        bar = text(BAR)
+        # new code reads existing retail state and draws; it never buys a power, changes rank/xp, or writes game state
+        for forbidden in ("purchaseScience", "addSkillPoints", "setSkillPoints", "setRankLevel", "grantScience",
+                          "doSpecialPower", "setControlCommand", "GadgetProgressBarSetProgress", "winEnable(", "mute("):
+            self.assertNotIn(forbidden, bar)
+        # the four cells use the real rank table and the real xp
+        self.assertIn("EnhancedHudPanels::milestoneState(", bar)
+        self.assertIn("EnhancedHudPanels::milestoneProgressPermille(", bar)
+        self.assertIn("info->m_skillPointsNeeded", bar)
+        self.assertIn("player->getSciencePurchasePoints()", bar)
+        # popup: gated hook, original draw function and background image restored for Original
+        self.assertIn("gen->winSetDrawFunc( purchasePanelDraw );", bar)
+        self.assertIn("s_purchaseWindow->winSetDrawFunc( s_purchaseOriginalDraw );", bar)
+        self.assertIn("s_purchaseWindow->winSetEnabledImage( 0, s_purchaseOriginalImage );", bar)
+        draw = bar[bar.index("void purchasePanelDraw( GameWindow *window, WinInstanceData * )"):]
+        self.assertIn("if( !EnhancedHud::active()", draw[:200])
+        self.assertIn("EnhancedHudPanels::powerState(", draw)
+
+    def test_battle_overview_is_enhanced_only_and_restores_the_retail_window(self):
+        bar = text(BAR)
+        self.assertIn("void EnhancedHudOverview::attach( GameWindow *root )", bar)
+        attach = bar[bar.index("void EnhancedHudOverview::attach( GameWindow *root )"):]
+        self.assertIn("if( !EnhancedHud::active() )\n\t{\n\t\tforget( root, TRUE );", attach[:200])
+        self.assertIn("root->winSetDrawFunc( s_overviewDraw );", attach)
+        self.assertIn("it->first->winSetEnabledImage( 0, it->second.enabled );", attach)
+        dip = text("Core/GameEngine/Source/GameClient/GUI/GUICallbacks/Diplomacy.cpp")
+        self.assertIn("EnhancedHudOverview::attach( theWindow );", dip)
+        # the retail branch is intact; Enhanced only adds a second way into the player table
+        self.assertIn("if (TheRecorder->isMultiplayer() || EnhancedHudOverview::showPlayerTable())", dip)
+        self.assertIn("EnhancedHudOverview::forget(theWindow, FALSE);", dip)
+        # no hidden information: the overview code never touches money, units, score keeping or other players' objects
+        ov = bar[bar.index("void overviewDraw( GameWindow *window, WinInstanceData * )"):]
+        ov = ov[:ov.index("}  // namespace")]
+        for forbidden in ("getMoney", "ScoreKeeper", "getUnitCount", "countMoney", "ThePlayerList", "getObject", "KindOf", "isMuted", "mute("):
+            self.assertNotIn(forbidden, ov)
+        # shared data only: elapsed logic time, map name
+        self.assertIn("TheGameLogic->getFrame()", ov)
+        panels = text("Core/GameEngine/Include/Common/EnhancedHudPanels.h")
+        self.assertIn('{OverviewTab::Army, "ARMY", false,', panels)
+        self.assertIn('{OverviewTab::Economy, "ECONOMY", false,', panels)
+        self.assertIn('{OverviewTab::Combat, "COMBAT", false,', panels)
 
 
 if __name__ == "__main__":

@@ -488,3 +488,52 @@ tested). `differsBeyondColour()` still separates a recolour from a different con
 documented here so future factions are not recolours: China - heavy industrial (square massive framing, thick bezel/deep wells,
 red lighting); GLA - improvised (asymmetric, welded/bolted, worn, exposed fasteners, green/amber instruments); Europe (future) -
 refined modular; Russia (future) - heavy olive/dark industrial. China and GLA still fall back to Original; nothing for Europe/Russia.
+
+## 18. Refinement 7: USA Design3 + General milestones, General Powers popup and Battle Overview (after native review of `design2`)
+Native result of Design2: Global Powers flush against the right edge (accepted), geometry and footprint good, direction right.
+The major HUD geometry stays frozen (`AcceptedMajorGeometryIsFrozen`); this batch is presentation / information architecture.
+"Enhanced HUD Shared Framework v1" is still NOT declared; it waits for the human's native acceptance of this candidate.
+
+**Design3 (HUD).** The Design2 hierarchy (chassis > recessed modules > wells > raised controls > LEDs) is kept; added only where it
+carries meaning: a ventilation grille on the left end cap and two power lamps on the right end cap (asymmetric), grilles in the
+info and General module headers, structural ribs/bolts/status lights between the modules (Design2) - no outlines on every
+rectangle, screws stay at 2 + 2. All of it comes from theme switches (`vents`, `junctionRibs`, `moduleLeds`, ...).
+
+**The four General cells: audit and meaning.** Audit of the retail data model: the General Powers are grouped by the rank at
+which they open (sections for rank 1, 3 and 8 of `GeneralsExpPoints.wnd`), every power is the same kind of purchase; there are no
+four honest power categories, so none were invented. The model does expose (local player, read-only): rank level, skill points,
+cumulative skill points per level (`RankInfo::m_skillPointsNeeded`), unspent science purchase points. Therefore the four cells are
+the General's **promotion milestones**: the rank ladder from rank 2 to the top is split into four equal steps
+(`EnhancedHudPanels::milestoneRank`; Generals' 5 levels -> ranks 2,3,4,5; a longer table -> quartiles ending at the top rank).
+Earned = raised plate, gold star and rail; Next = recessed cell filled with the REAL xp progress toward that milestone
+(`milestoneProgressPermille`); later = dim star. Unspent General Points are five pips under the General Powers entry (lit up to
+the real count, saturating) and the entry gets a blue rim while points are available. They are indicators, not controls - nothing
+is clickable that is not a retail window. Gold remains rank. Mapping and arithmetic are unit tested.
+
+**General Powers popup (`GeneralsExpPoints.wnd`).** Enhanced-only skin = the popup parent's draw function (retail background
+bitmap cleared and restored for Original, original draw function restored): chassis, one recessed module per section (header,
+1-star, 3-star, 5-star + exit row), raised housing around the experience bar, raised plate behind every visible power with
+the state read from the flags `ControlBar::updateContextPurchaseScience` already sets (enabled = available, disabled +
+ALWAYS_COLOR = purchased/gold, disabled = locked), hover rim, pressed state, exit button housing. The popup's texts, progress bar,
+buttons, tooltips and purchase logic are the retail windows - every power stays reachable, rank requirements and point behaviour
+are untouched; hit regions are the retail buttons. Power icons are aspect-fitted. `popupSectionsHoldEveryRetailWindow...` pins that
+every retail window rectangle lies in exactly one section.
+
+**Battle Overview (`Diplomacy.wnd`).** Audit: the retail overlay is the in-game player list (Mute / Player / Side / Team / Status;
+multiplayer) or the mission briefing list (solo). Live and safe data: player name, faction, team, human/CPU, alive / defeated /
+observer / gone, mute state, elapsed game time (shared), map name. NOT exposed, with reasons: army value, unit/building counts,
+income, money, resources (hidden information of other players), kills/losses/efficiency (post-game ScoreKeeper data), ping (not
+available per slot in every mode). So only the PLAYERS tab is built; ARMY / ECONOMY / COMBAT exist in the model
+(`overviewTabs`) as unavailable with their reason and are not drawn - no fake statistics. Enhanced skin: chassis, header band
+(BATTLE OVERVIEW, map, elapsed time) drawn with the game's own fonts, tab strip (PLAYERS), recessed table module with a plate
+behind every visible player row, raised housing around the retail Done button. The retail windows, mute buttons and
+`PopulateInGameDiplomacyPopup` are untouched. Enhanced additionally shows the player table in SKIRMISH (retail shows the
+briefing list there); that branch is gated on Enhanced and skirmish and adds no information (the slot list is the setup screen).
+Faction icons were not added (no confirmed legal runtime asset path); human vs CPU is carried by the retail team text ("AI").
+
+**Shared framework preparation.** Shared (all factions): geometry, placement/hit testing, image-fit, popup and overview
+architectures, models in `EnhancedHudPanels.h`. Faction (theme): materials, corner/edge/fastener/seam/vent language,
+illumination, plate shapes. China/GLA fall back to Original; Europe/Russia are not implemented.
+
+**Limits.** Procedural placeholder art; labels use the game's Arial display strings (no faction typography yet); the popup/overview
+are skins on the retail layout (no re-layout); unavailable overview tabs wait for engine statistics that are safe to expose.
