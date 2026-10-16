@@ -15,6 +15,7 @@ struct State
 	bool requested = false;
 	bool active = false;
 	EnhancedHudLayout::Result layout;
+	EnhancedHudTheme::Faction faction = EnhancedHudTheme::Faction::Usa;
 };
 
 inline State &state()
@@ -27,6 +28,9 @@ inline void setRequested(bool requested) { state().requested = requested; }
 inline bool requested() { return state().requested; }
 inline bool active() { return state().active; }
 inline const EnhancedHudLayout::Result &layout() { return state().layout; }
+inline EnhancedHudTheme::Faction faction() { return state().faction; }
+// The presentation theme of the faction the HUD is currently built for (read by the single renderer).
+inline const EnhancedHudTheme::Theme &theme() { return EnhancedHudTheme::themeFor(state().faction); }
 
 // Re-evaluates the decision for the given side/surface and recomputes the layout. Returns the new `active`.
 inline bool update(bool modernDisplay, bool classic, const char *side, int surfaceW, int surfaceH, double layoutScale)
@@ -34,6 +38,7 @@ inline bool update(bool modernDisplay, bool classic, const char *side, int surfa
 	State &s = state();
 	s.layout = EnhancedHudLayout::Result();
 	s.active = false;
+	s.faction = EnhancedHudTheme::factionOfSide(side);
 	if (!EnhancedHudLayout::shouldBeActive(s.requested, modernDisplay, classic, side, surfaceW, surfaceH))
 		return false;
 	s.layout = EnhancedHudLayout::compute(surfaceW, surfaceH, layoutScale);

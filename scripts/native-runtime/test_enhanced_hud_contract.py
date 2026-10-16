@@ -61,7 +61,8 @@ class EnhancedHudContracts(unittest.TestCase):
 
     def test_only_usa_and_never_classic(self):
         layout = text("Core/GameEngine/Include/Common/EnhancedHudLayout.h")
-        self.assertIn('static const char prefix[] = "America";', layout)
+        self.assertIn("EnhancedHudTheme::implemented(EnhancedHudTheme::factionOfSide(side))", layout)
+        self.assertIn('std::strncmp(side, "America", 7)', text("Core/GameEngine/Include/Common/EnhancedHudTheme.h"))
         self.assertIn('std::strstr(side, "Small") == nullptr', layout)
         self.assertIn("requested && modernDisplay && !classic && supportsSide(side)", layout)
         for engine in ("TheDisplay", "TheControlBar", "GameWindow", "TheGameLogic", "ThePlayerList"):
@@ -209,6 +210,48 @@ class EnhancedHudContracts(unittest.TestCase):
         # slot windows are only drawn behind, never re-assigned or moved by index
         for forbidden in ("setControlCommand", "findCommandButton", "CommandSet", "std::swap"):
             self.assertNotIn(forbidden, bar)
+
+    def test_theme_layer_is_data_only_and_the_renderer_reads_it(self):
+        th = text("Core/GameEngine/Include/Common/EnhancedHudTheme.h")
+        # pure data: no engine/gameplay includes, no callables
+        for inc in ("GameClient/", "GameLogic/", "Common/Player", "Common/Money", "Common/Xfer", "GameWindow"):
+            self.assertNotIn(inc, th)
+        for forbidden in ("std::function", "virtual", "GameMessage", "CommandButton"):
+            self.assertNotIn(forbidden, th)
+        for fac in ("Usa", "China", "Gla", "Europe", "Russia"):
+            self.assertIn(fac, th)
+        self.assertIn("inline bool implemented(Faction f) { return f == Faction::Usa; }", th)
+        bar = text(BAR)
+        # all colours come from the theme: the renderer has exactly one GameMakeColor (the Rgba conversion)
+        self.assertEqual(bar.count("GameMakeColor("), 1)
+        self.assertIn("EnhancedHud::theme()", bar)
+        hud = text("Core/GameEngine/Include/Common/EnhancedHud.h")
+        self.assertIn("EnhancedHudTheme::factionOfSide(side)", hud)
+
+    def test_global_powers_are_plates_without_an_enclosing_panel(self):
+        bar = text(BAR)
+        draw = bar[bar.index("void powersPanelDraw( GameWindow *window, WinInstanceData * )"):]
+        draw = draw[:draw.index("}  // namespace")]
+        self.assertIn("powerPlateRect(", draw)
+        self.assertNotIn("drawModule(", draw)                      # no panel behind the group
+        self.assertNotIn("inflate( windowRect( window )", draw)     # the group window rectangle is never filled
+        # retail slot frame art is cleared for Enhanced and remembered/restored for Original
+        self.assertIn("s_powerSlotArt", bar)
+        self.assertIn("it->first->winSetEnabledImage( 0, it->second.enabled );", bar)
+
+    def test_radar_black_bars_are_fixed_by_fitting_the_window_not_by_stretching(self):
+        bar = text(BAR)
+        frame = bar[bar.index("void drawEnhancedHudFrame()"):]
+        self.assertIn("getMapExtent()", frame)
+        self.assertIn("EnhancedHudImageFit::containFit(", frame)
+        self.assertIn("EnhancedHudWindows::placeAbsolute( radar, fitted );", frame)
+        # the retail radar draw (black fill + aspect preserving area) is not edited: Original is untouched
+        w3d = text("Core/GameEngineDevice/Source/W3DDevice/Common/System/W3DRadar.cpp")
+        self.assertIn("draw black border areas where we need map", w3d)
+        self.assertNotIn("EnhancedHud", w3d)
+        self.assertNotIn("EnhancedHud", text("Core/GameEngine/Source/Common/System/Radar.cpp"))
+        radar_h = text("Core/GameEngine/Include/Common/Radar.h")
+        self.assertIn("const Region3D &getMapExtent() const { return m_mapExtent; }", radar_h)
 
 
 if __name__ == "__main__":

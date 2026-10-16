@@ -9,16 +9,19 @@
 //   [powers]  +-------------------------------------------------------+
 //   ===================================== surface bottom ===============
 //
-// * It is designed on a 920 x 180 reference island and scaled uniformly (never anisotropically). The scale is the
+// * It is designed on a 1000 x 180 reference island and scaled uniformly (never anisotropically). The scale is the
 //   modern UI scale, reduced when needed so the island never exceeds `maxWidthFraction` of the surface width
 //   (compact 4:3 surfaces may use the whole width; wider surfaces keep the world visible and clickable on both sides).
 // * Nothing here depends on the surface width beyond that cap: on 21:9 / 32:9 the island stays the same physical size.
-// * The special-power column sits beside the island (bottom flush) when there is room, otherwise at the right edge of
-//   the surface above the island.
+// * The Global Powers are an independent surface (a column in the gameplay safe region, a row on compact surfaces); it
+//   never touches the island and is drawn as individual plates only.
+// * Faction independent: the layout knows nothing about colours or art (EnhancedHudTheme supplies those).
 // * Every existing control-bar window is *moved* (a table of reference rectangles from ControlBar.wnd mapped into the
 //   island); no command logic is duplicated. Windows the Enhanced layout does not place keep their identity and are
 //   simply not repositioned.
 #pragma once
+
+#include "Common/EnhancedHudTheme.h"
 
 #include <algorithm>
 #include <cmath>
@@ -349,13 +352,21 @@ inline int groupThousands(unsigned long long value, wchar_t *out, int capacity)
 	return len;
 }
 
-// Only the USA is supported in this prototype; any other side falls back to the Original presentation.
+// Enhanced is available for factions that have an implemented theme (EnhancedHudTheme); every other side falls back to
+// the Original presentation. Today that is the USA only. The layout itself is faction independent.
 inline bool supportsSide(const char *side)
 {
 	if (!side) return false;
-	static const char prefix[] = "America";
-	if (std::strncmp(side, prefix, sizeof(prefix) - 1) != 0) return false;
+	if (!EnhancedHudTheme::implemented(EnhancedHudTheme::factionOfSide(side))) return false;
 	return std::strstr(side, "Small") == nullptr;     // the squished retail variant keeps the Original bar
+}
+
+// The plate drawn behind one Global Powers button: the button rectangle plus a small even margin. The Global Powers
+// surface is nothing but these plates (one per visible slot) - there is no enclosing background panel.
+inline Rect powerPlateRect(const Rect &button, double scale)
+{
+	const int m = std::max(2, static_cast<int>(std::lround(3 * scale)));
+	return {button.x - m, button.y - m, button.w + 2 * m, button.h + 2 * m};
 }
 
 // The whole decision as a function: Enhanced is shown only when requested, in the modern presentation, for a

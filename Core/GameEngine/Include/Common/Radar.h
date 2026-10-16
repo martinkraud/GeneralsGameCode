@@ -163,6 +163,9 @@ public:
 	virtual void reset() override;															///< subsystem reset
 	virtual void update() override;														///< subsystem per frame update
 
+	// extent of the current map (presentation code uses its aspect; the radar keeps drawing it undistorted)
+	const Region3D &getMapExtent() const { return m_mapExtent; }
+
 	// is the game window parameter the radar window
 	Bool isRadarWindow( GameWindow *window ) { return (m_radarWindow == window) && (m_radarWindow != nullptr); }
 

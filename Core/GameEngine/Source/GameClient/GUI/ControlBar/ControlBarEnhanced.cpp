@@ -34,6 +34,7 @@
 #include "GameClient/Mouse.h"
 #include "Common/Player.h"
 #include "GameLogic/RankInfo.h"
+#include "Common/Radar.h"
 
 #include <algorithm>
 #include <cmath>
@@ -96,6 +97,8 @@ namespace
 {
 void powersPanelDraw( GameWindow *window, WinInstanceData *instData );
 GameWinDrawFunc s_powersOriginalDraw = nullptr;
+struct SlotArt { const Image *enabled; const Image *disabled; };
+std::map<GameWindow *, SlotArt> s_powerSlotArt;     // retail frame art of the shortcut slots (restored for Original)
 }
 
 //-----------------------------------------------------------------------------
@@ -248,6 +251,12 @@ void ControlBar::restoreOriginalLayout()
 	{
 		if( s_powersOriginalDraw )
 			s_powersParent->winSetDrawFunc( s_powersOriginalDraw );
+		for( std::map<GameWindow *, SlotArt>::const_iterator it = s_powerSlotArt.begin(); it != s_powerSlotArt.end(); ++it )
+		{
+			it->first->winSetEnabledImage( 0, it->second.enabled );
+			it->first->winSetDisabledImage( 0, it->second.disabled );
+		}
+		s_powerSlotArt.clear();
 		restoreStore( s_powers );
 	}
 	else
@@ -268,6 +277,7 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 	if( s_powersParent != parent )
 	{
 		s_powers.clear();     // the shortcut layout is created per match
+		s_powerSlotArt.clear();
 		s_powersParent = parent;
 		s_powersOriginalDraw = nullptr;
 	}
@@ -302,6 +312,17 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 	}
 	else
 		EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, panel, factor, original, rememberWin );
+	// the retail frame art of each slot (59 x 56 box) is replaced by the Enhanced plate: remember it, then clear it
+	for( GameWindow *slot = parent->winGetChild(); slot; slot = slot->winGetNext() )
+	{
+		if( s_powerSlotArt.find( slot ) == s_powerSlotArt.end() )
+		{
+			SlotArt art = { slot->winGetEnabledImage( 0 ), slot->winGetDisabledImage( 0 ) };
+			s_powerSlotArt[ slot ] = art;
+		}
+		slot->winSetEnabledImage( 0, nullptr );
+		slot->winSetDisabledImage( 0, nullptr );
+	}
 	// special power icons: aspect-fitted inside their (full-plate) buttons
 	for( int i = 0; i < MAX_SPECIAL_POWER_SHORTCUTS; ++i )
 		EnhancedHudImage::registerAspectFit( m_specialPowerShortcutButtons[ i ] );
@@ -334,27 +355,46 @@ typedef EnhancedHudLayout::Rect HRect;
 
 struct HudPalette
 {
-	Color steelDark, steelMid, steel, panel, panelLow, well, wellEdge, accent, accentDim, highlight, shadow, icon, iconDim, lit, litDim;
+	Color steelDark, steelMid, steel, panel, panelLow, well, wellEdge, accent, accentDim, highlight, shadow, icon, iconDim,
+	      lit, litDim, ready, warning, warningDark, warningInk, outline;
+	bool moduleCaps, bevelModules, cornerBrackets;
+	int capPermille;
 };
 
+Color themeColor( const EnhancedHudTheme::Rgba &c )
+{
+	return GameMakeColor( c.r, c.g, c.b, c.a );
+}
+
+// The single renderer reads everything faction specific from the active theme (Common/EnhancedHudTheme.h).
 HudPalette makePalette()
 {
+	const EnhancedHudTheme::Theme &t = EnhancedHud::theme();
 	HudPalette c;
-	c.steelDark = GameMakeColor( 14, 18, 26, 255 );
-	c.steelMid = GameMakeColor( 20, 25, 36, 255 );
-	c.well = GameMakeColor( 11, 15, 22, 255 );
-	c.wellEdge = GameMakeColor( 36, 46, 66, 255 );
-	c.steel = GameMakeColor( 26, 32, 44, 255 );
-	c.panel = GameMakeColor( 34, 42, 58, 255 );
-	c.panelLow = GameMakeColor( 22, 28, 40, 255 );
-	c.accent = GameMakeColor( 64, 112, 196, 255 );
-	c.accentDim = GameMakeColor( 38, 66, 120, 255 );
-	c.highlight = GameMakeColor( 92, 112, 148, 255 );
-	c.shadow = GameMakeColor( 6, 8, 12, 255 );
-	c.icon = GameMakeColor( 196, 212, 238, 255 );
-	c.iconDim = GameMakeColor( 92, 104, 124, 255 );
-	c.lit = GameMakeColor( 232, 196, 84, 255 );
-	c.litDim = GameMakeColor( 52, 58, 72, 255 );
+	c.steelDark = themeColor( t.plate );
+	c.steelMid = themeColor( t.plateBand );
+	c.steel = themeColor( t.plateBand );
+	c.panel = themeColor( t.module );
+	c.panelLow = themeColor( t.moduleLow );
+	c.well = themeColor( t.well );
+	c.wellEdge = themeColor( t.wellEdge );
+	c.outline = themeColor( t.outline );
+	c.accent = themeColor( t.accent );
+	c.accentDim = themeColor( t.accentDim );
+	c.highlight = themeColor( t.bevelLight );
+	c.shadow = themeColor( t.bevelDark );
+	c.icon = themeColor( t.icon );
+	c.iconDim = themeColor( t.iconDim );
+	c.lit = themeColor( t.rankLit );
+	c.litDim = themeColor( t.rankDim );
+	c.ready = themeColor( t.ready );
+	c.warning = themeColor( t.warning );
+	c.warningDark = themeColor( t.warningDark );
+	c.warningInk = themeColor( t.warningInk );
+	c.moduleCaps = t.moduleCaps;
+	c.bevelModules = t.bevelModules;
+	c.cornerBrackets = t.cornerBrackets;
+	c.capPermille = t.capPermille;
 	return c;
 }
 
@@ -457,15 +497,15 @@ bool drawAttackLamp( GameWindow *win, const HudPalette &c, bool *lit )
 	win->winGetSize( &w, &h );
 	const bool on = !BitIsSet( win->winGetStatus(), WIN_STATUS_ENABLED );
 	*lit = on;
-	const Color red = GameMakeColor( 224, 24, 24, 255 );
-	const Color redDark = GameMakeColor( 70, 14, 14, 255 );
-	const Color white = GameMakeColor( 255, 255, 255, 255 );
+	const Color red = c.warning;
+	const Color redDark = c.warningDark;
+	const Color white = c.warningInk;
 	const HRect r = { x, y, w, h };
 	drawPlate( r, 1, on ? red : redDark, on ? white : c.accentDim, c );
 	// warning triangle with an exclamation mark
 	const Int cx = x + w / 2, top = y + std::max( 2, h / 6 ), bottom = y + h - std::max( 2, h / 6 );
 	const Int half = std::max( 3, ( bottom - top ) * 6 / 10 );
-	const Color tri = on ? white : GameMakeColor( 120, 40, 40, 255 );
+	const Color tri = on ? white : c.iconDim;
 	for( Int row = top; row <= bottom; ++row )
 	{
 		const Int span = half * ( row - top ) / std::max( 1, bottom - top );
@@ -511,15 +551,36 @@ void drawWell( const HRect &r, const HudPalette &c )
 	TheDisplay->drawLine( r.x, r.y + r.h, r.x + r.w, r.y + r.h, 1, c.wellEdge );
 }
 
-// A module of the console: panel body, one hairline outline, a top highlight and a short accent cap.
+// A module of the console: panel body, one hairline outline, a bevel (light top/left, dark bottom/right) and a short accent
+// cap - each switchable by the theme.
 void drawModule( const HRect &r, Int t, const HudPalette &c )
 {
 	if( r.w < 4 || r.h < 4 )
 		return;
 	TheDisplay->drawFillRect( r.x, r.y, r.w, r.h, c.panel );
-	TheDisplay->drawOpenRect( r.x, r.y, r.w, r.h, 1, c.accentDim );
-	TheDisplay->drawLine( r.x + 1, r.y + 1, r.x + r.w - 1, r.y + 1, 1, c.highlight );
-	TheDisplay->drawFillRect( r.x + t, r.y, std::max( 8, r.w / 7 ), std::max( 2, t ), c.accent );
+	TheDisplay->drawOpenRect( r.x, r.y, r.w, r.h, 1, c.outline );
+	if( c.bevelModules )
+	{
+		TheDisplay->drawLine( r.x + 1, r.y + 1, r.x + r.w - 1, r.y + 1, 1, c.highlight );
+		TheDisplay->drawLine( r.x + 1, r.y + 1, r.x + 1, r.y + r.h - 1, 1, c.highlight );
+		TheDisplay->drawLine( r.x + 1, r.y + r.h - 1, r.x + r.w - 1, r.y + r.h - 1, 1, c.shadow );
+		TheDisplay->drawLine( r.x + r.w - 1, r.y + 1, r.x + r.w - 1, r.y + r.h - 1, 1, c.shadow );
+	}
+	if( c.moduleCaps )
+		TheDisplay->drawFillRect( r.x + t, r.y, std::max( 8, r.w * c.capPermille / 1000 ), std::max( 2, t ), c.accent );
+}
+
+// Small L-shaped bracket marks at the corners of a rectangle (technical console detail).
+void drawCornerBrackets( const HRect &r, Int len, const HudPalette &c )
+{
+	if( len < 3 )
+		return;
+	const Color k = c.accentDim;
+	const Int x1 = r.x + r.w - 1, y1 = r.y + r.h - 1;
+	TheDisplay->drawLine( r.x, r.y, r.x + len, r.y, 1, k );        TheDisplay->drawLine( r.x, r.y, r.x, r.y + len, 1, k );
+	TheDisplay->drawLine( x1, r.y, x1 - len, r.y, 1, k );          TheDisplay->drawLine( x1, r.y, x1, r.y + len, 1, k );
+	TheDisplay->drawLine( r.x, y1, r.x + len, y1, 1, k );          TheDisplay->drawLine( r.x, y1, r.x, y1 - len, 1, k );
+	TheDisplay->drawLine( x1, y1, x1 - len, y1, 1, k );            TheDisplay->drawLine( x1, y1, x1, y1 - len, 1, k );
 }
 
 bool windowChainShown( GameWindow *win )
@@ -543,32 +604,31 @@ HRect inflate( const HRect &r, Int g )
 	return HRect{ r.x - g, r.y - g, r.w + 2 * g, r.h + 2 * g };
 }
 
-// The Global Powers surface. It is the draw function of the (independent, top-level) shortcut parent window while Enhanced
-// is active, so its frame follows that window exactly: position, slide-in animation, hidden state. The five slots are the
-// existing ButtonParent/ButtonCommand windows; ready (enabled) slots get an accent outline, cooldown stays the button's own.
+// The Global Powers surface: nothing but one compact plate per VISIBLE shortcut slot, with an even gap, and no enclosing
+// background. It is the draw function of the (independent, top-level) shortcut parent window while Enhanced is active, so it
+// follows that window's position, slide-in animation and hidden state exactly. The slots are the existing ButtonParent /
+// ButtonCommand windows (retail order); a plate is lit when its button is enabled (ready) and dim otherwise; the cooldown
+// sweep and tooltips are the button's own. The retail frame art of the slot is not drawn in Enhanced (cleared on apply).
 void powersPanelDraw( GameWindow *window, WinInstanceData * )
 {
 	if( !EnhancedHud::active() || !TheDisplay || !window )
 		return;
 	const EnhancedHudLayout::Result &l = EnhancedHud::layout();
 	const HudPalette c = makePalette();
-	const Int t = std::max( 1, (Int)( l.scale * 1.5 + 0.5 ) );
-	const Int pad = std::max( 2, (Int)( EnhancedHudLayout::kPowerPad * l.scale + 0.5 ) );
-	const HRect frame = inflate( windowRect( window ), pad );
-	TheDisplay->drawFillRect( frame.x, frame.y, frame.w, frame.h, c.steelDark );
-	drawModule( inflate( frame, -1 ), t, c );
-	const Int g = std::max( 1, (Int)( 2 * l.scale + 0.5 ) );
 	for( GameWindow *slot = window->winGetChild(); slot; slot = slot->winGetNext() )
 	{
 		if( slot->winIsHidden() )
 			continue;
-		const HRect cell = inflate( windowRect( slot ), -g );
-		drawWell( cell, c );
-		bool ready = false;
-		for( GameWindow *button = slot->winGetChild(); button; button = button->winGetNext() )
-			if( !button->winIsHidden() && BitIsSet( button->winGetStatus(), WIN_STATUS_ENABLED ) )
-				ready = true;
-		TheDisplay->drawOpenRect( cell.x, cell.y, cell.w, cell.h, 1, ready ? c.accent : c.accentDim );
+		GameWindow *button = slot->winGetChild();
+		if( !button || button->winIsHidden() )
+			continue;
+		const HRect plate = EnhancedHudLayout::powerPlateRect( windowRect( button ), l.scale );
+		const bool ready = BitIsSet( button->winGetStatus(), WIN_STATUS_ENABLED ) ? true : false;
+		TheDisplay->drawFillRect( plate.x, plate.y, plate.w, plate.h, c.steelDark );
+		drawWell( inflate( plate, -1 ), c );
+		TheDisplay->drawOpenRect( plate.x, plate.y, plate.w, plate.h, 1, ready ? c.ready : c.outline );
+		if( c.bevelModules )
+			TheDisplay->drawLine( plate.x + 1, plate.y + 1, plate.x + plate.w - 1, plate.y + 1, 1, ready ? c.accent : c.accentDim );
 	}
 }
 
@@ -605,22 +665,50 @@ void drawEnhancedHudFrame()
 	TheDisplay->drawFillRect( l.island.x, l.island.y + t, l.island.w, l.island.h / 3, c.steelMid );
 	TheDisplay->drawFillRect( l.island.x, l.island.y, l.island.w, t, c.accent );
 
+	if( c.cornerBrackets )
+		drawCornerBrackets( l.island, std::max( 4, g * 2 ), c );
+
 	// 2. the four modules (no dividers: the gaps between modules are the dividers)
 	drawModule( l.radarFrame, t, c );
 	drawModule( l.infoFrame, t, c );
 	drawModule( l.commandFrame, t, c );
 	drawModule( l.xpFrame, t, c );
 
-	// 3. radar module: bezel (red while the attack warning is lit), utility plates, warning lamp
+	// 3. radar module. The radar keeps the map's aspect ratio and (by retail design, W3DRadar::draw) paints the unused part of
+	//    its window opaque black: a map that is not the window's shape shows black bars. In Enhanced the radar WINDOW is
+	//    fitted to the map's aspect inside the module's radar slot (uniform, centred), so the radar fills its window, the
+	//    mouse mapping (which uses the window size) stays exact and the map is never stretched; the slot behind it is
+	//    module material, not black. Original keeps the retail window and its black bars.
 	const bool lampLit = s_hudWin[ 6 ] && !s_hudWin[ 6 ]->winIsHidden() && !BitIsSet( s_hudWin[ 6 ]->winGetStatus(), WIN_STATUS_ENABLED );
 	if( GameWindow *radar = s_hudWin[ 0 ] )
 	{
-		const HRect bezel = inflate( windowRect( radar ), std::max( 2, t + 1 ) );
-		const Color red = GameMakeColor( 224, 24, 24, 255 );
+		EnhancedHudLayout::Rect dst;
+		bool hide = false;
+		HRect slot = windowRect( radar );
+		if( EnhancedHudLayout::destinationFor( "LeftHUD", dst, hide ) )
+			slot = EnhancedHudLayout::toPhysical( l, dst );
+		HRect fitted = slot;
+		if( TheRadar )
+		{
+			const Region3D &extent = TheRadar->getMapExtent();
+			if( extent.width() > 1.0f && extent.height() > 1.0f )
+			{
+				const HRect f = EnhancedHudImageFit::containFit( slot, (Int)( extent.width() + 0.5f ), (Int)( extent.height() + 0.5f ) );
+				if( !f.empty() )
+					fitted = f;
+			}
+		}
+		const HRect now = windowRect( radar );
+		if( now.x != fitted.x || now.y != fitted.y || now.w != fitted.w || now.h != fitted.h )
+			EnhancedHudWindows::placeAbsolute( radar, fitted );
+		// the slot (module material) and the bezel around the actual radar
+		TheDisplay->drawFillRect( slot.x, slot.y, slot.w, slot.h, c.panelLow );
+		TheDisplay->drawOpenRect( slot.x, slot.y, slot.w, slot.h, 1, c.outline );
+		const HRect bezel = inflate( fitted, std::max( 2, t + 1 ) );
 		drawWell( bezel, c );
-		TheDisplay->drawOpenRect( bezel.x, bezel.y, bezel.w, bezel.h, 1, lampLit ? red : c.accentDim );
+		TheDisplay->drawOpenRect( bezel.x, bezel.y, bezel.w, bezel.h, 1, lampLit ? c.warning : c.accentDim );
 		if( lampLit )
-			TheDisplay->drawOpenRect( bezel.x - 1, bezel.y - 1, bezel.w + 2, bezel.h + 2, 1, red );
+			TheDisplay->drawOpenRect( bezel.x - 1, bezel.y - 1, bezel.w + 2, bezel.h + 2, 1, c.warning );
 	}
 	drawUtilityPlate( s_hudWin[ 1 ], GLYPH_OPTIONS, 1, c );
 	drawUtilityPlate( s_hudWin[ 2 ], GLYPH_WORKER, 1, c );

@@ -328,3 +328,68 @@ the accepted attack lamp.
 **Limits.** Procedural placeholder art; frame/lamp/glyphs not final; the row fallback and the 2x2 rank grid are
 geometrically tested but only reviewable natively; hide/show following is by construction (live master offset), exercised
 only by unit tests of the translation, not natively.
+
+## 15. Refinement 4: Enhanced HUD core + USA Theme v1 (after native review of `x64-36-enhanced-hud-refine3`: positive)
+The refine3 composition is the candidate common template and is not re-laid-out here. This batch (a) separates the shared core
+from faction presentation, (b) gives the USA a first real theme, (c) replaces the tall Global Powers frame by individual
+plates and (d) finds and fixes the radar black bars. Original is untouched (all new code is behind `EnhancedHud::active()`;
+`restoreOriginalLayout()` also restores the power slots' retail frame art).
+
+**Enhanced HUD core (faction independent).** Modules: Radar, Selection/Unit Info, Economy/Cash, Command Bay, General/XP,
+Global Powers.
+| layer | file | owns |
+|---|---|---|
+| geometry / responsive rules | `Common/EnhancedHudLayout.h` | module rectangles, scale rules, bounded island, Global Powers placement, plate rule |
+| placement + hit testing | `Common/EnhancedHudWindows.h` | moving the real windows, container fit, power column/row |
+| bitmap policy | `Common/EnhancedHudImageFit.h`, `GameClient/EnhancedHudImage.h` | aspect-fit, gauges, classification |
+| faction presentation | `Common/EnhancedHudTheme.h` | `Theme` data (colours, bevel/outline/cap switches), `Faction`, `implemented()` |
+| renderer | `ControlBarEnhanced.cpp` | the one procedural renderer; reads the active theme, owns no behaviour |
+There is no USAControlBar/ChinaControlBar: a faction adds a `Theme` constant, flips `implemented()` and, later, textures.
+
+**Faction theme architecture.** `Theme` is plain data (static-asserted trivially copyable / standard layout, no includes of engine
+or gameplay headers - contract tested): console plate/band, module, recessed well, outline, accent, bevel, content, rank,
+ready/warning colours plus decorative switches (module caps, bevel, corner brackets). `EnhancedHud::update` records the faction
+of the side; the renderer reads `EnhancedHud::theme()`; the renderer contains exactly one colour constructor (the Rgba
+conversion), so no colour is hard-coded. `Faction` knows USA, China, GLA, Europe, Russia (Europe/Russia are reserved prefixes;
+they are not retail sides). Only the USA is `implemented()`; every other faction keeps the Original control bar and
+`themeFor()` returns the USA theme only as a safe default (no placeholder art). A faction theme cannot move a control, change
+a command or read gameplay state.
+
+**USA Theme v1.** Dark navy/gunmetal console (`plate` 12,16,24 / `band` 21,27,39), modules one step lighter, wells darker than
+modules (hierarchy console > module > well > content, asserted by test), restrained blue accent used for state and one cap per
+module, metallic bevel (light top/left, dark bottom/right) on modules, L-shaped technical brackets at the console corners, warm
+gold only for earned rank, red only for the attack warning (stronger than any other colour by test). No glow, no gradients.
+
+**Global Powers: individual plates, no enclosing frame.** `powersPanelDraw` draws one `powerPlateRect` (the real button plus an
+even margin) per visible slot - ready (enabled) plates get the ready outline and accent bevel, others the dim outline;
+cooldown sweep/tooltips remain the buttons'. The slot's retail 59x56 frame art is cleared in Enhanced (remembered and restored
+for Original) so there is one plate per power, not two boxes. The group's extent is the plates only (tested for 1..5 visible
+slots, column and row: no overlap, even gap, mostly plate, within the reserved placement frame). Placement unchanged from
+refine3 (safe region, column / compact row, detached from the island); the reserved frame is now only the clearance contract.
+
+**Radar black bars: root cause and fix.** `W3DRadar::draw` (retail, `// draw black border areas where we need map`) keeps the map
+aspect inside the radar window (`Radar::findDrawPositions`) and fills the unused part of the window with opaque black plus
+grey edge lines. The retail window is 167x152 (1.10:1), so any map that is not that shape - e.g. a square map - shows black bars
+left/right (taller maps) or top/bottom (wider maps). Enhanced exposes it because the module is large and dark. Fix: the radar
+WINDOW is fitted to the map's aspect inside the module's radar slot every frame (uniform `containFit`, centred; map extent via
+the new const getter `Radar::getMapExtent()`), through the shared placement function. The radar then fills its window (no black
+bar by construction - tested with a replica of `findDrawPositions` for six map shapes on all surfaces/UI scales), the mouse
+mapping (`localPixelToRadar` uses the window size) stays exact, hit region = the actual radar, the map is never stretched. The
+slot behind it is module material with a bezel around the real radar (red while the warning is lit). Original keeps the retail
+window and its black bars (W3DRadar/Radar.cpp are not edited; contract tested).
+
+**Command, info, cash, General, attack warning.** Refine3 composition kept: 12 fixed slot wells (retail indices), lit occupied
+slots, recessed selection well, cash strip, General module (entry icon, trough, 2x2 rank grid), accepted attack lamp - all now
+coloured from the theme.
+
+**Not done on purpose.** Enhanced General Powers popup: the theme layer is ready for it (same data/mechanics, themed
+presentation) but it is a separate, bounded task and is the next refinement. No China/GLA/Europe/Russia art.
+
+**Future factions.** Shared: module roles, interaction model, command/XP/power behaviour, responsive layout, hit-test and
+image-fit architecture. Per faction: Theme colours/weights/switches now; later textures, emblem, typography, plate shape, warning
+styling, Global Powers plate styling, General Powers popup styling. USA: clean blue/gunmetal terminal; China: heavy industrial
+red/gold; GLA: improvised/worn; Europe: refined modular; Russia: heavy industrial olive/dark. A faction skin must not move core
+controls (the layout is shared and tested).
+
+**Limits.** Procedural placeholder art; theme carries colours/switches only (no textures/fonts yet); no General Powers popup;
+radar fit is verified by arithmetic equivalence with the radar draw code, not by a native run.

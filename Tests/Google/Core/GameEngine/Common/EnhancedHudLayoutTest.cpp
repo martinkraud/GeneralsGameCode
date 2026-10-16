@@ -12,6 +12,7 @@
 #include "Common/DisplaySettings.h"
 #include "Common/EnhancedHud.h"
 #include "Common/EnhancedHudImageFit.h"
+#include "Common/EnhancedHudTheme.h"
 #include "Common/EnhancedHudLayout.h"
 #include "Common/OptionsPageLayout.h"
 
@@ -19,6 +20,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <type_traits>
 
 using namespace EnhancedHudLayout;
 
@@ -709,5 +711,174 @@ TEST(EnhancedHudLayout, TranslatedIslandKeepsItsInternalGeometryAndLeavesGlobalP
 		EXPECT_EQ(lowered.powerPanel.y, r.powerPanel.y) << s.name;
 		const Result same = translated(r, 0, 0);
 		EXPECT_EQ(same.island.y, r.island.y);
+	}
+}
+
+// ---- faction theme layer (refine 4) ---------------------------------------------------------------------------------
+
+namespace
+{
+double luminance(const EnhancedHudTheme::Rgba &c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
+}  // namespace
+
+TEST(EnhancedHudTheme, FactionsAreRecognisedAndOnlyUsaIsImplemented)
+{
+	using namespace EnhancedHudTheme;
+	EXPECT_EQ(factionOfSide("America"), Faction::Usa);
+	EXPECT_EQ(factionOfSide("AmericaAirForceGeneral"), Faction::Usa);
+	EXPECT_EQ(factionOfSide("China"), Faction::China);
+	EXPECT_EQ(factionOfSide("ChinaTankGeneral"), Faction::China);
+	EXPECT_EQ(factionOfSide("GLA"), Faction::Gla);
+	EXPECT_EQ(factionOfSide("GLAToxinGeneral"), Faction::Gla);
+	EXPECT_EQ(factionOfSide("Europe"), Faction::Europe);     // reserved: not a retail side
+	EXPECT_EQ(factionOfSide("Russia"), Faction::Russia);
+	EXPECT_EQ(factionOfSide("Observer"), Faction::Unknown);
+	EXPECT_EQ(factionOfSide(nullptr), Faction::Unknown);
+	EXPECT_TRUE(implemented(Faction::Usa));
+	for (Faction f : {Faction::China, Faction::Gla, Faction::Europe, Faction::Russia, Faction::Unknown})
+		EXPECT_FALSE(implemented(f));
+	// unimplemented factions never get an Enhanced HUD (Original is used), whatever they are called
+	for (const char *side : {"China", "ChinaInfantryGeneral", "GLA", "GLAStealthGeneral", "Europe", "Russia", "Observer"})
+		EXPECT_FALSE(supportsSide(side)) << side;
+	EXPECT_TRUE(supportsSide("America"));
+	EXPECT_FALSE(supportsSide("AmericaSmall"));
+}
+
+TEST(EnhancedHudTheme, ThemeIsPresentationDataOnly)
+{
+	using namespace EnhancedHudTheme;
+	// plain data: copyable, standard layout (nothing a faction could use to change gameplay)
+	static_assert(std::is_trivially_copyable<Theme>::value, "theme must be plain data");
+	static_assert(std::is_standard_layout<Theme>::value, "theme must be plain data");
+	for (Faction f : {Faction::Usa, Faction::China, Faction::Gla, Faction::Europe, Faction::Russia, Faction::Unknown})
+		EXPECT_STREQ(themeFor(f).name, "USA");           // safe default until a faction implements its own theme
+	EXPECT_STREQ(usa().name, "USA");
+}
+
+TEST(EnhancedHudTheme, UsaThemeKeepsAReadableHierarchy)
+{
+	const EnhancedHudTheme::Theme &t = EnhancedHudTheme::usa();
+	// dark surfaces: outer console > module > well
+	EXPECT_LT(luminance(t.plate), 40.0);
+	EXPECT_LT(luminance(t.well), luminance(t.moduleLow));
+	EXPECT_LT(luminance(t.moduleLow), luminance(t.module));
+	EXPECT_LT(luminance(t.plate), luminance(t.module));
+	// content is readable on every surface
+	for (const EnhancedHudTheme::Rgba *surface : {&t.plate, &t.module, &t.moduleLow, &t.well})
+	{
+		EXPECT_GT(luminance(t.icon) - luminance(*surface), 100.0);
+		EXPECT_GT(luminance(t.rankLit) - luminance(*surface), 100.0);
+	}
+	// the warning is the strongest colour of the theme, the accent is restrained blue
+	EXPECT_GT(t.warning.r, 200);
+	EXPECT_LT(t.warning.g, 60);
+	EXPECT_GT(t.warning.r, t.accent.r + 100);
+	EXPECT_GT(t.accent.b, t.accent.r);
+	EXPECT_LT(luminance(t.accentDim), luminance(t.accent));
+	EXPECT_LT(luminance(t.warningDark), luminance(t.warning));
+	EXPECT_TRUE(t.moduleCaps && t.bevelModules && t.cornerBrackets);
+}
+
+TEST(EnhancedHudTheme, LiveStateFollowsTheSideAndNeverChangesLayout)
+{
+	EnhancedHud::setRequested(true);
+	ASSERT_TRUE(EnhancedHud::update(true, false, "America", 1920, 1200, 2.0));
+	EXPECT_EQ(EnhancedHud::faction(), EnhancedHudTheme::Faction::Usa);
+	const Result usaLayout = EnhancedHud::layout();
+	// the layout is faction independent: the same surface and scale give the same geometry
+	const Result again = EnhancedHudLayout::compute(1920, 1200, 2.0);
+	EXPECT_EQ(usaLayout.island.x, again.island.x);
+	EXPECT_EQ(usaLayout.island.w, again.island.w);
+	EXPECT_EQ(usaLayout.powerPanel.x, again.powerPanel.x);
+	EXPECT_FALSE(EnhancedHud::update(true, false, "China", 1920, 1200, 2.0));
+	EXPECT_EQ(EnhancedHud::faction(), EnhancedHudTheme::Faction::China);
+	EXPECT_FALSE(EnhancedHud::active());
+	EnhancedHud::setRequested(false);
+	EnhancedHud::update(true, false, "America", 1920, 1200, 2.0);
+}
+
+// ---- radar content geometry -----------------------------------------------------------------------------------------
+
+namespace
+{
+// Same arithmetic as Radar::findDrawPositions (the radar keeps the map aspect inside its window).
+void radarDrawArea(int width, int height, double mapW, double mapH, int &ulx, int &uly, int &lrx, int &lry)
+{
+	const double ratioW = mapW / width, ratioH = mapH / height;
+	if (ratioW >= ratioH)
+	{
+		const double ry = mapH / ratioW;
+		ulx = 0;
+		uly = static_cast<int>((height - ry) / 2.0);
+		lrx = static_cast<int>(mapW / ratioW);
+		lry = height - uly;
+	}
+	else
+	{
+		const double rx = mapW / ratioH;
+		ulx = static_cast<int>((width - rx) / 2.0);
+		uly = 0;
+		lrx = width - ulx;
+		lry = static_cast<int>(mapH / ratioH);
+	}
+}
+const double kMapShapes[][2] = {{1024, 1024}, {2048, 1024}, {1024, 2048}, {1536, 1152}, {600, 1000}, {4096, 800}};
+}  // namespace
+
+TEST(EnhancedHudLayout, RetailRadarWindowShowsBlackBarsForMapsThatAreNotItsShape)
+{
+	// root cause of the black side bars: the retail radar window is 167 x 152 (1.10:1); W3DRadar::draw keeps the map aspect
+	// and paints the rest of the window black. A square map therefore leaves bars left and right.
+	const Result r = compute(kSurfaces[5]);
+	const Rect slot = physical(r, "LeftHUD");
+	int ulx, uly, lrx, lry;
+	radarDrawArea(slot.w, slot.h, 1024, 1024, ulx, uly, lrx, lry);
+	EXPECT_GT(ulx, 4) << "left bar width";
+	EXPECT_GT(slot.w - lrx, 4) << "right bar width";
+	EXPECT_EQ(uly, 0);
+}
+
+TEST(EnhancedHudLayout, FittedRadarWindowFillsItselfForEveryMapShapeWithoutDistortion)
+{
+	using namespace EnhancedHudImageFit;
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			const Rect slot = physical(r, "LeftHUD");
+			for (const auto &shape : kMapShapes)
+			{
+				const Rect f = containFit(slot, static_cast<int>(shape[0]), static_cast<int>(shape[1]));
+				ASSERT_FALSE(f.empty());
+				EXPECT_TRUE(f.within(slot)) << s.name;
+				// the map keeps its aspect (to the rounding of one pixel per side)
+				EXPECT_NEAR(double(f.w) / f.h, shape[0] / shape[1], (1.0 / std::min(f.w, f.h)) * (shape[0] / shape[1] + 1.0) + 1e-9);
+				// centred in the module's radar slot, touching it on the limiting side
+				EXPECT_LE(std::abs((f.x - slot.x) - (slot.right() - f.right())), 1);
+				EXPECT_LE(std::abs((f.y - slot.y) - (slot.bottom() - f.bottom())), 1);
+				EXPECT_TRUE(f.w == slot.w || f.h == slot.h);
+				// the radar's own draw logic inside the fitted window leaves no black bar (at most rounding)
+				int ulx, uly, lrx, lry;
+				radarDrawArea(f.w, f.h, shape[0], shape[1], ulx, uly, lrx, lry);
+				EXPECT_LE(ulx, 1) << s.name << " " << shape[0] << "x" << shape[1];
+				EXPECT_LE(uly, 1) << s.name;
+				EXPECT_LE(f.w - lrx, 2) << s.name;
+				EXPECT_LE(f.h - lry, 2) << s.name;
+			}
+		}
+}
+
+TEST(EnhancedHudLayout, PowerPlateIsTheButtonPlusAnEvenMargin)
+{
+	for (double scale : {0.5, 0.87, 1.0, 1.57, 2.25})
+	{
+		const Rect button = {100, 200, 45, 38};
+		const Rect plate = powerPlateRect(button, scale);
+		EXPECT_TRUE(button.within(plate));
+		const int m = button.x - plate.x;
+		EXPECT_GE(m, 2);
+		EXPECT_EQ(button.y - plate.y, m);
+		EXPECT_EQ(plate.right() - button.right(), m);
+		EXPECT_EQ(plate.bottom() - button.bottom(), m);
 	}
 }

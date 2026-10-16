@@ -731,3 +731,75 @@ TEST(EnhancedHudInteractive, SparseCommandContextsKeepRetailSlotsAndOnlyVisibleB
 			}
 		}
 }
+
+TEST(EnhancedHudInteractive, GlobalPowersAreIndividualPlatesWithNoEnclosingBackground)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid)
+				continue;
+			for (int visible = 1; visible <= 5; ++visible)
+			{
+				Tree t;
+				t.build(kPowers);
+				scaleLoaded(t, ls);
+				std::map<Win *, std::vector<int>> orig;
+				auto original = [&orig](Win *w, int *out)
+				{
+					auto it = orig.find(w);
+					if (it == orig.end())
+						it = orig.insert({w, {w->lox, w->loy, w->w, w->h}}).first;
+					for (int i = 0; i < 4; ++i)
+						out[i] = it->second[i];
+				};
+				auto remember = [&original](Win *w) { int o[4]; original(w, o); };
+				if (layout.powerHorizontal)
+					EnhancedHudWindows::applyPowerRow<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember,
+						[](Win *w) { return w->name.rfind("ButtonParent", 0) == 0 ? w->name[12] - '1' : -1; });
+				else
+					EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember);
+				// the retail populate shows the first `visible` slots only
+				std::vector<Rect> plates;
+				for (int i = 1; i <= 5; ++i)
+				{
+					Win *slot = t.find("ButtonParent" + std::to_string(i));
+					slot->hidden = i > visible;
+					if (slot->hidden)
+						continue;
+					plates.push_back(EnhancedHudLayout::powerPlateRect(screen(t.find("ButtonCommand" + std::to_string(i))), layout.scale));
+				}
+				ASSERT_EQ(int(plates.size()), visible);
+				Rect extent = plates[0];
+				double plateArea = 0;
+				for (size_t i = 0; i < plates.size(); ++i)
+				{
+					extent = EnhancedHudWindows::unionOf(extent, plates[i]);
+					plateArea += double(plates[i].w) * plates[i].h;
+					EXPECT_TRUE(plates[i].within(layout.powerFrame)) << s.w << "x" << s.h << " ui" << ui;
+					if (i > 0)
+					{
+						EXPECT_FALSE(plates[i].intersects(plates[i - 1])) << "plates overlap";
+						// consistent gap between neighbours (column: vertical, row: horizontal), never touching
+						const int gap = layout.powerHorizontal ? plates[i].x - plates[i - 1].right() : plates[i].y - plates[i - 1].bottom();
+						EXPECT_GE(gap, 1);
+						EXPECT_LE(gap, plates[i].h);
+						if (i > 1)
+						{
+							const int prev = layout.powerHorizontal ? plates[i - 1].x - plates[i - 2].right() : plates[i - 1].y - plates[i - 2].bottom();
+							EXPECT_LE(std::abs(gap - prev), 2);
+						}
+					}
+				}
+				// the visual extent is only the plates: it is mostly plate and it grows with the visible count
+				EXPECT_GE(plateArea / (double(extent.w) * extent.h), visible == 1 ? 0.99 : 0.5) << visible;
+				if (visible == 1)
+					EXPECT_EQ(extent.h, plates[0].h);
+				// never the old tall panel: the extent stays inside the reserved frame
+				EXPECT_LE(extent.h, layout.powerFrame.h);
+				EXPECT_LE(extent.w, layout.powerFrame.w);
+			}
+		}
+}
