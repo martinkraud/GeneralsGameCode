@@ -253,6 +253,31 @@ class EnhancedHudContracts(unittest.TestCase):
         radar_h = text("Core/GameEngine/Include/Common/Radar.h")
         self.assertIn("const Region3D &getMapExtent() const { return m_mapExtent; }", radar_h)
 
+    def test_renderer_is_shared_and_reads_shape_language_from_the_theme(self):
+        bar = text(BAR)
+        frame = bar[bar.index("void drawEnhancedHudFrame()"):]
+        for field in ("th.shellCorner", "th.fasteners", "th.seams", "th.tickMarks", "th.railBreaks", "th.bezelRef", "th.cornerBrackets"):
+            self.assertIn(field, frame)
+        self.assertIn("c.theme->stateRails", bar)
+        self.assertIn("c.theme->plateCorner", bar)
+        th = text("Core/GameEngine/Include/Common/EnhancedHudTheme.h")
+        for field in ("Corner shellCorner;", "bool fasteners;", "bool seams;", "bool vents;", "bool tickMarks;", "bool stateRails;",
+                      "int bezelRef;", "differsBeyondColour"):
+            self.assertIn(field, th)
+        # only one renderer: no faction names in the renderer
+        for name in ("Usa", "China", "Gla", "Europe", "Russia", "USA"):
+            self.assertNotIn(name, bar.split("namespace\n{\n\ntypedef EnhancedHudLayout::Rect HRect;")[-1].replace("USA console", ""))
+
+    def test_global_powers_plates_are_edge_mounted_with_cut_corners_on_the_battlefield_side(self):
+        bar = text(BAR)
+        draw = bar[bar.index("void powersPanelDraw( GameWindow *window, WinInstanceData * )"):]
+        draw = draw[:draw.index("}  // namespace")]
+        self.assertIn("CM_TL | CM_BL", draw)
+        self.assertIn("powerPlateRect(", draw)
+        lay = text("Core/GameEngine/Include/Common/EnhancedHudLayout.h")
+        self.assertIn("const int cx = surfaceW - inset - cR;", lay)
+        self.assertNotIn("safeRight", lay)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -219,7 +219,6 @@ TEST(EnhancedHudLayout, GlobalPowersAreAnIndependentSurfaceThatNeverTouchesTheIs
 			EXPECT_GE(r.powerFrame.y, 0) << s.name;
 			EXPECT_LE(r.powerFrame.right(), s.w) << s.name;
 			EXPECT_LE(r.powerFrame.bottom(), s.h) << s.name;
-			EXPECT_TRUE(r.powerPanel.within(r.powerFrame)) << s.name;
 			// clear space to the island (never touching), in both directions
 			const int gap = scaledRef(kPowerGap, r.scale);
 			EXPECT_FALSE(r.powerFrame.intersects(r.island)) << s.name;
@@ -236,21 +235,29 @@ TEST(EnhancedHudLayout, GlobalPowersAreAnIndependentSurfaceThatNeverTouchesTheIs
 		}
 }
 
-TEST(EnhancedHudLayout, GlobalPowersStayInTheGameplaySafeRegionOnUltrawide)
+TEST(EnhancedHudLayout, GlobalPowersAreMountedFlushAgainstTheRightScreenEdge)
 {
+	// human preference: edge anchored on every non-compact surface, 21:9 and 32:9 included (trade-off: on extreme ultrawide
+	// the powers are physically far from the centre of the action)
 	for (const Surface &s : kSurfaces)
-	{
-		const Result r = compute(s);
-		const int safeW = std::min(s.w, static_cast<int>(std::lround(s.h * 16.0 / 9.0)));
-		const int safeRight = (s.w + safeW) / 2;
-		EXPECT_LE(r.powerFrame.right(), safeRight) << s.name;       // never farther out than a 16:9 surface would put it
-	}
-	// 32:9: nowhere near the far right edge of a 5120 px wide surface
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			const bool compact = s.w * 1000 <= s.h * kCompactAspectPermille;
+			if (compact)
+				continue;
+			ASSERT_FALSE(r.powerHorizontal) << s.name;
+			EXPECT_EQ(r.powerFrame.right(), s.w - 1) << s.name << " ui" << ui;        // the extent ends at the edge (1 px inset)
+			// the plates themselves end within a few pixels of the edge: "attached to the screen edge"
+			const int m = std::max(2, int(std::lround(3 * r.scale)));
+			const int plateRight = r.powerPanel.x + scaledRef(kPowerButtonX, r.scale) + scaledRef(kPowerButtonW, r.scale) + m;
+			EXPECT_LE(s.w - plateRight, 2 * std::max(3, int(std::lround(1.5 * r.scale))) + 2) << s.name << " ui" << ui;
+			EXPECT_LE(plateRight, s.w) << s.name;
+		}
+	// 32:9 keeps the edge anchor (no safe-region rule): far right of a 5120 px surface
 	const Result wide = compute(kSurfaces[8]);
-	EXPECT_LT(wide.powerFrame.right(), 5120 * 3 / 4);
-	// 16:9 and narrower: the safe region is the surface itself
-	const Result hd = compute(kSurfaces[4]);
-	EXPECT_GT(hd.powerFrame.right(), 1920 - 60);
+	EXPECT_GT(wide.powerFrame.right(), 5120 - 4);
+	EXPECT_FALSE(wide.powerFrame.intersects(wide.island));
 }
 
 TEST(EnhancedHudLayout, GlobalPowersUseARowOnCompactSurfacesAndAColumnOtherwise)
@@ -881,4 +888,78 @@ TEST(EnhancedHudLayout, PowerPlateIsTheButtonPlusAnEvenMargin)
 		EXPECT_EQ(plate.right() - button.right(), m);
 		EXPECT_EQ(plate.bottom() - button.bottom(), m);
 	}
+}
+
+TEST(EnhancedHudLayout, AcceptedMajorGeometryIsFrozen)
+{
+	// the refine4 framework: any change to these numbers is a layout redesign and must be a deliberate decision
+	EXPECT_EQ(kIslandW, 1000);
+	EXPECT_EQ(kIslandH, 180);
+	EXPECT_EQ(kRadarFrame.x, 8);    EXPECT_EQ(kRadarFrame.w, 216);
+	EXPECT_EQ(kInfoFrame.x, 230);   EXPECT_EQ(kInfoFrame.w, 165);
+	EXPECT_EQ(kCommandFrame.x, 401); EXPECT_EQ(kCommandFrame.w, 444);
+	EXPECT_EQ(kXpFrame.x, 851);     EXPECT_EQ(kXpFrame.w, 141);
+	EXPECT_EQ(kCashFrame.x, 409);   EXPECT_EQ(kCashFrame.w, 152);
+	EXPECT_EQ(kCommandScalePermille, 1200);
+	EXPECT_EQ(kInfoScalePermille, 1100);
+	EXPECT_EQ(kMaxWidthPercentWide, 82);
+	EXPECT_EQ(kCompactAspectPermille, 1450);
+	EXPECT_EQ(kRankGridX, 898);
+	EXPECT_EQ(kRankCell, 42);
+	EXPECT_EQ(rankSlotCount(5), 4);
+	// slot count and ordering of the command bay
+	Rect first, last;
+	bool hide = false;
+	ASSERT_TRUE(destinationFor("ButtonCommand01", first, hide));
+	ASSERT_TRUE(destinationFor("ButtonCommand12", last, hide));
+	EXPECT_EQ(first.x, 409);
+	EXPECT_EQ(first.y, 44);
+	EXPECT_GT(last.x, first.x);
+	EXPECT_GT(last.y, first.y);
+	int n = 0;
+	int buttons = 0;
+	for (const GroupWindow *g = commandGroup(n); n-- > 0; ++g)
+		if (std::strncmp(g->window, "ButtonCommand", 13) == 0)
+			++buttons;
+	EXPECT_EQ(buttons, 12);
+	// physical island on the reference surfaces (centred, bottom flush, bounded)
+	struct Case { int w, h, islandW, islandH; } cases[] = {{1920, 1200, 1574, 283}, {3440, 1440, 2250, 405}, {5120, 1440, 2250, 405}};
+	for (const Case &k : cases)
+	{
+		const Result r = EnhancedHudLayout::compute(k.w, k.h, layoutScaleFor(k.w, k.h, DisplayGeometry::kAutoUiScale));
+		EXPECT_EQ(r.island.w, k.islandW) << k.w << "x" << k.h;
+		EXPECT_EQ(r.island.h, k.islandH) << k.w << "x" << k.h;
+		EXPECT_EQ(r.island.bottom(), k.h);
+		EXPECT_EQ(r.island.x, (k.w - r.island.w) / 2);
+	}
+}
+
+TEST(EnhancedHudTheme, ThemeCanExpressShapeAndMaterialDifferencesBeyondColour)
+{
+	using namespace EnhancedHudTheme;
+	Theme recolour = usa();
+	recolour.accent = {200, 40, 40, 255};
+	recolour.module = {60, 20, 20, 255};
+	EXPECT_FALSE(differsBeyondColour(usa(), recolour));        // a pure recolour is detected as such
+	Theme heavy = recolour;
+	heavy.shellCorner = Corner::Square;
+	heavy.moduleCornerRef = 0;
+	heavy.moduleCorner = Corner::Square;
+	heavy.fasteners = true;
+	heavy.seams = false;
+	heavy.bezelRef = 7;
+	heavy.wellDepthRef = 4;
+	EXPECT_TRUE(differsBeyondColour(usa(), heavy));            // a different construction language is
+	// the USA language itself: machined corners, fasteners, seams, vents, ticks, state rails, broken accent rail
+	const Theme &t = usa();
+	EXPECT_EQ(t.shellCorner, Corner::Chamfer);
+	EXPECT_EQ(t.moduleCorner, Corner::Chamfer);
+	EXPECT_EQ(t.plateCorner, Corner::Chamfer);
+	EXPECT_TRUE(t.fasteners && t.seams && t.vents && t.tickMarks && t.stateRails && t.railBreaks);
+	EXPECT_GT(t.bezelRef, t.wellDepthRef);        // the radar bezel is a stronger surround than an ordinary well
+	// shape parameters are small, bounded reference units (a theme cannot reshape the layout)
+	EXPECT_LE(t.shellCornerRef, 16);
+	EXPECT_LE(t.moduleCornerRef, 8);
+	EXPECT_LE(t.plateCornerRef, 6);
+	EXPECT_LE(t.bezelRef, 8);
 }

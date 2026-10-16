@@ -393,3 +393,57 @@ controls (the layout is shared and tested).
 
 **Limits.** Procedural placeholder art; theme carries colours/switches only (no textures/fonts yet); no General Powers popup;
 radar fit is verified by arithmetic equivalence with the radar draw code, not by a native run.
+
+## 16. Refinement 5: USA Enhanced HUD Visual Design v1 (after native review of `x64-36-enhanced-hud-refine4`: positive)
+The refine4 geometry is the accepted framework and is **frozen**: island 1000x180 reference units, module frames, the 12-slot
+command bay (retail indices), 1.2x/1.1x scales, rank grid, responsive rules. `AcceptedMajorGeometryIsFrozen` pins the numbers
+(and physical island sizes on 1920x1200 / 3440x1440 / 5120x1440); changing them is a deliberate redesign. Only small internal
+padding is used by the artwork; the footprint is unchanged and the bottom stays flush.
+
+**Global Powers: screen-edge anchored (supersedes the safe-region rule of sections 14/15).** Human preference: on every
+non-compact surface, 21:9 and 32:9 included, the plate column is mounted against the RIGHT screen edge (the extent the plates can
+occupy ends 1 px from the edge; the plates themselves a few px from it). Trade-off, documented on purpose: on extreme
+ultrawide (32:9) the powers are physically far from the centre of the action. Compact (<=1.45:1) surfaces keep the row above the
+island's right end. Only visible slots draw a plate (retail populate order), gaps are the retail pitch, there is no enclosing
+background. The shortcut window itself is wider than the plate column, so it extends past the screen edge; its extra width draws
+nothing (retail slot frame art is cleared) and hit regions are the buttons. The shared mechanism (`applyPowerColumn/Row`) and the
+real windows are unchanged.
+
+**Theme architecture (more than a recolour).** `Theme` now carries a shape/material language next to the colours:
+`shellCorner/moduleCorner/plateCorner` (+size), `moduleCaps`, `bevelModules`, `cornerBrackets`, `fasteners`, `seams`, `vents`,
+`tickMarks`, `stateRails`, `railBreaks`, `bezelRef`, `wellDepthRef`. The single renderer reads only these (contract tested: no
+faction names in the renderer). `differsBeyondColour(a, b)` tells a recolour from a different construction language (tested: a
+red recolour is detected as a recolour; square corners + deeper wells + thicker bezel is not). The theme still cannot move a
+control or touch state; shape sizes are bounded reference units.
+
+**USA material language (all procedural).**
+* Outer console: ONE gunmetal shell, machined (chamfered) top corners, lighter upper band, lit top edge, an accent rail broken
+  into one segment per module, four corner screws, short machined seams (with a break) in the gaps between modules. Bottom is
+  square and flush.
+* Modules: chamfered structural panels with bevel, an inset header rail and a short accent cap; vent groups in the radar and
+  General headers.
+* Wells: recessed with inner shadow (depth from the theme) and a faint lit lip; content looks mounted inside.
+* Radar: a military display bezel around the (aspect-fitted) radar - thick machined frame, deep recessed screen, four screws,
+  graduation ticks; the whole bezel turns red while the attack warning is lit. The lamp sits in its own recessed housing with two
+  screws; the accepted lamp (red plate, white triangle) is unchanged. Utility controls are hardware keys: chamfered plate, LED
+  strip (blue on hover), glyph; pressed = depressed plate, disabled = muted.
+* Command bay: one recessed keypad (framed bezel + deep recess) with the 12 fixed cells. Empty cells are subdued wells with tiny
+  corner ticks; occupied cells are mounted machined plates with a bottom state rail; hover = blue rim, pressed = depressed,
+  disabled = muted. Retail overlays/cooldown/tooltips are the buttons'. Dense (12) and sparse contexts use the same cells.
+* Cash: inset readout with a blue status edge, three status segments and header-rail ticks (value, cadence and income option
+  untouched; thousands grouping Enhanced-only).
+* General: XP gauge with minor/major instrument ticks, the aspect-fitted General Powers entry in its own well, rank grid where
+  earned ranks are gold on a mounted plate with a gold rail and unearned ranks recede.
+* Global Powers: each plate is a machined module: cut corners on the battlefield side, square on the screen edge, recessed icon
+  well, blue state rail (ready) / dim (not ready), hover rim, pressed depressed; cooldown sweep is the button's own.
+
+**Still procedural / placeholder.** All of the above is drawn from rectangles/lines (no textures, no typography change, no
+animation); detail density was kept low so it reads at native size. No retail or EA art is added to the repository.
+
+**General Powers readiness.** The popup can reuse these primitives unchanged: `Theme` (colours + shape), `drawBevelPlate`,
+`drawRecess`, `drawModule`, `drawScrew`, `drawVents`, the state-rail and hover/pressed conventions, and the image-fit policy. It
+is not modernised in this batch; it is the next milestone.
+
+**Future factions.** China/GLA/Europe/Russia can differ materially by choosing different shape language (square vs chamfered vs
+asymmetric corners, no/many fasteners, seams vs welds, rail style, bezel and well depth) in addition to colour; the layout,
+interaction, hit testing and image fitting stay identical. Not implemented now.

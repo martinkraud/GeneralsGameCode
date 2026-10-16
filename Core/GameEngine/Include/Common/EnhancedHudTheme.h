@@ -27,9 +27,13 @@ enum class Faction { Usa, China, Gla, Europe, Russia, Unknown };
 
 struct Rgba { unsigned char r, g, b, a; };
 
+// Edge profile of a surface: square, or a machined 45 degree cut of `ref` reference units on the outer corners.
+enum class Corner { Square, Chamfer };
+
 struct Theme
 {
 	const char *name;
+	// ---- colour ---------------------------------------------------------------------------------------------------
 	// console surfaces
 	Rgba plate, plateBand, module, moduleLow, well, wellEdge;
 	// lines and accents
@@ -38,14 +42,41 @@ struct Theme
 	Rgba icon, iconDim, rankLit, rankDim;
 	// state treatments
 	Rgba ready, warning, warningDark, warningInk;
-	// presentation switches (decorative only)
+	// ---- shape and material language (not colour): what makes a faction look different when recoloured is not enough ----
+	Corner shellCorner;       // outer console top corners
+	int shellCornerRef;       // size in reference units
+	Corner moduleCorner;      // module corners
+	int moduleCornerRef;
+	Corner plateCorner;       // interactive plates: command cells, utility keys, Global Powers plates
+	int plateCornerRef;
 	bool moduleCaps;          // short accent cap on a module's top edge
-	bool bevelModules;        // light top/left, dark bottom/right edge on modules
-	bool cornerBrackets;      // small bracket marks at the console corners
 	int capPermille;          // cap length as a share of the module width (permille)
+	bool bevelModules;        // light top/left, dark bottom/right edge on modules
+	bool cornerBrackets;      // bracket marks on the console and bezel corners
+	bool fasteners;           // small screws at the shell corners, on the radar bezel and the lamp housing
+	bool seams;               // short machined seams in the gaps between modules
+	bool vents;               // small groups of vent lines in module headers
+	bool tickMarks;           // instrumentation ticks (XP gauge, header rail, radar bezel)
+	bool stateRails;          // thin accent rail on plates that shows ready / not ready
+	bool railBreaks;          // the shell's accent rail is drawn in segments with technical breaks
+	int bezelRef;             // radar bezel thickness (reference units)
+	int wellDepthRef;         // inner shadow thickness of recessed wells (reference units)
 };
 
-// USA Theme v1: modern military command console. Dark navy / gunmetal, restrained blue accent, recessed equipment bays.
+// True when two themes differ in more than colour (shape / material language). Used by tests and tools to keep a new
+// faction from being a recolour of another one.
+inline bool differsBeyondColour(const Theme &a, const Theme &b)
+{
+	return a.shellCorner != b.shellCorner || a.shellCornerRef != b.shellCornerRef || a.moduleCorner != b.moduleCorner ||
+	       a.moduleCornerRef != b.moduleCornerRef || a.plateCorner != b.plateCorner || a.plateCornerRef != b.plateCornerRef ||
+	       a.moduleCaps != b.moduleCaps || a.capPermille != b.capPermille || a.bevelModules != b.bevelModules ||
+	       a.cornerBrackets != b.cornerBrackets || a.fasteners != b.fasteners || a.seams != b.seams || a.vents != b.vents ||
+	       a.tickMarks != b.tickMarks || a.stateRails != b.stateRails || a.railBreaks != b.railBreaks ||
+	       a.bezelRef != b.bezelRef || a.wellDepthRef != b.wellDepthRef;
+}
+
+// USA Theme v1: modern military command console. Precision-manufactured: dark navy / gunmetal, machined (chamfered)
+// corners, recessed equipment bays, a few purposeful fasteners and seams, restrained blue instrumentation.
 inline const Theme &usa()
 {
 	static const Theme t = {
@@ -58,7 +89,10 @@ inline const Theme &usa()
 		/* rankLit   */ {236, 200, 88, 255},  /* rankDim */ {50, 58, 74, 255},
 		/* ready     */ {96, 156, 236, 255},  /* warning */ {224, 24, 24, 255}, /* warningDark */ {70, 14, 14, 255},
 		/* warningInk*/ {255, 255, 255, 255},
-		true, true, true, 140,
+		/* shell   */ Corner::Chamfer, 9, /* module */ Corner::Chamfer, 4, /* plate */ Corner::Chamfer, 3,
+		/* caps    */ true, 140, /* bevel */ true, /* brackets */ true, /* fasteners */ true, /* seams */ true,
+		/* vents   */ true, /* ticks */ true, /* stateRails */ true, /* railBreaks */ true,
+		/* bezel   */ 4, /* wellDepth */ 2,
 	};
 	return t;
 }

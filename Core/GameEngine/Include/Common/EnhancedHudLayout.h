@@ -47,6 +47,8 @@ constexpr int kIslandH = 180;
 constexpr int kPowerColumnW = 62;      // 59 wide shortcut buttons + 3 gap
 constexpr int kPowerColumnH = 270;     // 5 buttons x 49 pitch + margins (GenPowersShortcutBarUS.wnd: 60 x 270)
 constexpr int kPowerCount = 5;
+constexpr int kPowerButtonX = 3, kPowerButtonY = 9, kPowerButtonW = 45, kPowerButtonH = 38;   // ButtonCommandN inside ButtonParentN
+constexpr int kPowerPitchY = 49;       // retail vertical pitch of the five slots (GenPowersShortcutBarUS.wnd)
 constexpr int kPowerCellH = 58;        // the horizontal fallback row: one 59 x 56 shortcut button plus a gap high
 constexpr int kPowerPad = 6;           // frame padding around the Global Powers surface
 constexpr int kPowerGap = 14;          // minimum clear space between that frame and the main island
@@ -75,7 +77,7 @@ struct Result
 	double scale = 1.0;          // island scale: physical pixels per reference unit
 	Rect island;                 // physical pixels, bottom flush, centred
 	Rect powerPanel;             // physical pixels: the special power shortcut parent window (independent of the island)
-	Rect powerFrame;             // powerPanel inflated by the frame padding: the surface that is drawn behind it
+	Rect powerFrame;             // extent the Global Powers plates can occupy (all five slots, plus rounding tolerance); nothing is drawn behind it
 	bool powerHorizontal = false;   // compact fallback: a row of five instead of a column
 	bool powerAboveIsland = false;  // the panel is stacked above the island's footprint (otherwise beside it)
 	// frame regions in physical pixels
@@ -113,37 +115,46 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	for (int i = 0; i < 3; ++i)
 		r.dividerX[i] = r.island.x + static_cast<int>(std::lround(kDividerX[i] * s));
 
-	// Global Powers: an independent surface, never touching the main island. It lives inside the gameplay safe region (at
-	// most 16:9 of the surface height, centred) so that on 21:9 / 32:9 it stays near the action instead of at the far edge.
-	const int pad = scaledRef(kPowerPad, r.scale), gap = scaledRef(kPowerGap, r.scale), mar = scaledRef(kPowerMargin, r.scale);
-	const int safeW = std::min(surfaceW, static_cast<int>(std::lround(surfaceH * 16.0 / 9.0)));
-	const int safeRight = (surfaceW + safeW) / 2;
+	// Global Powers: an independent surface, never touching the main island. The plates are mounted flush against the RIGHT
+	// SCREEN EDGE (human preference, also on 21:9 / 32:9: the trade-off is that on extreme ultrawide the powers are far from
+	// the central action). The frame below is the extent the plates can occupy (all five slots) plus a rounding tolerance;
+	// only visible slots draw a plate, so the visual group is never larger than its plates.
+	const int mar = scaledRef(kPowerMargin, r.scale), gap = scaledRef(kPowerGap, r.scale);
+	const int pm = std::max(2, static_cast<int>(std::lround(3 * r.scale)));         // plate margin (powerPlateRect)
+	const int tol = std::max(3, static_cast<int>(std::lround(1.5 * r.scale)));      // rounding tolerance of the extent
+	const int bx = scaledRef(kPowerButtonX, r.scale), bw = scaledRef(kPowerButtonW, r.scale);
+	const int by = scaledRef(kPowerButtonY, r.scale), bh = scaledRef(kPowerButtonH, r.scale);
+	const int pitchY = scaledRef(kPowerPitchY, r.scale), pitchX = scaledRef(kPowerColumnW, r.scale);
+	const int inset = 1;
 	const int colW = scaledRef(kPowerColumnW, r.scale), colH = scaledRef(kPowerColumnH, r.scale);
-	const int topLimit = mar + pad;
-	const int cx = safeRight - mar - pad - colW;                       // frame right edge = safeRight - margin
-	const bool overlapsX = cx - pad < r.island.right() + gap && cx + colW + pad > r.island.x - gap;
-	const int yMax = overlapsX ? r.island.y - gap - pad - colH : surfaceH - mar - pad - colH;
-	if (!compact && yMax >= topLimit && cx - pad >= mar)
+	// extent of the plates relative to the panel window origin: column
+	const int cL = bx - pm - tol, cR = bx + bw + pm + tol, cT = by - pm - tol, cB = (kPowerCount - 1) * pitchY + by + bh + pm + tol;
+	const int cx = surfaceW - inset - cR;                                               // frame right = surface edge - inset
+	const bool overlapsX = cx + cL < r.island.right() + gap && cx + cR > r.island.x - gap;
+	const int yMax = (overlapsX ? r.island.y - gap : surfaceH - mar) - cB;
+	const int yMin = mar - cT;
+	if (!compact && yMax >= yMin && cx + cL >= 0)
 	{
-		// vertical column, upper right of the battlefield (retail put the shortcut bar at 26 % of the height)
-		const int cy = std::max(topLimit, std::min(yMax, static_cast<int>(std::lround(surfaceH * 0.18))));
+		const int cy = std::max(yMin, std::min(yMax, static_cast<int>(std::lround(surfaceH * 0.18)) - cT));
 		r.powerPanel = {cx, cy, colW, colH};
 		r.powerHorizontal = false;
 		r.powerAboveIsland = overlapsX;
+		r.powerFrame = {cx + cL, cy + cT, cR - cL, cB - cT};
 	}
 	else
 	{
 		// compact surfaces (4:3 family: the island spans the whole width, a tall column would cover a large part of the
-		// battlefield) and the rare case where a column cannot fit: a row of five just above the island's right end
-		const int rowW = kPowerCount * scaledRef(kPowerColumnW, r.scale), rowH = scaledRef(kPowerCellH, r.scale);
-		const int right = std::min(safeRight - mar - pad, r.island.right());
-		const int rx = std::max(mar + pad, right - rowW);
-		const int ry = std::max(topLimit, r.island.y - gap - pad - rowH);
+		// battlefield) and the rare case where a column cannot fit: a row of five above the island's right end
+		const int rL = bx - pm - tol, rR = (kPowerCount - 1) * pitchX + bx + bw + pm + tol, rT = by - pm - tol, rB = by + bh + pm + tol;
+		const int rowW = kPowerCount * pitchX, rowH = scaledRef(kPowerCellH, r.scale);
+		const int frameRight = std::min(r.island.right(), surfaceW) - inset;
+		const int rx = std::max(-rL + mar, frameRight - rR);
+		const int ry = std::max(mar - rT, r.island.y - gap - rB);
 		r.powerPanel = {rx, ry, rowW, rowH};
 		r.powerHorizontal = true;
 		r.powerAboveIsland = true;
+		r.powerFrame = {rx + rL, ry + rT, rR - rL, rB - rT};
 	}
-	r.powerFrame = {r.powerPanel.x - pad, r.powerPanel.y - pad, r.powerPanel.w + 2 * pad, r.powerPanel.h + 2 * pad};
 	r.valid = true;
 	return r;
 }
