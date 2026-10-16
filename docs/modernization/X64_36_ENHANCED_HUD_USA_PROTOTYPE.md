@@ -690,3 +690,10 @@ housing plus the existing pips (the retail blink is suppressed in Enhanced only)
 not clickable. Power states are separated by a semantic outline role (`EnhancedHudPanels::powerOutline`): locked none, needs points
 neutral, available muted at rest / active on hover-press, purchased gold; tests assert the roles and not the colours, so faction
 themes remain free to choose them. Original is untouched (every change is behind `EnhancedHud::active()` / the Enhanced draw hooks).
+
+## 23. USA accepted; Shared Framework v1 frozen; China begins
+
+Native review of `201b126b1`: **USA Enhanced HUD ACCEPTED.** Small visual refinements may follow in a future cross-faction polish
+pass; USA prototyping is not reopened. Shared Enhanced HUD Framework v1 is now FROZEN (`ENHANCED_HUD_FRAMEWORK_V1.md`,
+`EnhancedHud::kFrameworkVersion`, pinned shared headers). China: `X64_36_ENHANCED_HUD_CHINA.md`. GLA follows only after China passes.
+CP10 stays IN REVIEW until USA, China, GLA and Original preservation have all passed native review.

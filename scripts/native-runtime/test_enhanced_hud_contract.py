@@ -223,7 +223,7 @@ class EnhancedHudContracts(unittest.TestCase):
             self.assertNotIn(forbidden, th)
         for fac in ("Usa", "China", "Gla", "Europe", "Russia"):
             self.assertIn(fac, th)
-        self.assertIn("inline bool implemented(Faction f) { return f == Faction::Usa; }", th)
+        self.assertIn("inline bool implemented(Faction f) { return f == Faction::Usa || f == Faction::China; }", th)
         bar = text(BAR)
         # all colours come from the theme: the renderer has exactly one GameMakeColor (the Rgba conversion)
         self.assertEqual(bar.count("GameMakeColor("), 1)
@@ -366,6 +366,45 @@ class EnhancedHudContracts(unittest.TestCase):
         cb = text("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp")
         self.assertIn("if(!m_genStarFlash || EnhancedHud::active())", cb)
         self.assertIn("GadgetButtonSetEnabledImage(win, m_generalButtonHighlight);", cb)
+
+    def test_framework_v1_shared_headers_are_frozen(self):
+        # Shared Enhanced HUD Framework v1 is frozen (docs/modernization/ENHANCED_HUD_FRAMEWORK_V1.md). Changing the shared
+        # geometry or placement mechanism needs a deliberate version bump, a documented reason and a new native review.
+        import hashlib
+        pins = {
+            "Core/GameEngine/Include/Common/EnhancedHudLayout.h": "c940c83b8a003b459fc428ee9f7f6f085b6fc572082c206d14d79410b5f3ac61",
+            "Core/GameEngine/Include/Common/EnhancedHudWindows.h": "0b83d551690699dd0fee50e8895e31d527ff6be267ddcf823dadec7c7d80c125",
+        }
+        for path, digest in pins.items():
+            data = (ROOT / path).read_bytes().replace(chr(13).encode() + chr(10).encode(), chr(10).encode())
+            self.assertEqual(hashlib.sha256(data).hexdigest(), digest, path + " changed: Framework v1 is frozen")
+        hud = text("Core/GameEngine/Include/Common/EnhancedHud.h")
+        self.assertIn("constexpr int kFrameworkVersion = 1;", hud)
+        doc = text("docs/modernization/ENHANCED_HUD_FRAMEWORK_V1.md")
+        self.assertIn("kFrameworkVersion == 1", doc)
+        self.assertIn("FROZEN", doc)
+
+    def test_shared_framework_headers_do_not_name_a_faction(self):
+        for path in ("EnhancedHudLayout.h", "EnhancedHudWindows.h", "EnhancedHudImageFit.h"):
+            src = text("Core/GameEngine/Include/Common/" + path)
+            for word in ("Faction::Usa", "Faction::China", "Faction::Gla", "\"America\"", "\"China\"", "\"GLA\""):
+                self.assertNotIn(word, src, path + " must not name a faction")
+
+    def test_china_theme_is_construction_not_a_recolour_and_the_renderer_stays_faction_blind(self):
+        th = text("Core/GameEngine/Include/Common/EnhancedHudTheme.h")
+        china = th[th.index("inline const Theme &china()"):]
+        china = china[:china.index("\n}\n")]
+        usa = th[th.index("inline const Theme &usa()"):th.index("inline const Theme &china()")]
+        # USA (the reference) carries none of the heavy-construction switches
+        self.assertIn("/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ false, false, false, false, false,", usa)
+        self.assertIn("/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ true, true, true, true, true,", china)
+        self.assertIn("Corner::Square", china)
+        # every heavy-construction branch in the renderer is a theme switch, never a faction test
+        bar = text(BAR)
+        for flag in ("th.girder", "th.cornerCaps", "th.moduleBrackets", "c.theme->heavyBevel", "c.theme->rivets"):
+            self.assertIn(flag, bar)
+        self.assertNotIn("Faction::", bar)
+        self.assertNotIn("EnhancedHud::faction()", bar)
 
     def test_battle_overview_is_enhanced_only_and_restores_the_retail_window(self):
         bar = text(BAR)

@@ -367,7 +367,7 @@ inline int groupThousands(unsigned long long value, wchar_t *out, int capacity)
 }
 
 // Enhanced is available for factions that have an implemented theme (EnhancedHudTheme); every other side falls back to
-// the Original presentation. Today that is the USA only. The layout itself is faction independent.
+// the Original presentation. The layout itself is faction independent (Shared Enhanced HUD Framework v1).
 inline bool supportsSide(const char *side)
 {
 	if (!side) return false;

@@ -10,6 +10,12 @@
 namespace EnhancedHud
 {
 
+// Shared Enhanced HUD Framework version. v1 is FROZEN (see docs/modernization/ENHANCED_HUD_FRAMEWORK_V1.md): the geometry,
+// responsive rules, window ownership, hit-test mechanism and state vocabulary shared by every faction. Factions supply a Theme
+// (EnhancedHudTheme) and nothing else; changing the frozen contract requires a deliberate version bump, a documented reason and
+// a new native review.
+constexpr int kFrameworkVersion = 1;
+
 struct State
 {
 	bool requested = false;

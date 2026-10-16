@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "Common/DisplayGeometry.h"
+#include "Common/EnhancedHud.h"
 #include "Common/EnhancedHudLayout.h"
 #include "Common/EnhancedHudWindows.h"
 
@@ -1088,3 +1089,38 @@ TEST(EnhancedHudInteractive, GeneralPowersPopupEnhancedOriginalEnhancedTransitio
 			EXPECT_TRUE(same(enhanced, snapshot())) << s.w << "x" << s.h << " ui" << ui;
 		}
 }
+
+TEST(EnhancedHudInteractive, FactionSwitchesNeverChangeThePopupGeometryOrLeaveResidue)
+{
+	// USA > China > GLA (Original) > China > USA: the geometry the console gets depends on the surface only
+	EnhancedHud::setRequested(true);
+	const Surface s = kSurfaces[0];
+	const double ls = layoutScaleFor(s.w, s.h, 2);
+	std::vector<Rect> popups;
+	for (const char *side : {"America", "China", "GLA", "China", "America"})
+	{
+		const bool active = EnhancedHud::update(true, false, side, s.w, s.h, ls);
+		EXPECT_EQ(active, std::strcmp(side, "GLA") != 0) << side;
+		if (!active)
+		{
+			EXPECT_FALSE(EnhancedHud::active());
+			continue;
+		}
+		PopupCase pc;
+		buildPopup(pc, s, EnhancedHud::layout().island.y, ls);
+		popups.push_back(pc.place.rect);
+		// every retail button of the console is hittable at its centre in every faction
+		for (Win *c = pc.tree.master()->child; c; c = c->next)
+			if (c->name.rfind("Button", 0) == 0)
+			{
+				const Rect r = screen(c);
+				EXPECT_EQ(hitTest(pc.tree.master(), r.x + r.w / 2, r.y + r.h / 2), c) << side << " " << c->name;
+			}
+	}
+	ASSERT_EQ(popups.size(), 4u);
+	for (const Rect &r : popups)
+		EXPECT_TRUE(r.x == popups[0].x && r.y == popups[0].y && r.w == popups[0].w && r.h == popups[0].h);
+	EnhancedHud::setRequested(false);
+	EnhancedHud::update(true, false, "America", 1920, 1200, 2.0);
+}
+

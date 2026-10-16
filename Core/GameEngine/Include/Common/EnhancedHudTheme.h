@@ -12,7 +12,7 @@
 //   command/XP/power behaviour        warning/ready/disabled colours
 //   hit testing, image fitting        (later) textures, emblem, typography, popup styling
 //
-// Implemented: USA. China, GLA, Europe and Russia are recognised but not implemented yet: for them `implemented()` is
+// Implemented: USA (reference), China. GLA, Europe and Russia are recognised but not implemented yet: for them `implemented()` is
 // false, Enhanced stays off (the Original control bar is used) and `themeFor()` returns the USA theme only as a safe default
 // for tools/tests - no placeholder art is invented. Adding a faction = add a Theme constant, flip `implemented()`; no HUD
 // logic is copied. Europe/Russia are not retail sides; they enter through `factionOfSide` when their side names exist.
@@ -64,6 +64,12 @@ struct Theme
 	bool moduleLeds;          // small illuminated segment group in each module header
 	Corner windowCorner;      // outer corner profile of the General Powers popup and the Battle Overview
 	int windowCornerRef;      // its size in reference units
+	// ---- heavy construction vocabulary (all false = the USA precision-machined look) -------------------------------------
+	bool heavyBevel;          // plates carry a second, inner bevel line: thicker structural edges
+	bool rivets;              // domed rivet / bolt heads along ribs, girders and bezels (instead of slotted screws only)
+	bool cornerCaps;          // raised square caps on the shell's top corners and on the General Powers / overview corners
+	bool moduleBrackets;      // reinforcing brackets on the corners of recessed modules
+	bool girder;              // a riveted structural girder band across the top of the chassis
 };
 
 // True when two themes differ in more than colour (shape / material language). Used by tests and tools to keep a new
@@ -76,7 +82,8 @@ inline bool differsBeyondColour(const Theme &a, const Theme &b)
 	       a.tickMarks != b.tickMarks || a.stateRails != b.stateRails ||
 	       a.bezelRef != b.bezelRef || a.wellDepthRef != b.wellDepthRef || a.brushedChassis != b.brushedChassis ||
 	       a.junctionRibs != b.junctionRibs || a.moduleLeds != b.moduleLeds ||
-	       a.windowCorner != b.windowCorner || a.windowCornerRef != b.windowCornerRef;
+	       a.windowCorner != b.windowCorner || a.windowCornerRef != b.windowCornerRef || a.heavyBevel != b.heavyBevel ||
+	       a.rivets != b.rivets || a.cornerCaps != b.cornerCaps || a.moduleBrackets != b.moduleBrackets || a.girder != b.girder;
 }
 
 // USA Theme (Design2): a precision-manufactured command console. Depth hierarchy, darkest last:
@@ -105,6 +112,36 @@ inline const Theme &usa()
 		/* bezel   */ 5, /* wellDepth */ 2,
 		/* grain   */ true, /* ribs */ true, /* moduleLeds */ true,
 		/* popup/overview window corner */ Corner::Chamfer, 8,
+		/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ false, false, false, false, false,
+	};
+	return t;
+}
+
+// China Theme: a heavy military-industrial console. Same regions and behaviour as every faction; the identity comes from the
+// construction, not the colour. Square, reinforced shoulders (raised corner caps, a riveted girder across the top, brackets on
+// the recessed modules), double-edged structural plates, domed rivets instead of slotted screws, no ventilation grilles, no
+// brushed grain (flat plate steel), deeper wells. Dark steel with a warm, slightly olive cast; the faction accent is a restrained
+// brick red; available / hover is red-orange, the warning (attack, insufficient power) is an amber lamp, rank stays gold.
+inline const Theme &china()
+{
+	static const Theme t = {
+		"China",
+		/* plate     */ {40, 41, 38, 255}, /* plateBand */ {58, 58, 53, 255}, /* module */ {26, 27, 25, 255},
+		/* moduleLow */ {19, 20, 18, 255}, /* well */ {9, 9, 8, 255},        /* wellEdge */ {74, 70, 62, 255},
+		/* outline   */ {30, 28, 25, 255}, /* accent */ {196, 62, 44, 255}, /* accentDim */ {104, 38, 30, 255},
+		/* bevelLight*/ {124, 119, 108, 255}, /* bevelDark */ {6, 6, 5, 255},
+		/* icon      */ {224, 220, 206, 255}, /* iconDim */ {118, 112, 100, 255},
+		/* rankLit   */ {232, 192, 84, 255},  /* rankDim */ {66, 62, 50, 255},
+		/* ready     */ {238, 106, 74, 255},   /* warning */ {244, 158, 22, 255}, /* warningDark */ {86, 50, 8, 255},
+		/* warningInk*/ {26, 16, 2, 255},
+		/* control   */ {60, 60, 55, 255}, /* controlLow */ {41, 41, 37, 255}, /* chassisLine */ {47, 48, 44, 255},
+		/* shell   */ Corner::Square, 0, /* module */ Corner::Square, 0, /* plate */ Corner::Square, 0,
+		/* bevel   */ true, /* fasteners */ true, /* seams */ true, /* vents */ false, /* ticks */ true,
+		/* stateRails */ true,
+		/* bezel   */ 5, /* wellDepth */ 3,
+		/* grain   */ false, /* ribs */ true, /* moduleLeds */ true,
+		/* popup/overview window corner */ Corner::Square, 0,
+		/* heavyBevel, rivets, cornerCaps, moduleBrackets, girder */ true, true, true, true, true,
 	};
 	return t;
 }
@@ -123,12 +160,12 @@ inline Faction factionOfSide(const char *side)
 }
 
 // Only factions with a real theme get the Enhanced HUD; every other faction keeps the Original control bar.
-inline bool implemented(Faction f) { return f == Faction::Usa; }
+inline bool implemented(Faction f) { return f == Faction::Usa || f == Faction::China; }
 
 inline const Theme &themeFor(Faction f)
 {
-	(void)f;                 // future factions add their own constant here; until then the safe default is USA
-	return usa();
+	if (f == Faction::China) return china();
+	return usa();            // future factions add their own constant here; until then the safe default is USA
 }
 
 }  // namespace EnhancedHudTheme

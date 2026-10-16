@@ -582,6 +582,14 @@ void drawBevelPlate( const HRect &r, Int k, int mask, Color body, Color outline,
 	TheDisplay->drawLine( r.x + 1, r.y + a + 1, r.x + 1, r.y + r.h - d - 1, 1, lightEdge );
 	TheDisplay->drawLine( r.x + d + 1, r.y + r.h - 2, r.x + r.w - e - 1, r.y + r.h - 2, 1, darkEdge );
 	TheDisplay->drawLine( r.x + r.w - 2, r.y + b + 1, r.x + r.w - 2, r.y + r.h - e - 1, 1, darkEdge );
+	if( c.theme->heavyBevel && r.w > 12 && r.h > 12 )
+	{
+		// structural plate: a second, inner bevel line (thicker edge)
+		TheDisplay->drawLine( r.x + a + 2, r.y + 2, r.x + r.w - b - 2, r.y + 2, 1, lightEdge );
+		TheDisplay->drawLine( r.x + 2, r.y + a + 2, r.x + 2, r.y + r.h - d - 2, 1, lightEdge );
+		TheDisplay->drawLine( r.x + d + 2, r.y + r.h - 3, r.x + r.w - e - 2, r.y + r.h - 3, 1, darkEdge );
+		TheDisplay->drawLine( r.x + r.w - 3, r.y + b + 2, r.x + r.w - 3, r.y + r.h - e - 2, 1, darkEdge );
+	}
 }
 
 // A recessed bay: dark body, inner shadow on the top/left (depth set by the theme), faint lit lip on the bottom/right.
@@ -602,6 +610,16 @@ void drawRecess( const HRect &r, const HudPalette &c, Int depth = -1 )
 // Small screw head (square with a slot).
 void drawScrew( Int cx, Int cy, const HudPalette &c )
 {
+	if( c.theme->rivets )
+	{
+		// domed rivet head: a lit top/left, a dark bottom/right
+		const Int rr = std::max<Int>( 1, P( 1.7 ) );
+		TheDisplay->drawFillRect( cx - rr - 1, cy - rr - 1, 2 * rr + 3, 2 * rr + 3, c.shadow );
+		TheDisplay->drawFillRect( cx - rr, cy - rr, 2 * rr + 1, 2 * rr + 1, themeColor( c.theme->control ) );
+		TheDisplay->drawLine( cx - rr, cy - rr, cx + rr - 1, cy - rr, 1, c.highlight );
+		TheDisplay->drawLine( cx - rr, cy - rr, cx - rr, cy + rr - 1, 1, c.highlight );
+		return;
+	}
 	const Int rad = std::max<Int>( 1, P( 1.4 ) );
 	TheDisplay->drawFillRect( cx - rad, cy - rad, 2 * rad + 1, 2 * rad + 1, c.wellEdge );
 	TheDisplay->drawLine( cx - rad, cy - rad, cx + rad, cy - rad, 1, c.highlight );
@@ -682,6 +700,17 @@ void drawRaisedFrame( const HRect &inner, Int thickness, const HudPalette &c, bo
 	drawBevelPlate( outer, k, CM_ALL, lit ? c.warningDark : themeColor( th.control ), lit ? c.warning : c.shadow, false, c );
 }
 
+// Raised square caps on the four corners of a pop-up window (popup / overview), for themes with reinforced shoulders.
+void drawWindowCaps( const HRect &r, const HudPalette &c )
+{
+	const Int cs = std::max<Int>( 4, P( 7 ) );
+	for( int i = 0; i < 4; ++i )
+	{
+		const HRect cap = { ( i & 1 ) ? r.x + r.w - cs : r.x, ( i & 2 ) ? r.y + r.h - cs : r.y, cs, cs };
+		drawBevelPlate( cap, 0, CM_ALL, themeColor( c.theme->control ), c.shadow, false, c );
+	}
+}
+
 // A module of the console (level 1): a recessed panel set into the chassis - inner shadow on the top/left, a faint lit lip on
 // the bottom/right, machined corners, and a header band with a small group of status lights.
 void drawModule( const HRect &r, const HudPalette &c, int litLeds, bool vents = false )
@@ -700,6 +729,23 @@ void drawModule( const HRect &r, const HudPalette &c, int litLeds, bool vents = 
 		TheDisplay->drawLine( r.x + r.w - 1, r.y + k, r.x + r.w - 1, r.y + r.h - k, 1, c.highlight );
 	}
 	edgeChamfered( r, k, CM_ALL, c.shadow );
+	if( th.moduleBrackets && r.w > P( 24 ) && r.h > P( 24 ) )
+	{
+		// reinforcing L brackets on the four corners of the recessed module
+		const Int arm = P( 6 ), thick = std::max<Int>( 2, P( 2 ) );
+		const Color bracket = themeColor( th.control );
+		const Int xl = r.x, xr = r.x + r.w - arm, yt = r.y, yb = r.y + r.h - thick, xrv = r.x + r.w - thick, ybv = r.y + r.h - arm;
+		TheDisplay->drawFillRect( xl, yt, arm, thick, bracket );
+		TheDisplay->drawFillRect( xl, yt, thick, arm, bracket );
+		TheDisplay->drawFillRect( xr, yt, arm, thick, bracket );
+		TheDisplay->drawFillRect( xrv, yt, thick, arm, bracket );
+		TheDisplay->drawFillRect( xl, yb, arm, thick, bracket );
+		TheDisplay->drawFillRect( xl, ybv, thick, arm, bracket );
+		TheDisplay->drawFillRect( xr, yb, arm, thick, bracket );
+		TheDisplay->drawFillRect( xrv, ybv, thick, arm, bracket );
+		TheDisplay->drawLine( xl, yt, xl + arm - 1, yt, 1, c.highlight );
+		TheDisplay->drawLine( xr, yt, xr + arm - 1, yt, 1, c.highlight );
+	}
 	// header band (slightly darker than the panel) carrying the status lights
 	const Int headH = P( 11 );
 	TheDisplay->drawFillRect( r.x + depth, r.y + depth, r.w - 2 * depth - 1, headH, themeColor( th.moduleLow ) );
@@ -994,6 +1040,17 @@ void drawEnhancedHudFrame()
 	edgeChamfered( isl, shellK, CM_TOP, c.shadow );
 	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 1, isl.x + isl.w - shellK - 2, isl.y + 1, 1, c.highlight );
 	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 2, isl.x + isl.w - shellK - 2, isl.y + 2, 1, themeColor( th.plateBand ) );
+	if( th.girder )
+	{
+		// a riveted structural girder across the top margin (modules are drawn over anything that reaches them)
+		const HRect gd = { isl.x + P( 9 ), isl.y + P( 3 ), isl.w - 2 * P( 9 ), std::max<Int>( 3, P( 4 ) ) };
+		TheDisplay->drawFillRect( gd.x, gd.y, gd.w, gd.h, themeColor( th.control ) );
+		TheDisplay->drawLine( gd.x, gd.y, gd.x + gd.w - 1, gd.y, 1, c.highlight );
+		TheDisplay->drawLine( gd.x, gd.y + gd.h - 1, gd.x + gd.w - 1, gd.y + gd.h - 1, 1, c.shadow );
+		if( th.rivets )
+			for( Int x = gd.x + P( 10 ); x < gd.x + gd.w - P( 6 ); x += P( 18 ) )
+				TheDisplay->drawFillRect( x, gd.y + gd.h / 2 - 1, std::max<Int>( 2, P( 1.6 ) ), std::max<Int>( 2, P( 1.6 ) ), c.shadow );
+	}
 	if( th.junctionRibs )
 	{
 		for( int i = 0; i < 3; ++i )
@@ -1013,6 +1070,9 @@ void drawEnhancedHudFrame()
 			}
 			// one status light on each rib: the console is powered
 			TheDisplay->drawFillRect( rib.x + rib.w / 2 - 1, rib.y + P( 2 ), 2, std::max<Int>( 2, P( 2 ) ), c.ready );
+			if( th.rivets )
+				for( Int y = rib.y + P( 14 ); y < rib.y + rib.h - P( 8 ); y += P( 22 ) )
+					drawScrew( rib.x + rib.w / 2, y, c );
 		}
 	}
 	if( th.vents )
@@ -1034,6 +1094,16 @@ void drawEnhancedHudFrame()
 	drawModule( mods[ 1 ], c, 2, true );
 	drawModule( mods[ 2 ], c, 3 );
 	drawModule( mods[ 3 ], c, 2, true );
+	if( th.cornerCaps )
+	{
+		// raised square caps on the top shoulders of the shell (the margin around the modules is 8 reference units)
+		const Int cs = P( 8 );
+		for( int side = 0; side < 2; ++side )
+		{
+			const HRect cap = { side == 0 ? isl.x : isl.x + isl.w - cs, isl.y, cs, cs };
+			drawBevelPlate( cap, 0, CM_ALL, themeColor( th.control ), c.shadow, false, c );
+		}
+	}
 
 	// 3. RADAR MODULE. The radar keeps the map's aspect ratio and (by retail design, W3DRadar::draw) paints the unused part
 	//    of its window opaque black. In Enhanced the radar WINDOW is fitted to the map's aspect inside the module's radar
@@ -1073,6 +1143,11 @@ void drawEnhancedHudFrame()
 			const Int o = std::max<Int>( 2, bz / 2 );
 			drawScrew( fitted.x - bz + o, fitted.y - bz + o, c );
 			drawScrew( fitted.x + fitted.w + bz - o - 1, fitted.y + fitted.h + bz - o - 1, c );
+			if( th.rivets )
+			{
+				drawScrew( fitted.x + fitted.w + bz - o - 1, fitted.y - bz + o, c );
+				drawScrew( fitted.x - bz + o, fitted.y + fitted.h + bz - o - 1, c );
+			}
 		}
 		if( th.moduleLeds )
 			drawLedGroup( fitted.x - bz + std::max<Int>( 2, bz / 2 ) + P( 5 ), fitted.y + fitted.h + std::max<Int>( 1, bz / 2 ) - 1, 3, lampLit ? 0 : 2, c );
@@ -1421,6 +1496,8 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 	drawModule( header, c, 3 );
 	for( int i = 0; i < 3; ++i )
 		drawModule( tiers[ i ], c, -1 );
+	if( th.cornerCaps )
+		drawWindowCaps( r, c );
 
 	// ---- header: rank, experience track with numbers and the next promotion, General Points -------------------------------------
 	{
@@ -1653,6 +1730,8 @@ void overviewDraw( GameWindow *window, WinInstanceData * )
 	fillChassis( r, k, c );
 	edgeChamfered( r, k, CM_TOP, c.shadow );
 	TheDisplay->drawLine( r.x + k + 1, r.y + 1, r.x + r.w - k - 2, r.y + 1, 1, c.highlight );
+	if( th.cornerCaps )
+		drawWindowCaps( r, c );
 
 	// header band: title, map, elapsed game time (both shared by every player)
 	const HRect hs = EnhancedHudPanels::popupScaled( EnhancedHudPanels::kOverviewHeader, u );
