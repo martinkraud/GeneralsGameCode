@@ -451,6 +451,15 @@ helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Presen
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
 
+## X64.40 Path-search investigation (CP14, delivered)
+
+Serial, exact, no threads. Read `X64_40_PATH_SEARCH_INVESTIGATION.md`. The retail A* open list walked from the head on every insertion; `OpenListIndex.h` (pure, differential-tested in `OpenListIndexTest`) answers the
+insertion point from a per-cost run-tail index while the list is sorted and under 5 000 nodes, otherwise the original walk (and it marks itself unsorted if the walk hits the cap). Env switches: default = index; `GENERALS_PATH_LEGACY=1` original walk;
+`GENERALS_PATH_VERIFY=1` apply the walk, compare the index prediction on every insertion (`_exit(3)` on the first difference); `GENERALS_PATH_TRACE_HASH=1` digest of the whole open-list evolution; `GENERALS_SIM_PATHS=1|2` per-search trace
+(`<base>_paths.csv`, top-25 searches, work distributions). `PATHFIND_CELLS_PER_FRAME` is charged after a search and only gates how many further requests start in a tick - it does not bound one search (documented, unchanged).
+R1: `GENERALS_AUTOPLAY_REPLAY=<file>` starts a replay once in the normal native client; the user replay diverges at frame 1600 there too. Guards: `test_stage4b3_reference.py` re-targeted (exact listed additions only, mutation-checked);
+`test_stage4b1_reference.py` is stale by construction (whole-file token equality, red since X64.35) and was deliberately left untouched. Remaining tail: two ~100 k-expansion exhausting searches (line phase) and update modules / scripts.
+
 ## X64.39 ZoneCalc algorithmic optimization (CP13, delivered)
 
 Serial, bit-identical, no threads. Read `X64_39_ZONECALC_OPTIMIZATION.md`. Merge primitives live in `GameLogic/Pathfinder/ZoneEquivalence.h` (legacy + min-root union-find, one header, differential-tested in

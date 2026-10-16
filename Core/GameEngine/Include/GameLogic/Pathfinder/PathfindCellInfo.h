@@ -23,6 +23,7 @@ class PathfindCell;
 class PathfindCellInfo
 {
 	friend struct RetailOpenListTestAccess; // Test-only access; no runtime state.
+	friend class PathfindCellList;   // X64.40: PathfindCellList::reset registers the start node with the open-list index
 	friend class PathfindCell;
 public:
 #if RETAIL_COMPATIBLE_PATHFINDING
@@ -45,6 +46,7 @@ protected:
 	PathfindCell *m_cell;															///< Cell this info belongs to currently.
 
 	UnsignedShort m_totalCost, m_costSoFar;	///< cost estimates for A* search
+	UnsignedShort m_openKey;															///< X64.40: the total cost the open-list index registered this node under (the cost may be improved while the node is still linked)
 
 	/// have to include cell's coordinates, since cells are often accessed via pointer only
 	ICoord2D m_pos;
@@ -60,6 +62,7 @@ protected:
 	UnsignedInt m_obstacleIsFence:1;///< True if occupied by a fence.
 	UnsignedInt m_obstacleIsTransparent:1;///< True if obstacle is transparent (undefined if obstacleid is invalid)
 	/// @todo Do we need both mark values in this cell?  Can't store a single value and compare it?
+	UnsignedInt m_indexed:1;															///< X64.40: registered with the open-list index
 	UnsignedInt m_open:1;													///< place for marking this cell as on the open list
 	UnsignedInt m_closed:1;												///< place for marking this cell as on the closed list
 };

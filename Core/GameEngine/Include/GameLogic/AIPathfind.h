@@ -117,6 +117,15 @@ public:
  */
 class Pathfinder : PathfindServicesInterface, public Snapshot
 {
+public:
+	// X64.40 open-list statistics (GENERALS_PATH_LEGACY=1 disables the index, GENERALS_PATH_VERIFY=1 checks every insertion against the original walk,
+	// GENERALS_PATH_TRACE_HASH=1 hashes the complete open-list evolution).
+	static const char *openListModeName();
+	static UnsignedInt openListIndexedInserts();
+	static UnsignedInt openListWalkedInserts();
+	static unsigned long long openListWalkedHops();
+	static UnsignedInt openListVerifiedInserts();
+	static unsigned long long openListTraceDigest();
 // The following routines are private, but available through the doPathfind callback to aiInterface. jba.
 private:
 	virtual Path *findPath( Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from, const Coord3D *to) override;	///< Find a short, valid path between given locations
@@ -367,6 +376,9 @@ private:
 	IRegion2D m_logicalExtent;										///< Logical grid extent limits
 
 	PathfindCellList m_openList;									///< Cells ready to be explored
+#if RETAIL_COMPATIBLE_PATHFINDING
+	OpenListIndex<PathfindCell> m_openListIndex;			///< X64.40: exact accelerator of the retail open-list insertion (see OpenListIndex.h)
+#endif
 	PathfindCellList m_closedList;								///< Cells already explored
 
 	Bool m_isMapReady;														///< True if all cells of map have been classified

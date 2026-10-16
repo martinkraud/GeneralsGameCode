@@ -3198,6 +3198,21 @@ void GameLogic::update()
 
 	setFPMode();
 
+	{
+		// X64.40 diagnostic (inert unless GENERALS_AUTOPLAY_REPLAY=<file> is set): start that replay ONCE in the normal native client, a few seconds after the
+		// shell map is running, exactly as the Replay menu does (TheRecorder->playbackFile). Used to tell a native-client divergence from a headless one (R1).
+		static int autoplay = -1;
+		static int shellTicks = 0;
+		if (autoplay < 0) { const char *v = getenv("GENERALS_AUTOPLAY_REPLAY"); autoplay = (v && *v) ? 0 : 1; }
+		if (autoplay == 0 && isInShellGame() && TheRecorder && ++shellTicks > 240)
+		{
+			autoplay = 1;
+			setvbuf(stdout, nullptr, _IONBF, 0);   // the engine prints a replay CRC mismatch with printf and then pauses: do not let it sit in a buffer
+			const Bool started = TheRecorder->playbackFile(AsciiString(getenv("GENERALS_AUTOPLAY_REPLAY")));
+			printf("AUTOPLAY replay: %s\n", started ? "started" : "FAILED to start");
+		}
+	}
+
 	/// @todo remove this hack
 	if ( m_startNewGame && !TheDisplay->isMoviePlaying())
 	{
@@ -3449,6 +3464,14 @@ void GameLogic::update()
 		if(DeveloperTools::scenarioEnabled() || DeveloperTools::devModeEnabled())DeveloperTools::logicTick(m_frame);
 		PerformanceProfile::count(PerformanceProfile::Counter::CompletedTicks);
 		m_hasUpdated = TRUE;
+		// X64.40 diagnostic (off unless GENERALS_AUTOPLAY_REPLAY is set): progress of a native replay playback, so a run can show it passed the frame of interest
+		static int autoplayLog = -1;
+		if (autoplayLog < 0) { const char *v = getenv("GENERALS_AUTOPLAY_REPLAY"); autoplayLog = (v && *v) ? 1 : 0; }
+		if (autoplayLog == 1 && TheRecorder && TheRecorder->isPlaybackMode() && (m_frame % 300) == 0)
+		{
+			printf("AUTOPLAY logic frame %u state crc %08X\n", static_cast<unsigned>(m_frame), static_cast<unsigned>(m_CRC));
+			fflush(stdout);
+		}
 	}
 }
 

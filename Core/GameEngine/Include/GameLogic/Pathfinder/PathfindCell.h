@@ -38,6 +38,7 @@ typedef UnsignedShort zoneStorageType;
 class PathfindCell
 {
 	friend struct RetailOpenListTestAccess; // Test-only access; no runtime state.
+	friend class PathfindCellList;   // X64.40: PathfindCellList::reset registers the start node with the open-list index
 public:
 
 	enum CellType

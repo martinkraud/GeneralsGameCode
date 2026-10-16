@@ -201,3 +201,7 @@ Root cause: the interpreter on this machine runs with **safe-path enabled** (`sy
 2. Only if the profile then still justifies it, build the verify harness for path results (section 11, item 2) and the per-search scratch refactor.
 3. In parallel, spend one session on R1 (play the replay non-headless; DEBUG_CRC localisation).
 4. Defer: the legacy flatten stage (0.8 s), the locality swap, any worker pool.
+
+## Follow-up
+
+X64.40 (`X64_40_PATH_SEARCH_INVESTIGATION.md`) took up the path-search recommendation: the serial fix was the retail open-list insertion walk, not a scratch-state refactor. Its R1 section answers the native-vs-headless question left open in section 12 above (the native client diverges at frame 1600 too).

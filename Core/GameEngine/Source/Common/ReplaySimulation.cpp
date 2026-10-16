@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdarg>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -75,7 +76,11 @@ const char *envText(const char *name)
 class SimulationBench
 {
 public:
-	SimulationBench() : m_base(envText("GENERALS_SIM_BENCH")) {}
+	// GENERALS_SIM_PATHS=1: per-search trace (PathScope samples of every path kind); =2 additionally samples the neighbour / line phases of
+	// the A* iterations. Off by default: it adds clock reads to every search, so timing runs and trace runs are kept apart.
+	static unsigned int pathCapacity() { const char *v = envText("GENERALS_SIM_PATHS"); return v ? PerformanceProfile::MaxPaths : 0u; }
+	static bool pathPhases() { const char *v = envText("GENERALS_SIM_PATHS"); return v && atoi(v) >= 2; }
+	SimulationBench() : m_base(envText("GENERALS_SIM_BENCH")), m_recorder(PerformanceProfile::MaxFrames, pathCapacity(), pathPhases()) {}
 	bool enabled() const { return m_base != nullptr; }
 	bool ignoreCrc() const { return envText("GENERALS_SIM_IGNORE_CRC") != nullptr; }
 
@@ -102,7 +107,7 @@ public:
 		const UnsignedInt after = TheGameLogic->getFrame();
 		m_recorder.endFrame(t1, after);
 		m_pendingMs.push_back(static_cast<double>(t1 - t0) * 1000.0 / m_freq);
-		if (m_recorder.frames().size() >= 1024) harvest();
+		if (m_recorder.frames().size() >= 1024 || m_recorder.paths().size() >= 20000) harvest();
 		if (m_fpInterval != 0 && after != before && after % m_fpInterval == 0)
 		{
 			DeterminismFingerprint::Checkpoint c;
@@ -122,6 +127,26 @@ public:
 
 private:
 	typedef std::array<float, PerformanceProfile::CategoryCount> Row;
+
+	// One compact record per PathScope sample (every path kind). Times in milliseconds.
+	struct PathRec
+	{
+		PerformanceProfile::PathKind kind;
+		PerformanceProfile::PathKind request;
+		PerformanceProfile::PathOutcome outcome;
+		unsigned int frame, object, surfaces;
+		int layer, radius, human, crusher;
+		bool zoneRejected;
+		float inclusiveMs, exclusiveMs;
+		float fromX, fromY, toX, toY;
+		unsigned long long work[PerformanceProfile::PathWorkCount];
+		unsigned long long id, parent;
+		unsigned long long iterations, selected, neighborCalls, lineCalls;
+		float neighborMs, lineMs;       // sampled (1 in 64 iterations) - scale by iterations / selected for an estimate
+		float neighborInsertMs, lineInsertMs;   // part of the sampled phase time spent inside open-list insertion
+		unsigned long long neighborInserts, lineInserts;
+		int queueBefore, queueAfter;
+	};
 
 	void harvest()
 	{
@@ -143,6 +168,7 @@ private:
 			m_queueCells += f.counters[static_cast<unsigned int>(PerformanceProfile::Counter::QueueCells)];
 			m_visited += f.counters[static_cast<unsigned int>(PerformanceProfile::Counter::ObjectsVisited)];
 		}
+		harvestPaths();
 		m_pendingMs.clear();
 		m_recorder.start(PerformanceProfile::now());
 	}
@@ -231,6 +257,15 @@ private:
 				line(f, " | %u recalculations compared, %u mismatches", PathfindZoneManager::verifyComparisons(), PathfindZoneManager::verifyMismatches());
 			line(f, "\n");
 		}
+		for (FILE *f : out)
+		{
+			if (!f) continue;
+			line(f, "open list mode: %s | inserts answered by the index %u | inserts that walked %u (%llu hops)", Pathfinder::openListModeName(), Pathfinder::openListIndexedInserts(), Pathfinder::openListWalkedInserts(), Pathfinder::openListWalkedHops());
+			if (envText("GENERALS_PATH_VERIFY")) line(f, " | %u insertions verified against the original walk", Pathfinder::openListVerifiedInserts());
+			line(f, "\n");
+			if (envText("GENERALS_PATH_TRACE_HASH")) line(f, "open list evolution digest: %016llX\n", Pathfinder::openListTraceDigest());
+		}
+		if (m_recorder.deepPaths()) reportPaths(out, base);
 		if (FILE *f = fopen((base + "_fingerprint.txt").c_str(), "w"))
 		{
 			for (const DeterminismFingerprint::Checkpoint &c : m_trace) line(f, "%s\n", DeterminismFingerprint::format(c).c_str());
@@ -253,6 +288,195 @@ private:
 		if (out[1]) fclose(out[1]);
 	}
 
+	void harvestPaths()
+	{
+		if (!m_recorder.deepPaths()) return;
+		m_droppedPaths += m_recorder.droppedPaths();
+		for (const PerformanceProfile::PathSample &ps : m_recorder.paths())
+		{
+			if (ps.logic == 0) continue;           // the map-load update
+			PathRec r;
+			r.kind = ps.kind; r.request = ps.request; r.outcome = ps.outcome;
+			r.frame = ps.logic; r.object = ps.object; r.surfaces = ps.surfaces;
+			r.layer = ps.layer; r.radius = ps.radius; r.human = ps.human; r.crusher = ps.crusher;
+			r.zoneRejected = ps.zoneRejected;
+			r.inclusiveMs = static_cast<float>(static_cast<double>(ps.inclusive) * 1000.0 / m_freq);
+			r.exclusiveMs = static_cast<float>(static_cast<double>(ps.exclusive) * 1000.0 / m_freq);
+			r.fromX = ps.fromX; r.fromY = ps.fromY; r.toX = ps.toX; r.toY = ps.toY;
+			for (unsigned int w = 0; w < PerformanceProfile::PathWorkCount; ++w) r.work[w] = ps.work[w];
+			r.id = ps.id; r.parent = ps.parent;
+			r.iterations = ps.phases.iterations; r.selected = ps.phases.selected;
+			r.neighborCalls = ps.phases.metrics[static_cast<unsigned int>(PerformanceProfile::PathPhaseKind::Neighbor)].calls;
+			r.lineCalls = ps.phases.metrics[static_cast<unsigned int>(PerformanceProfile::PathPhaseKind::Line)].calls;
+			r.neighborMs = static_cast<float>(static_cast<double>(ps.phases.metrics[static_cast<unsigned int>(PerformanceProfile::PathPhaseKind::Neighbor)].inclusive) * 1000.0 / m_freq);
+			r.lineMs = static_cast<float>(static_cast<double>(ps.phases.metrics[static_cast<unsigned int>(PerformanceProfile::PathPhaseKind::Line)].inclusive) * 1000.0 / m_freq);
+			{
+				const PerformanceProfile::PathPhaseMetric &nm = ps.phases.metrics[static_cast<unsigned int>(PerformanceProfile::PathPhaseKind::Neighbor)];
+				const PerformanceProfile::PathPhaseMetric &lm = ps.phases.metrics[static_cast<unsigned int>(PerformanceProfile::PathPhaseKind::Line)];
+				r.neighborInsertMs = static_cast<float>(static_cast<double>(nm.insertion) * 1000.0 / m_freq);
+				r.lineInsertMs = static_cast<float>(static_cast<double>(lm.insertion) * 1000.0 / m_freq);
+				r.neighborInserts = nm.inserts; r.lineInserts = lm.inserts;
+			}
+			r.queueBefore = ps.queueBefore; r.queueAfter = ps.queueAfter;
+			m_pathRecs.push_back(r);
+		}
+	}
+
+	static const char *kindName(PerformanceProfile::PathKind k)
+	{
+		static const char *names[] = {"request", "internal", "ground", "hierarchical", "closest", "attack", "safe", "patch", "moveaway",
+			"queue", "dispatch", "reconstruction", "cleanup", "zones", "zoneflags", "obstacle"};
+		const unsigned int i = static_cast<unsigned int>(k);
+		return i < sizeof(names) / sizeof(*names) ? names[i] : "?";
+	}
+	static const char *outcomeName(PerformanceProfile::PathOutcome o)
+	{
+		static const char *names[] = {"observed", "path", "closest", "null_before_work", "null_after_work"};
+		const unsigned int i = static_cast<unsigned int>(o);
+		return i < sizeof(names) / sizeof(*names) ? names[i] : "?";
+	}
+	static double workOf(const PathRec &r, PerformanceProfile::PathWork w) { return static_cast<double>(r.work[static_cast<unsigned int>(w)]); }
+
+	// Pearson correlation of two samples (0 when degenerate).
+	static double correlation(const std::vector<double> &a, const std::vector<double> &b)
+	{
+		const size_t n = a.size();
+		if (n < 3) return 0.0;
+		double ma = 0, mb = 0;
+		for (size_t i = 0; i < n; ++i) { ma += a[i]; mb += b[i]; }
+		ma /= static_cast<double>(n); mb /= static_cast<double>(n);
+		double sab = 0, saa = 0, sbb = 0;
+		for (size_t i = 0; i < n; ++i) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) * (a[i] - ma); sbb += (b[i] - mb) * (b[i] - mb); }
+		return (saa > 0 && sbb > 0) ? sab / std::sqrt(saa * sbb) : 0.0;
+	}
+
+	void reportPaths(FILE *const *out, const std::string &base)
+	{
+		using namespace SimulationTickStats;
+		using PerformanceProfile::PathKind;
+		using PerformanceProfile::PathWork;
+		// ---- per kind
+		for (FILE *f : {out[0], out[1]})
+		{
+			if (!f) continue;
+			line(f, "path trace: %zu samples (dropped %llu) | all times in ms, INCLUSIVE of nested samples" "%s", m_pathRecs.size(), m_droppedPaths, "\n");
+			line(f, "  %-15s %8s %10s %8s %8s %8s %8s %9s %7s %7s %7s %7s %7s %7s\n", "kind", "count", "total_ms", "mean", "p95", "p99", "p99.9", "max", ">5ms", ">10ms", ">25ms", ">50ms", ">100ms", ">200ms");
+		}
+		for (unsigned int k = 0; k < 16; ++k)
+		{
+			std::vector<double> v;
+			double total = 0;
+			for (const PathRec &r : m_pathRecs) if (static_cast<unsigned int>(r.kind) == k) { v.push_back(r.inclusiveMs); total += r.inclusiveMs; }
+			if (v.empty()) continue;
+			size_t over[6] = {0, 0, 0, 0, 0, 0};
+			const double th[6] = {5, 10, 25, 50, 100, 200};
+			for (double x : v) for (int t = 0; t < 6; ++t) if (x > th[t]) ++over[t];
+			for (FILE *f : {out[0], out[1]})
+			{
+				if (!f) continue;
+				line(f, "  %-15s %8zu %10.1f %8.4f %8.4f %8.4f %8.4f %9.3f %7zu %7zu %7zu %7zu %7zu %7zu\n", kindName(static_cast<PathKind>(k)), v.size(), total, total / static_cast<double>(v.size()),
+					percentile(v, 95.0), percentile(v, 99.0), percentile(v, 99.9), percentile(v, 100.0), over[0], over[1], over[2], over[3], over[4], over[5]);
+			}
+		}
+		// ---- the searches proper: internal (A*), ground, hierarchical, closest, attack, safe, patch, moveaway
+		std::vector<const PathRec *> searches;
+		for (const PathRec &r : m_pathRecs)
+			if (r.kind == PathKind::Internal || r.kind == PathKind::Ground || r.kind == PathKind::Hierarchical || r.kind == PathKind::Closest ||
+				r.kind == PathKind::Attack || r.kind == PathKind::Safe || r.kind == PathKind::Patch || r.kind == PathKind::MoveAway)
+				searches.push_back(&r);
+		std::vector<const PathRec *> sorted = searches;
+		std::sort(sorted.begin(), sorted.end(), [](const PathRec *a, const PathRec *b) { return a->inclusiveMs > b->inclusiveMs; });
+		for (FILE *f : {out[0], out[1]})
+		{
+			if (!f) continue;
+			line(f, "top 25 slowest search samples (internal / ground / hierarchical / closest / attack / safe / patch / moveaway):\n");
+			line(f, "  %-12s %7s %-9s %-6s %-12s %7s %7s %8s %9s %9s %9s %9s %7s %7s %7s %s\n", "kind", "ms", "frame", "obj", "outcome", "pops", "opens", "info_new", "info_fail", "fwd_hops", "rev_hops", "cleaned", "layer", "human", "crusher", "from->to (world)");
+			size_t shown = 0;
+			for (const PathRec *r : sorted)
+			{
+				if (++shown > 25) break;
+				line(f, "  %-12s %7.2f %-9u %-6u %-12s %7.0f %7.0f %8.0f %9.0f %9.0f %9.0f %9.0f %7d %7d %7d (%.0f,%.0f)->(%.0f,%.0f)\n", kindName(r->kind), r->inclusiveMs, r->frame, r->object, outcomeName(r->outcome),
+					workOf(*r, PathWork::HeadPops), workOf(*r, PathWork::OpenInserts), workOf(*r, PathWork::InfoNew), workOf(*r, PathWork::InfoFailed), workOf(*r, PathWork::ForwardHops), workOf(*r, PathWork::ReverseHops), workOf(*r, PathWork::CleanedCells),
+					r->layer, r->human, r->crusher, r->fromX, r->fromY, r->toX, r->toY);
+			}
+		}
+		// ---- work distributions and correlations for the A* kernel (kind internal)
+		std::vector<double> ms, pops, opens, fwd, rev, infoNew, infoFail, cleaned;
+		for (const PathRec &r : m_pathRecs)
+		{
+			if (r.kind != PathKind::Internal) continue;
+			ms.push_back(r.inclusiveMs);
+			pops.push_back(workOf(r, PathWork::HeadPops)); opens.push_back(workOf(r, PathWork::OpenInserts)); fwd.push_back(workOf(r, PathWork::ForwardHops)); rev.push_back(workOf(r, PathWork::ReverseHops));
+			infoNew.push_back(workOf(r, PathWork::InfoNew)); infoFail.push_back(workOf(r, PathWork::InfoFailed)); cleaned.push_back(workOf(r, PathWork::CleanedCells));
+		}
+		for (FILE *f : {out[0], out[1]})
+		{
+			if (!f || ms.empty()) continue;
+			line(f, "internal A* kernel (%zu searches): work distribution p50 / p95 / p99 / p99.9 / max\n", ms.size());
+			const struct { const char *name; const std::vector<double> *v; } rows[] = {{"head pops (cells expanded)", &pops}, {"open-list inserts", &opens}, {"forward insertion hops", &fwd}, {"reverse insertion hops", &rev}, {"cell infos allocated", &infoNew}, {"cell info alloc failures", &infoFail}, {"cells cleaned", &cleaned}};
+			for (const auto &row : rows)
+				line(f, "  %-28s %10.0f %10.0f %10.0f %10.0f %12.0f\n", row.name, percentile(*row.v, 50.0), percentile(*row.v, 95.0), percentile(*row.v, 99.0), percentile(*row.v, 99.9), percentile(*row.v, 100.0));
+			double totalFwd = 0, totalOpens = 0, totalMs = 0;
+			for (double x : fwd) totalFwd += x;
+			for (double x : opens) totalOpens += x;
+			for (double x : ms) totalMs += x;
+			line(f, "  mean forward hops per open-list insert: %.1f | total hops %.3g | total ms %.1f\n", totalOpens > 0 ? totalFwd / totalOpens : 0.0, totalFwd, totalMs);
+			line(f, "  correlation of search ms with: head pops %.3f | opens %.3f | forward hops %.3f | reverse hops %.3f | info allocated %.3f | cleaned %.3f\n",
+				correlation(ms, pops), correlation(ms, opens), correlation(ms, fwd), correlation(ms, rev), correlation(ms, infoNew), correlation(ms, cleaned));
+			// share of search time by expansion-count bucket
+			const double edges[] = {0, 100, 500, 2000, 5000, 20000, 1e18};
+			line(f, "  by cells expanded: bucket | searches | total ms | share of search time | max ms | mean hops/insert\n");
+			for (int b = 0; b < 6; ++b)
+			{
+				size_t n = 0; double sum = 0, mx = 0, hf = 0, ho = 0;
+				for (size_t i = 0; i < ms.size(); ++i) if (pops[i] >= edges[b] && pops[i] < edges[b + 1]) { ++n; sum += ms[i]; if (ms[i] > mx) mx = ms[i]; hf += fwd[i]; ho += opens[i]; }
+				line(f, "    [%.0f, %.0f) | %zu | %.1f | %.1f%% | %.2f | %.1f\n", edges[b], b == 5 ? -1.0 : edges[b + 1], n, sum, totalMs > 0 ? 100.0 * sum / totalMs : 0.0, mx, ho > 0 ? hf / ho : 0.0);
+			}
+			// outcome / class split of the internal searches
+			size_t byOutcome[5] = {0, 0, 0, 0, 0}; double outcomeMs[5] = {0, 0, 0, 0, 0}; size_t zoneRej = 0, human = 0, computer = 0; double humanMs = 0, computerMs = 0, rejMs = 0;
+			for (const PathRec &r : m_pathRecs)
+			{
+				if (r.kind != PathKind::Internal) continue;
+				const unsigned int o = static_cast<unsigned int>(r.outcome);
+				if (o < 5) { ++byOutcome[o]; outcomeMs[o] += r.inclusiveMs; }
+				if (r.zoneRejected) { ++zoneRej; rejMs += r.inclusiveMs; }
+				if (r.human == 1) { ++human; humanMs += r.inclusiveMs; } else { ++computer; computerMs += r.inclusiveMs; }
+			}
+			line(f, "  outcome split (count / total ms): path %zu / %.1f | closest %zu / %.1f | null before work %zu / %.1f | null after work (exhausted the open list) %zu / %.1f | zone-rejected %zu / %.1f\n",
+				byOutcome[1], outcomeMs[1], byOutcome[2], outcomeMs[2], byOutcome[3], outcomeMs[3], byOutcome[4], outcomeMs[4], zoneRej, rejMs);
+			line(f, "  requester: human %zu / %.1f ms | computer %zu / %.1f ms\n", human, humanMs, computer, computerMs);
+		}
+		// ---- request wrappers: fallback split
+		{
+			size_t reqs = 0, fallbacks = 0, fbFailed = 0; double reqMs = 0, fbMs = 0, nofbMs = 0;
+			for (const PathRec &r : m_pathRecs)
+			{
+				if (r.kind != PathKind::Request) continue;
+				++reqs; reqMs += r.inclusiveMs;
+				if (workOf(r, PathWork::HierarchyFallbacks) > 0) { ++fallbacks; fbMs += r.inclusiveMs; if (r.outcome != PerformanceProfile::PathOutcome::ReturnedPath) ++fbFailed; }
+				else nofbMs += r.inclusiveMs;
+			}
+			for (FILE *f : {out[0], out[1]})
+			{
+				if (!f) continue;
+				line(f, "findPath requests: %zu (%.1f ms) | with hierarchical fallback: %zu (%.1f ms, %zu returned no path) | without: %zu (%.1f ms)\n", reqs, reqMs, fallbacks, fbMs, fbFailed, reqs - fallbacks, nofbMs);
+			}
+		}
+		// ---- csv of every search sample >= 1 ms
+		if (FILE *f = fopen((base + "_paths.csv").c_str(), "w"))
+		{
+			line(f, "frame,kind,id,parent,inclusive_ms,exclusive_ms,outcome,object,layer,radius,human,crusher,zone_rejected,pops,opens,info_new,info_fail,fwd_hops,rev_hops,cleaned,block_zone_queries,hier_fallbacks,iterations,sampled_iterations,neighbor_ms_sampled,line_ms_sampled,neighbor_insert_ms_sampled,line_insert_ms_sampled,neighbor_inserts_sampled,line_inserts_sampled,queue_before,queue_after,from_x,from_y,to_x,to_y\n");
+			for (const PathRec &r : m_pathRecs)
+			{
+				if (r.inclusiveMs < 1.0f) continue;
+				line(f, "%u,%s,%llu,%llu,%.4f,%.4f,%s,%u,%d,%d,%d,%d,%d,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%llu,%llu,%.4f,%.4f,%.4f,%.4f,%llu,%llu,%d,%d,%.1f,%.1f,%.1f,%.1f\n", r.frame, kindName(r.kind), r.id, r.parent, r.inclusiveMs, r.exclusiveMs, outcomeName(r.outcome), r.object, r.layer, r.radius, r.human, r.crusher, r.zoneRejected ? 1 : 0,
+					workOf(r, PathWork::HeadPops), workOf(r, PathWork::OpenInserts), workOf(r, PathWork::InfoNew), workOf(r, PathWork::InfoFailed), workOf(r, PathWork::ForwardHops), workOf(r, PathWork::ReverseHops), workOf(r, PathWork::CleanedCells), workOf(r, PathWork::BlockZoneQueries), workOf(r, PathWork::HierarchyFallbacks),
+					r.iterations, r.selected, r.neighborMs, r.lineMs, r.neighborInsertMs, r.lineInsertMs, r.neighborInserts, r.lineInserts, r.queueBefore, r.queueAfter, r.fromX, r.fromY, r.toX, r.toY);
+			}
+			fclose(f);
+		}
+	}
+
 	unsigned long long m_sumCalls() const
 	{
 		unsigned long long sum = 0;
@@ -273,6 +497,8 @@ private:
 	std::vector<unsigned long long> m_calls;
 	double m_startupMs = 0.0;
 	std::array<unsigned long long, PerformanceProfile::CategoryCount> m_callTotals{};
+	std::vector<PathRec> m_pathRecs;
+	unsigned long long m_droppedPaths = 0;
 	unsigned long long m_pathsQueued = 0, m_queueCells = 0, m_visited = 0;
 	std::vector<DeterminismFingerprint::Checkpoint> m_trace;
 };

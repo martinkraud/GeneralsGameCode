@@ -19,6 +19,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/DeterminismFingerprintTest.cpp
     GameEngine/Common/SimulationWorkerPlanTest.cpp
     GameEngine/Common/ZoneEquivalenceTest.cpp
+    GameEngine/Common/OpenListIndexTest.cpp
     GameEngine/Common/EnhancedHudLayoutTest.cpp
     GameEngine/Common/EnhancedHudInteractiveTest.cpp
     GameEngine/Common/GroundTranslationTest.cpp

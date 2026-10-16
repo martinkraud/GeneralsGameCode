@@ -35,6 +35,9 @@
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#if defined(_MSC_VER)
+#include <process.h>
+#endif
 
 #include "Common/PerfTimer.h"
 #include "Common/Player.h"
@@ -1186,6 +1189,8 @@ PathfindCellInfo *PathfindCellInfo::getACellInfo(PathfindCell *cell,const ICoord
 		info->m_totalCost = 0;
 		info->m_open = 0;
 		info->m_closed = 0;
+		info->m_openKey = 0;
+		info->m_indexed = 0;
 		info->m_obstacleID = INVALID_ID;
 		info->m_goalUnitID = INVALID_ID;
 		info->m_posUnitID = INVALID_ID;
@@ -1682,6 +1687,65 @@ Bool PathfindCell::removeObstacle( Object *obstacle )
 }
 
 #if RETAIL_COMPATIBLE_PATHFINDING
+// ---- X64.40 open-list statistics / modes -----------------------------------------------------------------------------------------------------
+enum OpenListMode { OPENLIST_FAST = 0, OPENLIST_LEGACY = 1, OPENLIST_VERIFY = 2 };
+static OpenListMode currentOpenListMode()
+{
+	static int mode = -1;
+	if (mode < 0) {
+		const char *verify = getenv("GENERALS_PATH_VERIFY");
+		const char *legacy = getenv("GENERALS_PATH_LEGACY");
+		mode = (verify && *verify) ? OPENLIST_VERIFY : ((legacy && *legacy) ? OPENLIST_LEGACY : OPENLIST_FAST);
+	}
+	return static_cast<OpenListMode>(mode);
+}
+static bool openListTraceEnabled()
+{
+	static int on = -1;
+	if (on < 0) { const char *v = getenv("GENERALS_PATH_TRACE_HASH"); on = (v && *v) ? 1 : 0; }
+	return on == 1;
+}
+static UnsignedInt s_openListIndexedInserts = 0, s_openListWalkedInserts = 0, s_openListVerifiedInserts = 0;
+static unsigned long long s_openListWalkedHops = 0;
+static unsigned long long s_openListTrace = 1469598103934665603ull;
+static inline void openListTraceMix(unsigned long long a, unsigned long long b, unsigned long long c)
+{
+	const unsigned long long values[3] = {a, b, c};
+	for (int i = 0; i < 3; ++i) {
+		s_openListTrace ^= values[i];
+		s_openListTrace *= 1099511628211ull;
+	}
+}
+const char *Pathfinder::openListModeName()
+{
+	switch (currentOpenListMode()) {
+		case OPENLIST_LEGACY: return "LEGACY (original head-first walk)";
+		case OPENLIST_VERIFY: return "VERIFY (original walk applied, index prediction compared)";
+		default: return "default (exact open-list index)";
+	}
+}
+UnsignedInt Pathfinder::openListIndexedInserts() { return s_openListIndexedInserts; }
+UnsignedInt Pathfinder::openListWalkedInserts() { return s_openListWalkedInserts; }
+unsigned long long Pathfinder::openListWalkedHops() { return s_openListWalkedHops; }
+UnsignedInt Pathfinder::openListVerifiedInserts() { return s_openListVerifiedInserts; }
+unsigned long long Pathfinder::openListTraceDigest() { return s_openListTrace; }
+
+void PathfindCellList::reset(PathfindCell* newHead)
+{
+	m_head = newHead;
+	m_tail = nullptr;
+	if (m_index) {
+		m_index->clear();
+		if (s_useFixedPathfinding) {
+			m_index->markUnsorted();      // the "fixed" pathfinding inserts with other algorithms: never use the index again
+		} else if (newHead && newHead->m_info) {
+			newHead->m_info->m_openKey = newHead->m_info->m_totalCost;
+			newHead->m_info->m_indexed = 1;
+			m_index->noteInserted(newHead, newHead->m_info->m_openKey);
+		}
+	}
+}
+
 // Retail compatible insertion sort
 void PathfindCell::forwardInsertionSortRetailCompatible(PathfindCellList& list)
 {
@@ -1691,33 +1755,75 @@ void PathfindCell::forwardInsertionSortRetailCompatible(PathfindCellList& list)
 	// mark the newCell as being on the open list
 	m_info->m_open = true;
 	m_info->m_closed = false;
+	m_info->m_indexed = 0;
+
+	OpenListIndex<PathfindCell>* const index = list.m_index;
 
 	if (list.m_head == nullptr)
 	{
 		list.m_head = this;
 		m_info->m_prevOpen = nullptr;
 		m_info->m_nextOpen = nullptr;
+		if (index) {
+			index->clear();
+			if (s_useFixedPathfinding) index->markUnsorted();
+			else { m_info->m_openKey = m_info->m_totalCost; m_info->m_indexed = 1; index->noteInserted(this, m_info->m_openKey); }
+		}
+		if (openListTraceEnabled()) openListTraceMix(1, (static_cast<unsigned long long>(static_cast<unsigned>(m_info->m_pos.x)) << 32) | static_cast<unsigned>(m_info->m_pos.y), m_info->m_totalCost);
 		return;
 	}
 
-	// insertion sort
-	PathfindCell* currentCell = list.m_head;
-	PathfindCell* previousCell = nullptr;
-	UnsignedInt cellCount = 0;
-	while (currentCell && cellCount < PATHFIND_CELLS_PER_FRAME && currentCell->m_info->m_totalCost <= m_info->m_totalCost)
+	// The walk starts at the head, passes every node whose total cost is <= ours, but never more than PATHFIND_CELLS_PER_FRAME of them. While the list is
+	// sorted and shorter than that cap, OpenListIndex finds the same insertion point without walking (see OpenListIndex.h for the argument).
+	struct WalkAccess
 	{
-		// Prevent a retail crash where a pathfindCell has an m_info with a dangling nextOpen pointer
-		if (currentCell->m_info->m_nextOpen && !currentCell->m_info->m_nextOpen->m_cell->m_info)
+		unsigned cost(PathfindCell* c) const { return c->m_info->m_totalCost; }
+		PathfindCell* next(PathfindCell* c) const { return c->getNextOpen(); }
+		bool visit(PathfindCell* c) const
 		{
-			currentCell->m_info->m_nextOpen->m_cell = nullptr;
-			currentCell->m_info->m_nextOpen = nullptr;
+			// Prevent a retail crash where a pathfindCell has an m_info with a dangling nextOpen pointer
+			if (c->m_info->m_nextOpen && !c->m_info->m_nextOpen->m_cell->m_info)
+			{
+				c->m_info->m_nextOpen->m_cell = nullptr;
+				c->m_info->m_nextOpen = nullptr;
+				return true;
+			}
+			return false;
 		}
-
-		cellCount++;
-		previousCell = currentCell;
-		currentCell = currentCell->getNextOpen();
+	};
+	WalkAccess access;
+	unsigned hops = 0;
+	bool registerNew = false;
+	PathfindCell* previousCell = nullptr;
+	const unsigned cost = m_info->m_totalCost;
+	if (currentOpenListMode() == OPENLIST_VERIFY && index)
+	{
+		// the original walk is applied; the index only predicts, and any difference stops the run
+		bool unusedRegister = false;
+		unsigned walkHops = 0;
+		previousCell = openListInsertionPredecessor<PathfindCell, WalkAccess>(nullptr, list.m_head, cost, PATHFIND_CELLS_PER_FRAME, access, &walkHops, &unusedRegister);
+		const bool wouldUseIndex = index->sorted() && index->count() < PATHFIND_CELLS_PER_FRAME;
+		PathfindCell* predicted = openListInsertionPredecessor<PathfindCell, WalkAccess>(index, list.m_head, cost, PATHFIND_CELLS_PER_FRAME, access, &hops, &registerNew);
+		++s_openListVerifiedInserts;
+		if (wouldUseIndex && predicted != previousCell)
+		{
+			printf("OPEN LIST VERIFY MISMATCH at frame %u, insertion %u: cell (%d,%d) cost %u: walk puts it after (%d,%d), index predicts after (%d,%d); list size %u\n",
+				static_cast<unsigned>(TheGameLogic->getFrame()), s_openListVerifiedInserts, m_info->m_pos.x, m_info->m_pos.y, cost,
+				previousCell ? previousCell->m_info->m_pos.x : -1, previousCell ? previousCell->m_info->m_pos.y : -1,
+				predicted ? predicted->m_info->m_pos.x : -1, predicted ? predicted->m_info->m_pos.y : -1, index->count());
+			fflush(stdout);
+			_exit(3);
+		}
+		hops = walkHops;
 	}
-	PerformanceProfile::pathCount(PerformanceProfile::PathWork::ForwardHops,cellCount);
+	else
+	{
+		previousCell = openListInsertionPredecessor<PathfindCell, WalkAccess>(index, list.m_head, cost, PATHFIND_CELLS_PER_FRAME, access, &hops, &registerNew);
+	}
+	if (hops) { ++s_openListWalkedInserts; s_openListWalkedHops += hops; } else { ++s_openListIndexedInserts; }
+	PerformanceProfile::pathCount(PerformanceProfile::PathWork::ForwardHops,hops);
+
+	PathfindCell* currentCell = previousCell ? previousCell->getNextOpen() : list.m_head;
 
 	if (currentCell)
 	{
@@ -1740,6 +1846,13 @@ void PathfindCell::forwardInsertionSortRetailCompatible(PathfindCellList& list)
 		m_info->m_prevOpen = previousCell->m_info;
 		m_info->m_nextOpen = nullptr;
 	}
+	if (registerNew && index && !s_useFixedPathfinding)
+	{
+		m_info->m_openKey = static_cast<UnsignedShort>(cost);
+		m_info->m_indexed = 1;
+		index->noteInserted(this, cost);
+	}
+	if (openListTraceEnabled()) openListTraceMix(1, (static_cast<unsigned long long>(static_cast<unsigned>(m_info->m_pos.x)) << 32) | static_cast<unsigned>(m_info->m_pos.y), (static_cast<unsigned long long>(cost) << 40) ^ (previousCell ? ((static_cast<unsigned long long>(static_cast<unsigned>(previousCell->m_info->m_pos.x)) << 20) ^ static_cast<unsigned>(previousCell->m_info->m_pos.y)) : 0xFFFFFFFFFFull));
 }
 #endif
 
@@ -1871,6 +1984,19 @@ void PathfindCell::removeFromOpenList( PathfindCellList &list )
 {
 	DEBUG_ASSERTCRASH(m_info, ("Has to have info."));
 	DEBUG_ASSERTCRASH(m_info->m_closed==FALSE && m_info->m_open==TRUE, ("Serious error - Invalid flags. jba"));
+#if RETAIL_COMPATIBLE_PATHFINDING
+	if (list.m_index) {
+		if (list.m_index->sorted() && m_info->m_indexed) {
+			// the node leaves under the key it was registered with (its cost may already have been improved)
+			PathfindCellInfo *prevInfo = m_info->m_prevOpen;
+			list.m_index->noteRemoved(this, m_info->m_openKey, prevInfo ? prevInfo->m_cell : nullptr, prevInfo ? prevInfo->m_openKey : 0);
+		}
+		m_info->m_indexed = 0;
+	}
+	// the trace must hash the removal in every mode (including the original walk, which has no index): the cost the node was inserted with is not
+	// available without the index, so the cost it has NOW (it may have been improved just before the removal) is hashed - identical in all modes
+	if (openListTraceEnabled()) openListTraceMix(2, (static_cast<unsigned long long>(static_cast<unsigned>(m_info->m_pos.x)) << 32) | static_cast<unsigned>(m_info->m_pos.y), m_info->m_totalCost);
+#endif
 	if (m_info->m_nextOpen)
 		m_info->m_nextOpen->m_prevOpen = m_info->m_prevOpen;
 	else {
@@ -1885,6 +2011,9 @@ void PathfindCell::removeFromOpenList( PathfindCellList &list )
 	m_info->m_open = false;
 	m_info->m_nextOpen = nullptr;
 	m_info->m_prevOpen = nullptr;
+#if RETAIL_COMPATIBLE_PATHFINDING
+	if (list.m_index && list.m_head == nullptr) list.m_index->clear();
+#endif
 
 }
 
@@ -4126,6 +4255,9 @@ Pathfinder::Pathfinder() :m_map(nullptr)
 {
 	debugPath = nullptr;
 	PathfindCellInfo::allocateCellInfos();
+#if RETAIL_COMPATIBLE_PATHFINDING
+	if (currentOpenListMode() != OPENLIST_LEGACY) m_openList.attachIndex(&m_openListIndex);
+#endif
 	reset();
 }
 

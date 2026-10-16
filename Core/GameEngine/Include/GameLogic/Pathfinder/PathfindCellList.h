@@ -20,6 +20,8 @@
 
 class PathfindCell;
 
+#include "GameLogic/Pathfinder/OpenListIndex.h"
+
 // TheSuperHackers @info The PathfindCellList class acts as a new management class for the pathfindcell open and closed lists
 class PathfindCellList
 {
@@ -27,10 +29,11 @@ class PathfindCellList
 	friend class PathfindCell;
 
 public:
-	PathfindCellList() : m_head(nullptr), m_tail(nullptr) {}
+	PathfindCellList() : m_head(nullptr), m_tail(nullptr), m_index(nullptr) {}
 
 #if RETAIL_COMPATIBLE_PATHFINDING
-	void reset(PathfindCell* newHead = nullptr) { m_head = newHead; m_tail = nullptr; }
+	void reset(PathfindCell* newHead = nullptr);   // X64.40: defined in AIPathfind.cpp (restarts the open-list index together with the list)
+	void attachIndex(OpenListIndex<PathfindCell>* index) { m_index = index; }
 #else
 	void reset() { m_head = nullptr; m_tail = nullptr; }
 #endif
@@ -44,4 +47,5 @@ public:
 private:
 	PathfindCell* m_head;
 	PathfindCell* m_tail;
+	OpenListIndex<PathfindCell>* m_index;   // X64.40: exact accelerator of the retail insertion walk (null = the original walk only)
 };
