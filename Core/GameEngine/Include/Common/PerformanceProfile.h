@@ -25,7 +25,14 @@ enum class Category : unsigned int
 	NativeBeginRender, NativeTerrain, NativeTerrainOverlays, NativeObjects, NativeObjGather, NativeObjProcess, NativeFxGround, NativeFxShadows, NativeFxWater, NativeFxShroud, NativeFxParticles, NativeGeomUpload, NativeSubmit, NativeOverlays, NativeUi, NativeDevOverlay, NativeMouse, NativeEndRender, ZoneCalc,
 	// X64.35 shadow attribution, nested in NativeFxShadows: volume casters (gather the posed geometry / project / emit the
 	// batch) and decal shadows (EmitDecal). The remainder (exclusive time of NativeFxShadows) is the CollectShadows loop.
-	NativeShadowGather, NativeShadowProject, NativeShadowEmit, NativeShadowDecal, Count
+	NativeShadowGather, NativeShadowProject, NativeShadowEmit, NativeShadowDecal,
+	// X64.38 simulation-tick phase attribution (nested in Logic; AIGlobal, ObjectUpdates, PathQueue/ZoneCalc already exist): the
+	// script engine, terrain logic, the replay-CRC calculation, the recorder, command processing, production, the partition
+	// manager, the destroy list, the weapon/locomotor/victory stores and the disabled-status loop.
+	LogicScripts, LogicTerrain, LogicCrc, LogicRecorder, LogicCommands, LogicBuildAssist, LogicPartition, LogicDestroy, LogicStores, LogicDisabledLoop,
+	// X64.38 ZoneCalc internals (nested in ZoneCalc): the block-wise labelling scan, the collapse + relabel pass, the per-block hierarchical
+	// data, and the whole-map equivalence pass + table flattening. The remainder is the exclusive time of ZoneCalc itself.
+	ZoneLabel, ZoneRelabel, ZoneBlocks, ZoneHierarchy, Count
 };
 // X64.34: DrawCalls/TexturesCreated/BuffersCreated are per-frame deltas of the native backend's cumulative counters;
 // DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame

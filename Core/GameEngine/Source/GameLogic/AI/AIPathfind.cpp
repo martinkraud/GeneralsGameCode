@@ -2702,6 +2702,8 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 	Int yCount = (globalBounds.hi.y-globalBounds.lo.y+1+ZONE_BLOCK_SIZE-1)/ZONE_BLOCK_SIZE;
 
 	Int xBlock, yBlock;
+	{
+	PERFORMANCE_PROFILE_SCOPE(ZoneLabel);
 	for (xBlock = 0; xBlock<xCount; xBlock++) {
 		for (yBlock=0; yBlock<yCount; yBlock++) {
 			IRegion2D bounds;
@@ -2751,8 +2753,11 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
  		}
 	}
 
+	}
 	Int totalZones = m_maxZone;
 
+	{
+	PERFORMANCE_PROFILE_SCOPE(ZoneRelabel);
 	// Collapse the zones into a 1,2,3... sequence, removing collapsed zones.
 	m_maxZone = 1;
 	Int collapsedZones[maxZones];
@@ -2796,8 +2801,11 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 		}
 	}
 
+	}
 	allocateZones();
 
+	{
+	PERFORMANCE_PROFILE_SCOPE(ZoneBlocks);
 	for (xBlock=0; xBlock<xCount; xBlock++) {
 		for (yBlock=0; yBlock<yCount; yBlock++) {
 			IRegion2D bounds;
@@ -2816,7 +2824,10 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 			m_zoneBlocks[xBlock][yBlock].blockCalculateZones(map, layers, bounds);
 		}
 	}
+	}
 
+	{
+	PERFORMANCE_PROFILE_SCOPE(ZoneHierarchy);
 	// Determine water/ground equivalent zones, and ground/cliff equivalent zones.
 	for (i=0; i<m_zonesAllocated; i++) {
 		m_groundCliffZones[i] = i;
@@ -2958,6 +2969,7 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 	flattenZones(m_groundRubbleZones, m_hierarchicalZones, m_maxZone);
 	flattenZones(m_terrainZones, m_hierarchicalZones, m_maxZone);
 	flattenZones(m_crusherZones, m_hierarchicalZones, m_maxZone);
+	}
 
 #ifdef DEBUG_QPF
 #if defined(DEBUG_LOGGING)

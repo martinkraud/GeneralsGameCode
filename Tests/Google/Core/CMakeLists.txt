@@ -15,6 +15,9 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/DisplaySettingsTest.cpp
     GameEngine/Common/DisplayTransactionTest.cpp
     GameEngine/Common/RenderScaleTest.cpp
+    GameEngine/Common/SimulationTickStatsTest.cpp
+    GameEngine/Common/DeterminismFingerprintTest.cpp
+    GameEngine/Common/SimulationWorkerPlanTest.cpp
     GameEngine/Common/EnhancedHudLayoutTest.cpp
     GameEngine/Common/EnhancedHudInteractiveTest.cpp
     GameEngine/Common/GroundTranslationTest.cpp

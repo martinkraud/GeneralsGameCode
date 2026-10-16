@@ -451,6 +451,16 @@ helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Presen
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
 
+## X64.38 CPU scalability foundation (CP12, foundation delivered)
+
+No threads were added. Read `X64_38_CPU_SCALABILITY.md`. Tools: `GENERALS_SIM_BENCH=<base>` (+ `GENERALS_SIM_IGNORE_CRC`, `GENERALS_SIM_FP_INTERVAL`)
+with `generalsv.exe -headless -replay <rep>` writes tick distribution, phase attribution and a determinism fingerprint;
+`scripts/performance/New-SimulationBenchmarkReplay.py` makes a self-playing 8-player AI replay (no game content committed);
+`Invoke-SimulationBenchmark.ps1` runs it N times and compares fingerprints. The engine finds its data relative to the exe: run a copy of the
+build from the game directory. Pure modules with tests: `SimulationTickStats.h`, `DeterminismFingerprint.h`, `SimulationWorkerPlan.h`.
+Findings: tail = path search + ZoneCalc; ZoneCalc `resolveZones` scans the whole zone table per union (fix serially, bit-identically, before any
+thread); 11 client-RNG sites in logic code and a record-vs-playback CRC mismatch at frame 1600 on this build are recorded as risks (R1).
+
 ## X64.37 Modern Display / Settings (CP11, ACCEPTED AND CLOSED 2026-10-16)
 
 Human native test of `x64-37-modern-settings-v4` (`8d4f6838d`): settings are usable, Interface selection works, Render Scale works (the v3

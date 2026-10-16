@@ -3234,6 +3234,7 @@ void GameLogic::update()
 
 	// update (execute) scripts
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicScripts);
 		TheScriptEngine->UPDATE();
 	}
 
@@ -3246,6 +3247,7 @@ void GameLogic::update()
 	// Note - TerrainLogic update needs to happen after ScriptEngine update, but before object updates.  jba.
 	// This way changes in bridges are noted in the script engine before being cleared in TerrainLogic->update
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicTerrain);
 		TheTerrainLogic->UPDATE();
 	}
 
@@ -3263,6 +3265,7 @@ void GameLogic::update()
 
 	if (generateForSolo || generateForMP)
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicCrc);
 		m_CRC = getCRC( CRC_RECALC );
 		bool isPlayback = (TheRecorder && TheRecorder->isPlaybackMode());
 
@@ -3289,11 +3292,13 @@ void GameLogic::update()
 
 	// Update the Recorder
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicRecorder);
 		TheRecorder->UPDATE();
 	}
 
 	// process client commands
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicCommands);
 		processCommandList( TheCommandList );
 	}
 
@@ -3394,11 +3399,13 @@ void GameLogic::update()
 
 	// production updates
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicBuildAssist);
 		TheBuildAssistant->UPDATE();
 	}
 
 	// update partition info
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicPartition);
 		ThePartitionManager->UPDATE();
 	}
 
@@ -3407,16 +3414,23 @@ void GameLogic::update()
 	//
 
 	// destroy all pending objects
-	processDestroyList();
-
-	// reset the command list, destroying all messages
-	TheCommandList->reset();
-
-	TheWeaponStore->UPDATE();
-	TheLocomotorStore->UPDATE();
-	TheVictoryConditions->UPDATE();
+	{
+		PERFORMANCE_PROFILE_SCOPE(LogicDestroy);
+		processDestroyList();
+	}
 
 	{
+		PERFORMANCE_PROFILE_SCOPE(LogicStores);
+		// reset the command list, destroying all messages
+		TheCommandList->reset();
+
+		TheWeaponStore->UPDATE();
+		TheLocomotorStore->UPDATE();
+		TheVictoryConditions->UPDATE();
+	}
+
+	{
+		PERFORMANCE_PROFILE_SCOPE(LogicDisabledLoop);
 		//Handle disabled statii (and re-enable objects once frame matches)
 		for( Object *obj = m_objList; obj; obj = obj->getNextObject() )
 		{
