@@ -71,9 +71,11 @@ TEST(EnhancedHudLayout, DoesNotStretchAcrossWideSurfaces)
 	const Result a = EnhancedHudLayout::compute(2560, 1440, layoutScaleFor(2560, 1440));
 	const Result b = EnhancedHudLayout::compute(3440, 1440, layoutScaleFor(3440, 1440));
 	const Result c = EnhancedHudLayout::compute(5120, 1440, layoutScaleFor(5120, 1440));
-	EXPECT_EQ(a.island.w, b.island.w);
-	EXPECT_EQ(a.island.w, c.island.w);
-	EXPECT_EQ(a.island.h, c.island.h);
+	// 2560 is bounded by the 82 % width cap (the wider surfaces are bounded by the UI scale): never larger
+	EXPECT_LE(a.island.w, b.island.w);
+	EXPECT_EQ(b.island.w, c.island.w);
+	EXPECT_EQ(b.island.h, c.island.h);
+	EXPECT_LE(a.island.h, c.island.h);
 	EXPECT_LT(c.island.w * 100, 5120 * 50);   // far below half of a 32:9 surface
 }
 
@@ -319,4 +321,152 @@ TEST(EnhancedHudLayout, WindowTableCoversTheOriginalFunctionalSurface)
 	EXPECT_TRUE(destinationFor("ButtonSmall", r, hide));
 	EXPECT_TRUE(hide);                                               // the retail 800 px size toggles have no equivalent
 	EXPECT_FALSE(destinationFor("NoSuchWindow", r, hide));
+}
+
+// ---- visual/layout refinement (native review 2): cash panel, General/XP region, radar controls, power column ------
+
+namespace
+{
+Rect physical(const Result &r, const char *window)
+{
+	Rect dst;
+	bool hide = false;
+	EXPECT_TRUE(destinationFor(window, dst, hide)) << window;
+	return toPhysical(r, dst);
+}
+}  // namespace
+
+TEST(EnhancedHudLayout, CashHasItsOwnPanelInsideTheCommandFrame)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			ASSERT_TRUE(r.valid) << s.name;
+			EXPECT_TRUE(r.cashFrame.within(r.commandFrame)) << s.name;
+			const Rect money = physical(r, "MoneyDisplay");
+			EXPECT_TRUE(money.within(r.cashFrame)) << s.name << " ui" << ui;
+			// readable: at least 120 reference units wide and 20 high, never smaller than the retail text window
+			EXPECT_GE(kCashFrame.w, 120);
+			EXPECT_GE(money.h, 12) << s.name;
+			// the cash panel does not touch the power bar or the command grid
+			EXPECT_FALSE(r.cashFrame.intersects(physical(r, "PowerWindow"))) << s.name;
+			EXPECT_FALSE(r.cashFrame.intersects(physical(r, "ButtonCommand01"))) << s.name;
+			EXPECT_FALSE(r.cashFrame.intersects(physical(r, "ButtonCommand11"))) << s.name;
+		}
+}
+
+TEST(EnhancedHudLayout, ThousandsGroupingIsPresentationOnly)
+{
+	wchar_t out[32];
+	groupThousands(0, out, 32);        EXPECT_STREQ(out, L"0");
+	groupThousands(999, out, 32);      EXPECT_STREQ(out, L"999");
+	groupThousands(1000, out, 32);     EXPECT_STREQ(out, L"1,000");
+	groupThousands(45200, out, 32);    EXPECT_STREQ(out, L"45,200");
+	groupThousands(1234567, out, 32);  EXPECT_STREQ(out, L"1,234,567");
+	groupThousands(4294967295ull, out, 32);  EXPECT_STREQ(out, L"4,294,967,295");
+	wchar_t tiny[4];
+	EXPECT_EQ(groupThousands(123456, tiny, 4), 3);   // never overruns the buffer
+}
+
+TEST(EnhancedHudLayout, GeneralRegionHasRoomForTheButtonBarAndReadableStars)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			ASSERT_TRUE(r.valid) << s.name;
+			const Rect general = physical(r, "ButtonGeneral");
+			const Rect bar = physical(r, "ExpBarForeground");
+			const Rect fill = physical(r, "GeneralsExp");
+			EXPECT_TRUE(general.within(r.xpFrame)) << s.name;
+			EXPECT_TRUE(bar.within(r.xpFrame)) << s.name;
+			EXPECT_TRUE(fill.within(bar)) << s.name;
+			EXPECT_FALSE(general.intersects(bar)) << s.name;
+			// the retail strip was 21 units wide for the stars AND the bar; the bar alone now has at least that
+			EXPECT_GE(kXpFrame.w, 140);
+			Rect previous;
+			for (int i = 0; i < 4; ++i)
+			{
+				const Rect slot = toPhysical(r, rankSlot(i));
+				const Rect star = toPhysical(r, rankStar(i));
+				EXPECT_TRUE(slot.within(r.xpFrame)) << s.name << " slot " << i;
+				EXPECT_TRUE(star.within(slot)) << s.name << " star " << i;
+				// the star is square (never squeezed) and at a natural size
+				EXPECT_LE(std::abs(star.w - star.h), 1) << s.name << " star " << i;
+				EXPECT_GE(rankStar(i).w, 16);
+				EXPECT_FALSE(slot.intersects(bar)) << s.name;
+				EXPECT_FALSE(slot.intersects(general)) << s.name;
+				EXPECT_FALSE(slot.intersects(fill)) << s.name;
+				if (i > 0)
+				{
+					EXPECT_FALSE(slot.intersects(previous)) << s.name << " slot " << i;     // plates never overlap
+					EXPECT_LT(slot.y, previous.y);                                         // rank 2 at the bottom
+				}
+				previous = slot;
+			}
+			EXPECT_EQ(rankSlotCount(5), 4);
+			EXPECT_EQ(rankSlotCount(1), 0);
+			EXPECT_EQ(rankSlotCount(8), 4);
+		}
+}
+
+TEST(EnhancedHudLayout, RadarUtilityControlsAreInsideTheRadarFrameAndClearOfTheRadar)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			const Rect radar = physical(r, "LeftHUD");
+			EXPECT_TRUE(radar.within(r.radarFrame)) << s.name;
+			Rect prev;
+			bool first = true;
+			for (const char *n : {"ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon", "PopupCommunicator"})
+			{
+				const Rect b = physical(r, n);
+				EXPECT_TRUE(b.within(r.radarFrame)) << n << " " << s.name;
+				EXPECT_FALSE(b.intersects(radar)) << n << " " << s.name;
+				EXPECT_GE(kRadarFrame.w, 200);
+				if (!first)
+					EXPECT_FALSE(b.intersects(prev)) << n;
+				prev = b;
+				first = false;
+			}
+		}
+}
+
+TEST(EnhancedHudLayout, SpecialPowerColumnIsAttachedToTheIsland)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 100, 200})
+		{
+			const Result r = compute(s, ui);
+			ASSERT_TRUE(r.valid);
+			if (r.powerBesideIsland)
+			{
+				EXPECT_EQ(r.powerColumn.x, r.island.right()) << s.name;       // touching the island's right end
+				EXPECT_EQ(r.powerColumn.bottom(), r.island.bottom()) << s.name;
+			}
+			else
+			{
+				EXPECT_EQ(r.powerColumn.bottom(), r.island.y) << s.name;      // sitting on the island's top edge
+				EXPECT_EQ(r.powerColumn.right(), r.island.right()) << s.name; // flush with its right end
+			}
+			EXPECT_GE(r.powerColumn.x, 0);
+		}
+}
+
+TEST(EnhancedHudLayout, RebalancedRegionsLeaveNoLargeEmptyCentre)
+{
+	const Result r = compute(kSurfaces[5]);
+	// the command grid fills most of its frame (it was 396/440 wide and 98/164 high before the rebalance)
+	const Rect first = physical(r, "ButtonCommand01"), last = physical(r, "ButtonCommand12");
+	const double usedW = double(last.right() - first.x) / r.commandFrame.w;
+	const double usedH = double(last.bottom() - first.y) / r.commandFrame.h;
+	EXPECT_GE(usedW, 0.90);
+	EXPECT_GE(usedH, 0.70);
+	// the selection block fills most of the info frame
+	const Rect info = physical(r, "WinUnitSelected");
+	EXPECT_GE(double(info.w) / r.infoFrame.w, 0.90);
+	EXPECT_GE(double(info.h) / r.infoFrame.h, 0.70);
 }

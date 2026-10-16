@@ -32,6 +32,7 @@
 #define DEFINE_SHADOW_NAMES
 
 #include "Common/ActionManager.h"
+#include "Common/EnhancedHud.h"
 #include "Common/FramePacer.h"
 #include "Common/GameAudio.h"
 #include "Common/GameType.h"
@@ -2070,7 +2071,15 @@ void InGameUI::update()
 			{
 				UnicodeString buffer;
 
-				buffer.format(TheGameText->fetch( "GUI:ControlBarMoneyDisplay" ), currentMoney );
+				if( EnhancedHud::active() )
+				{
+					// Enhanced cash panel: the same value with thousands grouping (presentation only)
+					wchar_t grouped[ 32 ];
+					EnhancedHudLayout::groupThousands( currentMoney, grouped, 32 );
+					buffer.format( L"$ %ls", grouped );
+				}
+				else
+					buffer.format(TheGameText->fetch( "GUI:ControlBarMoneyDisplay" ), currentMoney );
 				GadgetStaticTextSetText( moneyWin, buffer );
 				lastMoney = currentMoney;
 

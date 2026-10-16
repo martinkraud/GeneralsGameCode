@@ -23,7 +23,8 @@ class EnhancedHudContracts(unittest.TestCase):
     def test_enhanced_code_is_presentation_only(self):
         s = text(BAR)
         for forbidden in ("TheMessageStream", "GameMessage", "appendMessage", "TheGameLogic", "processCommandUI",
-                          "ThePlayerList", "doSpecialPower", "TheBuildAssistant", "getSkillPoints", "getRankLevel",
+                          "ThePlayerList", "doSpecialPower", "TheBuildAssistant", "getSkillPoints", "setRankLevel",
+                          "addSkillPoints", "setSkillPoints", "getMoney()->", "withdraw", "deposit",
                           "MSG_", "Xfer", "TheRandom", "GameLogicRandom"):
             self.assertNotIn(forbidden, s, forbidden)
         # it only moves/sizes/hides windows and draws rectangles
@@ -116,6 +117,37 @@ class EnhancedHudContracts(unittest.TestCase):
         self.assertIn("pointInChild", t)
         for name in ("CenterBackground", "ButtonCommand01", "ButtonGeneral", "LeftHUD", "ButtonCommand5"):
             self.assertIn(name, t)
+
+    def test_refinement_is_read_only_and_original_assets_are_untouched(self):
+        bar = text(BAR)
+        # the rank ladder only READS the authoritative rank; the XP progress still comes from the retail GeneralsExp draw
+        self.assertIn("player->getRankLevel()", bar)
+        self.assertIn("getRankLevelCount()", bar)
+        # cash: presentation grouping only, gated on Enhanced in both titles; Original keeps the retail format call
+        for rel in ("Generals/Code/GameEngine/Source/GameClient/InGameUI.cpp",
+                    "GeneralsMD/Code/GameEngine/Source/GameClient/InGameUI.cpp"):
+            ui = text(rel)
+            self.assertIn("if( EnhancedHud::active() )", ui)
+            self.assertIn("EnhancedHudLayout::groupThousands( currentMoney, grouped, 32 );", ui)
+            self.assertIn('buffer.format(TheGameText->fetch( "GUI:ControlBarMoneyDisplay" ), currentMoney );', ui)
+        # the retail bitmaps are only cleared inside the Enhanced apply path (the scheme re-applies them on every init)
+        apply_ = bar[bar.index("void ControlBar::applyEnhancedLayout()"):bar.index("void ControlBar::restoreOriginalLayout()")]
+        self.assertIn("GadgetButtonSetEnabledImage( win, nullptr );", apply_)
+        self.assertIn("if( !EnhancedHud::active() || !TheWindowManager )", apply_[:200])
+        sch = text(SCHEME)
+        self.assertNotIn("GadgetButtonSetEnabledImage( win, nullptr )", sch)
+
+    def test_cp10_does_not_touch_reference_guarded_sources(self):
+        # the scripts/rendering and scripts/performance reference-token guards (baselined in
+        # docs/modernization/REFERENCE_TOKEN_GUARD_BASELINE.md) watch these trees; the HUD work must not change them
+        import subprocess
+        out = subprocess.run(["git", "diff", "--name-only", "4a8641178"], cwd=ROOT, capture_output=True, text=True).stdout
+        guarded = ("Core/Libraries/Source/WWVegas/WW3D2/", "Core/Libraries/Source/WWVegas/WW3D2/Backend/",
+                   "Generals/Code/GameEngine/Source/GameLogic/AI/AIPathfind.cpp",
+                   "GeneralsMD/Code/GameEngine/Source/GameLogic/AI/AIPathfind.cpp")
+        post = [l for l in out.split() if l.startswith(guarded)]
+        # X64.35 attribution/instrumentation lives before 4a8641178; nothing after it may touch the guarded trees
+        self.assertEqual(post, [], post)
 
 
 if __name__ == "__main__":

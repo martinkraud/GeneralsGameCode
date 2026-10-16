@@ -29,6 +29,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/DisplayRuntime.h"
+#include "Common/EnhancedHud.h"
 #include "Common/StartupDiagnostics.h"
 
 #define DEFINE_SHADOW_NAMES
@@ -2038,7 +2039,15 @@ void InGameUI::update()
 			{
 				UnicodeString buffer;
 
-				buffer.format(TheGameText->fetch( "GUI:ControlBarMoneyDisplay" ), currentMoney );
+				if( EnhancedHud::active() )
+				{
+					// Enhanced cash panel: the same value with thousands grouping (presentation only)
+					wchar_t grouped[ 32 ];
+					EnhancedHudLayout::groupThousands( currentMoney, grouped, 32 );
+					buffer.format( L"$ %ls", grouped );
+				}
+				else
+					buffer.format(TheGameText->fetch( "GUI:ControlBarMoneyDisplay" ), currentMoney );
 				GadgetStaticTextSetText( moneyWin, buffer );
 				lastMoney = currentMoney;
 

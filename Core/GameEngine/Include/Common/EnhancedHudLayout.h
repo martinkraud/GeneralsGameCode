@@ -39,18 +39,20 @@ struct Rect
 };
 
 // ---- reference design (island-local units) -------------------------------------------------------------------------
-constexpr int kIslandW = 920;
+constexpr int kIslandW = 1000;
 constexpr int kIslandH = 180;
 constexpr int kPowerColumnW = 62;      // 59 wide shortcut buttons + 3 gap
 constexpr int kPowerColumnH = 270;     // 5 buttons x 49 pitch + margins (GenPowersShortcutBarUS.wnd: 60 x 270)
 
 // Regions (island-local reference units).
 constexpr Rect kRadarFrame   = {  8, 8, 216, 164};
-constexpr Rect kInfoFrame    = {232, 8, 160, 164};
-constexpr Rect kCommandFrame = {396, 8, 440, 164};
-constexpr Rect kXpFrame      = {842, 8,  70, 164};
-constexpr int kDividerX[3]   = {228, 394, 839};
-constexpr int kCommandScalePermille = 1100;   // the 6 x 2 button grid is drawn 1.10 x
+constexpr Rect kInfoFrame    = {230, 8, 165, 164};
+constexpr Rect kCommandFrame = {401, 8, 444, 164};
+constexpr Rect kXpFrame      = {851, 8, 141, 164};
+constexpr int kDividerX[3]   = {227, 398, 848};
+constexpr Rect kCashFrame    = {409, 10, 152,  26};   // dedicated money display panel (inside the command frame header)
+constexpr int kCommandScalePermille = 1200;   // the 6 x 2 button grid is drawn 1.20 x
+constexpr int kInfoScalePermille = 1100;      // the selection block is drawn 1.10 x
 
 // Ratio of the surface width the island may take on non-compact surfaces.
 constexpr int kMaxWidthPercentWide = 82;
@@ -67,7 +69,7 @@ struct Result
 	Rect powerColumn;            // physical pixels (the special power shortcut bar parent)
 	bool powerBesideIsland = false;
 	// frame regions in physical pixels
-	Rect radarFrame, infoFrame, commandFrame, xpFrame;
+	Rect radarFrame, infoFrame, commandFrame, xpFrame, cashFrame;
 	int dividerX[3] = {0, 0, 0};
 };
 
@@ -97,6 +99,7 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	r.infoFrame = phys(kInfoFrame);
 	r.commandFrame = phys(kCommandFrame);
 	r.xpFrame = phys(kXpFrame);
+	r.cashFrame = phys(kCashFrame);
 	for (int i = 0; i < 3; ++i)
 		r.dividerX[i] = r.island.x + static_cast<int>(std::lround(kDividerX[i] * s));
 
@@ -109,7 +112,8 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	else
 	{
 		r.powerBesideIsland = false;
-		r.powerColumn = {surfaceW - colW, std::max(r.island.y - colH, 0), colW, std::min(colH, r.island.y)};
+		// sits on the island's top-right corner (attached to it), never floating away from the island
+		r.powerColumn = {std::max(r.island.right() - colW, 0), std::max(r.island.y - colH, 0), colW, std::min(colH, r.island.y)};
 	}
 	r.valid = true;
 	return r;
@@ -127,17 +131,19 @@ struct Placement
 };
 
 // Radar group: LeftHUD at (16,14); utility buttons in a column at its right edge.
-// Info group: translation of the 141 x 109 selection block to (244,36).
-// Command group: the 6 x 2 grid scaled 1.10, first button's top-left at (424,44).
-// Header: money and power above the grid. XP group: General button and the vertical XP bar.
+// Info group: the 141 x 109 selection block scaled 1.10 to (235,34).
+// Command group: the 6 x 2 grid scaled 1.20, first button's top-left at (409,44).
+// Header: the cash panel and the power bar above the grid. XP group: General button, the vertical XP bar and the rank
+// ladder (kRankSlot) with room to read.
 inline Rect infoMap(const Rect &src)
 {
-	return {244 + (src.x - 621), 36 + (src.y - 483), src.w, src.h};
+	const int k = kInfoScalePermille;
+	return {235 + ((src.x - 621) * k) / 1000, 34 + ((src.y - 483) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
 }
 inline Rect commandMap(const Rect &src)
 {
 	const int k = kCommandScalePermille;
-	return {424 + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
+	return {409 + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
 }
 
 struct NamedPlacement
@@ -154,17 +160,17 @@ inline const NamedPlacement *placements(int &count)
 		// radar group
 		{"LeftHUD",              {  7, 443, 167, 152}, { 16,  14, 167, 152}, false},
 		{"WinUAttack",           { 77, 416,  45,  45}, { 18,  16,  45,  45}, false},
-		{"ButtonOptions",        {206, 495,  30,  22}, {190,  24,  30,  22}, false},
-		{"ButtonIdleWorker",     {206, 519,  30,  22}, {190,  50,  30,  22}, false},
-		{"ButtonPlaceBeacon",    {206, 543,  30,  22}, {190,  76,  30,  22}, false},
-		{"PopupCommunicator",    {206, 567,  30,  22}, {190, 102,  30,  22}, false},
+		{"ButtonOptions",        {206, 495,  30,  22}, {188,  20,  32,  26}, false},
+		{"ButtonIdleWorker",     {206, 519,  30,  22}, {188,  50,  32,  26}, false},
+		{"ButtonPlaceBeacon",    {206, 543,  30,  22}, {188,  80,  32,  26}, false},
+		{"PopupCommunicator",    {206, 567,  30,  22}, {188, 110,  32,  26}, false},
 		// header: money / power
-		{"MoneyDisplay",         {360, 437,  79,  19}, {408,  10,  79,  19}, false},
-		{"PowerWindow",          {261, 473, 283,   7}, {500,  16, 283,   7}, false},
+		{"MoneyDisplay",         {360, 437,  79,  19}, {413,  12, 144,  22}, false},
+		{"PowerWindow",          {261, 473, 283,   7}, {570,  17, 263,   7}, false},
 		// XP group
-		{"ButtonGeneral",        {736, 433,  56,  41}, {853,  14,  56,  41}, false},
-		{"ExpBarForeground",     {766, 484,  21, 107}, {871,  62,  21, 107}, false},
-		{"GeneralsExp",          {769, 503,  13,  87}, {874,  81,  13,  87}, false},
+		{"ButtonGeneral",        {736, 433,  56,  41}, {888,  14,  67,  49}, false},
+		{"ExpBarForeground",     {766, 484,  21, 107}, {858,  68,  36, 102}, false},
+		{"GeneralsExp",          {769, 503,  13,  87}, {864,  74,  24,  90}, false},
 		// no Enhanced equivalent: the three size toggles of the 800 px bar
 		{"ButtonSmall",          {592, 436,  31,  21}, {0, 0, 0, 0}, true},
 		{"ButtonMedium",         {625, 439,  31,  21}, {0, 0, 0, 0}, true},
@@ -178,6 +184,22 @@ inline const NamedPlacement *placements(int &count)
 	count = static_cast<int>(sizeof(table) / sizeof(table[0]));
 	return table;
 }
+
+// The General rank ladder: `count` plates, rank 2 at the bottom, drawn to the right of the XP bar, each big enough for
+// a readable star. Island-local reference units; slot 0 is the lowest rank.
+constexpr int kRankLadderX = 902, kRankLadderW = 86, kRankSlotH = 20, kRankSlotPitch = 24, kRankLadderBottom = 166;
+inline Rect rankSlot(int index)
+{
+	return {kRankLadderX, kRankLadderBottom - kRankSlotH - index * kRankSlotPitch, kRankLadderW, kRankSlotH};
+}
+// Star glyph box inside a slot (square, left side of the plate).
+inline Rect rankStar(int index)
+{
+	const Rect s = rankSlot(index);
+	return {s.x + 3, s.y + 1, s.h - 2, s.h - 2};
+}
+// Number of ladder slots for a rank table of `rankLevels` levels (level 1 has no star).
+inline int rankSlotCount(int rankLevels) { return std::max(0, std::min(rankLevels - 1, 4)); }
 
 // Containers and children of the info group (all are translated by infoMap).
 struct GroupWindow { const char *window; Rect src; };
@@ -268,6 +290,25 @@ inline Rect toPhysical(const Result &r, const Rect &local)
 	const int x1 = r.island.x + static_cast<int>(std::lround((local.x + local.w) * s));
 	const int y1 = r.island.y + static_cast<int>(std::lround((local.y + local.h) * s));
 	return {x0, y0, std::max(x1 - x0, local.w > 0 ? 1 : 0), std::max(y1 - y0, local.h > 0 ? 1 : 0)};
+}
+
+// Thousands grouping for the Enhanced cash panel ("45200" -> "45,200"); presentation only, the value is untouched.
+inline int groupThousands(unsigned long long value, wchar_t *out, int capacity)
+{
+	if (!out || capacity < 2)
+		return 0;
+	wchar_t digits[32];
+	int n = 0;
+	do { digits[n++] = static_cast<wchar_t>(L'0' + value % 10); value /= 10; } while (value && n < 31);
+	int len = 0;
+	for (int i = n - 1; i >= 0 && len < capacity - 1; --i)
+	{
+		out[len++] = digits[i];
+		if (i > 0 && i % 3 == 0 && len < capacity - 1)
+			out[len++] = L',';
+	}
+	out[len] = 0;
+	return len;
 }
 
 // Only the USA is supported in this prototype; any other side falls back to the Original presentation.

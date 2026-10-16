@@ -181,3 +181,47 @@ From the first native look; deliberately left for the next iteration:
 * the XP/General region needs better integration;
 * the special-power column looks visually detached from the island;
 * the procedural frame is prototype quality (final artwork deferred).
+
+## 12. Visual/layout refinement 1 (after native review 2: hit testing PASSED)
+Native feedback: stars compressed on the right, the large retail red button beside the minimap visibly low resolution,
+cash needs a deliberate presentation, empty centre, detached power column. Kept: centred bottom-flush island, bounded
+width, switch, USA-only fallback, the corrected hit-test architecture (`fitContainers` etc.).
+
+**Revised geometry** (island 1000 x 180 reference units; was 920 x 180):
+
+| region | x..x+w | contents |
+|---|---|---|
+| radar frame | 8..224 | radar 167x152 at (16,14) in a recessed bezel; four utility plates (32x26) in a column at x 188 |
+| info frame | 230..395 | selection block scaled 1.10 to (235,34) (141x109 -> 155x120) |
+| command frame | 401..845 | **cash panel** (409,10,152x26), power bar (570,17,263x7), 6x2 grid at 1.20x from (409,44) |
+| XP / General frame | 851..992 | General button 67x49 at (888,14), XP trough+bar (858,68,36x102 / 864,74,24x90), **rank ladder** |
+Scale is `min(UI scale, 82 % width cap / 1000)`; e.g. 1920x1200 -> island 1574 x 284 at scale 1.57 (previously 1.71 / 308 high
+because the island was narrower); 3440x1440 and 5120x1440 -> 2250 x 405 (same island, bounded).
+
+**Cash.** A dedicated recessed panel with an accent edge hosts the existing `MoneyDisplay` window; in Enhanced the value is
+formatted with thousands grouping (`$ 45,200`) at the single text update (InGameUI, both titles), gated on Enhanced; value,
+update cadence and the income-per-minute option are untouched; Original keeps the retail `GUI:ControlBarMoneyDisplay` call.
+
+**General / XP.** The retail 21x107 strip (stars baked into the bitmap) is replaced by a trough behind the real
+`GeneralsExp` progress window (now 24 wide) and a **rank ladder**: one plate per rank above the first, 86x20 units, each
+with a square star glyph (18x18 units, never squeezed), lit up to the player's authoritative `getRankLevel()`; the number of
+plates comes from `TheRankInfoStore->getRankLevelCount()` (capped at 4). Rank/XP mechanics are only read.
+
+**Radar-area buttons.** The four utility buttons (Options, Idle Worker, Beacon, Communicator) no longer show their retail
+30x22 bitmaps in Enhanced; they are drawn as bevelled procedural plates with simple glyphs, with hover/pressed/disabled
+states from the live mouse/window state. The windows, commands, tooltips and hit regions are the existing ones. The bitmaps
+are cleared only inside the Enhanced apply path; the scheme re-applies them on every init, so Original is untouched. The
+General button keeps its retail image (it scales acceptably, scaled 1.2x; revisit with final art).
+
+**Special power column.** Sits flush against the island's right end (or on its top-right corner on compact surfaces), bottom
+aligned, drawn with the island's plate/bevel and a joint that carries the base plate across, so it reads as part of the
+console. Its buttons, cooldown overlays and commands are unchanged.
+
+**Tests.** `EnhancedHudLayout` (+8): cash panel containment and separation, thousands grouping, rank ladder containment /
+square stars / no overlap, radar controls, power column attachment, rebalanced fill ratios; `EnhancedHudInteractive` (9) runs
+unchanged against the new geometry (the same placement mechanism, all contexts, 9 surfaces x 5 UI scales). Contract tests:
+read-only rank access, gated cash formatting in both titles, Original image path untouched, guarded-source check.
+
+**Known limits.** Visual result is verified geometrically only; star/glyph/plate art is procedural placeholder; the General
+button and the XP fill still use retail bitmaps; the control-bar hide/show transition is not followed by the procedural frame.
+The reference-token guard failures are baselined in `REFERENCE_TOKEN_GUARD_BASELINE.md`.
