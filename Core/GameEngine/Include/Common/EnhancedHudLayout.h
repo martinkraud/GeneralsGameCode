@@ -43,6 +43,11 @@ constexpr int kIslandW = 1000;
 constexpr int kIslandH = 180;
 constexpr int kPowerColumnW = 62;      // 59 wide shortcut buttons + 3 gap
 constexpr int kPowerColumnH = 270;     // 5 buttons x 49 pitch + margins (GenPowersShortcutBarUS.wnd: 60 x 270)
+constexpr int kPowerCount = 5;
+constexpr int kPowerCellH = 58;        // the horizontal fallback row: one 59 x 56 shortcut button plus a gap high
+constexpr int kPowerPad = 6;           // frame padding around the Global Powers surface
+constexpr int kPowerGap = 14;          // minimum clear space between that frame and the main island
+constexpr int kPowerMargin = 10;       // minimum distance of that frame from the surface edge
 
 // Regions (island-local reference units).
 constexpr Rect kRadarFrame   = {  8, 8, 216, 164};
@@ -66,8 +71,10 @@ struct Result
 	bool valid = false;
 	double scale = 1.0;          // island scale: physical pixels per reference unit
 	Rect island;                 // physical pixels, bottom flush, centred
-	Rect powerColumn;            // physical pixels (the special power shortcut bar parent)
-	bool powerBesideIsland = false;
+	Rect powerPanel;             // physical pixels: the special power shortcut parent window (independent of the island)
+	Rect powerFrame;             // powerPanel inflated by the frame padding: the surface that is drawn behind it
+	bool powerHorizontal = false;   // compact fallback: a row of five instead of a column
+	bool powerAboveIsland = false;  // the panel is stacked above the island's footprint (otherwise beside it)
 	// frame regions in physical pixels
 	Rect radarFrame, infoFrame, commandFrame, xpFrame, cashFrame;
 	int dividerX[3] = {0, 0, 0};
@@ -103,20 +110,50 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	for (int i = 0; i < 3; ++i)
 		r.dividerX[i] = r.island.x + static_cast<int>(std::lround(kDividerX[i] * s));
 
+	// Global Powers: an independent surface, never touching the main island. It lives inside the gameplay safe region (at
+	// most 16:9 of the surface height, centred) so that on 21:9 / 32:9 it stays near the action instead of at the far edge.
+	const int pad = scaledRef(kPowerPad, r.scale), gap = scaledRef(kPowerGap, r.scale), mar = scaledRef(kPowerMargin, r.scale);
+	const int safeW = std::min(surfaceW, static_cast<int>(std::lround(surfaceH * 16.0 / 9.0)));
+	const int safeRight = (surfaceW + safeW) / 2;
 	const int colW = scaledRef(kPowerColumnW, r.scale), colH = scaledRef(kPowerColumnH, r.scale);
-	if (r.island.right() + colW <= surfaceW)
+	const int topLimit = mar + pad;
+	const int cx = safeRight - mar - pad - colW;                       // frame right edge = safeRight - margin
+	const bool overlapsX = cx - pad < r.island.right() + gap && cx + colW + pad > r.island.x - gap;
+	const int yMax = overlapsX ? r.island.y - gap - pad - colH : surfaceH - mar - pad - colH;
+	if (!compact && yMax >= topLimit && cx - pad >= mar)
 	{
-		r.powerBesideIsland = true;
-		r.powerColumn = {r.island.right(), surfaceH - colH, colW, colH};
+		// vertical column, upper right of the battlefield (retail put the shortcut bar at 26 % of the height)
+		const int cy = std::max(topLimit, std::min(yMax, static_cast<int>(std::lround(surfaceH * 0.18))));
+		r.powerPanel = {cx, cy, colW, colH};
+		r.powerHorizontal = false;
+		r.powerAboveIsland = overlapsX;
 	}
 	else
 	{
-		r.powerBesideIsland = false;
-		// sits on the island's top-right corner (attached to it), never floating away from the island
-		r.powerColumn = {std::max(r.island.right() - colW, 0), std::max(r.island.y - colH, 0), colW, std::min(colH, r.island.y)};
+		// compact surfaces (4:3 family: the island spans the whole width, a tall column would cover a large part of the
+		// battlefield) and the rare case where a column cannot fit: a row of five just above the island's right end
+		const int rowW = kPowerCount * scaledRef(kPowerColumnW, r.scale), rowH = scaledRef(kPowerCellH, r.scale);
+		const int right = std::min(safeRight - mar - pad, r.island.right());
+		const int rx = std::max(mar + pad, right - rowW);
+		const int ry = std::max(topLimit, r.island.y - gap - pad - rowH);
+		r.powerPanel = {rx, ry, rowW, rowH};
+		r.powerHorizontal = true;
+		r.powerAboveIsland = true;
 	}
+	r.powerFrame = {r.powerPanel.x - pad, r.powerPanel.y - pad, r.powerPanel.w + 2 * pad, r.powerPanel.h + 2 * pad};
 	r.valid = true;
 	return r;
+}
+
+// The island moved by (dx, dy) (the real control bar window slides on hide/show and in the low stage): every island-bound
+// rectangle moves with it, the independent Global Powers surface does not. Presentation helper for the procedural frame.
+inline Result translated(const Result &r, int dx, int dy)
+{
+	Result t = r;
+	Rect *rects[] = {&t.island, &t.radarFrame, &t.infoFrame, &t.commandFrame, &t.xpFrame, &t.cashFrame};
+	for (Rect *q : rects) { q->x += dx; q->y += dy; }
+	for (int i = 0; i < 3; ++i) t.dividerX[i] += dx;
+	return t;
 }
 
 // ---- window placement table ---------------------------------------------------------------------------------------
@@ -168,9 +205,9 @@ inline const NamedPlacement *placements(int &count)
 		{"MoneyDisplay",         {360, 437,  79,  19}, {413,  12, 144,  22}, false},
 		{"PowerWindow",          {261, 473, 283,   7}, {570,  17, 263,   7}, false},
 		// XP group
-		{"ButtonGeneral",        {736, 433,  56,  41}, {879,  14,  86,  38}, false},
-		{"ExpBarForeground",     {766, 484,  21, 107}, {858,  68,  36, 102}, false},
-		{"GeneralsExp",          {769, 503,  13,  87}, {864,  74,  24,  90}, false},
+		{"ButtonGeneral",        {736, 433,  56,  41}, {898,  14,  88,  39}, false},
+		{"ExpBarForeground",     {766, 484,  21, 107}, {857,  16,  34, 148}, false},
+		{"GeneralsExp",          {769, 503,  13,  87}, {862,  22,  24, 136}, false},
 		// no Enhanced equivalent: the three size toggles of the 800 px bar
 		{"ButtonSmall",          {592, 436,  31,  21}, {0, 0, 0, 0}, true},
 		{"ButtonMedium",         {625, 439,  31,  21}, {0, 0, 0, 0}, true},
@@ -185,18 +222,19 @@ inline const NamedPlacement *placements(int &count)
 	return table;
 }
 
-// The General rank ladder: `count` plates, rank 2 at the bottom, drawn to the right of the XP bar, each big enough for
-// a readable star. Island-local reference units; slot 0 is the lowest rank.
-constexpr int kRankLadderX = 902, kRankLadderW = 86, kRankSlotH = 20, kRankSlotPitch = 24, kRankLadderBottom = 166;
+// The General module (one piece): XP trough on the left, the General Powers entry button on top of the right column and
+// below it the rank grid, 2 x 2 square cells (slot 0 = first promotion, reading left to right, top to bottom), each with
+// a square star. Island-local reference units.
+constexpr int kRankGridX = 898, kRankGridY = 66, kRankCell = 42, kRankPitch = 46, kRankStarSize = 28;
 inline Rect rankSlot(int index)
 {
-	return {kRankLadderX, kRankLadderBottom - kRankSlotH - index * kRankSlotPitch, kRankLadderW, kRankSlotH};
+	return {kRankGridX + (index % 2) * kRankPitch, kRankGridY + (index / 2) * kRankPitch, kRankCell, kRankCell};
 }
-// Star glyph box inside a slot (square, left side of the plate).
+// Star glyph box inside a slot: square and centred.
 inline Rect rankStar(int index)
 {
 	const Rect s = rankSlot(index);
-	return {s.x + 3, s.y + 1, s.h - 2, s.h - 2};
+	return {s.x + (s.w - kRankStarSize) / 2, s.y + (s.h - kRankStarSize) / 2, kRankStarSize, kRankStarSize};
 }
 // Number of ladder slots for a rank table of `rankLevels` levels (level 1 has no star).
 inline int rankSlotCount(int rankLevels) { return std::max(0, std::min(rankLevels - 1, 4)); }

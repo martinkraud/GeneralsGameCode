@@ -205,30 +205,72 @@ TEST(EnhancedHudLayout, UiScaleChangesTheIslandWithinBounds)
 	EXPECT_LT(small.island.w, large.island.w);
 }
 
-TEST(EnhancedHudLayout, PowerColumnIsBesideTheIslandOrAboveItAtTheRightEdge)
+TEST(EnhancedHudLayout, GlobalPowersAreAnIndependentSurfaceThatNeverTouchesTheIsland)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
+		{
+			const Result r = compute(s, ui);
+			ASSERT_TRUE(r.valid) << s.name;
+			// fully on the surface, frame included
+			EXPECT_GE(r.powerFrame.x, 0) << s.name;
+			EXPECT_GE(r.powerFrame.y, 0) << s.name;
+			EXPECT_LE(r.powerFrame.right(), s.w) << s.name;
+			EXPECT_LE(r.powerFrame.bottom(), s.h) << s.name;
+			EXPECT_TRUE(r.powerPanel.within(r.powerFrame)) << s.name;
+			// clear space to the island (never touching), in both directions
+			const int gap = scaledRef(kPowerGap, r.scale);
+			EXPECT_FALSE(r.powerFrame.intersects(r.island)) << s.name;
+			const bool clearX = r.powerFrame.x >= r.island.right() + gap || r.powerFrame.right() <= r.island.x - gap;
+			const bool clearY = r.powerFrame.bottom() <= r.island.y - gap;
+			EXPECT_TRUE(clearX || clearY) << s.name << " ui" << ui;
+			// never bottom-flush like the island: it floats in the battlefield
+			EXPECT_LT(r.powerFrame.bottom(), s.h) << s.name;
+			// shape: five buttons in a column, or (compact surfaces) in a row
+			if (r.powerHorizontal)
+				EXPECT_GT(r.powerPanel.w, r.powerPanel.h) << s.name;
+			else
+				EXPECT_GT(r.powerPanel.h, r.powerPanel.w) << s.name;
+		}
+}
+
+TEST(EnhancedHudLayout, GlobalPowersStayInTheGameplaySafeRegionOnUltrawide)
 {
 	for (const Surface &s : kSurfaces)
 	{
 		const Result r = compute(s);
-		ASSERT_TRUE(r.valid);
-		EXPECT_GE(r.powerColumn.x, 0) << s.name;
-		EXPECT_LE(r.powerColumn.right(), s.w) << s.name;
-		EXPECT_GE(r.powerColumn.y, 0) << s.name;
-		EXPECT_LE(r.powerColumn.bottom(), s.h) << s.name;
-		EXPECT_FALSE(r.powerColumn.intersects(r.island)) << s.name;
-		if (r.powerBesideIsland)
+		const int safeW = std::min(s.w, static_cast<int>(std::lround(s.h * 16.0 / 9.0)));
+		const int safeRight = (s.w + safeW) / 2;
+		EXPECT_LE(r.powerFrame.right(), safeRight) << s.name;       // never farther out than a 16:9 surface would put it
+	}
+	// 32:9: nowhere near the far right edge of a 5120 px wide surface
+	const Result wide = compute(kSurfaces[8]);
+	EXPECT_LT(wide.powerFrame.right(), 5120 * 3 / 4);
+	// 16:9 and narrower: the safe region is the surface itself
+	const Result hd = compute(kSurfaces[4]);
+	EXPECT_GT(hd.powerFrame.right(), 1920 - 60);
+}
+
+TEST(EnhancedHudLayout, GlobalPowersUseARowOnCompactSurfacesAndAColumnOtherwise)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const bool compact = s.w * 1000 <= s.h * kCompactAspectPermille;
+		const Result r = compute(s);
+		EXPECT_EQ(r.powerHorizontal, compact) << s.name;
+		if (compact)
 		{
-			EXPECT_EQ(r.powerColumn.x, r.island.right()) << s.name;
-			EXPECT_EQ(r.powerColumn.bottom(), s.h) << s.name;    // flush with the bottom like the island
-		}
-		else
-		{
-			EXPECT_EQ(r.powerColumn.right(), s.w) << s.name;
-			EXPECT_LE(r.powerColumn.bottom(), r.island.y) << s.name;
+			// the row sits on top of the island, aligned to its right end, never wider than the island
+			EXPECT_LE(r.powerFrame.bottom(), r.island.y) << s.name;
+			EXPECT_LE(r.powerFrame.right(), r.island.right()) << s.name;
+			EXPECT_GE(r.powerFrame.x, r.island.x) << s.name;
+			EXPECT_EQ(r.powerPanel.w, kPowerCount * scaledRef(kPowerColumnW, r.scale)) << s.name;
 		}
 	}
-	EXPECT_TRUE(compute(kSurfaces[8]).powerBesideIsland);    // 5120x1440
-	EXPECT_FALSE(compute(kSurfaces[0]).powerBesideIsland);   // 800x600: no room beside
+	// determinism
+	const Result a = compute(kSurfaces[0]), b = compute(kSurfaces[0]);
+	EXPECT_EQ(a.powerPanel.x, b.powerPanel.x);
+	EXPECT_EQ(a.powerPanel.y, b.powerPanel.y);
 }
 
 TEST(EnhancedHudLayout, OnlyUsaIsSupportedAndEverythingElseFallsBackToOriginal)
@@ -386,28 +428,28 @@ TEST(EnhancedHudLayout, GeneralRegionHasRoomForTheButtonBarAndReadableStars)
 			EXPECT_TRUE(bar.within(r.xpFrame)) << s.name;
 			EXPECT_TRUE(fill.within(bar)) << s.name;
 			EXPECT_FALSE(general.intersects(bar)) << s.name;
-			// the retail strip was 21 units wide for the stars AND the bar; the bar alone now has at least that
 			EXPECT_GE(kXpFrame.w, 140);
-			Rect previous;
 			for (int i = 0; i < 4; ++i)
 			{
 				const Rect slot = toPhysical(r, rankSlot(i));
 				const Rect star = toPhysical(r, rankStar(i));
 				EXPECT_TRUE(slot.within(r.xpFrame)) << s.name << " slot " << i;
 				EXPECT_TRUE(star.within(slot)) << s.name << " star " << i;
-				// the star is square (never squeezed) and at a natural size
+				// the star is square (never squeezed) and at a natural size, centred in its cell
 				EXPECT_LE(std::abs(star.w - star.h), 1) << s.name << " star " << i;
-				EXPECT_GE(rankStar(i).w, 16);
+				EXPECT_GE(rankStar(i).w, 24);
+				EXPECT_LE(std::abs((star.x - slot.x) - (slot.right() - star.right())), 1);
+				EXPECT_LE(std::abs((star.y - slot.y) - (slot.bottom() - star.bottom())), 1);
 				EXPECT_FALSE(slot.intersects(bar)) << s.name;
 				EXPECT_FALSE(slot.intersects(general)) << s.name;
 				EXPECT_FALSE(slot.intersects(fill)) << s.name;
-				if (i > 0)
-				{
-					EXPECT_FALSE(slot.intersects(previous)) << s.name << " slot " << i;     // plates never overlap
-					EXPECT_LT(slot.y, previous.y);                                         // rank 2 at the bottom
-				}
-				previous = slot;
+				for (int j = 0; j < i; ++j)
+					EXPECT_FALSE(slot.intersects(toPhysical(r, rankSlot(j)))) << s.name << " cells " << i << "," << j;
 			}
+			// one module: the General button is above the rank grid, the XP trough is to the left of both
+			EXPECT_LT(general.bottom(), toPhysical(r, rankSlot(0)).y) << s.name;
+			EXPECT_LE(bar.right(), general.x) << s.name;
+			EXPECT_LE(bar.right(), toPhysical(r, rankSlot(0)).x) << s.name;
 			EXPECT_EQ(rankSlotCount(5), 4);
 			EXPECT_EQ(rankSlotCount(1), 0);
 			EXPECT_EQ(rankSlotCount(8), 4);
@@ -438,25 +480,48 @@ TEST(EnhancedHudLayout, RadarUtilityControlsAreInsideTheRadarFrameAndClearOfTheR
 		}
 }
 
-TEST(EnhancedHudLayout, SpecialPowerColumnIsAttachedToTheIsland)
+TEST(EnhancedHudLayout, CommandBayHasTwelveFixedSlotsInsideTheCommandFrame)
 {
 	for (const Surface &s : kSurfaces)
-		for (int ui : {DisplayGeometry::kAutoUiScale, 100, 200})
+		for (int ui : {DisplayGeometry::kAutoUiScale, 75, 100, 150, 200})
 		{
 			const Result r = compute(s, ui);
-			ASSERT_TRUE(r.valid);
-			if (r.powerBesideIsland)
+			Rect cells[12];
+			for (int i = 0; i < 12; ++i)
 			{
-				EXPECT_EQ(r.powerColumn.x, r.island.right()) << s.name;       // touching the island's right end
-				EXPECT_EQ(r.powerColumn.bottom(), r.island.bottom()) << s.name;
+				char name[24];
+				std::snprintf(name, sizeof(name), "ButtonCommand%02d", i + 1);
+				cells[i] = physical(r, name);
+				EXPECT_TRUE(cells[i].within(r.commandFrame)) << name << " " << s.name;
+				EXPECT_FALSE(cells[i].intersects(r.cashFrame)) << name << " " << s.name;
+				for (int j = 0; j < i; ++j)
+					EXPECT_FALSE(cells[i].intersects(cells[j])) << i << "," << j << " " << s.name;
 			}
-			else
+			// the slots keep the retail indices: 01/02 = first column top/bottom, 03/04 = second column, ...
+			for (int col = 0; col < 6; ++col)
 			{
-				EXPECT_EQ(r.powerColumn.bottom(), r.island.y) << s.name;      // sitting on the island's top edge
-				EXPECT_EQ(r.powerColumn.right(), r.island.right()) << s.name; // flush with its right end
+				EXPECT_EQ(cells[col * 2].x, cells[col * 2 + 1].x) << s.name;
+				EXPECT_LT(cells[col * 2].y, cells[col * 2 + 1].y) << s.name;
+				if (col > 0)
+					EXPECT_LT(cells[(col - 1) * 2].x, cells[col * 2].x) << s.name;
 			}
-			EXPECT_GE(r.powerColumn.x, 0);
+			// the whole bay sits below the resource header, inside the frame, with a visible margin all round
+			const int pad = std::max(2, int(2 * r.scale));
+			EXPECT_GE(cells[0].y - r.cashFrame.bottom(), pad) << s.name;
 		}
+}
+
+TEST(EnhancedHudLayout, InfoModuleBlockIsInsideItsFrameWithRoomForTheWell)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		const Rect block = physical(r, "WinUnitSelected");
+		EXPECT_TRUE(block.within(r.infoFrame)) << s.name;
+		const int g = std::max(1, int(4 * r.scale + 0.5) / 2);
+		EXPECT_GE(block.x - r.infoFrame.x, g) << s.name;
+		EXPECT_GE(block.y - r.infoFrame.y, g) << s.name;
+	}
 }
 
 TEST(EnhancedHudLayout, RebalancedRegionsLeaveNoLargeEmptyCentre)
@@ -622,4 +687,27 @@ TEST(EnhancedHudLayout, AttackWarningLampIsInsideTheRadarFrameClearOfRadarAndBut
 			EXPECT_GE(kRadarFrame.w, 200);
 			EXPECT_GE(lamp.w * 100, int(30 * r.scale * 100 * 0.95)) << s.name;
 		}
+}
+
+TEST(EnhancedHudLayout, TranslatedIslandKeepsItsInternalGeometryAndLeavesGlobalPowersAlone)
+{
+	// the control bar slides on hide/show: the frame is drawn at the live master position
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		const Result lowered = translated(r, 0, r.island.h);       // fully below the bottom edge (hidden stage)
+		EXPECT_EQ(lowered.island.y, r.island.y + r.island.h) << s.name;
+		EXPECT_EQ(lowered.island.x, r.island.x) << s.name;
+		EXPECT_EQ(lowered.commandFrame.y - lowered.island.y, r.commandFrame.y - r.island.y) << s.name;
+		EXPECT_EQ(lowered.radarFrame.x - lowered.island.x, r.radarFrame.x - r.island.x) << s.name;
+		// mapped reference rectangles follow the island
+		const Rect a = toPhysical(r, {409, 44, 53, 45}), b = toPhysical(lowered, {409, 44, 53, 45});
+		EXPECT_EQ(b.y - a.y, r.island.h) << s.name;
+		EXPECT_EQ(b.x, a.x) << s.name;
+		// the Global Powers surface is independent of the island's own movement
+		EXPECT_EQ(lowered.powerPanel.x, r.powerPanel.x) << s.name;
+		EXPECT_EQ(lowered.powerPanel.y, r.powerPanel.y) << s.name;
+		const Result same = translated(r, 0, 0);
+		EXPECT_EQ(same.island.y, r.island.y);
+	}
 }

@@ -140,6 +140,31 @@ void applyPowerColumn(Win *parent, const Rect &column, double factor, Original &
 	fitContainers(parent, parent, all, remember);
 }
 
+// The compact fallback of the Global Powers surface: the direct children of `parent` (slotOf(child) = 0..4, -1 for none)
+// are laid out in a row with `row.w / 5` pitch instead of the retail column; every child keeps its retail size scaled by
+// `factor` and its own subtree keeps its retail relationships. Same remember/fit rules as applyPowerColumn.
+template <class Win, class Original, class Remember, class SlotOf>
+void applyPowerRow(Win *parent, const Rect &row, double factor, Original &&original, Remember &&remember, SlotOf &&slotOf)
+{
+	int o[4] = {0, 0, 0, 0};
+	original(parent, o);
+	parent->winSetPosition(row.x, row.y);
+	parent->winSetSize(row.w, row.h);
+	const int pitch = row.w / EnhancedHudLayout::kPowerCount;
+	for (Win *child = parent->winGetChild(); child; child = child->winGetNext())
+	{
+		int c[4] = {0, 0, 0, 0};
+		original(child, c);
+		const int slot = std::max(0, slotOf(child));
+		child->winSetPosition(slot * pitch, 0);
+		child->winSetSize(static_cast<int>(c[2] * factor + 0.5), static_cast<int>(c[3] * factor + 0.5));
+		scaleSubtree(child, factor, original);
+	}
+	std::set<Win *> all;
+	collectSubtree(parent, all);
+	fitContainers(parent, parent, all, remember);
+}
+
 // Places every window of the layout tables below `master` (the island), then makes the tree consistent.
 //   find(name)   -> window of ControlBar.wnd without the prefix, or nullptr
 //   remember(w)  -> called before a window is changed (first call wins; used to restore Original exactly)

@@ -92,6 +92,11 @@ void restoreStore( std::map<GameWindow *, Original> &store )
 
 }  // namespace
 
+namespace
+{
+void powersPanelDraw( GameWindow *window, WinInstanceData *instData );
+GameWinDrawFunc s_powersOriginalDraw = nullptr;
+}
 
 //-----------------------------------------------------------------------------
 // Draw-time image fitting (windows registered by the Enhanced layout only).
@@ -240,11 +245,16 @@ void ControlBar::restoreOriginalLayout()
 	else
 		s_bar.clear();
 	if( s_powersParent && s_powersParent == m_specialPowerShortcutParent && !s_powers.empty() )
+	{
+		if( s_powersOriginalDraw )
+			s_powersParent->winSetDrawFunc( s_powersOriginalDraw );
 		restoreStore( s_powers );
+	}
 	else
 		s_powers.clear();
 	s_barMaster = nullptr;
 	s_powersParent = nullptr;
+	s_powersOriginalDraw = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -259,21 +269,39 @@ void ControlBar::applyEnhancedPowerShortcutLayout()
 	{
 		s_powers.clear();     // the shortcut layout is created per match
 		s_powersParent = parent;
+		s_powersOriginalDraw = nullptr;
 	}
 	const EnhancedHudLayout::Result &layout = EnhancedHud::layout();
-	const EnhancedHudLayout::Rect column = layout.powerColumn;
-	// the column is scaled uniformly: its children keep their relationships (original sizes were created at the
-	// modern layout scale; the island scale may be smaller on narrow surfaces)
+	// the Global Powers frame is drawn by the shortcut window itself (so it slides/hides with it)
+	if( s_powersOriginalDraw == nullptr )
+		s_powersOriginalDraw = parent->winGetDrawFunc();
+	parent->winSetDrawFunc( powersPanelDraw );
+	const EnhancedHudLayout::Rect panel = layout.powerPanel;
+	// the panel is scaled uniformly: its children keep their relationships (original sizes were created at the modern
+	// layout scale; the island scale may be smaller on narrow surfaces)
 	const double layoutScale = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
 	const double factor = layout.scale / layoutScale;
-	EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, column, factor,
-		[]( GameWindow *win, int *out )
-		{
-			remember( s_powers, win );
-			const Original &o = s_powers[ win ];
-			out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
-		},
-		[]( GameWindow *win ) { remember( s_powers, win ); } );
+	auto original = []( GameWindow *win, int *out )
+	{
+		remember( s_powers, win );
+		const Original &o = s_powers[ win ];
+		out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
+	};
+	auto rememberWin = []( GameWindow *win ) { remember( s_powers, win ); };
+	if( layout.powerHorizontal )
+	{
+		// compact fallback: the same five shortcut buttons in a row (slot = the button's own index)
+		EnhancedHudWindows::applyPowerRow<GameWindow>( parent, panel, factor, original, rememberWin,
+			[this]( GameWindow *child )
+			{
+				for( int i = 0; i < MAX_SPECIAL_POWER_SHORTCUTS; ++i )
+					if( m_specialPowerShortcutButtonParents[ i ] == child )
+						return i;
+				return -1;
+			} );
+	}
+	else
+		EnhancedHudWindows::applyPowerColumn<GameWindow>( parent, panel, factor, original, rememberWin );
 	// special power icons: aspect-fitted inside their (full-plate) buttons
 	for( int i = 0; i < MAX_SPECIAL_POWER_SHORTCUTS; ++i )
 		EnhancedHudImage::registerAspectFit( m_specialPowerShortcutButtons[ i ] );
@@ -306,13 +334,16 @@ typedef EnhancedHudLayout::Rect HRect;
 
 struct HudPalette
 {
-	Color steelDark, steel, panel, panelLow, accent, accentDim, highlight, shadow, icon, iconDim, lit, litDim;
+	Color steelDark, steelMid, steel, panel, panelLow, well, wellEdge, accent, accentDim, highlight, shadow, icon, iconDim, lit, litDim;
 };
 
 HudPalette makePalette()
 {
 	HudPalette c;
 	c.steelDark = GameMakeColor( 14, 18, 26, 255 );
+	c.steelMid = GameMakeColor( 20, 25, 36, 255 );
+	c.well = GameMakeColor( 11, 15, 22, 255 );
+	c.wellEdge = GameMakeColor( 36, 46, 66, 255 );
 	c.steel = GameMakeColor( 26, 32, 44, 255 );
 	c.panel = GameMakeColor( 34, 42, 58, 255 );
 	c.panelLow = GameMakeColor( 22, 28, 40, 255 );
@@ -405,10 +436,10 @@ void drawGlyph( Glyph glyph, const HRect &r, Color color )
 }
 
 GameWindow *s_hudMasterForLookup = nullptr;
-const int kHudWinCount = 7 + 12;
-GameWindow *s_hudWin[ kHudWinCount ];     // radar, options, idle worker, beacon, communicator, XP bar foreground, attack lamp, 12 command buttons
+const int kHudWinCount = 8 + 12;
+GameWindow *s_hudWin[ kHudWinCount ];     // 0 radar, 1-4 utility buttons, 5 XP trough, 6 attack lamp, 7 CommandWindow, 8.. command buttons
 const char *const s_hudWinNames[ kHudWinCount ] = { "LeftHUD", "ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon",
-                                         "PopupCommunicator", "ExpBarForeground", "WinUAttack",
+                                         "PopupCommunicator", "ExpBarForeground", "WinUAttack", "CommandWindow",
                                          "ButtonCommand01", "ButtonCommand02", "ButtonCommand03", "ButtonCommand04",
                                          "ButtonCommand05", "ButtonCommand06", "ButtonCommand07", "ButtonCommand08",
                                          "ButtonCommand09", "ButtonCommand10", "ButtonCommand11", "ButtonCommand12" };
@@ -470,39 +501,96 @@ void drawUtilityPlate( GameWindow *win, Glyph glyph, Int t, const HudPalette &c 
 	drawGlyph( glyph, r, enabled ? c.icon : c.iconDim );
 }
 
+// Recessed area (a well): dark body, a shadow line on top and a faint lit lip at the bottom.
+void drawWell( const HRect &r, const HudPalette &c )
+{
+	if( r.w < 3 || r.h < 3 )
+		return;
+	TheDisplay->drawFillRect( r.x, r.y, r.w, r.h, c.well );
+	TheDisplay->drawLine( r.x, r.y, r.x + r.w, r.y, 1, c.shadow );
+	TheDisplay->drawLine( r.x, r.y + r.h, r.x + r.w, r.y + r.h, 1, c.wellEdge );
+}
+
+// A module of the console: panel body, one hairline outline, a top highlight and a short accent cap.
+void drawModule( const HRect &r, Int t, const HudPalette &c )
+{
+	if( r.w < 4 || r.h < 4 )
+		return;
+	TheDisplay->drawFillRect( r.x, r.y, r.w, r.h, c.panel );
+	TheDisplay->drawOpenRect( r.x, r.y, r.w, r.h, 1, c.accentDim );
+	TheDisplay->drawLine( r.x + 1, r.y + 1, r.x + r.w - 1, r.y + 1, 1, c.highlight );
+	TheDisplay->drawFillRect( r.x + t, r.y, std::max( 8, r.w / 7 ), std::max( 2, t ), c.accent );
+}
+
+bool windowChainShown( GameWindow *win )
+{
+	for( ; win; win = win->winGetParent() )
+		if( win->winIsHidden() )
+			return false;
+	return win == nullptr;
+}
+
+HRect windowRect( GameWindow *win )
+{
+	Int x = 0, y = 0, w = 0, h = 0;
+	win->winGetScreenPosition( &x, &y );
+	win->winGetSize( &w, &h );
+	return HRect{ x, y, w, h };
+}
+
+HRect inflate( const HRect &r, Int g )
+{
+	return HRect{ r.x - g, r.y - g, r.w + 2 * g, r.h + 2 * g };
+}
+
+// The Global Powers surface. It is the draw function of the (independent, top-level) shortcut parent window while Enhanced
+// is active, so its frame follows that window exactly: position, slide-in animation, hidden state. The five slots are the
+// existing ButtonParent/ButtonCommand windows; ready (enabled) slots get an accent outline, cooldown stays the button's own.
+void powersPanelDraw( GameWindow *window, WinInstanceData * )
+{
+	if( !EnhancedHud::active() || !TheDisplay || !window )
+		return;
+	const EnhancedHudLayout::Result &l = EnhancedHud::layout();
+	const HudPalette c = makePalette();
+	const Int t = std::max( 1, (Int)( l.scale * 1.5 + 0.5 ) );
+	const Int pad = std::max( 2, (Int)( EnhancedHudLayout::kPowerPad * l.scale + 0.5 ) );
+	const HRect frame = inflate( windowRect( window ), pad );
+	TheDisplay->drawFillRect( frame.x, frame.y, frame.w, frame.h, c.steelDark );
+	drawModule( inflate( frame, -1 ), t, c );
+	const Int g = std::max( 1, (Int)( 2 * l.scale + 0.5 ) );
+	for( GameWindow *slot = window->winGetChild(); slot; slot = slot->winGetNext() )
+	{
+		if( slot->winIsHidden() )
+			continue;
+		const HRect cell = inflate( windowRect( slot ), -g );
+		drawWell( cell, c );
+		bool ready = false;
+		for( GameWindow *button = slot->winGetChild(); button; button = button->winGetNext() )
+			if( !button->winIsHidden() && BitIsSet( button->winGetStatus(), WIN_STATUS_ENABLED ) )
+				ready = true;
+		TheDisplay->drawOpenRect( cell.x, cell.y, cell.w, cell.h, 1, ready ? c.accent : c.accentDim );
+	}
+}
+
 }  // namespace
 
 void drawEnhancedHudFrame()
 {
 	if( !EnhancedHud::active() || !TheDisplay )
 		return;
-	const EnhancedHudLayout::Result &l = EnhancedHud::layout();
+	EnhancedHudLayout::Result l = EnhancedHud::layout();
 	const HudPalette c = makePalette();
 	const Int t = std::max( 1, (Int)( l.scale * 1.5 + 0.5 ) );     // line thickness follows the UI scale
+	const Int g = std::max( 2, (Int)( 4 * l.scale + 0.5 ) );       // gutter between a well and what it holds
 
-	// base plate (the island), then the four panels inset from it
-	TheDisplay->drawFillRect( l.island.x, l.island.y, l.island.w, l.island.h, c.steelDark );
-	const HRect panels[ 4 ] = { l.radarFrame, l.infoFrame, l.commandFrame, l.xpFrame };
-	for( int i = 0; i < 4; ++i )
+	// The frame follows the real control bar window (stage changes, hide/show slide): the windows are its children, so
+	// the offset of the master from the layout position is exactly how far the whole console has been moved. The control
+	// bar's own state stays the only authority; nothing here keeps a visibility state of its own.
+	if( s_barMaster )
 	{
-		const HRect &p = panels[ i ];
-		TheDisplay->drawFillRect( p.x, p.y, p.w, p.h, c.steel );
-		TheDisplay->drawFillRect( p.x + t, p.y + t, p.w - 2 * t, p.h - 2 * t, c.panel );
-		TheDisplay->drawLine( p.x + t, p.y + t, p.x + p.w - t, p.y + t, 1, c.highlight );      // top bevel
-		TheDisplay->drawLine( p.x + t, p.y + p.h - t, p.x + p.w - t, p.y + p.h - t, 1, c.shadow );
-		TheDisplay->drawOpenRect( p.x, p.y, p.w, p.h, 1, c.accentDim );
+		const HRect m = windowRect( s_barMaster );
+		l = EnhancedHudLayout::translated( l, m.x - l.island.x, m.y - l.island.y );
 	}
-	// dividers
-	for( int i = 0; i < 3; ++i )
-	{
-		TheDisplay->drawFillRect( l.dividerX[ i ] - t, l.island.y + t, 2 * t, l.island.h - t, c.shadow );
-		TheDisplay->drawLine( l.dividerX[ i ], l.island.y + t, l.dividerX[ i ], l.island.bottom(), 1, c.highlight );
-	}
-	// top accent edge and the two end caps
-	TheDisplay->drawFillRect( l.island.x, l.island.y, l.island.w, t, c.accent );
-	const Int cap = std::max( l.island.h / 3, 4 );
-	TheDisplay->drawFillRect( l.island.x, l.island.y, t, cap, c.accent );
-	TheDisplay->drawFillRect( l.island.right() - t, l.island.y, t, cap, c.accent );
 
 	// windows used for the control plates (looked up once per control bar)
 	if( s_barMaster != s_hudMasterForLookup )
@@ -512,57 +600,108 @@ void drawEnhancedHudFrame()
 			s_hudWin[ i ] = s_barMaster ? barWindow( s_hudWinNames[ i ] ) : nullptr;
 	}
 
-	// radar bezel: a dark recess around the (retail, functional) radar window
+	// 1. outer console: one dark plate with a lighter upper band and a single accent edge
+	TheDisplay->drawFillRect( l.island.x, l.island.y, l.island.w, l.island.h, c.steelDark );
+	TheDisplay->drawFillRect( l.island.x, l.island.y + t, l.island.w, l.island.h / 3, c.steelMid );
+	TheDisplay->drawFillRect( l.island.x, l.island.y, l.island.w, t, c.accent );
+
+	// 2. the four modules (no dividers: the gaps between modules are the dividers)
+	drawModule( l.radarFrame, t, c );
+	drawModule( l.infoFrame, t, c );
+	drawModule( l.commandFrame, t, c );
+	drawModule( l.xpFrame, t, c );
+
+	// 3. radar module: bezel (red while the attack warning is lit), utility plates, warning lamp
+	const bool lampLit = s_hudWin[ 6 ] && !s_hudWin[ 6 ]->winIsHidden() && !BitIsSet( s_hudWin[ 6 ]->winGetStatus(), WIN_STATUS_ENABLED );
 	if( GameWindow *radar = s_hudWin[ 0 ] )
 	{
-		Int x = 0, y = 0, w = 0, h = 0;
-		radar->winGetScreenPosition( &x, &y );
-		radar->winGetSize( &w, &h );
-		const Int g = std::max( 2, t + 1 );
-		bool lamp = false;
-		const bool lit = s_hudWin[ 6 ] && !s_hudWin[ 6 ]->winIsHidden() && !BitIsSet( s_hudWin[ 6 ]->winGetStatus(), WIN_STATUS_ENABLED );
-		(void)lamp;
-		// while the attack warning is lit the whole radar bezel turns red as well (strong, peripheral-vision cue)
-		drawPlate( HRect{ x - g, y - g, w + 2 * g, h + 2 * g }, 1, c.shadow, lit ? GameMakeColor( 224, 24, 24, 255 ) : c.accentDim, c );
-		if( lit )
-			TheDisplay->drawOpenRect( x - g - 1, y - g - 1, w + 2 * g + 2, h + 2 * g + 2, 1, GameMakeColor( 224, 24, 24, 255 ) );
+		const HRect bezel = inflate( windowRect( radar ), std::max( 2, t + 1 ) );
+		const Color red = GameMakeColor( 224, 24, 24, 255 );
+		drawWell( bezel, c );
+		TheDisplay->drawOpenRect( bezel.x, bezel.y, bezel.w, bezel.h, 1, lampLit ? red : c.accentDim );
+		if( lampLit )
+			TheDisplay->drawOpenRect( bezel.x - 1, bezel.y - 1, bezel.w + 2, bezel.h + 2, 1, red );
 	}
-	{
-		bool lit = false;
-		drawAttackLamp( s_hudWin[ 6 ], c, &lit );
-	}
-	// command/build buttons sit on recessed plates (the icon is aspect-fitted inside, so the plate shows around it)
-	for( int i = 7; i < kHudWinCount; ++i )
-		if( GameWindow *btn = s_hudWin[ i ] )
-			if( !btn->winIsHidden() && !btn->winGetParent()->winIsHidden() )
-			{
-				Int x = 0, y = 0, w = 0, h = 0;
-				btn->winGetScreenPosition( &x, &y );
-				btn->winGetSize( &w, &h );
-				drawPlate( HRect{ x, y, w, h }, 1, c.panelLow, c.accentDim, c );
-			}
-	// utility buttons: procedural plates (the retail bitmaps are cleared for Enhanced)
 	drawUtilityPlate( s_hudWin[ 1 ], GLYPH_OPTIONS, 1, c );
 	drawUtilityPlate( s_hudWin[ 2 ], GLYPH_WORKER, 1, c );
 	drawUtilityPlate( s_hudWin[ 3 ], GLYPH_BEACON, 1, c );
 	drawUtilityPlate( s_hudWin[ 4 ], GLYPH_COMMS, 1, c );
-
-	// cash panel: its own recessed display with an accent edge (the existing MoneyDisplay text sits inside)
-	if( !l.cashFrame.empty() )
 	{
-		drawPlate( l.cashFrame, 1, c.shadow, c.accentDim, c );
-		TheDisplay->drawFillRect( l.cashFrame.x + 1, l.cashFrame.y + 1, std::max( 2, t ), l.cashFrame.h - 2, c.accent );
+		bool lit = false;
+		drawAttackLamp( s_hudWin[ 6 ], c, &lit );
 	}
 
-	// General / XP region: trough behind the XP bar and the rank ladder (the stars of the retail strip are replaced)
+	// 4. unit information module: the retail selection block sits in one recessed well
+	{
+		EnhancedHudLayout::Rect dst;
+		bool hide = false;
+		if( EnhancedHudLayout::destinationFor( "WinUnitSelected", dst, hide ) )
+			drawWell( inflate( EnhancedHudLayout::toPhysical( l, dst ), g / 2 ), c );
+	}
+
+	// 5. command module: resource header (cash + power), then the command bay with its twelve fixed slots. The slots are
+	//    always drawn, so a context with two commands reads as a bay with ten free slots rather than as icons floating on a
+	//    blank plate; the commands keep their retail slot indices.
+	{
+		const Int cashGutter = std::max( 2, g / 2 );
+		const HRect strip = { l.cashFrame.x - cashGutter, l.cashFrame.y - cashGutter,
+		                      l.commandFrame.right() - ( l.cashFrame.x - l.commandFrame.x ) - ( l.cashFrame.x - cashGutter ) + cashGutter,
+		                      l.cashFrame.h + 2 * cashGutter };
+		drawWell( strip, c );
+		if( !l.cashFrame.empty() )
+		{
+			drawPlate( l.cashFrame, 1, c.shadow, c.accentDim, c );
+			TheDisplay->drawFillRect( l.cashFrame.x + 1, l.cashFrame.y + 1, std::max( 2, t ), l.cashFrame.h - 2, c.accent );
+		}
+
+		HRect cells[ 12 ];
+		HRect bay = { 0, 0, 0, 0 };
+		for( int i = 0; i < 12; ++i )
+		{
+			EnhancedHudLayout::Rect dst;
+			bool hide = false;
+			EnhancedHudLayout::destinationFor( s_hudWinNames[ 8 + i ], dst, hide );
+			cells[ i ] = EnhancedHudLayout::toPhysical( l, dst );
+			bay = ( i == 0 ) ? cells[ i ] : EnhancedHudWindows::unionOf( bay, cells[ i ] );
+		}
+		drawWell( inflate( bay, g ), c );
+		const bool commandsShown = s_hudWin[ 7 ] && windowChainShown( s_hudWin[ 7 ] );
+		if( commandsShown )
+		{
+			const Int ig = std::max( 1, g / 2 );
+			for( int i = 0; i < 12; ++i )
+			{
+				GameWindow *btn = s_hudWin[ 8 + i ];
+				const bool occupied = btn && !btn->winIsHidden();
+				const HRect slot = inflate( cells[ i ], ig );
+				if( occupied )
+					drawPlate( slot, 1, c.panel, c.accentDim, c );
+				else
+				{
+					TheDisplay->drawFillRect( slot.x, slot.y, slot.w, slot.h, c.panelLow );
+					TheDisplay->drawOpenRect( slot.x, slot.y, slot.w, slot.h, 1, c.steel );
+				}
+			}
+		}
+	}
+
+	// 6. General module (one piece): XP trough with scale ticks, the General Powers entry plate and the rank grid
 	if( GameWindow *bar = s_hudWin[ 5 ] )
 	{
-		Int x = 0, y = 0, w = 0, h = 0;
-		bar->winGetScreenPosition( &x, &y );
-		bar->winGetSize( &w, &h );
-		drawPlate( HRect{ x, y, w, h }, 1, c.shadow, c.accentDim, c );
+		const HRect r = windowRect( bar );
+		drawWell( r, c );
+		for( int k = 1; k < 5; ++k )
+		{
+			const Int y = r.y + r.h - k * r.h / 5;
+			TheDisplay->drawLine( r.x + r.w - r.w / 4, y, r.x + r.w - 1, y, 1, c.accentDim );
+		}
 	}
 	{
+		EnhancedHudLayout::Rect dst;
+		bool hide = false;
+		if( EnhancedHudLayout::destinationFor( "ButtonGeneral", dst, hide ) )
+			drawWell( inflate( EnhancedHudLayout::toPhysical( l, dst ), std::max( 1, g / 2 ) ), c );
+
 		Int rank = 1, levels = 1;
 		if( TheControlBar )
 			if( Player *player = TheControlBar->getCurrentlyViewedPlayer() )
@@ -570,35 +709,17 @@ void drawEnhancedHudFrame()
 		if( TheRankInfoStore )
 			levels = TheRankInfoStore->getRankLevelCount();
 		const int slots = EnhancedHudLayout::rankSlotCount( levels );
-		const double s = l.island.w > 0 ? (double)l.island.w / EnhancedHudLayout::kIslandW : l.scale;
 		for( int i = 0; i < slots; ++i )
 		{
 			const bool reached = rank >= i + 2;
 			const HRect slot = EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankSlot( i ) );
 			const HRect star = EnhancedHudLayout::toPhysical( l, EnhancedHudLayout::rankStar( i ) );
-			drawPlate( slot, 1, reached ? c.panelLow : c.steelDark, reached ? c.accent : c.accentDim, c );
-			fillStar( star.x + star.w / 2, star.y + star.h / 2, std::max( 2, star.h / 2 ), reached ? c.lit : c.litDim );
 			if( reached )
-				TheDisplay->drawFillRect( star.right() + (Int)( 4 * s ), slot.y + slot.h / 2 - 1,
-				                          slot.right() - star.right() - (Int)( 8 * s ), std::max( 2, (Int)( 2 * s ) ), c.accent );
+				drawPlate( slot, 1, c.panelLow, c.accent, c );
+			else
+				drawWell( slot, c );
+			fillStar( star.x + star.w / 2, star.y + star.h / 2, std::max( 2, star.h / 2 ), reached ? c.lit : c.litDim );
 		}
 	}
-
-	// special power column: part of the console (same plate, joined to the island edge and its accent line)
-	if( !l.powerColumn.empty() )
-	{
-		const HRect &pc = l.powerColumn;
-		TheDisplay->drawFillRect( pc.x, pc.y, pc.w, pc.h, c.steelDark );
-		TheDisplay->drawFillRect( pc.x + t, pc.y + t, pc.w - 2 * t, pc.h - 2 * t, c.steel );
-		TheDisplay->drawOpenRect( pc.x, pc.y, pc.w, pc.h, 1, c.accentDim );
-		TheDisplay->drawFillRect( pc.x, pc.y, pc.w, t, c.accent );
-		if( l.powerBesideIsland )
-		{
-			// the seam with the island: carry the base plate across so the column reads as part of the console
-			TheDisplay->drawFillRect( pc.x - t, pc.bottom() - l.island.h + t, 2 * t, l.island.h - t, c.steel );
-			TheDisplay->drawLine( pc.x, pc.bottom() - l.island.h + t, pc.x, pc.bottom(), 1, c.highlight );
-		}
-		else
-			TheDisplay->drawFillRect( pc.x, pc.bottom() - t, pc.w, 2 * t, c.steel );
-	}
+	// (the Global Powers surface is not part of the island: see powersPanelDraw, drawn by the shortcut window itself)
 }

@@ -217,6 +217,18 @@ struct Tree
 	}
 };
 
+// The loader creates every window at the modern layout scale before the Enhanced layout sees it.
+void scaleLoaded(Tree &t, double ls)
+{
+	for (auto &w : t.wins)
+	{
+		w->lox = static_cast<int>(std::lround(w->lox * ls));
+		w->loy = static_cast<int>(std::lround(w->loy * ls));
+		w->w = static_cast<int>(std::lround(w->w * ls));
+		w->h = static_cast<int>(std::lround(w->h * ls));
+	}
+}
+
 double layoutScaleFor(int w, int h, int ui) { return DisplayGeometry::computeLayout({w, h}, ui).scale(); }
 
 struct Surface { int w, h; };
@@ -561,6 +573,7 @@ TEST(EnhancedHudInteractive, SpecialPowerShortcutButtonsAreClickableWhereDrawn)
 				continue;
 			Tree t;
 			t.build(kPowers);
+			scaleLoaded(t, ls);
 			// originals recorded before anything moves (the engine's remembered Original store)
 			std::map<Win *, std::vector<int>> orig;
 			auto original = [&orig](Win *w, int *out)
@@ -571,10 +584,14 @@ TEST(EnhancedHudInteractive, SpecialPowerShortcutButtonsAreClickableWhereDrawn)
 				for (int i = 0; i < 4; ++i)
 					out[i] = it->second[i];
 			};
-			EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerColumn, layout.scale / ls, original,
-			                                          [&original](Win *w) { int o[4]; original(w, o); });
-			EXPECT_EQ(t.master()->lox, layout.powerColumn.x);
-			EXPECT_EQ(t.master()->loy, layout.powerColumn.y);
+			auto remember = [&original](Win *w) { int o[4]; original(w, o); };
+			if (layout.powerHorizontal)
+				EnhancedHudWindows::applyPowerRow<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember,
+					[](Win *w) { return w->name.rfind("ButtonParent", 0) == 0 ? w->name[12] - '1' : -1; });
+			else
+				EnhancedHudWindows::applyPowerColumn<Win>(t.master(), layout.powerPanel, layout.scale / ls, original, remember);
+			EXPECT_EQ(t.master()->lox, layout.powerPanel.x);
+			EXPECT_EQ(t.master()->loy, layout.powerPanel.y);
 			for (int i = 1; i <= 5; ++i)
 			{
 				Win *b = t.find("ButtonCommand" + std::to_string(i));
@@ -621,4 +638,96 @@ TEST(EnhancedHudInteractive, RestoringTheRememberedWindowsRecoversTheRetailGeome
 		EXPECT_EQ(t.wins[i]->h, retail.wins[i]->h) << t.wins[i]->name;
 		EXPECT_EQ(t.wins[i]->hidden, retail.wins[i]->hidden) << t.wins[i]->name;
 	}
+}
+
+TEST(EnhancedHudInteractive, GlobalPowersRowFallbackKeepsEveryButtonClickableAndOrdered)
+{
+	for (const Surface &s : kSurfaces)
+		for (int ui : kUiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!layout.valid)
+				continue;
+			// force the compact row regardless of what compute() chose
+			const int pitch = scaledRef(kPowerColumnW, layout.scale);
+			const Rect row = {20, 30, pitch * kPowerCount, scaledRef(kPowerCellH, layout.scale)};
+			Tree t;
+			t.build(kPowers);
+			scaleLoaded(t, ls);
+			std::map<Win *, std::vector<int>> orig;
+			auto original = [&orig](Win *w, int *out)
+			{
+				auto it = orig.find(w);
+				if (it == orig.end())
+					it = orig.insert({w, {w->lox, w->loy, w->w, w->h}}).first;
+				for (int i = 0; i < 4; ++i)
+					out[i] = it->second[i];
+			};
+			EnhancedHudWindows::applyPowerRow<Win>(t.master(), row, layout.scale / ls, original,
+				[&original](Win *w) { int o[4]; original(w, o); },
+				[](Win *w) { return w->name.rfind("ButtonParent", 0) == 0 ? w->name[12] - '1' : -1; });
+			Rect previous;
+			for (int i = 1; i <= 5; ++i)
+			{
+				Win *b = t.find("ButtonCommand" + std::to_string(i));
+				Win *frame = t.find("ButtonParent" + std::to_string(i));
+				ASSERT_NE(b, nullptr);
+				const Rect r = screen(b), fr = screen(frame);
+				EXPECT_TRUE(r.within(fr)) << i;
+				EXPECT_TRUE(fr.within(Rect{row.x, row.y, row.w + 2, row.h + 2})) << i << " " << s.w << "x" << s.h;
+				if (i > 1)
+				{
+					EXPECT_GT(fr.x, previous.x);                  // left to right in slot order
+					EXPECT_FALSE(fr.intersects(previous));
+				}
+				previous = fr;
+				if (r.w < 4 || r.h < 4)
+					continue;
+				for (const Probe &p : insideProbes(r))
+					EXPECT_EQ(hitTest(t.master(), p.x, p.y), b) << "row " << i << " " << p.what << " " << s.w << "x" << s.h << " ui" << ui;
+			}
+		}
+}
+
+TEST(EnhancedHudInteractive, SparseCommandContextsKeepRetailSlotsAndOnlyVisibleButtonsAreClickable)
+{
+	// a context with a few commands hides the other slot windows; the visible ones keep their slot (index) and full plate
+	const int kSparse[][3] = {{1, 2, 0}, {1, 7, 12}, {4, 5, 11}};
+	for (const Surface &s : kSurfaces)
+		for (int ui : {DisplayGeometry::kAutoUiScale, 100, 200})
+		{
+			const Result layout = EnhancedHudLayout::compute(s.w, s.h, layoutScaleFor(s.w, s.h, ui));
+			if (!layout.valid)
+				continue;
+			for (const auto &pick : kSparse)
+			{
+				Tree dense;
+				dense.build(kBar);
+				applyEnhanced(dense, layout);
+				showContext(dense, "CommandWindow", "WinUnitSelected");
+				Tree sparse;
+				sparse.build(kBar);
+				applyEnhanced(sparse, layout);
+				showContext(sparse, "CommandWindow", "WinUnitSelected");
+				for (int i = 1; i <= 12; ++i)
+				{
+					char name[32];
+					std::snprintf(name, sizeof(name), "ButtonCommand%02d", i);
+					const bool keep = i == pick[0] || i == pick[1] || i == pick[2];
+					sparse.find(name)->hidden = !keep;
+					const Rect a = screen(dense.find(name)), b = screen(sparse.find(name));
+					// hiding other buttons never moves a slot
+					EXPECT_EQ(a.x, b.x); EXPECT_EQ(a.y, b.y); EXPECT_EQ(a.w, b.w); EXPECT_EQ(a.h, b.h);
+					Win *hit = hitTest(sparse.master(), a.x + a.w / 2, a.y + a.h / 2);
+					if (keep)
+					{
+						for (const Probe &p : insideProbes(b))
+							EXPECT_EQ(hitTest(sparse.master(), p.x, p.y), sparse.find(name)) << name << " " << p.what;
+					}
+					else
+						EXPECT_NE(hit, sparse.find(name)) << name << " must not react while hidden";
+				}
+			}
+		}
 }

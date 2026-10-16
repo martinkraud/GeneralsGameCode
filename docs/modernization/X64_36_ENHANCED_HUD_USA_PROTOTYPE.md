@@ -278,3 +278,53 @@ buttons (30x22), attack lamp (22x24), XP strip (21x107).
 squares stay square, native multiples, gauge scale, every placed window classified, General plate matches the 65x29
 bitmap on all surfaces x UI scales, icons stay inside their full hit plates; plus the lamp placement test and the contract
 test. The 9 interactive hit-test tests are unchanged and pass against the new General/lamp geometry.
+
+## 14. Refinement 3: composition pass (after native review of `x64-36-enhanced-hud-refine2`)
+Kept as accepted direction: the image-fit policy (section 13), the procedural attack-warning lamp and red radar bezel, the
+dedicated cash panel with thousands grouping, the centred bottom-flush bounded island. Everything below is presentation
+only; Original is untouched (`restoreOriginalLayout()` restores the island, the power windows **and the power window's
+original draw function**; with Enhanced off no code path runs).
+
+**Global Powers: an independent surface (supersedes "attached power column").**
+* The five real shortcut windows (`GenPowersShortcutBarUS.wnd`: `ButtonParent1-5` > `ButtonCommand1-5`) are moved by the
+  shared placement mechanism: `EnhancedHudWindows::applyPowerColumn` (vertical) or `applyPowerRow` (compact). No state,
+  command, cooldown, tooltip or hotkey is touched; the clock/disabled overlays are the buttons' own.
+* Geometry (`EnhancedHudLayout::compute`): safe region = at most 16:9 of the surface height, centred; the frame (panel +
+  `kPowerPad`) keeps `kPowerMargin` from the safe edge and at least `kPowerGap` of clear space from the island, and never
+  touches the bottom edge. Non-compact surfaces: a vertical column at the upper right of the safe region (y ~ 18 % of the
+  height); if its x range overlaps the island's footprint (32:9 keeps it near the action, not at x = 5120) it is stacked above
+  the island with the gap. Compact surfaces (<= 1.45:1, island spans the full width): a **row of five** above the island's
+  right end (a tall column would cover ~40 % of a 4:3 battlefield). Deterministic, unit tested for all surfaces x UI scales.
+* Presentation: the frame is the shortcut parent window's **own draw function** while Enhanced is active
+  (`powersPanelDraw`): module plate with accent cap, one recessed well per visible slot, a bright outline on ready (enabled)
+  slots. Because it is the window's draw function it follows the window's slide-in animation and hidden state exactly; no
+  second visibility state exists.
+
+**Command console.** Twelve fixed slot wells are always drawn while the command context is shown, inside one recessed bay;
+slots whose button window is visible are lit plates, the others are empty wells, so 2 commands and 12 commands both read as
+a bay with fixed positions. Command-to-slot assignment is the retail one (indices `ButtonCommand01..12` untouched); nothing
+re-orders, swaps or remaps commands. Cash and the power bar share one header strip above the bay; the cash panel keeps its
+own recess and accent edge. Other contexts (beacon, under construction, observer, OCL timer) keep their windows inside the
+same bay without slot wells.
+
+**Unit information.** The selection block (cameo, upgrades, queue, health/status windows - all retail) sits in a single
+recessed well inside its module; nothing is added or removed.
+
+**General module (one piece).** XP trough with scale ticks on the left (real `GeneralsExp` gauge, tiles scaled from the
+trough width); the General Powers entry button (retail 65x29 three-star bitmap, aspect-fitted, in its recessed plate) on top
+of the right column; below it a compact 2x2 rank grid (42-unit cells, 28-unit square stars) lit up to the real
+`getRankLevel()`; cell count from `getRankLevelCount()`. The stars of the bitmap are now only the entry icon; the rank is
+carried by the grid.
+
+**Frame system.** One outer console plate (lighter upper band, single accent edge) holds four modules (radar, info, command,
+General). Hierarchy: console > module (panel + hairline + cap) > well > plate/icon. No divider lines (gaps are the dividers),
+one outline weight, wells instead of more borders. The frame is drawn at the real control bar window's position
+(`windowRect(s_barMaster)` + `EnhancedHudLayout::translated`), so the low stage and the hide/show slide move it with the
+windows; the control bar stays the only authority on its state.
+
+**Radar module.** Unchanged behaviour: bezel well (red while the attack warning is lit), four procedural utility plates,
+the accepted attack lamp.
+
+**Limits.** Procedural placeholder art; frame/lamp/glyphs not final; the row fallback and the 2x2 rank grid are
+geometrically tested but only reviewable natively; hide/show following is by construction (live master offset), exercised
+only by unit tests of the translation, not natively.

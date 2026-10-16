@@ -174,6 +174,42 @@ class EnhancedHudContracts(unittest.TestCase):
         # Original keeps scheme images: the scheme file is not edited for Enhanced
         self.assertNotIn("EnhancedHudImage", text(SCHEME))
 
+    def test_global_powers_surface_is_independent_and_follows_its_own_window(self):
+        bar = text(BAR)
+        # the frame is the shortcut window's own draw function: it slides/hides with that window, no second visibility state
+        self.assertIn("parent->winSetDrawFunc( powersPanelDraw );", bar)
+        self.assertIn("s_powersParent->winSetDrawFunc( s_powersOriginalDraw );", bar)
+        draw = bar[bar.index("void powersPanelDraw( GameWindow *window, WinInstanceData * )"):]
+        self.assertIn("if( !EnhancedHud::active()", draw[:200])
+        self.assertIn("winIsHidden()", draw)
+        lay = text("Core/GameEngine/Include/Common/EnhancedHudLayout.h")
+        self.assertIn("kPowerGap", lay)
+        self.assertNotIn("powerBesideIsland", lay)         # no longer attached to the island
+        # the placement of the five real buttons is the shared mechanism (column or compact row)
+        self.assertIn("EnhancedHudWindows::applyPowerRow<GameWindow>(", bar)
+        self.assertIn("EnhancedHudWindows::applyPowerColumn<GameWindow>(", bar)
+        # no special power state or command is touched
+        for forbidden in ("doSpecialPower", "SpecialPowerType", "getSpecialPower", "triggerSpecialPower"):
+            self.assertNotIn(forbidden, bar)
+
+    def test_console_frame_follows_the_real_control_bar_window(self):
+        bar = text(BAR)
+        frame = bar[bar.index("void drawEnhancedHudFrame()"):]
+        self.assertIn("windowRect( s_barMaster )", frame)
+        self.assertIn("EnhancedHudLayout::translated(", frame)
+        # presentation only: the frame owns no flag about the bar being open/hidden
+        for forbidden in ("static bool", "s_hidden", "s_visible", "m_currentControlBarStage"):
+            self.assertNotIn(forbidden, frame)
+
+    def test_command_bay_draws_all_twelve_slots_without_reordering_commands(self):
+        bar = text(BAR)
+        frame = bar[bar.index("void drawEnhancedHudFrame()"):]
+        self.assertIn("for( int i = 0; i < 12; ++i )", frame)
+        self.assertIn("occupied", frame)
+        # slot windows are only drawn behind, never re-assigned or moved by index
+        for forbidden in ("setControlCommand", "findCommandButton", "CommandSet", "std::swap"):
+            self.assertNotIn(forbidden, bar)
+
 
 if __name__ == "__main__":
     unittest.main()
