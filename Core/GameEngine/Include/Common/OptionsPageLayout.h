@@ -83,9 +83,10 @@ constexpr PageItem kDisplayItems[] = {
 	{"ModernVsyncLabel", "ModernVsync", ControlKind::Combo},
 	{"FrameRateLimitLabel", "ComboBoxFrameRateLimit", ControlKind::Combo},
 };
+// Gamma is intentionally not offered: the D3D11 backend has no gamma stage (D3D11Backend::Set_Gamma is Unsupported) and the retail
+// path never touches the desktop in windowed presentation, so the slider would change nothing (SETTINGS_COMPLETION_AUDIT.md, F).
 constexpr PageItem kGraphicsItems[] = {
 	{"DetailLabel", "ComboBoxDetail", ControlKind::Combo},
-	{"GammaLabel", "SliderGamma", ControlKind::Slider},
 };
 constexpr PageItem kAudioItems[] = {
 	{"SFXVolumeLabel", "SliderSFXVolume", ControlKind::Slider},
@@ -95,10 +96,15 @@ constexpr PageItem kAudioItems[] = {
 constexpr PageItem kControlsItems[] = {
 	{nullptr, "CheckAlternateMouse", ControlKind::Check},
 	{"ScrollSpeedLabel", "SliderScrollSpeed", ControlKind::Slider},
+	{nullptr, "CheckBoxDrawAnchor", ControlKind::Check},     // retail options that Modern Options used to hide: all have live handlers
+	{nullptr, "CheckBoxMoveAnchor", ControlKind::Check},
 };
 constexpr PageItem kGameplayItems[] = {
 	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
-	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA prototype)
+	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA, China, GLA)
+	{nullptr, "CheckLanguageFilter", ControlKind::Check},
+	{nullptr, "CheckBoxUseCamera", ControlKind::Check},
+	{nullptr, "CheckBoxSaveCamera", ControlKind::Check},
 };
 
 struct PageTable

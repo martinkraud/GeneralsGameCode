@@ -6,6 +6,7 @@
 // Keys written (all optional on read; unknown keys in the file are never touched):
 //   DisplayVersion  1         marks preferences written by a build that understands this block
 //   DisplayMonitor  0..n      monitor index in DisplayModes::enumerateMonitors() order (0 = primary)
+//   DisplayMonitorName text   stable Windows device name of the monitor (e.g. \\.\DISPLAY2); preferred over the index
 //   DisplayWidth/Height       client/back-buffer size; absent or 0 = automatic
 //   RefreshRate     Hz or 0   Borderless/Exclusive only; 0 = desktop rate
 //   DisplayMode     Windowed | Borderless | Exclusive
@@ -43,6 +44,7 @@ struct Settings
 {
 	bool explicitSettings = false;           // DisplayVersion present
 	int monitor = 0;
+	std::string monitorName;                 // stable device name; empty = use the index
 	Size resolution;                         // {0,0} = automatic
 	int refreshHz = 0;
 	WindowMode mode = WindowMode::Windowed;
@@ -53,7 +55,7 @@ struct Settings
 
 	bool operator==(const Settings &o) const
 	{
-		return explicitSettings == o.explicitSettings && monitor == o.monitor && resolution == o.resolution &&
+		return explicitSettings == o.explicitSettings && monitor == o.monitor && monitorName == o.monitorName && resolution == o.resolution &&
 		       refreshHz == o.refreshHz && mode == o.mode && vsync == o.vsync &&
 		       uiScalePercent == o.uiScalePercent && smoothMotion == o.smoothMotion && enhancedHud == o.enhancedHud;
 	}
@@ -131,6 +133,8 @@ inline Settings load(const KeyValues &kv, bool classic)
 	int n = 0;
 	if (const std::string *t = detail::find(kv, "DisplayMonitor"); t && detail::parseInt(*t, n) && n >= 0 && n < 64)
 		s.monitor = n;
+	if (const std::string *t = detail::find(kv, "DisplayMonitorName"); t && t->size() < 64)
+		s.monitorName = *t;
 	int w = 0, h = 0;
 	const std::string *tw = detail::find(kv, "DisplayWidth");
 	const std::string *th = detail::find(kv, "DisplayHeight");
@@ -167,6 +171,7 @@ inline void store(const Settings &s, KeyValues &kv)
 {
 	detail::put(kv, "DisplayVersion", std::to_string(kVersion));
 	detail::put(kv, "DisplayMonitor", std::to_string(s.monitor));
+	detail::put(kv, "DisplayMonitorName", s.monitorName);
 	detail::put(kv, "DisplayWidth", std::to_string(s.resolution.valid() ? s.resolution.width : 0));
 	detail::put(kv, "DisplayHeight", std::to_string(s.resolution.valid() ? s.resolution.height : 0));
 	detail::put(kv, "RefreshRate", std::to_string(s.refreshHz));
@@ -188,6 +193,7 @@ struct Environment
 struct Resolved
 {
 	int monitorIndex = 0;
+	std::string monitorName;                  // device name of the monitor that was actually chosen
 	WindowMode mode = WindowMode::Windowed;   // effective (Exclusive is reported as Borderless: deferred)
 	Size client;                              // window client = back buffer = logical display
 	Rect monitorBounds;
@@ -197,6 +203,37 @@ struct Resolved
 	DisplayGeometry::Layout layout;
 	std::vector<std::string> notes;           // every fallback taken, for the log
 };
+
+// Stable identity of a monitor: its Windows device name (\\.\DISPLAYn is assigned per output and survives a reordering of
+// the enumeration, unlike the index). ASCII by construction; anything else is replaced.
+inline std::string monitorId(const DisplayModes::Monitor &m)
+{
+	std::string id;
+	for (wchar_t c : m.deviceName)
+		id.push_back(c > 0 && c < 128 ? static_cast<char>(c) : '?');
+	return id;
+}
+
+// Chooses the monitor: by stable name when one is stored and attached; otherwise by index when no name is stored; otherwise (the
+// stored monitor was disconnected, or the index is out of range) the primary monitor. Every fallback is reported in `notes`.
+inline int chooseMonitor(const std::vector<DisplayModes::Monitor> &monitors, const std::string &name, int index,
+                         std::vector<std::string> *notes = nullptr)
+{
+	if (monitors.empty()) return 0;
+	if (!name.empty())
+	{
+		for (size_t i = 0; i < monitors.size(); ++i)
+			if (monitorId(monitors[i]) == name) return static_cast<int>(i);
+		if (notes) notes->push_back("monitor " + name + " is not attached; using primary");
+	}
+	else if (index >= 0 && index < static_cast<int>(monitors.size()))
+		return index;
+	else if (notes)
+		notes->push_back("monitor " + std::to_string(index) + " not attached; using primary");
+	for (size_t i = 0; i < monitors.size(); ++i)
+		if (monitors[i].primary) return static_cast<int>(i);
+	return 0;
+}
 
 // Largest comfortable windowed client size for a monitor, never larger than the work area minus the frame:
 // the biggest standard resolution of the monitor's own aspect family that fits, else a computed size.
@@ -250,10 +287,12 @@ inline std::vector<Size> sizeChoices(const DisplayModes::Monitor &monitor, Windo
 		add({monitor.bounds.width, monitor.bounds.height});
 		return out;
 	}
+	// 4:3, 5:4, 16:10, 16:9, 21:9 and 32:9 families (and the sizes between that desktops commonly use).
 	static const Size standard[] = {
-		{800, 600}, {1024, 768}, {1280, 720}, {1280, 800}, {1280, 960}, {1280, 1024}, {1366, 768}, {1440, 900},
-		{1600, 900}, {1600, 1200}, {1680, 1050}, {1920, 1080}, {1920, 1200}, {2560, 1080}, {2560, 1440}, {2560, 1600},
-		{3440, 1440}, {3840, 1080}, {3840, 1600}, {3840, 2160}, {5120, 1440},
+		{800, 600}, {1024, 768}, {1152, 864}, {1280, 720}, {1280, 800}, {1280, 960}, {1280, 1024}, {1360, 768}, {1366, 768},
+		{1440, 900}, {1600, 900}, {1600, 1200}, {1680, 1050}, {1920, 1080}, {1920, 1200}, {2048, 1152}, {2560, 1080},
+		{2560, 1440}, {2560, 1600}, {2880, 1620}, {3200, 1800}, {3440, 1440}, {3840, 1080}, {3840, 1600}, {3840, 2160},
+		{5120, 1440}, {5120, 2160}, {5120, 2880}, {7680, 2160}, {7680, 4320},
 	};
 	const int maxW = monitor.work.width - frameW, maxH = monitor.work.height - frameH;
 	for (const Size &s : standard)
@@ -265,6 +304,78 @@ inline std::vector<Size> sizeChoices(const DisplayModes::Monitor &monitor, Windo
 		return a.width != b.width ? a.width < b.width : a.height < b.height;
 	});
 	return out;
+}
+
+// "1920 x 1080  (16:9)" - the aspect family makes a long list of modern sizes readable at a glance.
+inline std::string resolutionChoiceLabel(Size s)
+{
+	return std::to_string(s.width) + " x " + std::to_string(s.height) + "  (" + DisplayModes::aspectFamily(s) + ")";
+}
+
+// ---- command-line overrides (session only) -------------------------------------------------------------------------------
+// Precedence, highest first: (1) command line for THIS launch (-xres/-yres together, -win, -fullscreen), (2) the stored
+// Options.ini values, (3) automatic defaults. An override is never written back by itself: the stored values stay as they were
+// until the player changes that field in Options and keeps the change. `-fullscreen` means Borderless here: this renderer does
+// not offer exclusive fullscreen (see SETTINGS_COMPLETION_AUDIT.md).
+struct SessionOverrides
+{
+	Size resolution;                 // {0,0} = none
+	bool windowed = false;           // -win
+	bool fullscreen = false;         // -fullscreen
+	bool any() const { return resolution.valid() || windowed || fullscreen; }
+};
+
+inline Settings applyOverrides(Settings s, const SessionOverrides &o)
+{
+	if (o.windowed) s.mode = WindowMode::Windowed;
+	else if (o.fullscreen) s.mode = WindowMode::Borderless;
+	if (o.resolution.valid() && o.resolution.width >= DisplayGeometry::kReferenceSize.width &&
+	    o.resolution.height >= DisplayGeometry::kReferenceSize.height && o.resolution.width <= kMaxDimension &&
+	    o.resolution.height <= kMaxDimension)
+		s.resolution = o.resolution;
+	return s;
+}
+
+// ---- what to persist after the player pressed Accept ------------------------------------------------------------------------
+// `stored` = the values in Options.ini, `effective` = what is running (stored + session overrides), `requested` = what the
+// controls now say. Only fields the player actually changed (requested != effective) are persisted; a field they did not touch
+// keeps its stored value, so a command-line override never leaks into the file. Fields that can make the game unusable (size,
+// mode, monitor, UI scale) are "risky": they are persisted only after the player keeps them (DisplayTransaction), everything else
+// (VSync, unit motion, interface) is persisted at once.
+struct PersistPlan
+{
+	Settings immediate;              // write now
+	Settings afterKeep;              // write when the risky change is kept (== immediate when nothing risky changed)
+	bool riskyChanged = false;       // a Keep/Revert confirmation is needed
+};
+
+inline bool sameMonitor(const Settings &a, const Settings &b)
+{
+	if (!a.monitorName.empty() && !b.monitorName.empty()) return a.monitorName == b.monitorName;
+	return a.monitor == b.monitor;
+}
+
+inline PersistPlan planPersistence(const Settings &stored, const Settings &effective, const Settings &requested)
+{
+	PersistPlan plan;
+	Settings now = stored;
+	now.explicitSettings = true;
+	if (requested.vsync != effective.vsync) now.vsync = requested.vsync;
+	if (requested.smoothMotion != effective.smoothMotion) now.smoothMotion = requested.smoothMotion;
+	if (requested.enhancedHud != effective.enhancedHud) now.enhancedHud = requested.enhancedHud;
+	Settings later = now;
+	const bool sizeChanged = requested.resolution != effective.resolution;
+	const bool modeChanged = requested.mode != effective.mode;
+	const bool monitorChanged = !sameMonitor(requested, effective);
+	const bool scaleChanged = requested.uiScalePercent != effective.uiScalePercent;
+	if (sizeChanged) later.resolution = requested.resolution;
+	if (modeChanged) later.mode = requested.mode;
+	if (monitorChanged) { later.monitor = requested.monitor; later.monitorName = requested.monitorName; }
+	if (scaleChanged) later.uiScalePercent = requested.uiScalePercent;
+	plan.riskyChanged = sizeChanged || modeChanged || monitorChanged || scaleChanged;
+	plan.immediate = now;
+	plan.afterKeep = later;
+	return plan;
 }
 
 inline Resolved resolve(const Settings &s, const Environment &env, Size fallbackDesktop = {1920, 1080})
@@ -282,16 +393,10 @@ inline Resolved resolve(const Settings &s, const Environment &env, Size fallback
 	}
 	else
 	{
-		int index = s.monitor;
-		if (index < 0 || index >= static_cast<int>(env.monitors.size()))
-		{
-			r.notes.push_back("monitor " + std::to_string(index) + " not attached; using primary");
-			index = 0;
-			for (size_t i = 0; i < env.monitors.size(); ++i)
-				if (env.monitors[i].primary) { index = static_cast<int>(i); break; }
-		}
+		const int index = chooseMonitor(env.monitors, s.monitorName, s.monitor, &r.notes);
 		r.monitorIndex = index;
 		monitor = env.monitors[static_cast<size_t>(index)];
+		r.monitorName = monitorId(monitor);
 	}
 	r.monitorBounds = monitor.bounds;
 	r.monitorWork = monitor.work;

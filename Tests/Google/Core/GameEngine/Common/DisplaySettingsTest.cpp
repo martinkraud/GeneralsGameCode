@@ -49,7 +49,7 @@ Environment env1080()
 TEST(DisplaySettings, ClassicIgnoresStoredValues)
 {
 	KeyValues kv;
-	store(Settings{true, 1, {2560, 1440}, 144, WindowMode::Borderless, true, 200, true}, kv);
+	store(Settings{true, 1, std::string(), {2560, 1440}, 144, WindowMode::Borderless, true, 200, true}, kv);
 	const Settings s = load(kv, true);
 	EXPECT_EQ(s, classicDefaults());
 	EXPECT_EQ(s.resolution, (Size{800, 600}));
@@ -85,7 +85,7 @@ TEST(DisplaySettings, RoundTripAndUnknownKeysSurvive)
 	EXPECT_EQ(kv["Zebra"], "stripes");
 	EXPECT_EQ(kv["Resolution"], "800 600");              // legacy key untouched
 	EXPECT_EQ(load(kv, false), want);
-	store(Settings{true, 0, {}, 0, WindowMode::Windowed, false, 0, false}, kv);
+	store(Settings{true, 0, std::string(), {}, 0, WindowMode::Windowed, false, 0, false}, kv);
 	EXPECT_EQ(kv["UIScale"], "Auto");
 	EXPECT_EQ(load(kv, false).uiScalePercent, 0);
 }
@@ -474,7 +474,13 @@ TEST(OptionsPageLayout, EveryControlIsOwnedByExactlyOnePage)
 			if (ta.items[i].label) EXPECT_EQ(ownerOf(ta.items[i].label), a) << ta.items[i].label;
 		}
 	}
-	EXPECT_EQ(ownerOf("SliderGamma"), static_cast<int>(Category::Graphics));
+	EXPECT_EQ(ownerOf("SliderGamma"), -1);                  // not offered: the D3D11 backend has no gamma stage (audit F)
+	EXPECT_EQ(ownerOf("ComboBoxDetail"), static_cast<int>(Category::Graphics));
+	EXPECT_EQ(ownerOf("CheckLanguageFilter"), static_cast<int>(Category::Gameplay));    // retail options that were hidden are back
+	EXPECT_EQ(ownerOf("CheckBoxUseCamera"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("CheckBoxSaveCamera"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("CheckBoxDrawAnchor"), static_cast<int>(Category::Controls));
+	EXPECT_EQ(ownerOf("CheckBoxMoveAnchor"), static_cast<int>(Category::Controls));
 	EXPECT_EQ(ownerOf("SliderSFXVolume"), static_cast<int>(Category::Audio));
 	EXPECT_EQ(ownerOf("SliderScrollSpeed"), static_cast<int>(Category::Controls));
 	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Gameplay));
@@ -499,7 +505,7 @@ TEST(OptionsPageLayout, SlidersOnlyLiveOnTheirOwnPages)
 		graphicsSliders += pageItems(Category::Graphics).items[i].kind == ControlKind::Slider;
 	EXPECT_EQ(audioSliders, 3);
 	EXPECT_EQ(controlSliders, 1);
-	EXPECT_EQ(graphicsSliders, 1);
+	EXPECT_EQ(graphicsSliders, 0);                         // gamma is not offered (no backend), see SETTINGS_COMPLETION_AUDIT.md
 }
 
 TEST(OptionsPageLayout, TabStripUsesMeasuredWidthsWithPaddingAndNeverOverlaps)

@@ -146,9 +146,12 @@ bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, in
     DisplayConfig::Settings wanted = DisplayRuntime::state().settings;
     wanted.explicitSettings = true;
     wanted.mode = borderless ? DisplayConfig::WindowMode::Borderless : DisplayConfig::WindowMode::Windowed;
-    wanted.resolution = { static_cast<int>(width), static_cast<int>(height) };
-    wanted.monitor = monitorIndex >= 0 ? monitorIndex : DisplayRuntime::state().resolved.monitorIndex;
+    if (!borderless)
+        wanted.resolution = { static_cast<int>(width), static_cast<int>(height) };   // borderless keeps the remembered windowed size
     const DisplayConfig::Environment env = enumerateEnvironment();
+    wanted.monitor = monitorIndex >= 0 ? monitorIndex : DisplayRuntime::state().resolved.monitorIndex;
+    wanted.monitorName = wanted.monitor >= 0 && wanted.monitor < static_cast<int>(env.monitors.size())
+        ? DisplayConfig::monitorId(env.monitors[static_cast<size_t>(wanted.monitor)]) : std::string();
     const DisplayConfig::Resolved r = DisplayConfig::resolve(wanted, env);
     if (!r.client.valid()) return false;
     try {
@@ -156,11 +159,24 @@ bool NativeApplyDisplayMode(unsigned width, unsigned height, bool borderless, in
         DisplayRuntime::State &state = DisplayRuntime::state();
         const DisplayGeometry::Size previous = state.resolved.client;
         state.settings = wanted;
+        state.settings.monitor = r.monitorIndex;
+        state.settings.monitorName = r.monitorName;
+        if (r.mode == DisplayConfig::WindowMode::Windowed)
+            state.settings.resolution = r.client;      // the size actually in use (it may have been reduced to fit the desktop)
         state.resolved = r;
         DisplayRuntime::setClient(r.client);
         if (previous != r.client) {
             WW3D::Resize_Native_Presentation(r.client.width, r.client.height);
             Render2DClass::Set_Screen_Resolution(RectClass(0, 0, r.client.width, r.client.height));
+            // X64.37: the logical display follows the swap chain whichever setting caused the new size (resolution, a switch to
+            // borderless on a desktop of another size, another monitor): width/height, the 2D coordinate range, the mouse limits
+            // and the tactical view proportions. Display::setDisplayMode is idempotent for an unchanged size.
+            if (TheTacticalView)
+                TheDisplay->Display::setDisplayMode(r.client.width, r.client.height, 32, TRUE);
+            else {
+                TheDisplay->setWidth(r.client.width);
+                TheDisplay->setHeight(r.client.height);
+            }
         }
         char detail[160];
         sprintf_s(detail, "client=%dx%d mode=%s monitor=%d ui_scale=%d%%", r.client.width, r.client.height,
@@ -297,8 +313,8 @@ void NativeSampleRenderCounters()
         PerformanceProfile::count(PerformanceProfile::Counter::ParticlesLive, TheParticleSystemManager->getParticleCount());
 }
 
-// Resolution list for the Options screen (Modern Experience only): real, fitting sizes for the active monitor/mode.
-void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out)
+// Resolution list for a (possibly not yet applied) mode on a monitor (Modern Experience only): real, fitting sizes.
+static void NativeModernSizeChoicesFor(bool borderless, int monitorIndex, std::vector<DisplayGeometry::Size> &out)
 {
     out.clear();
     if (!DisplayRuntime::modern()) return;
@@ -309,12 +325,20 @@ void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out)
         monitor.bounds = { 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
         monitor.work = monitor.bounds;
     } else {
-        size_t index = static_cast<size_t>(state.resolved.monitorIndex);
+        size_t index = static_cast<size_t>(monitorIndex);
         if (index >= env.monitors.size()) index = 0;
         monitor = env.monitors[index];
     }
-    out = DisplayConfig::sizeChoices(monitor, state.resolved.mode, env.frameWidth, env.frameHeight,
-        state.resolved.client);
+    const DisplayConfig::WindowMode mode = borderless ? DisplayConfig::WindowMode::Borderless : DisplayConfig::WindowMode::Windowed;
+    out = DisplayConfig::sizeChoices(monitor, mode, env.frameWidth, env.frameHeight,
+        (!borderless && state.resolved.mode == DisplayConfig::WindowMode::Windowed) ? state.resolved.client : DisplayGeometry::Size{});
+}
+
+// Resolution list for the Options screen (Modern Experience only): the active monitor and mode.
+void NativeModernSizeChoices(std::vector<DisplayGeometry::Size> &out)
+{
+    const DisplayRuntime::State &state = DisplayRuntime::state();
+    NativeModernSizeChoicesFor(state.resolved.mode != DisplayConfig::WindowMode::Windowed, state.resolved.monitorIndex, out);
 }
 
 void W3DDisplay::initOrdinaryHostPresentation()
@@ -328,18 +352,27 @@ void W3DDisplay::initOrdinaryHostPresentation()
     if (modern) {
         // X64.33: resolve the persisted display settings against the attached monitors and shape the (hidden)
         // window to match before any swap chain exists.
-        const DisplayConfig::Settings settings = DisplayConfig::load(readOptionKeyValues(), false);
+        const DisplayConfig::Settings stored = DisplayConfig::load(readOptionKeyValues(), false);
+        // command-line display flags of this launch are session overrides: they take precedence over the stored values
+        // but are never written back unless the player changes that field in Options and keeps the change
+        DisplayConfig::Settings settings = DisplayConfig::applyOverrides(stored, DisplayRuntime::state().overrides);
         const DisplayConfig::Environment env = enumerateEnvironment();
         const DisplayConfig::Resolved resolved = DisplayConfig::resolve(settings, env,
             { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) });
         DisplayRuntime::State &state = DisplayRuntime::state();
         state.modern = true;
         DisplayRuntime::applyModeHook() = &NativeApplyDisplayMode;
+        DisplayRuntime::sizeChoicesHook() = &NativeModernSizeChoicesFor;
         DisplayRuntime::vsyncHook() = [](bool enabled) { WW3D::Set_Native_Vsync(enabled); };
         NativeRegisterPerformanceExtensions();
         if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
         EnhancedHud::setRequested(settings.enhancedHud);                  // Options > Interface; Original by default
+        state.stored = stored;
         state.settings = settings;
+        state.settings.monitor = resolved.monitorIndex;            // what is running, not what was asked for
+        state.settings.monitorName = resolved.monitorName;
+        if (resolved.mode == DisplayConfig::WindowMode::Windowed)
+            state.settings.resolution = resolved.client;
         state.resolved = resolved;
         DisplayRuntime::setClient(resolved.client);
         placeWindow(ApplicationHWnd, resolved);

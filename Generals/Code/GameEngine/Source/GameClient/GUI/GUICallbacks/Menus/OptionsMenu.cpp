@@ -834,7 +834,8 @@ static void saveOptions()
 	oldDispSettings.bitDepth = TheDisplay->getBitDepth();
 	oldDispSettings.windowed = TheDisplay->getWindowed();
 
-	if (comboBoxResolution && comboBoxResolution->winGetEnabled() && index < TheDisplay->getDisplayModeCount() && index >= 0)
+	// Modern Experience: size, mode, monitor and UI scale are one transaction (ModernDisplayOptions::apply below)
+	if (!DisplayRuntime::modern() && comboBoxResolution && comboBoxResolution->winGetEnabled() && index < TheDisplay->getDisplayModeCount() && index >= 0)
 	{
 		TheDisplay->getDisplayModeDescription(index,&xres,&yres,&bitDepth);
 		if (TheGlobalData->m_xResolution != xres || TheGlobalData->m_yResolution != yres)
@@ -1213,7 +1214,11 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 		}
 	}
 
-	// populate resolution modes
+	// populate resolution modes (Modern Experience: the mode- and monitor-aware list with aspect families)
+	if (DisplayRuntime::modern())
+		ModernDisplayOptions::populateResolution(comboBoxResolution);
+	else
+	{
 	GadgetComboBoxReset(comboBoxResolution);
 	Int numResolutions = TheDisplay->getDisplayModeCount();
 	UnsignedInt displayWidth = TheDisplay->getWidth();
@@ -1243,6 +1248,7 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 	}
 
 	GadgetComboBoxSetSelectedPos( comboBoxResolution, selectedResIndex );
+	}
 
 	// set the display detail
 	// TheSuperHackers @tweak xezon 24/09/2025 The Detail Combo Box now has the same value order as StaticGameLODLevel for simplicity.
@@ -1571,6 +1577,8 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 				GameWindow *control = (GameWindow *)mData1;
 				Int controlID = control->winGetWindowId();
 
+				ModernDisplayOptions::onSelectionChanged(control);
+
 				if (controlID == comboBoxDetailID)
 				{
 					Int index;
@@ -1637,6 +1645,10 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 					if (dispChanged)
 					{
 						DoResolutionDialog();
+					}
+					else if (ModernDisplayOptions::confirmationPending())
+					{
+						ModernDisplayOptions::showConfirmation();   // Keep / Revert (automatic revert on timeout)
 					}
 				}
 

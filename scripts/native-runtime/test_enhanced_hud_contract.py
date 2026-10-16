@@ -81,7 +81,7 @@ class EnhancedHudContracts(unittest.TestCase):
         page = text("Core/GameEngine/Include/Common/OptionsPageLayout.h")
         self.assertIn('{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo}', page)
         opts = text("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
-        self.assertIn("EnhancedHud::setRequested(next.enhancedHud)", opts)
+        self.assertIn("EnhancedHud::setRequested(requested.enhancedHud)", opts)
         self.assertIn("select(s_interface, 0);   // Original", opts)       # Defaults button = Original
         host = text("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
         self.assertIn("EnhancedHud::setRequested(settings.enhancedHud);", host)

@@ -11,6 +11,8 @@
 #include "Common/DisplayGeometry.h"
 #include "Common/DisplaySettings.h"
 
+#include <vector>
+
 namespace DisplayRuntime
 {
 
@@ -20,6 +22,10 @@ struct State
 	DisplayConfig::Settings settings;                 // as persisted (requested)
 	DisplayConfig::Resolved resolved;                 // as applied (effective)
 	DisplayGeometry::Layout layout;                     // derived from the live client size
+	// X64.37: `stored` = the values in Options.ini (changed only when the player keeps a change); `settings` = what is running
+	// (stored + the session overrides below); `overrides` = command-line display flags of this launch (never persisted).
+	DisplayConfig::Settings stored;
+	DisplayConfig::SessionOverrides overrides;
 };
 
 inline State &state()
@@ -34,6 +40,9 @@ inline bool modern() { return state().modern; }
 // ask for a display change without depending on the device library.
 using ApplyModeFn = bool (*)(unsigned width, unsigned height, bool borderless, int monitorIndex /* -1 = keep */);
 using VsyncFn = void (*)(bool enabled);
+// Resolution sizes offered for a (not yet applied) mode on a monitor: windowed = sizes that fit the work area, borderless = the desktop.
+using SizeChoicesFn = void (*)(bool borderless, int monitorIndex, std::vector<DisplayGeometry::Size> &out);
+inline SizeChoicesFn &sizeChoicesHook() { static SizeChoicesFn fn = nullptr; return fn; }
 inline ApplyModeFn &applyModeHook() { static ApplyModeFn fn = nullptr; return fn; }
 inline VsyncFn &vsyncHook() { static VsyncFn fn = nullptr; return fn; }
 

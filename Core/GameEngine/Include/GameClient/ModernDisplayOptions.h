@@ -26,6 +26,17 @@ void reset();
 // into `preferences`, applies what can be applied live and returns true when the shell layouts must be rebuilt.
 bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt);
 
+// Fills the retail Resolution combo from the real, mode- and monitor-aware size list (Modern Experience only).
+void populateResolution(GameWindow *combo);
+
+// The Display Mode / Monitor combos changed: the Resolution list follows the pending mode and monitor.
+void onSelectionChanged(GameWindow *control);
+
+// X64.37 transactional apply: after Accept, a display change that is applied waits for Keep / Revert.
+bool confirmationPending();
+void showConfirmation();   // the Keep / Revert dialog (call once the Options layout is gone)
+void update();             // per frame while the shell runs: countdown and the automatic revert
+
 // Called when the Options screen closes (windows are owned by the layout).
 void forget();
 }

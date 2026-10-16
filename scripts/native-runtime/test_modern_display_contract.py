@@ -115,8 +115,12 @@ class ModernDisplayContracts(unittest.TestCase):
         for path in ("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp",
                      "Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp"):
             text = read(path)
-            for forbidden in ("imgui", "ImGui", "Qt", "CreateWindowEx", "MessageBox"):
+            for forbidden in ("imgui", "ImGui", "Qt", "CreateWindowEx"):
                 self.assertNotIn(forbidden, text)
+            # X64.37: the Keep / Revert confirmation is the engine's own message box (no OS dialog, no new toolkit)
+            self.assertNotIn("MessageBoxW", text)
+            self.assertNotIn("MessageBoxA", text)
+            self.assertNotIn("::MessageBox(", text)
         display = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
         for token in ("gogoGadgetComboBox", "gogoGadgetStaticText", "copyAppearance"):
             self.assertIn(token, display)
@@ -223,8 +227,12 @@ class FixThreeContracts(unittest.TestCase):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
         self.assertIn("inline int ownerOf(const char *name)", layout)
         self.assertIn("enum class ControlKind", layout)
-        for slider in ("SliderGamma", "SliderSFXVolume", "SliderMusicVolume", "SliderVoiceVolume", "SliderScrollSpeed"):
+        for slider in ("SliderSFXVolume", "SliderMusicVolume", "SliderVoiceVolume", "SliderScrollSpeed"):
             self.assertEqual(layout.count('"%s"' % slider), 1)         # each slider listed on exactly one page
+        # X64.37: no control without a backend - the D3D11 backend has no gamma stage, so the gamma slider is not offered
+        self.assertNotIn('"SliderGamma"', layout)
+        backend = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp")
+        self.assertIn("void D3D11Backend::Set_Gamma(float, float, float, bool, bool) { Unsupported(); }", backend)
 
     def test_tab_strip_is_measured_and_drawn_from_primitives(self):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")

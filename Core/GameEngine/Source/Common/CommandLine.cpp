@@ -24,6 +24,7 @@
 
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/DisplayRuntime.h"
 #include "Common/ModernExperience.h"
 #include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
@@ -123,6 +124,8 @@ Int parseNoLogOrCrash(char *args[], int)
 Int parseWin(char *args[], int)
 {
 	TheWritableGlobalData->m_windowed = true;
+	DisplayRuntime::state().overrides.windowed = true;      // Modern Experience: session override (see DisplayConfig::applyOverrides)
+	DisplayRuntime::state().overrides.fullscreen = false;
 
 	return 1;
 }
@@ -382,6 +385,8 @@ Int parseNoAudio(char *args[], int)
 Int parseNoWin(char *args[], int)
 {
 	TheWritableGlobalData->m_windowed = false;
+	DisplayRuntime::state().overrides.fullscreen = true;    // Modern Experience: borderless fullscreen for this session
+	DisplayRuntime::state().overrides.windowed = false;
 
 	return 1;
 }
@@ -485,6 +490,7 @@ Int parseXRes(char *args[], int num)
 	if (num > 1)
 	{
 		TheWritableGlobalData->m_xResolution = atoi(args[1]);
+		DisplayRuntime::state().overrides.resolution.width = atoi(args[1]);
 		return 2;
 	}
 	return 1;
@@ -495,6 +501,7 @@ Int parseYRes(char *args[], int num)
 	if (num > 1)
 	{
 		TheWritableGlobalData->m_yResolution = atoi(args[1]);
+		DisplayRuntime::state().overrides.resolution.height = atoi(args[1]);
 		return 2;
 	}
 	return 1;

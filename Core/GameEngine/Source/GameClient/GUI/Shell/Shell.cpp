@@ -38,6 +38,7 @@
 #include "GameClient/IMEManager.h"
 #include "GameClient/AnimateWindowManager.h"
 #include "GameClient/ShellMenuScheme.h"
+#include "GameClient/ModernDisplayOptions.h"
 #include "GameLogic/GameLogic.h"
 #include "GameNetwork/GameSpyOverlay.h"
 #include "GameNetwork/GameSpy/PeerDefsImplementation.h"
@@ -198,6 +199,7 @@ void Shell::reset()
 //-------------------------------------------------------------------------------------------------
 void Shell::update()
 {
+	ModernDisplayOptions::update();   // X64.37: countdown / automatic revert of an unconfirmed display change
 	static Int lastUpdate = timeGetTime();
 	static const Int shellUpdateDelay = 30;  // try to update 30 frames a second
 	Int now = timeGetTime();

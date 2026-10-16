@@ -93,8 +93,11 @@ class OrdinaryMenuContract(unittest.TestCase):
         old = show("Core/GameEngine/Source/GameClient/GUI/Shell/Shell.cpp")
         new = read("Core/GameEngine/Source/GameClient/GUI/Shell/Shell.cpp")
         added = [line for line in new.splitlines() if line not in old.splitlines()]
+        # reviewed deltas: the X64.18 push guard and (X64.37) the per-frame hook of the display Keep/Revert countdown
         self.assertEqual(sorted({x.strip() for x in added if x.strip()}),
-                         ["if( m_pushGuard && !m_pushGuard( filename ) )", "m_pushGuard = nullptr;"])
+                         ['#include "GameClient/ModernDisplayOptions.h"',
+                          "ModernDisplayOptions::update();   // X64.37: countdown / automatic revert of an unconfirmed display change",
+                          "if( m_pushGuard && !m_pushGuard( filename ) )", "m_pushGuard = nullptr;"])
         self.assertIn("m_pushGuard = nullptr;", new)
 
     def test_gate_and_host_paths_unchanged_and_selected_in_gamemain(self):
