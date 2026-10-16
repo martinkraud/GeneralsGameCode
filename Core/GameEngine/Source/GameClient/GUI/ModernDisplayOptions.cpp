@@ -7,6 +7,7 @@
 #include "Common/DisplayRuntime.h"
 #include "Common/DisplayModes.h"
 #include "Common/DisplaySettings.h"
+#include "Common/EnhancedHud.h"
 #include "Common/GlobalData.h"
 #include "Common/GroundTranslation.h"
 #include "Common/ModernExperience.h"
@@ -37,6 +38,7 @@ GameWindow *s_mode = nullptr;
 GameWindow *s_uiScale = nullptr;
 GameWindow *s_vsync = nullptr;
 GameWindow *s_motion = nullptr;
+GameWindow *s_interface = nullptr;   // Original | Enhanced (applies from the next match; not live-switched)
 bool s_inMatch = false;
 std::vector<DisplayModes::Monitor> s_monitors;
 
@@ -139,6 +141,7 @@ void syncFromRuntime()
 	select(s_uiScale, uiScaleIndex(s.uiScalePercent));
 	select(s_vsync, s.vsync ? 1 : 0);
 	select(s_motion, GroundTranslation::isEnabled() ? 1 : 0);
+	select(s_interface, s.enhancedHud ? 1 : 0);
 }
 
 }  // namespace
@@ -177,6 +180,11 @@ bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch
 			c->winSetWindowId(NAMEKEY(id));
 		return c;
 	};
+
+	caption("OptionsMenu.wnd:ModernInterfaceLabel", L"Interface", "GUI:InterfaceStyle");
+	s_interface = combo("OptionsMenu.wnd:ModernInterface", 2);
+	addEntry(s_interface, TheGameText->FETCH_OR_SUBSTITUTE("GUI:InterfaceOriginal", L"Original"));
+	addEntry(s_interface, TheGameText->FETCH_OR_SUBSTITUTE("GUI:InterfaceEnhanced", L"Enhanced (USA prototype)"));
 
 	caption("OptionsMenu.wnd:ModernMotionLabel", L"Unit Motion", "GUI:UnitMotion");
 	s_motion = combo("OptionsMenu.wnd:ModernMotion", 2);
@@ -223,7 +231,7 @@ bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch
 	if (inMatch)
 	{
 		// A running match keeps its window; only presentation-only settings change there.
-		for (GameWindow *w : { s_monitor, s_mode, s_uiScale, s_motion })
+		for (GameWindow *w : { s_monitor, s_mode, s_uiScale, s_motion, s_interface })
 			if (w) w->winEnable(FALSE);
 	}
 	return true;
@@ -245,6 +253,7 @@ void reset()
 	select(s_uiScale, 0);
 	select(s_vsync, 0);
 	select(s_motion, 0);
+	select(s_interface, 0);   // Original
 }
 
 bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
@@ -260,12 +269,14 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 	const Int scaleIndex = selected(s_uiScale);
 	const Int vsyncIndex = selected(s_vsync);
 	const Int motionIndex = selected(s_motion);
+	const Int interfaceIndex = selected(s_interface);
 	const bool inMatch = s_inMatch;
 
 	const WindowMode previousMode = state.resolved.mode;
 	const int previousMonitor = state.resolved.monitorIndex;
 	const int previousScale = state.settings.uiScalePercent;
 	const bool previousVsync = state.settings.vsync;
+	const bool previousInterface = state.settings.enhancedHud;
 
 	if (!inMatch)
 	{
@@ -273,6 +284,7 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 		if (monitorIndex >= 0 && monitorIndex < static_cast<Int>(s_monitors.size())) next.monitor = monitorIndex;
 		if (scaleIndex >= 0 && scaleIndex < kUiScaleCount) next.uiScalePercent = kUiScaleChoices[scaleIndex];
 		if (motionIndex >= 0) next.smoothMotion = motionIndex == 1;
+		if (interfaceIndex >= 0) next.enhancedHud = interfaceIndex == 1;
 	}
 	if (vsyncIndex >= 0) next.vsync = vsyncIndex == 1;
 
@@ -290,6 +302,7 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 			next.uiScalePercent = scaleIndex >= 0 && scaleIndex < kUiScaleCount ? kUiScaleChoices[scaleIndex] : next.uiScalePercent;
 			next.vsync = vsyncIndex == 1;
 			next.smoothMotion = motionIndex == 1;
+			next.enhancedHud = interfaceIndex == 1;
 		}
 		else
 		{
@@ -302,13 +315,18 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 		DisplayRuntime::setUiScalePercent(next.uiScalePercent);
 		relayout = true;
 	}
+	if (!inMatch && next.enhancedHud != previousInterface)
+		relayout = true;   // the control bar is rebuilt like for a UI scale change; the layout is chosen at its creation
 	if (next.vsync != previousVsync)
 	{
 		if (DisplayRuntime::VsyncFn vsync = DisplayRuntime::vsyncHook())
 			vsync(next.vsync);
 	}
 	if (!inMatch)
+	{
 		GroundTranslation::setEnabled(next.smoothMotion);
+		EnhancedHud::setRequested(next.enhancedHud);   // takes effect when the next match builds its control bar
+	}
 
 	// Persisted: the windowed size stays the user's windowed size even while borderless is active.
 	Settings store = next;
@@ -330,7 +348,7 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 
 void forget()
 {
-	s_panelHost = s_monitor = s_mode = s_uiScale = s_vsync = s_motion = nullptr;
+	s_panelHost = s_monitor = s_mode = s_uiScale = s_vsync = s_motion = s_interface = nullptr;
 	s_monitors.clear();
 	s_inMatch = false;
 }

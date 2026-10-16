@@ -98,6 +98,7 @@ constexpr PageItem kControlsItems[] = {
 };
 constexpr PageItem kGameplayItems[] = {
 	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
+	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA prototype)
 };
 
 struct PageTable

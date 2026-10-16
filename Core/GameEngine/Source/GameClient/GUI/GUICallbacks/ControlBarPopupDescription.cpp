@@ -670,7 +670,14 @@ void ControlBar::populateBuildTooltipLayout( const CommandButton *commandButton,
 		offset.x = curPos.x - basePos.x;
 		offset.y = curPos.y - basePos.y;
 
-		parent->winSetPosition(pos.x, (pos.y - diffSize) + (offset.y - lastOffset.y));
+		{
+			// Enhanced HUD: the popup sits above the island, centred on its command frame (presentation only)
+			Int enhancedX = 0, enhancedY = 0;
+			if( getEnhancedTooltipPosition( size.x, size.y + diffSize, &enhancedX, &enhancedY ) )
+				parent->winSetPosition( enhancedX, enhancedY );
+			else
+				parent->winSetPosition(pos.x, (pos.y - diffSize) + (offset.y - lastOffset.y));
+		}
 
 		lastOffset.x = offset.x;
 		lastOffset.y = offset.y;

@@ -282,6 +282,10 @@ private:
 
 };
 
+// Enhanced gameplay HUD (USA prototype): the modular procedural frame, drawn instead of the scheme art while
+// EnhancedHud::active() (ControlBarEnhanced.cpp).
+void drawEnhancedHudFrame();
+
 //-----------------------------------------------------------------------------
 // INLINING ///////////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------

@@ -13,6 +13,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/DisplayGeometryTest.cpp
     GameEngine/Common/PresentationSmoothnessTest.cpp
     GameEngine/Common/DisplaySettingsTest.cpp
+    GameEngine/Common/EnhancedHudLayoutTest.cpp
     GameEngine/Common/GroundTranslationTest.cpp
     GameEngine/Common/GroundOrientationTest.cpp
     GameEngine/Common/GroundTranslationPolicyTest.cpp

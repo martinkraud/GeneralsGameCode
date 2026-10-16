@@ -715,6 +715,13 @@ public:
 	void setFullViewportHeight();
 	void setScaledViewportHeight();
 
+	// Enhanced gameplay HUD (USA prototype, ControlBarEnhanced.cpp): presentation only. These move existing windows;
+	// no command, selection or XP logic is duplicated. All are no-ops while the Original presentation is in use.
+	void applyEnhancedLayout();                     ///< places the existing windows into the Enhanced island
+	void restoreOriginalLayout();                   ///< puts every window moved by applyEnhancedLayout back
+	void applyEnhancedPowerShortcutLayout();        ///< places the special-power shortcut column
+	Bool getEnhancedTooltipPosition( Int width, Int height, Int *x, Int *y ) const;   ///< popup placement above the island
+
 	/// set the control bar to the proper scheme based off a player template that's passed in
 	ControlBarSchemeManager *getControlBarSchemeManager() { return m_controlBarSchemeManager; }
 	void setControlBarSchemeByPlayer(Player *p);

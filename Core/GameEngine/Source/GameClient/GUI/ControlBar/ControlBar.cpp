@@ -32,6 +32,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/DisplayRuntime.h"
+#include "Common/EnhancedHud.h"
 #define DEFINE_GUI_COMMAND_NAMES
 #define DEFINE_COMMAND_OPTION_NAMES
 #define DEFINE_WEAPONSLOTTYPE_NAMES
@@ -3359,6 +3360,8 @@ void ControlBar::initSpecialPowershortcutBar( Player *player)
 		}
 	}
 
+	if( EnhancedHud::active() )
+		applyEnhancedPowerShortcutLayout();   // Enhanced: the column sits beside the island (presentation only)
 }
 
 void ControlBar::populateSpecialPowerShortcut( Player *player)

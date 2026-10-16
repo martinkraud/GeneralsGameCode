@@ -12,6 +12,7 @@
 //   VSync           yes | no
 //   UIScale         Auto | 50..400
 //   SmoothUnitMotion yes | no ground interpolation (Modern only; see GroundTranslation)
+//   InterfaceStyle  Original | Enhanced   gameplay HUD presentation (Enhanced = USA prototype; see EnhancedHud.h)
 // The legacy `Resolution`, `FrameRateLimit` and `FPSLimit` keys keep their meaning (frame pacing is owned by the
 // existing FramePacer; nothing here limits frames).
 #pragma once
@@ -48,12 +49,13 @@ struct Settings
 	bool vsync = false;
 	int uiScalePercent = DisplayGeometry::kAutoUiScale;
 	bool smoothMotion = false;
+	bool enhancedHud = false;                // Options > Gameplay > Interface: Original (default) | Enhanced
 
 	bool operator==(const Settings &o) const
 	{
 		return explicitSettings == o.explicitSettings && monitor == o.monitor && resolution == o.resolution &&
 		       refreshHz == o.refreshHz && mode == o.mode && vsync == o.vsync &&
-		       uiScalePercent == o.uiScalePercent && smoothMotion == o.smoothMotion;
+		       uiScalePercent == o.uiScalePercent && smoothMotion == o.smoothMotion && enhancedHud == o.enhancedHud;
 	}
 };
 
@@ -155,6 +157,8 @@ inline Settings load(const KeyValues &kv, bool classic)
 	}
 	if (const std::string *t = detail::find(kv, "SmoothUnitMotion"))
 		s.smoothMotion = detail::iequals(*t, "yes") || detail::iequals(*t, "true") || *t == "1";
+	if (const std::string *t = detail::find(kv, "InterfaceStyle"))
+		s.enhancedHud = detail::iequals(*t, "Enhanced");
 	return s;
 }
 
@@ -170,6 +174,7 @@ inline void store(const Settings &s, KeyValues &kv)
 	detail::put(kv, "VSync", s.vsync ? "yes" : "no");
 	detail::put(kv, "UIScale", s.uiScalePercent > 0 ? std::to_string(s.uiScalePercent) : std::string("Auto"));
 	detail::put(kv, "SmoothUnitMotion", s.smoothMotion ? "yes" : "no");
+	detail::put(kv, "InterfaceStyle", s.enhancedHud ? "Enhanced" : "Original");
 }
 
 // ---------------------------------------------------------------------------------------------------------------

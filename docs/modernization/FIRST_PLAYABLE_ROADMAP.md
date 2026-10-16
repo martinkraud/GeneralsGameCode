@@ -38,6 +38,7 @@ visual acceptance by the agent, no weakened gates, immutable failed-run evidence
 | CP7 = X64.33 | Modern Experience foundation: display/window/aspect/UI scale/Options/HUD (`X64_33_MODERN_DISPLAY.md`) | **ACCEPTED 2026-10-14 (x64-33-final2-options)** |
 | CP8 = X64.34 | Smooth presentation completion + performance instrumentation (`X64_34_SMOOTH_PRESENTATION_PERFORMANCE.md`) | **ACCEPTED 2026-10-15 (x64-34-smooth-presentation)**; first performance baseline receipt = first X64.35 task |
 | CP9 = X64.35 | Performance profiling + evidence-driven optimization (`X64_35_PERFORMANCE_OPTIMIZATION.md`, `X64_35_BASELINE_ANALYSIS_AND_DISK_AUDIT.md`, `NATIVE_CANDIDATE_RETENTION.md`) | **ACCEPTED AND CLOSED 2026-10-16 (x64-35-decal-reuse)**: instrumentation retained; exact decal-geometry reuse kept (-0.59 ms/frame, clean-window frame -11.7 %, native visual check accepted); shadow-volume cache rejected and reverted; per-object / shroud / ZoneCalc / helicopter shadow / late Present step remain documented backlog |
+| CP10 = X64.36 | Enhanced gameplay UI - USA prototype (`X64_36_ENHANCED_HUD_USA_PROTOTYPE.md`) | **IN REVIEW (not accepted)**: Options > Gameplay > Interface Original/Enhanced; centred bottom-flush island, existing windows moved, procedural modular frame, USA only (others fall back to Original); candidate x64-36-enhanced-hud-usa staged, awaiting human native comparison |
 | CP4 | Full skirmish acceptance (AI, clean end) | planned |
 
 ## 3. Dependency graph from accepted terrain to First Playable

@@ -1,0 +1,322 @@
+/*
+** Command & Conquer Generals Zero Hour(tm)
+** Copyright 2026 TheSuperHackers
+** SPDX-License-Identifier: GPL-3.0-or-later
+*/
+
+// Enhanced gameplay HUD (USA prototype): the pure geometry, the persisted switch and the activation rules.
+
+#include <gtest/gtest.h>
+
+#include "Common/DisplayGeometry.h"
+#include "Common/DisplaySettings.h"
+#include "Common/EnhancedHud.h"
+#include "Common/EnhancedHudLayout.h"
+#include "Common/OptionsPageLayout.h"
+
+#include <cmath>
+#include <string>
+
+using namespace EnhancedHudLayout;
+
+namespace
+{
+struct Surface { int w, h; const char *name; };
+const Surface kSurfaces[] = {
+	{800, 600, "800x600"},     {1024, 768, "1024x768"},   {1280, 1024, "1280x1024"}, {1366, 768, "1366x768"},
+	{1920, 1080, "1920x1080"}, {1920, 1200, "1920x1200"}, {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"},
+	{5120, 1440, "5120x1440"}, {2000, 777, "2000x777 (odd)"}, {1000, 1000, "1000x1000 (square)"},
+};
+
+double layoutScaleFor(int w, int h, int uiScalePercent = DisplayGeometry::kAutoUiScale)
+{
+	return DisplayGeometry::computeLayout({w, h}, uiScalePercent).scale();
+}
+
+Result compute(const Surface &s, int uiScalePercent = DisplayGeometry::kAutoUiScale)
+{
+	return EnhancedHudLayout::compute(s.w, s.h, layoutScaleFor(s.w, s.h, uiScalePercent));
+}
+}  // namespace
+
+TEST(EnhancedHudLayout, IslandIsBottomFlushCentredAndInsideTheSurface)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid) << s.name;
+		EXPECT_EQ(r.island.bottom(), s.h) << s.name;                       // flush: no gap under it
+		EXPECT_GE(r.island.x, 0) << s.name;
+		EXPECT_LE(r.island.right(), s.w) << s.name;
+		EXPECT_LE(std::abs(r.island.x - (s.w - r.island.right())), 1) << s.name;   // horizontally centred
+		EXPECT_GT(r.island.w, 0);
+		EXPECT_GT(r.island.h, 0);
+	}
+}
+
+TEST(EnhancedHudLayout, DoesNotStretchAcrossWideSurfaces)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		const bool compact = s.w * 1000 <= s.h * kCompactAspectPermille;
+		if (!compact)
+		{
+			EXPECT_LE(r.island.w * 100, s.w * kMaxWidthPercentWide + 100) << s.name;    // world visible on both sides
+			EXPECT_GT(r.island.x, 0) << s.name;
+			EXPECT_GT(s.w - r.island.right(), 0) << s.name;
+		}
+	}
+	// 21:9 and 32:9 at the same height are bounded to the same physical island as 16:9 at that height
+	const Result a = EnhancedHudLayout::compute(2560, 1440, layoutScaleFor(2560, 1440));
+	const Result b = EnhancedHudLayout::compute(3440, 1440, layoutScaleFor(3440, 1440));
+	const Result c = EnhancedHudLayout::compute(5120, 1440, layoutScaleFor(5120, 1440));
+	EXPECT_EQ(a.island.w, b.island.w);
+	EXPECT_EQ(a.island.w, c.island.w);
+	EXPECT_EQ(a.island.h, c.island.h);
+	EXPECT_LT(c.island.w * 100, 5120 * 50);   // far below half of a 32:9 surface
+}
+
+TEST(EnhancedHudLayout, RegionsAndDividersPartitionTheIslandInOrder)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid);
+		for (const Rect &f : {r.radarFrame, r.infoFrame, r.commandFrame, r.xpFrame})
+		{
+			EXPECT_FALSE(f.empty()) << s.name;
+			EXPECT_TRUE(f.within(r.island)) << s.name;
+		}
+		EXPECT_LE(r.radarFrame.right(), r.infoFrame.x) << s.name;       // radar | info | command | xp (left to right)
+		EXPECT_LE(r.infoFrame.right(), r.commandFrame.x) << s.name;
+		EXPECT_LE(r.commandFrame.right(), r.xpFrame.x) << s.name;
+		EXPECT_LT(r.dividerX[0], r.dividerX[1]);
+		EXPECT_LT(r.dividerX[1], r.dividerX[2]);
+	}
+}
+
+TEST(EnhancedHudLayout, EveryPlacedWindowIsInsideItsOwnRegion)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid);
+		auto expectIn = [&](const char *window, const Rect &frame) {
+			Rect dst; bool hide = false;
+			ASSERT_TRUE(destinationFor(window, dst, hide)) << window;
+			ASSERT_FALSE(hide) << window;
+			const Rect p = toPhysical(r, dst);
+			EXPECT_TRUE(p.within(frame)) << s.name << " " << window;
+			EXPECT_TRUE(p.within(r.island)) << s.name << " " << window;
+		};
+		// radar region
+		expectIn("LeftHUD", r.radarFrame);
+		expectIn("WinUAttack", r.radarFrame);
+		for (const char *w : {"ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon", "PopupCommunicator"})
+			expectIn(w, r.radarFrame);
+		// info region (selection, queue, upgrades)
+		int n = 0;
+		for (const GroupWindow *g = infoGroup(n); n-- > 0; ++g)
+			expectIn(g->window, r.infoFrame);
+		// command region (money/power header, containers, twelve buttons)
+		expectIn("MoneyDisplay", r.commandFrame);
+		expectIn("PowerWindow", r.commandFrame);
+		n = 0;
+		for (const GroupWindow *g = commandGroup(n); n-- > 0; ++g)
+			expectIn(g->window, r.commandFrame);
+		// XP region
+		expectIn("ButtonGeneral", r.xpFrame);
+		expectIn("ExpBarForeground", r.xpFrame);
+		expectIn("GeneralsExp", r.xpFrame);
+	}
+}
+
+TEST(EnhancedHudLayout, WindowsOfDifferentRegionsDoNotOverlap)
+{
+	const Result r = compute(kSurfaces[5]);   // 1920x1200
+	struct Entry { const char *name; Rect rect; int group; };
+	std::vector<Entry> entries;
+	auto add = [&](const char *name, int group) {
+		Rect dst; bool hide = false;
+		ASSERT_TRUE(destinationFor(name, dst, hide));
+		entries.push_back({name, toPhysical(r, dst), group});
+	};
+	add("LeftHUD", 0); add("ButtonOptions", 0); add("ButtonIdleWorker", 0); add("PopupCommunicator", 0); add("ButtonPlaceBeacon", 0);
+	add("WinUnitSelected", 1);
+	add("MoneyDisplay", 2); add("PowerWindow", 2);
+	for (int i = 1; i <= 12; ++i)
+	{
+		char name[24];
+		std::snprintf(name, sizeof(name), "ButtonCommand%02d", i);
+		static std::vector<std::string> keep;
+		keep.push_back(name);
+		add(keep.back().c_str(), 2);
+	}
+	add("ButtonGeneral", 3); add("ExpBarForeground", 3);
+	for (size_t i = 0; i < entries.size(); ++i)
+		for (size_t j = i + 1; j < entries.size(); ++j)
+			if (entries[i].group != entries[j].group)
+				EXPECT_FALSE(entries[i].rect.intersects(entries[j].rect)) << entries[i].name << " vs " << entries[j].name;
+	// the twelve command buttons never overlap each other
+	for (size_t i = 0; i < entries.size(); ++i)
+		for (size_t j = i + 1; j < entries.size(); ++j)
+			if (std::strncmp(entries[i].name, "ButtonCommand", 13) == 0 && std::strncmp(entries[j].name, "ButtonCommand", 13) == 0)
+				EXPECT_FALSE(entries[i].rect.intersects(entries[j].rect)) << entries[i].name << " vs " << entries[j].name;
+}
+
+TEST(EnhancedHudLayout, HitRegionsAreWorldClickableBesideTheIsland)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid);
+		if (r.island.x > 4)
+		{
+			EXPECT_FALSE(r.island.contains(r.island.x - 2, s.h - 2)) << s.name;      // left of the island: world
+			EXPECT_FALSE(r.island.contains(r.island.right() + 1, s.h - 2)) << s.name;
+		}
+		EXPECT_TRUE(r.island.contains(s.w / 2, s.h - 1)) << s.name;                   // the island itself takes input
+		EXPECT_FALSE(r.island.contains(s.w / 2, r.island.y - 1)) << s.name;            // above: world
+	}
+}
+
+TEST(EnhancedHudLayout, UiScaleChangesTheIslandWithinBounds)
+{
+	const int surface = 5;   // 1920x1200
+	Result previous;
+	for (int percent : {50, 75, 100, 125, 150, 200})
+	{
+		const Result r = compute(kSurfaces[surface], percent);
+		ASSERT_TRUE(r.valid) << percent;
+		EXPECT_EQ(r.island.bottom(), 1200) << percent;
+		EXPECT_LE(r.island.w * 100, 1920 * kMaxWidthPercentWide + 100) << percent;
+		EXPECT_LE(r.island.h * 3, 1200 + 3) << percent;       // never taller than a third of the surface
+		if (previous.valid)
+			EXPECT_GE(r.island.w, previous.island.w) << percent;   // a larger UI scale never shrinks the island
+		previous = r;
+	}
+	const Result small = compute(kSurfaces[5], 50), large = compute(kSurfaces[5], 150);
+	EXPECT_LT(small.island.w, large.island.w);
+}
+
+TEST(EnhancedHudLayout, PowerColumnIsBesideTheIslandOrAboveItAtTheRightEdge)
+{
+	for (const Surface &s : kSurfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid);
+		EXPECT_GE(r.powerColumn.x, 0) << s.name;
+		EXPECT_LE(r.powerColumn.right(), s.w) << s.name;
+		EXPECT_GE(r.powerColumn.y, 0) << s.name;
+		EXPECT_LE(r.powerColumn.bottom(), s.h) << s.name;
+		EXPECT_FALSE(r.powerColumn.intersects(r.island)) << s.name;
+		if (r.powerBesideIsland)
+		{
+			EXPECT_EQ(r.powerColumn.x, r.island.right()) << s.name;
+			EXPECT_EQ(r.powerColumn.bottom(), s.h) << s.name;    // flush with the bottom like the island
+		}
+		else
+		{
+			EXPECT_EQ(r.powerColumn.right(), s.w) << s.name;
+			EXPECT_LE(r.powerColumn.bottom(), r.island.y) << s.name;
+		}
+	}
+	EXPECT_TRUE(compute(kSurfaces[8]).powerBesideIsland);    // 5120x1440
+	EXPECT_FALSE(compute(kSurfaces[0]).powerBesideIsland);   // 800x600: no room beside
+}
+
+TEST(EnhancedHudLayout, OnlyUsaIsSupportedAndEverythingElseFallsBackToOriginal)
+{
+	EXPECT_TRUE(supportsSide("America"));
+	EXPECT_TRUE(supportsSide("AmericaAirForceGeneral"));
+	EXPECT_FALSE(supportsSide("AmericaSmall"));
+	for (const char *side : {"China", "GLA", "ChinaSmall", "GLASmall", "Observer", "", "Russia", "Europe", "ChinaTankGeneral"})
+		EXPECT_FALSE(supportsSide(side)) << side;
+	EXPECT_FALSE(supportsSide(nullptr));
+
+	// requested + modern + not classic + USA + a surface that fits
+	EXPECT_TRUE(shouldBeActive(true, true, false, "America", 1920, 1200));
+	EXPECT_FALSE(shouldBeActive(false, true, false, "America", 1920, 1200));    // Original chosen
+	EXPECT_FALSE(shouldBeActive(true, false, false, "America", 1920, 1200));    // not the modern display
+	EXPECT_FALSE(shouldBeActive(true, true, true, "America", 1920, 1200));      // -classic
+	EXPECT_FALSE(shouldBeActive(true, true, false, "China", 1920, 1200));       // unsupported faction
+	EXPECT_FALSE(shouldBeActive(true, true, false, "America", 320, 200));       // surface too small
+}
+
+TEST(EnhancedHudLayout, RuntimeSwitchFallsBackAndNeverInventsALayout)
+{
+	EnhancedHud::deactivate();
+	EnhancedHud::setRequested(false);
+	EXPECT_FALSE(EnhancedHud::update(true, false, "America", 1920, 1200, 2.0));
+	EXPECT_FALSE(EnhancedHud::active());
+	EnhancedHud::setRequested(true);
+	EXPECT_TRUE(EnhancedHud::update(true, false, "America", 1920, 1200, 2.0));
+	EXPECT_TRUE(EnhancedHud::active());
+	EXPECT_EQ(EnhancedHud::layout().island.bottom(), 1200);
+	EXPECT_FALSE(EnhancedHud::update(true, false, "GLA", 1920, 1200, 2.0));    // unsupported: Original, no fake layout
+	EXPECT_FALSE(EnhancedHud::active());
+	EXPECT_FALSE(EnhancedHud::layout().valid);
+	EnhancedHud::setRequested(false);
+	EnhancedHud::deactivate();
+}
+
+TEST(EnhancedHudLayout, TheInterfaceChoiceIsPersistedAndDefaultsToOriginal)
+{
+	using namespace DisplayConfig;
+	KeyValues kv;
+	Settings defaults = load(kv, false);
+	EXPECT_FALSE(defaults.enhancedHud);                            // Original by default
+
+	Settings s;
+	s.enhancedHud = true;
+	KeyValues out;
+	store(s, out);
+	EXPECT_EQ(out["InterfaceStyle"], "Enhanced");
+	KeyValues file = out;
+	file["DisplayVersion"] = "1";
+	EXPECT_TRUE(load(file, false).enhancedHud);
+	EXPECT_FALSE(load(file, true).enhancedHud);                    // Classic ignores stored values entirely
+
+	file["InterfaceStyle"] = "Original";
+	EXPECT_FALSE(load(file, false).enhancedHud);
+	file["InterfaceStyle"] = "something else";                     // unknown value: Original, never a surprise
+	EXPECT_FALSE(load(file, false).enhancedHud);
+	file["InterfaceStyle"] = "enhanced";                           // case-insensitive
+	EXPECT_TRUE(load(file, false).enhancedHud);
+
+	Settings a, b;
+	b.enhancedHud = true;
+	EXPECT_FALSE(a == b);
+	// other keys in the file are untouched by the round trip
+	KeyValues withOthers;
+	withOthers["Resolution"] = "800 600";
+	withOthers["SomethingElse"] = "x";
+	store(s, withOthers);
+	EXPECT_EQ(withOthers["Resolution"], "800 600");
+	EXPECT_EQ(withOthers["SomethingElse"], "x");
+}
+
+TEST(EnhancedHudLayout, TheInterfaceChoiceLivesOnTheGameplayPage)
+{
+	using namespace OptionsPageLayout;
+	EXPECT_EQ(ownerOf("ModernInterface"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("ModernInterfaceLabel"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Gameplay));
+}
+
+TEST(EnhancedHudLayout, WindowTableCoversTheOriginalFunctionalSurface)
+{
+	// the functionality the prototype must keep: radar, command grid (12), queue (9), upgrades (5), cameo, XP bar and
+	// General button, money, power, and the four utility buttons
+	auto has = [](const char *name) { Rect r; bool hide = false; return destinationFor(name, r, hide); };
+	for (const char *w : {"LeftHUD", "CommandWindow", "ButtonCommand01", "ButtonCommand12", "ButtonQueue01", "ButtonQueue09",
+	                      "UnitUpgrade1", "UnitUpgrade5", "CameoWindow", "WinUnitSelected", "GeneralsExp", "ExpBarForeground",
+	                      "ButtonGeneral", "MoneyDisplay", "PowerWindow", "ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon",
+	                      "PopupCommunicator"})
+		EXPECT_TRUE(has(w)) << w;
+	Rect r; bool hide = false;
+	EXPECT_TRUE(destinationFor("ButtonSmall", r, hide));
+	EXPECT_TRUE(hide);                                               // the retail 800 px size toggles have no equivalent
+	EXPECT_FALSE(destinationFor("NoSuchWindow", r, hide));
+}

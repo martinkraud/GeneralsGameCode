@@ -1,0 +1,284 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Enhanced gameplay HUD (USA prototype): the pure geometry. No engine types, fully testable.
+//
+// The Enhanced HUD is a bounded, horizontally centred island that is flush with the bottom edge of the surface:
+//
+//        world                                                        world
+//             +-------------------------------------------------------+
+//             | RADAR + utility | UNIT INFO | MONEY/POWER + COMMANDS | XP |
+//   [powers]  +-------------------------------------------------------+
+//   ===================================== surface bottom ===============
+//
+// * It is designed on a 920 x 180 reference island and scaled uniformly (never anisotropically). The scale is the
+//   modern UI scale, reduced when needed so the island never exceeds `maxWidthFraction` of the surface width
+//   (compact 4:3 surfaces may use the whole width; wider surfaces keep the world visible and clickable on both sides).
+// * Nothing here depends on the surface width beyond that cap: on 21:9 / 32:9 the island stays the same physical size.
+// * The special-power column sits beside the island (bottom flush) when there is room, otherwise at the right edge of
+//   the surface above the island.
+// * Every existing control-bar window is *moved* (a table of reference rectangles from ControlBar.wnd mapped into the
+//   island); no command logic is duplicated. Windows the Enhanced layout does not place keep their identity and are
+//   simply not repositioned.
+#pragma once
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+
+namespace EnhancedHudLayout
+{
+
+struct Rect
+{
+	int x = 0, y = 0, w = 0, h = 0;
+	int right() const { return x + w; }
+	int bottom() const { return y + h; }
+	bool empty() const { return w <= 0 || h <= 0; }
+	bool contains(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; }
+	bool within(const Rect &o) const { return x >= o.x && y >= o.y && right() <= o.right() && bottom() <= o.bottom(); }
+	bool intersects(const Rect &o) const { return x < o.right() && o.x < right() && y < o.bottom() && o.y < bottom(); }
+};
+
+// ---- reference design (island-local units) -------------------------------------------------------------------------
+constexpr int kIslandW = 920;
+constexpr int kIslandH = 180;
+constexpr int kPowerColumnW = 62;      // 59 wide shortcut buttons + 3 gap
+constexpr int kPowerColumnH = 270;     // 5 buttons x 49 pitch + margins (GenPowersShortcutBarUS.wnd: 60 x 270)
+
+// Regions (island-local reference units).
+constexpr Rect kRadarFrame   = {  8, 8, 216, 164};
+constexpr Rect kInfoFrame    = {232, 8, 160, 164};
+constexpr Rect kCommandFrame = {396, 8, 440, 164};
+constexpr Rect kXpFrame      = {842, 8,  70, 164};
+constexpr int kDividerX[3]   = {228, 394, 839};
+constexpr int kCommandScalePermille = 1100;   // the 6 x 2 button grid is drawn 1.10 x
+
+// Ratio of the surface width the island may take on non-compact surfaces.
+constexpr int kMaxWidthPercentWide = 82;
+// Surfaces at or below this aspect (4:3 family) may use the whole width.
+constexpr int kCompactAspectPermille = 1450;
+
+inline int scaledRef(int refUnits, double scale) { return static_cast<int>(std::lround(refUnits * scale)); }
+
+struct Result
+{
+	bool valid = false;
+	double scale = 1.0;          // island scale: physical pixels per reference unit
+	Rect island;                 // physical pixels, bottom flush, centred
+	Rect powerColumn;            // physical pixels (the special power shortcut bar parent)
+	bool powerBesideIsland = false;
+	// frame regions in physical pixels
+	Rect radarFrame, infoFrame, commandFrame, xpFrame;
+	int dividerX[3] = {0, 0, 0};
+};
+
+// `layoutScale` is the modern layout's uniform UI scale (DisplayGeometry::Layout::scale()).
+inline Result compute(int surfaceW, int surfaceH, double layoutScale)
+{
+	Result r;
+	if (surfaceW <= 0 || surfaceH <= 0 || !(layoutScale > 0.0))
+		return r;
+	const bool compact = surfaceW * 1000 <= surfaceH * kCompactAspectPermille;
+	const double widthFraction = compact ? 1.0 : kMaxWidthPercentWide / 100.0;
+	const double capByWidth = widthFraction * surfaceW / kIslandW;
+	// never taller than a third of the surface either (tiny windows with huge UI scale)
+	const double capByHeight = (surfaceH / 3.0) / kIslandH;
+	r.scale = std::min(layoutScale, std::min(capByWidth, capByHeight));
+	if (!(r.scale > 0.0))
+		return r;
+	const int w = std::min(scaledRef(kIslandW, r.scale), surfaceW);
+	const int h = scaledRef(kIslandH, r.scale);
+	r.island = {(surfaceW - w) / 2, surfaceH - h, w, h};     // flush with the bottom edge: bottom() == surfaceH
+	const double s = static_cast<double>(w) / kIslandW;       // exact horizontal fit after rounding the width
+	auto phys = [&](const Rect &ref) {
+		return Rect{r.island.x + static_cast<int>(std::lround(ref.x * s)), r.island.y + static_cast<int>(std::lround(ref.y * s)),
+		            static_cast<int>(std::lround(ref.w * s)), static_cast<int>(std::lround(ref.h * s))};
+	};
+	r.radarFrame = phys(kRadarFrame);
+	r.infoFrame = phys(kInfoFrame);
+	r.commandFrame = phys(kCommandFrame);
+	r.xpFrame = phys(kXpFrame);
+	for (int i = 0; i < 3; ++i)
+		r.dividerX[i] = r.island.x + static_cast<int>(std::lround(kDividerX[i] * s));
+
+	const int colW = scaledRef(kPowerColumnW, r.scale), colH = scaledRef(kPowerColumnH, r.scale);
+	if (r.island.right() + colW <= surfaceW)
+	{
+		r.powerBesideIsland = true;
+		r.powerColumn = {r.island.right(), surfaceH - colH, colW, colH};
+	}
+	else
+	{
+		r.powerBesideIsland = false;
+		r.powerColumn = {surfaceW - colW, std::max(r.island.y - colH, 0), colW, std::min(colH, r.island.y)};
+	}
+	r.valid = true;
+	return r;
+}
+
+// ---- window placement table ---------------------------------------------------------------------------------------
+// `src` is the rectangle in ControlBar.wnd (800 x 600 reference); `dst` is island-local reference units. A group is
+// moved by translation (and by `permille` scale around its origin for the command grid).
+struct Placement
+{
+	const char *window;       // without the "ControlBar.wnd:" prefix
+	Rect src;
+	Rect dst;                 // island-local reference units
+	bool hide;                // true: not placed, hidden (no Enhanced equivalent: the 800 px size toggles)
+};
+
+// Radar group: LeftHUD at (16,14); utility buttons in a column at its right edge.
+// Info group: translation of the 141 x 109 selection block to (244,36).
+// Command group: the 6 x 2 grid scaled 1.10, first button's top-left at (424,44).
+// Header: money and power above the grid. XP group: General button and the vertical XP bar.
+inline Rect infoMap(const Rect &src)
+{
+	return {244 + (src.x - 621), 36 + (src.y - 483), src.w, src.h};
+}
+inline Rect commandMap(const Rect &src)
+{
+	const int k = kCommandScalePermille;
+	return {424 + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
+}
+
+struct NamedPlacement
+{
+	const char *window;
+	Rect src;
+	Rect dst;
+	bool hide;
+};
+
+inline const NamedPlacement *placements(int &count)
+{
+	static const NamedPlacement table[] = {
+		// radar group
+		{"LeftHUD",              {  7, 443, 167, 152}, { 16,  14, 167, 152}, false},
+		{"WinUAttack",           { 77, 416,  45,  45}, { 18,  16,  45,  45}, false},
+		{"ButtonOptions",        {206, 495,  30,  22}, {190,  24,  30,  22}, false},
+		{"ButtonIdleWorker",     {206, 519,  30,  22}, {190,  50,  30,  22}, false},
+		{"ButtonPlaceBeacon",    {206, 543,  30,  22}, {190,  76,  30,  22}, false},
+		{"PopupCommunicator",    {206, 567,  30,  22}, {190, 102,  30,  22}, false},
+		// header: money / power
+		{"MoneyDisplay",         {360, 437,  79,  19}, {408,  10,  79,  19}, false},
+		{"PowerWindow",          {261, 473, 283,   7}, {500,  16, 283,   7}, false},
+		// XP group
+		{"ButtonGeneral",        {736, 433,  56,  41}, {853,  14,  56,  41}, false},
+		{"ExpBarForeground",     {766, 484,  21, 107}, {871,  62,  21, 107}, false},
+		{"GeneralsExp",          {769, 503,  13,  87}, {874,  81,  13,  87}, false},
+		// no Enhanced equivalent: the three size toggles of the 800 px bar
+		{"ButtonSmall",          {592, 436,  31,  21}, {0, 0, 0, 0}, true},
+		{"ButtonMedium",         {625, 439,  31,  21}, {0, 0, 0, 0}, true},
+		{"ButtonLarge",          {666, 445,  48,  28}, {0, 0, 0, 0}, true},
+	};
+	count = static_cast<int>(sizeof(table) / sizeof(table[0]));
+	return table;
+}
+
+// Containers and children of the info group (all are translated by infoMap).
+struct GroupWindow { const char *window; Rect src; };
+inline const GroupWindow *infoGroup(int &count)
+{
+	static const GroupWindow table[] = {
+		{"RightHUD",              {621, 483, 141, 109}},
+		{"ProductionQueueWindow", {621, 483, 141, 109}},
+		{"WinUnitSelected",       {621, 483, 141, 109}},
+		{"CameoWindow",           {622, 484,  91,  69}},
+		{"UnitUpgrade1",          {715, 484,  46,  33}},
+		{"UnitUpgrade2",          {715, 519,  46,  34}},
+		{"UnitUpgrade3",          {715, 555,  46,  36}},
+		{"UnitUpgrade4",          {668, 555,  45,  36}},
+		{"UnitUpgrade5",          {622, 555,  44,  36}},
+		{"ButtonQueue01",         {622, 484,  44,  33}},
+		{"ButtonQueue02",         {668, 484,  45,  33}},
+		{"ButtonQueue03",         {715, 484,  46,  33}},
+		{"ButtonQueue04",         {622, 519,  44,  34}},
+		{"ButtonQueue05",         {668, 519,  45,  34}},
+		{"ButtonQueue06",         {715, 519,  46,  34}},
+		{"ButtonQueue07",         {622, 555,  44,  36}},
+		{"ButtonQueue08",         {668, 555,  45,  36}},
+		{"ButtonQueue09",         {715, 555,  46,  36}},
+	};
+	count = static_cast<int>(sizeof(table) / sizeof(table[0]));
+	return table;
+}
+
+// Containers (full 408 x 100 command area) and the twelve buttons of the command group (commandMap).
+inline const GroupWindow *commandGroup(int &count)
+{
+	static const GroupWindow table[] = {
+		{"CommandWindow",             {198, 492, 408, 100}},
+		{"BeaconWindow",              {198, 492, 408, 100}},
+		{"UnderConstructionWindow",   {198, 492, 408, 100}},
+		{"ObserverPlayerInfoWindow",  {198, 492, 408, 100}},
+		{"ObserverPlayerListWindow",  {198, 492, 408, 100}},
+		{"OCLTimerWindow",            {200, 491, 408, 100}},
+		{"ButtonCommand01",           {246, 493,  53,  45}},
+		{"ButtonCommand02",           {246, 546,  53,  45}},
+		{"ButtonCommand03",           {306, 493,  53,  45}},
+		{"ButtonCommand04",           {306, 546,  53,  45}},
+		{"ButtonCommand05",           {366, 493,  53,  45}},
+		{"ButtonCommand06",           {366, 546,  53,  45}},
+		{"ButtonCommand07",           {426, 493,  53,  45}},
+		{"ButtonCommand08",           {426, 546,  53,  45}},
+		{"ButtonCommand09",           {486, 493,  53,  45}},
+		{"ButtonCommand10",           {486, 546,  53,  45}},
+		{"ButtonCommand11",           {546, 493,  53,  45}},
+		{"ButtonCommand12",           {546, 546,  53,  45}},
+	};
+	count = static_cast<int>(sizeof(table) / sizeof(table[0]));
+	return table;
+}
+
+// Island-local reference rectangle of a placement of the three kinds above (for a given window name), or false.
+inline bool destinationFor(const char *name, Rect &out, bool &hide)
+{
+	hide = false;
+	int n = 0;
+	for (const NamedPlacement *p = placements(n); n-- > 0; ++p)
+		if (std::strcmp(p->window, name) == 0) { out = p->dst; hide = p->hide; return true; }
+	n = 0;
+	for (const GroupWindow *g = infoGroup(n); n-- > 0; ++g)
+		if (std::strcmp(g->window, name) == 0) { out = infoMap(g->src); return true; }
+	n = 0;
+	for (const GroupWindow *g = commandGroup(n); n-- > 0; ++g)
+		if (std::strcmp(g->window, name) == 0)
+		{
+			out = commandMap(g->src);
+			// a container is the bounding box of the grid (the 408 x 100 retail area is wider than the frame)
+			if (std::strstr(name, "Button") == nullptr)
+				out = {commandMap(Rect{246, 493, 0, 0}).x - 6, commandMap(Rect{246, 493, 0, 0}).y - 6,
+				       commandMap(Rect{546, 546, 53, 45}).right() - commandMap(Rect{246, 493, 0, 0}).x + 12,
+				       commandMap(Rect{546, 546, 53, 45}).bottom() - commandMap(Rect{246, 493, 0, 0}).y + 12};
+			return true;
+		}
+	return false;
+}
+
+// Island-local reference rect -> physical pixels.
+inline Rect toPhysical(const Result &r, const Rect &local)
+{
+	const double s = r.island.w > 0 ? static_cast<double>(r.island.w) / kIslandW : r.scale;
+	const int x0 = r.island.x + static_cast<int>(std::lround(local.x * s));
+	const int y0 = r.island.y + static_cast<int>(std::lround(local.y * s));
+	const int x1 = r.island.x + static_cast<int>(std::lround((local.x + local.w) * s));
+	const int y1 = r.island.y + static_cast<int>(std::lround((local.y + local.h) * s));
+	return {x0, y0, std::max(x1 - x0, local.w > 0 ? 1 : 0), std::max(y1 - y0, local.h > 0 ? 1 : 0)};
+}
+
+// Only the USA is supported in this prototype; any other side falls back to the Original presentation.
+inline bool supportsSide(const char *side)
+{
+	if (!side) return false;
+	static const char prefix[] = "America";
+	if (std::strncmp(side, prefix, sizeof(prefix) - 1) != 0) return false;
+	return std::strstr(side, "Small") == nullptr;     // the squished retail variant keeps the Original bar
+}
+
+// The whole decision as a function: Enhanced is shown only when requested, in the modern presentation, for a
+// supported side, on a surface that can hold the island.
+inline bool shouldBeActive(bool requested, bool modernDisplay, bool classic, const char *side, int surfaceW, int surfaceH)
+{
+	return requested && modernDisplay && !classic && supportsSide(side) && surfaceW >= 640 && surfaceH >= 480;
+}
+
+}  // namespace EnhancedHudLayout

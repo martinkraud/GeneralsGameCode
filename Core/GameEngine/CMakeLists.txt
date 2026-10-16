@@ -157,6 +157,8 @@ set(GAMEENGINE_SRC
     Include/GameClient/Color.h
     Include/GameClient/CommandXlat.h
     Include/GameClient/ControlBar.h
+    Include/Common/EnhancedHud.h
+    Include/Common/EnhancedHudLayout.h
     Include/GameClient/ControlBarResizer.h
     Include/GameClient/ControlBarScheme.h
     Include/GameClient/Credits.h
@@ -747,6 +749,7 @@ set(GAMEENGINE_SRC
     Source/GameClient/GUI/ControlBar/ControlBarObserver.cpp
     Source/GameClient/GUI/ControlBar/ControlBarOCLTimer.cpp
     Source/GameClient/GUI/ControlBar/ControlBarPrintPositions.cpp
+    Source/GameClient/GUI/ControlBar/ControlBarEnhanced.cpp
     Source/GameClient/GUI/ControlBar/ControlBarResizer.cpp
     Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp
     Source/GameClient/GUI/ControlBar/ControlBarStructureInventory.cpp

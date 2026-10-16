@@ -450,3 +450,13 @@ cache was disproven by measurement and reverted; do not reintroduce it without n
 helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Present/GPU/page-fault step, the B3 stall,
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
+
+## X64.36 Enhanced gameplay UI - USA prototype (CP10, in review)
+
+Presentation-only prototype: `Options > Gameplay > Interface: Original | Enhanced` (key `InterfaceStyle`, default
+Original). Enhanced (USA only; other sides fall back to Original) moves the existing ControlBar.wnd windows into a bounded,
+centred, bottom-flush 920 x 180 (reference) island - radar | unit info | money+power+12-button command grid | General XP bar -
+and draws a procedural modular frame; the special-power shortcut column sits beside it. No command logic is duplicated.
+Code: `Common/EnhancedHudLayout.h` (pure geometry), `Common/EnhancedHud.h` (switch), `ControlBarEnhanced.cpp`, hooks in
+`ControlBarScheme.cpp`/`ControlBar.cpp`/`ControlBarPopupDescription.cpp`/`ModernDisplayOptions.cpp`. Not accepted until the
+human Original-vs-Enhanced review. Full record: `X64_36_ENHANCED_HUD_USA_PROTOTYPE.md`.

@@ -13,6 +13,7 @@
 #include "Common/StartupDiagnostics.h"
 #include "Common/NativeOrdinaryHost.h"
 #include "Common/DisplayRuntime.h"
+#include "Common/EnhancedHud.h"
 #include "Common/DisplaySettings.h"
 #include "Common/DisplayModes.h"
 #include "Common/ModernExperience.h"
@@ -337,6 +338,7 @@ void W3DDisplay::initOrdinaryHostPresentation()
         DisplayRuntime::vsyncHook() = [](bool enabled) { WW3D::Set_Native_Vsync(enabled); };
         NativeRegisterPerformanceExtensions();
         if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
+        EnhancedHud::setRequested(settings.enhancedHud);                  // Options > Interface; Original by default
         state.settings = settings;
         state.resolved = resolved;
         DisplayRuntime::setClient(resolved.client);

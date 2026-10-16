@@ -54,6 +54,8 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/DisplayRuntime.h"
+#include "Common/EnhancedHud.h"
+#include "Common/ModernExperience.h"
 
 #include "Common/Player.h"
 #include "Common/PlayerTemplate.h"
@@ -415,6 +417,9 @@ void ControlBarScheme::validate() const
 
 void ControlBarScheme::init()
 {
+	// Enhanced gameplay HUD (USA prototype): decide for this scheme's side; anything unsupported stays Original.
+	EnhancedHud::update( DisplayRuntime::modern(), ModernExperience::classic(), m_side.str(),
+		TheDisplay ? (Int)TheDisplay->getWidth() : 0, TheDisplay ? (Int)TheDisplay->getHeight() : 0, DisplayRuntime::uiScale() );
 	if(TheControlBar)
 	{
 		TheControlBar->switchControlBarStage(CONTROL_BAR_STAGE_DEFAULT);
@@ -676,6 +681,15 @@ void ControlBarScheme::init()
 			win->winSetSize(m_powerPurchaseImage->getImageWidth() * resMultiplier.x, m_powerPurchaseImage->getImageHeight() * resMultiplier.y);
 		}
 	}
+
+	// Enhanced: move the windows into the island after the scheme placed them; Original: put back what was moved.
+	if( TheControlBar )
+	{
+		if( EnhancedHud::active() )
+			TheControlBar->applyEnhancedLayout();
+		else
+			TheControlBar->restoreOriginalLayout();
+	}
 }
 
 //
@@ -758,6 +772,8 @@ void ControlBarScheme::update()
 //-----------------------------------------------------------------------------
 void ControlBarScheme::drawForeground( Coord2D multi, ICoord2D offset )
 {
+	if( EnhancedHud::active() )
+		return;   // the Enhanced frame is one modular background pass; the retail foreground art does not apply
 	for(Int i = CONTROL_BAR_SCHEME_FOREGROUND_IMAGE_LAYERS - 1; i >= 0; i--)
 	{
 		ControlBarSchemeImageList::iterator it = m_layer[i].begin();
@@ -1126,6 +1142,11 @@ void ControlBarSchemeManager::drawForeground( ICoord2D offset )
 //-----------------------------------------------------------------------------
 void ControlBarSchemeManager::drawBackground( ICoord2D offset )
 {
+	if( EnhancedHud::active() )
+	{
+		drawEnhancedHudFrame();
+		return;
+	}
 	if(m_currentScheme)
 		m_currentScheme->drawBackground( m_multiplier, DisplayRuntime::offsetByControlBarOrigin(offset) );
 }
