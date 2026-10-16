@@ -27,6 +27,7 @@
 #include "GameLogic/GameLogic.h"
 #include "GameClient/GameClient.h"
 #include "Common/PerformanceProfile.h"
+#include "GameLogic/AIPathfind.h"
 #include "Common/SimulationTickStats.h"
 #include "Common/DeterminismFingerprint.h"
 
@@ -220,6 +221,15 @@ private:
 		{
 			if (!f) continue;
 			line(f, "determinism fingerprint: %zu checkpoints every %u frames | digest %s\n", m_trace.size(), m_fpInterval, DeterminismFingerprint::formatDigest(DeterminismFingerprint::digest(m_trace)).c_str());
+		}
+		for (FILE *f : out)
+		{
+			if (!f) continue;
+			const char *zoneMode = envText("GENERALS_ZONE_VERIFY") ? "VERIFY (candidate vs legacy oracle)" : (envText("GENERALS_ZONE_LEGACY") ? "LEGACY (original merge primitives)" : "default (minimum-root union-find)");
+			line(f, "zone calculation mode: %s", zoneMode);
+			if (envText("GENERALS_ZONE_VERIFY"))
+				line(f, " | %u recalculations compared, %u mismatches", PathfindZoneManager::verifyComparisons(), PathfindZoneManager::verifyMismatches());
+			line(f, "\n");
 		}
 		if (FILE *f = fopen((base + "_fingerprint.txt").c_str(), "w"))
 		{

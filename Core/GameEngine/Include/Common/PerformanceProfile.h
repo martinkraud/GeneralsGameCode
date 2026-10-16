@@ -32,7 +32,9 @@ enum class Category : unsigned int
 	LogicScripts, LogicTerrain, LogicCrc, LogicRecorder, LogicCommands, LogicBuildAssist, LogicPartition, LogicDestroy, LogicStores, LogicDisabledLoop,
 	// X64.38 ZoneCalc internals (nested in ZoneCalc): the block-wise labelling scan, the collapse + relabel pass, the per-block hierarchical
 	// data, and the whole-map equivalence pass + table flattening. The remainder is the exclusive time of ZoneCalc itself.
-	ZoneLabel, ZoneRelabel, ZoneBlocks, ZoneHierarchy, Count
+	ZoneLabel, ZoneRelabel, ZoneBlocks, ZoneHierarchy,
+	// X64.39: the table flattening at the end of ZoneHierarchy (nested in it).
+	ZoneFlatten, Count
 };
 // X64.34: DrawCalls/TexturesCreated/BuffersCreated are per-frame deltas of the native backend's cumulative counters;
 // DrawablesDrawn counts Drawable::draw passes that reached the draw modules; ParticlesLive/ObjectsLive are per-frame

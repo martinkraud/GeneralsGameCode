@@ -20,6 +20,8 @@
 
 #include "GameLogic/LocomotorSet.h"
 
+#include <vector>
+
 class PathfindCell;
 class PathfindLayer;
 
@@ -37,7 +39,8 @@ public:
 	ZoneBlock();
 	~ZoneBlock();  // not virtual, please don't override without making virtual.  jba.
 
-	void blockCalculateZones(	PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds);	///< Does zone calculations.
+	void blockCalculateZones(	PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds, Bool legacy = FALSE);	///< Does zone calculations. X64.39: legacy = the original O(zones) merge primitives (the oracle).
+	void captureState(std::vector<zoneStorageType> &out) const;	///< X64.39 verify mode: every value that pathfinding consumes from this block.
 	zoneStorageType getEffectiveZone(LocomotorSurfaceTypeMask acceptableSurfaces, Bool crusher, zoneStorageType zone) const;
 
 	void clearMarkedPassable() {m_markedPassable = false;}
@@ -48,6 +51,7 @@ public:
 	void setInteractsWithBridge(Bool interacts) {m_interactsWithBridge = interacts;}
 
 protected:
+	template <bool kLegacy> void blockCalculateZonesImpl(PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds);
 	void allocateZones();
 	void freeZones();
 

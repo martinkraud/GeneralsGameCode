@@ -258,3 +258,7 @@ above. **No native gameplay was run and none is needed for this batch** (all mea
 3. Re-run the heavy benchmark: success = p99/worst drop, `zone_hierarchy` share falls, digest `74F2CB528BED42ED` unchanged.
 4. Then re-profile path search (51 % of the tail) and decide whether a per-search scratch refactor is justified; the worker pool is built only if a
    stage that passes the overhead gate still exists after the algorithmic fixes.
+
+## Follow-up
+
+X64.39 (`X64_39_ZONECALC_OPTIMIZATION.md`) implemented the serial ZoneCalc fix recommended in section 11 without threads and with a verify mode; section 15 of that document is the current next-step list. Note: the X64.38 hypothesis that `StructureToppleUpdate` explains the replay mismatch is not supported by the X64.39 audit.

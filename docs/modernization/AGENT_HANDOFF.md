@@ -451,6 +451,14 @@ helicopter shadow pop-in (correctness), ZoneCalc ~20 ms hitches, the late Presen
 per-object CPU processing, shroud mesh, `setUseHotkey` texture churn, and an unprofiled real-combat scenario. Full record:
 `X64_35_PERFORMANCE_OPTIMIZATION.md` section 27.
 
+## X64.39 ZoneCalc algorithmic optimization (CP13, delivered)
+
+Serial, bit-identical, no threads. Read `X64_39_ZONECALC_OPTIMIZATION.md`. Merge primitives live in `GameLogic/Pathfinder/ZoneEquivalence.h` (legacy + min-root union-find, one header, differential-tested in
+`ZoneEquivalenceTest`). Env switches: default = fast; `GENERALS_ZONE_LEGACY=1` = original primitives; `GENERALS_ZONE_VERIFY=1` = run both, compare all six tables / cell zones / layer zones / block tables, `_exit(3)` with the
+first divergence (`GENERALS_ZONE_VERIFY_INJECT=1` self-tests the verifier). `flattenZones` stays legacy on purpose (the invariant does not hold inside it). Result: ZoneCalc 23.5 -> 5.5 ms per call; tick p99 23.4 -> 8.4 ms;
+the severe tail is path search (73 % of the slowest 1 %) and is NOT fixed. The record-vs-playback CRC mismatch (frame 1600) is independent of this work and remains the blocker before multithreading/multiplayer claims;
+the 11 client-RNG sites in logic code were audited and none reaches the CRC. `scripts/performance/test_compare.py` import fixed (safe-path interpreters).
+
 ## X64.38 CPU scalability foundation (CP12, foundation delivered)
 
 No threads were added. Read `X64_38_CPU_SCALABILITY.md`. Tools: `GENERALS_SIM_BENCH=<base>` (+ `GENERALS_SIM_IGNORE_CRC`, `GENERALS_SIM_FP_INTERVAL`)

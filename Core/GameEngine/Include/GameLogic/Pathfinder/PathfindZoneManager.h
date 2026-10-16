@@ -24,6 +24,7 @@
 class PathfindCell;
 class PathfindLayer;
 class ZoneBlock;
+struct ZoneSnapshot;   // X64.39 verify mode (defined in AIPathfind.cpp)
 
 typedef UnsignedShort zoneStorageType;
 
@@ -50,6 +51,9 @@ public:
 	Bool needToCalculateZones() const {return m_nextFrameToCalculateZones <= TheGameLogic->getFrame() ;} ///< Returns true if the zones need to be recalculated.
 	void markZonesDirty() ; ///< Called when the zones need to be recalculated.
 	void updateZonesForModify( PathfindCell **map,  PathfindLayer layers[], const IRegion2D &structureBounds, const IRegion2D &globalBounds ) ; ///< Called to recalculate an area when a structure has been removed.
+	// X64.39: GENERALS_ZONE_LEGACY=1 runs the original merge primitives; GENERALS_ZONE_VERIFY=1 runs both and compares every output.
+	static UnsignedInt verifyComparisons();
+	static UnsignedInt verifyMismatches();
 	void calculateZones(	PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds);	///< Does zone calculations.
 	zoneStorageType getEffectiveZone(LocomotorSurfaceTypeMask acceptableSurfaces, Bool crusher, zoneStorageType zone) const;
 	zoneStorageType getEffectiveTerrainZone(zoneStorageType zone) const;
@@ -71,6 +75,8 @@ public:
 	Bool interactsWithBridge(Int cellX, Int cellY) const;
 
 private:
+	template <bool kLegacy> void calculateZonesImpl(PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds);
+	void captureState(PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds, ZoneSnapshot &out) const;
 	void allocateZones();
 	void freeZones();
 	void freeBlocks();

@@ -29,6 +29,12 @@
 #include "Common/PerformanceProfile.h"
 
 #include "GameLogic/AIPathfind.h"
+#include "GameLogic/Pathfinder/ZoneEquivalence.h"
+#include <string>
+#include <utility>
+#include <vector>
+#include <cstdio>
+#include <cstdlib>
 
 #include "Common/PerfTimer.h"
 #include "Common/Player.h"
@@ -2250,101 +2256,60 @@ inline Bool groundCliff(const PathfindCell &targetCell, const PathfindCell &sour
 	return false;
 }
 
-static void __fastcall resolveBlockZones(Int srcZone, Int targetZone, zoneStorageType *zoneEquivalency, Int sizeOfZE)
-{
-	Int i;
-	// We have two zones being combined now. Keep the lower zone.
-	DEBUG_ASSERTCRASH(srcZone!=0 && targetZone!=0,  ("Bad resolve zones	."));
-	if (targetZone<srcZone) {
-		for (i=0; i<sizeOfZE; i++) {
-			if (zoneEquivalency[i] == srcZone) {
-				zoneEquivalency[i] = targetZone;
-			}
-		}
-	} else {
-		for (i=0; i<sizeOfZE; i++) {
-			if (zoneEquivalency[i] == targetZone) {
-				zoneEquivalency[i] = srcZone;
-			}
-		}
-	}
-}
-
-static void __fastcall resolveZones(Int srcZone, Int targetZone, zoneStorageType *zoneEquivalency, Int sizeOfZE)
-{
-	Int i;
-	// We have two zones being combined now. Keep the lower zone.
-	DEBUG_ASSERTCRASH(srcZone!=0 && targetZone!=0,  ("Bad resolve zones	."));
-	DEBUG_ASSERTCRASH(srcZone<sizeOfZE && targetZone<sizeOfZE,  ("Bad resolve zones	."));
-	srcZone = zoneEquivalency[srcZone];
-	targetZone = zoneEquivalency[targetZone];
-	DEBUG_ASSERTCRASH(srcZone<sizeOfZE && targetZone<sizeOfZE,  ("Bad resolve zones	."));
-	zoneStorageType finalZone;
-	if (targetZone<srcZone) {
-		finalZone = zoneEquivalency[targetZone];
-	} else {
-		finalZone = zoneEquivalency[srcZone];
-	}
-	DEBUG_ASSERTCRASH(finalZone<sizeOfZE ,  ("Bad resolve zones	."));
-	for (i=0; i<sizeOfZE; i++) {
-		zoneStorageType ze = zoneEquivalency[i];
-		if (ze == targetZone || ze == srcZone) {
-			zoneEquivalency[i] = finalZone;
-		}
-	}
-}
-
+// X64.39: the merge primitives live in GameLogic/Pathfinder/ZoneEquivalence.h. LEGACY = the original code (whole-table scan per merge), kept
+// as the verification oracle; the default is the minimum-root union-find with identical results (see X64_39_ZONECALC_OPTIMIZATION.md).
 static void flattenZones(zoneStorageType *zoneArray, zoneStorageType *zoneHierarchical, Int sizeOfZones)
 {
-	Int i;
-	for (i=0; i<sizeOfZones; i++) {
-		Int zone1 = zoneArray[i];
-		Int zone2 = zoneHierarchical[zone1];
-		zone1 = zoneArray[zone2];
-		zone2 = zoneHierarchical[zone1];
-		zoneArray[i] = zone2;
-	}
-#if 1
-
-	for (i=0; i<sizeOfZones; i++) {
-		Int zone1 = zoneArray[i];
-		Int zone2 = zoneHierarchical[i];
-		if (zone1!=zone2) {
-			resolveZones(zone1, zone2, zoneArray, sizeOfZones);
-		}
-	}
-#endif
+	ZoneEquivalence::legacyFlatten(zoneArray, zoneHierarchical, sizeOfZones);
 }
 
+template <bool kLegacy>
 inline void applyZone(PathfindCell &targetCell, const PathfindCell &sourceCell, zoneStorageType *zoneEquivalency, Int sizeOfZE)
 {
 	DEBUG_ASSERTCRASH(sourceCell.getZone()!=0, ("Unset source zone."));
-	Int srcZone = zoneEquivalency[sourceCell.getZone()];
-	Int targetZone = zoneEquivalency[targetCell.getZone()];
-
-	if (targetZone == 0) {
-		targetCell.setZone(srcZone);
-		return;
+	int newZone = 0;
+	const int assign = kLegacy
+		? ZoneEquivalence::legacyApply(zoneEquivalency, sizeOfZE, targetCell.getZone(), sourceCell.getZone(), &newZone)
+		: ZoneEquivalence::minRootApply(zoneEquivalency, sizeOfZE, targetCell.getZone(), sourceCell.getZone(), &newZone);
+	if (assign) {
+		targetCell.setZone(static_cast<zoneStorageType>(newZone));
 	}
-	if (targetZone == srcZone) {
-		return; // already match.
-	}
-	resolveZones(srcZone, targetZone, zoneEquivalency, sizeOfZE);
-
 }
 
+template <bool kLegacy>
 inline void applyBlockZone(PathfindCell &targetCell, const PathfindCell &sourceCell,
 													 zoneStorageType *zoneEquivalency, Int firstZone, Int sizeOfZE)
 {
 	DEBUG_ASSERTCRASH(sourceCell.getZone()>=firstZone && sourceCell.getZone()<firstZone+sizeOfZE, ("Memory overrun - FATAL ERROR."));
-	Int srcZone = zoneEquivalency[sourceCell.getZone()-firstZone];
 	DEBUG_ASSERTCRASH(targetCell.getZone()>=firstZone && sourceCell.getZone()<firstZone+sizeOfZE, ("Memory overrun - FATAL ERROR."));
-	Int targetZone = zoneEquivalency[targetCell.getZone()-firstZone];
-	if (targetZone == srcZone) {
-		return; // already match.
+	if (kLegacy) {
+		ZoneEquivalence::legacyApplyBlock(zoneEquivalency, firstZone, sizeOfZE, targetCell.getZone(), sourceCell.getZone());
+	} else {
+		ZoneEquivalence::minRootApplyBlock(zoneEquivalency, firstZone, sizeOfZE, targetCell.getZone(), sourceCell.getZone());
 	}
-	resolveBlockZones(srcZone, targetZone, zoneEquivalency, sizeOfZE);
+}
 
+template <bool kLegacy>
+inline void unionZones(zoneStorageType *zoneEquivalency, Int zoneA, Int zoneB, Int sizeOfZE)
+{
+	if (kLegacy) {
+		ZoneEquivalence::legacyResolveZones(zoneA, zoneB, zoneEquivalency, sizeOfZE);
+	} else {
+		ZoneEquivalence::minRootUnion(zoneEquivalency, zoneA, zoneB);
+	}
+}
+
+// GENERALS_ZONE_LEGACY / GENERALS_ZONE_VERIFY are read once; neither is set in a normal run.
+enum ZoneMode { ZONE_MODE_FAST = 0, ZONE_MODE_LEGACY = 1, ZONE_MODE_VERIFY = 2 };
+static ZoneMode currentZoneMode()
+{
+	static int mode = -1;
+	if (mode < 0) {
+		const char *verify = getenv("GENERALS_ZONE_VERIFY");
+		const char *legacy = getenv("GENERALS_ZONE_LEGACY");
+		mode = (verify && *verify) ? ZONE_MODE_VERIFY : ((legacy && *legacy) ? ZONE_MODE_LEGACY : ZONE_MODE_FAST);
+	}
+	return static_cast<ZoneMode>(mode);
 }
 
 //------------------------  ZoneBlock  -------------------------------
@@ -2385,7 +2350,8 @@ void ZoneBlock::freeZones()
 
 /* Allocate zone equivalency arrays large enough to hold required entries.  If the arrays are already
 large enough, reuse.  Then calculate terrain equivalencies. */
-void ZoneBlock::blockCalculateZones(PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds)
+template <bool kLegacy>
+void ZoneBlock::blockCalculateZonesImpl(PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds)
 {
 	Int i, j;
 	m_cellOrigin = bounds.lo;
@@ -2420,36 +2386,66 @@ void ZoneBlock::blockCalculateZones(PathfindCell **map, PathfindLayer layers[], 
 			if (i>bounds.lo.x && map[i][j].getZone()!=map[i-1][j].getZone()) {
 
 				if (waterGround(map[i][j], map[i-1][j])) {
-					applyBlockZone(map[i][j], map[i-1][j], m_groundWaterZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i-1][j], m_groundWaterZones, m_firstZone, m_numZones);
 				}
 				if (groundRubble(map[i][j], map[i-1][j])) {
-					applyBlockZone(map[i][j], map[i-1][j], m_groundRubbleZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i-1][j], m_groundRubbleZones, m_firstZone, m_numZones);
 				}
 				if (groundCliff(map[i][j], map[i-1][j])) {
-					applyBlockZone(map[i][j], map[i-1][j], m_groundCliffZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i-1][j], m_groundCliffZones, m_firstZone, m_numZones);
 				}
 				if (crusherGround(map[i][j], map[i-1][j])) {
-					applyBlockZone(map[i][j], map[i-1][j], m_crusherZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i-1][j], m_crusherZones, m_firstZone, m_numZones);
 				}
 			}
 			if (j>bounds.lo.y && map[i][j].getZone()!=map[i][j-1].getZone()) {
 				if (waterGround(map[i][j],map[i][j-1])) {
-					applyBlockZone(map[i][j], map[i][j-1], m_groundWaterZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i][j-1], m_groundWaterZones, m_firstZone, m_numZones);
 				}
 				if (groundRubble(map[i][j], map[i][j-1])) {
-					applyBlockZone(map[i][j], map[i][j-1], m_groundRubbleZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i][j-1], m_groundRubbleZones, m_firstZone, m_numZones);
 				}
 				if (groundCliff(map[i][j],map[i][j-1])) {
-					applyBlockZone(map[i][j], map[i][j-1], m_groundCliffZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i][j-1], m_groundCliffZones, m_firstZone, m_numZones);
 				}
 				if (crusherGround(map[i][j], map[i][j-1])) {
-					applyBlockZone(map[i][j], map[i][j-1], m_crusherZones, m_firstZone, m_numZones);
+					applyBlockZone<kLegacy>(map[i][j], map[i][j-1], m_crusherZones, m_firstZone, m_numZones);
 				}
 			}
 			DEBUG_ASSERTCRASH(map[i][j].getZone() != 0, ("Cleared the zone."));
 		}
 	}
 
+	if (!kLegacy) {
+		// the union-find leaves the tables un-flattened; consumers read final labels
+		ZoneEquivalence::minRootFlattenBlock(m_groundCliffZones, m_firstZone, m_numZones);
+		ZoneEquivalence::minRootFlattenBlock(m_groundWaterZones, m_firstZone, m_numZones);
+		ZoneEquivalence::minRootFlattenBlock(m_groundRubbleZones, m_firstZone, m_numZones);
+		ZoneEquivalence::minRootFlattenBlock(m_crusherZones, m_firstZone, m_numZones);
+	}
+}
+
+void ZoneBlock::blockCalculateZones(PathfindCell **map, PathfindLayer layers[], const IRegion2D &bounds, Bool legacy)
+{
+	if (legacy) {
+		blockCalculateZonesImpl<true>(map, layers, bounds);
+	} else {
+		blockCalculateZonesImpl<false>(map, layers, bounds);
+	}
+}
+
+void ZoneBlock::captureState(std::vector<zoneStorageType> &out) const
+{
+	out.push_back(m_firstZone);
+	out.push_back(m_numZones);
+	out.push_back(m_interactsWithBridge ? 1 : 0);
+	out.push_back(m_markedPassable ? 1 : 0);
+	if (m_numZones > 1) {
+		for (int i = 0; i < m_numZones; i++) out.push_back(m_groundCliffZones[i]);
+		for (int i = 0; i < m_numZones; i++) out.push_back(m_groundWaterZones[i]);
+		for (int i = 0; i < m_numZones; i++) out.push_back(m_groundRubbleZones[i]);
+		for (int i = 0; i < m_numZones; i++) out.push_back(m_crusherZones[i]);
+	}
 }
 
 //
@@ -2672,7 +2668,8 @@ void PathfindZoneManager::markZonesDirty()  ///< Called when the zones need to b
  * If you are a multiple terrain vehicle, like amphibious transport, the lookup is a little more
  * complicated.
  */
-void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer layers[], const IRegion2D &globalBounds )
+template <bool kLegacy>
+void PathfindZoneManager::calculateZonesImpl( PathfindCell **map, PathfindLayer layers[], const IRegion2D &globalBounds )
 {
 	PerformanceProfile::PathScope pathProfile(PerformanceProfile::PathKind::Zones);
 #ifdef DEBUG_QPF
@@ -2726,12 +2723,12 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 
 					if (i>bounds.lo.x) {
 						if (map[i][j].getType() == map[i-1][j].getType()) {
-							applyZone(map[i][j], map[i-1][j], zoneEquivalency, m_maxZone);
+							applyZone<kLegacy>(map[i][j], map[i-1][j], zoneEquivalency, m_maxZone);
 						}
 					}
 					if (j>bounds.lo.y) {
 						if (map[i][j].getType() == map[i][j-1].getType()) {
-							applyZone(map[i][j], map[i][j-1], zoneEquivalency, m_maxZone);
+							applyZone<kLegacy>(map[i][j], map[i][j-1], zoneEquivalency, m_maxZone);
 						}
 					}
 					if (cell->getZone()==0) {
@@ -2753,6 +2750,9 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
  		}
 	}
 
+	if (!kLegacy) {
+		ZoneEquivalence::minRootFlatten(zoneEquivalency, m_maxZone);   // un-flattened union-find -> the legacy array
+	}
 	}
 	Int totalZones = m_maxZone;
 
@@ -2821,7 +2821,7 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 				continue;
 			}
 #endif
-			m_zoneBlocks[xBlock][yBlock].blockCalculateZones(map, layers, bounds);
+			m_zoneBlocks[xBlock][yBlock].blockCalculateZones(map, layers, bounds, kLegacy);
 		}
 	}
 	}
@@ -2845,7 +2845,7 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 			if ( (r_thisCell.getConnectLayer() > LAYER_GROUND) &&
 				(r_thisCell.getType() == PathfindCell::CELL_CLEAR) ) {
 				PathfindLayer *layer = layers + r_thisCell.getConnectLayer();
-				resolveZones(r_thisCell.getZone(), layer->getZone(), m_hierarchicalZones, m_maxZone);
+				unionZones<kLegacy>(m_hierarchicalZones, r_thisCell.getZone(), layer->getZone(), m_maxZone);
 			}
 
 			if ( i > globalBounds.lo.x && r_thisCell.getZone() != map[i-1][j].getZone() ) {
@@ -2853,47 +2853,47 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 
 #if RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING
 				if (r_thisCell.getType() == r_leftCell.getType()) {
-					applyZone(r_thisCell, r_leftCell, m_hierarchicalZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_hierarchicalZones, m_maxZone);
 				}
 				if (waterGround(r_thisCell, r_leftCell)) {
-					applyZone(r_thisCell, r_leftCell, m_groundWaterZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_groundWaterZones, m_maxZone);
 				}
 				if (groundRubble(r_thisCell, r_leftCell)) {
-					applyZone(r_thisCell, r_leftCell, m_groundRubbleZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_groundRubbleZones, m_maxZone);
 				}
 				if (groundCliff(r_thisCell, r_leftCell)) {
-					applyZone(r_thisCell, r_leftCell, m_groundCliffZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_groundCliffZones, m_maxZone);
 				}
 				if (terrain(r_thisCell, r_leftCell)) {
-					applyZone(r_thisCell, r_leftCell, m_terrainZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_terrainZones, m_maxZone);
 				}
 				if (crusherGround(r_thisCell, r_leftCell)) {
-					applyZone(r_thisCell, r_leftCell, m_crusherZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_crusherZones, m_maxZone);
 				}
 #else
 				//if this is true, skip all the ones below
 				if (r_thisCell.getType() == r_leftCell.getType())
-					applyZone(r_thisCell, r_leftCell, m_hierarchicalZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_leftCell, m_hierarchicalZones, m_maxZone);
 				else {
 					Bool notTerrainOrCrusher = TRUE; // if this is false, skip the if-else-ladder below
 
 					if (terrain(r_thisCell, r_leftCell)) {
-						applyZone(r_thisCell, r_leftCell, m_terrainZones, m_maxZone);
+						applyZone<kLegacy>(r_thisCell, r_leftCell, m_terrainZones, m_maxZone);
 						notTerrainOrCrusher = FALSE;
 					}
 
 					if (crusherGround(r_thisCell, r_leftCell)) {
-						applyZone(r_thisCell, r_leftCell, m_crusherZones, m_maxZone);
+						applyZone<kLegacy>(r_thisCell, r_leftCell, m_crusherZones, m_maxZone);
 						notTerrainOrCrusher = FALSE;
 					}
 
 					if ( notTerrainOrCrusher ) {
 						if (waterGround(r_thisCell, r_leftCell))
-							applyZone(r_thisCell, r_leftCell, m_groundWaterZones, m_maxZone);
+							applyZone<kLegacy>(r_thisCell, r_leftCell, m_groundWaterZones, m_maxZone);
 						else if (groundRubble(r_thisCell, r_leftCell))
-							applyZone(r_thisCell, r_leftCell, m_groundRubbleZones, m_maxZone);
+							applyZone<kLegacy>(r_thisCell, r_leftCell, m_groundRubbleZones, m_maxZone);
 						else if (groundCliff(r_thisCell, r_leftCell))
-							applyZone(r_thisCell, r_leftCell, m_groundCliffZones, m_maxZone);
+							applyZone<kLegacy>(r_thisCell, r_leftCell, m_groundCliffZones, m_maxZone);
 					}
 
 				}
@@ -2906,47 +2906,47 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 
 #if RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING
 				if (r_thisCell.getType() == r_topCell.getType()) {
-					applyZone(r_thisCell, r_topCell, m_hierarchicalZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_hierarchicalZones, m_maxZone);
 				}
 				if (waterGround(r_thisCell, r_topCell)) {
-					applyZone(r_thisCell, r_topCell, m_groundWaterZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_groundWaterZones, m_maxZone);
 				}
 				if (groundRubble(r_thisCell, r_topCell)) {
-					applyZone(r_thisCell, r_topCell, m_groundRubbleZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_groundRubbleZones, m_maxZone);
 				}
 				if (groundCliff(r_thisCell, r_topCell)) {
-					applyZone(r_thisCell, r_topCell, m_groundCliffZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_groundCliffZones, m_maxZone);
 				}
 				if (terrain(r_thisCell, r_topCell)) {
-					applyZone(r_thisCell, r_topCell, m_terrainZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_terrainZones, m_maxZone);
 				}
 				if (crusherGround(r_thisCell, r_topCell)) {
-					applyZone(r_thisCell, r_topCell, m_crusherZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_crusherZones, m_maxZone);
 				}
 #else
 				//if this is true, skip all the ones below
 				if (r_thisCell.getType() == r_topCell.getType())
-					applyZone(r_thisCell, r_topCell, m_hierarchicalZones, m_maxZone);
+					applyZone<kLegacy>(r_thisCell, r_topCell, m_hierarchicalZones, m_maxZone);
 				else {
 					Bool notTerrainOrCrusher = TRUE; // if this is false, skip the if-else-ladder below
 
 					if (terrain(r_thisCell, r_topCell)) {
-						applyZone(r_thisCell, r_topCell, m_terrainZones, m_maxZone);
+						applyZone<kLegacy>(r_thisCell, r_topCell, m_terrainZones, m_maxZone);
 						notTerrainOrCrusher = FALSE;
 					}
 
 					if (crusherGround(r_thisCell, r_topCell)) {
-						applyZone(r_thisCell, r_topCell, m_crusherZones, m_maxZone);
+						applyZone<kLegacy>(r_thisCell, r_topCell, m_crusherZones, m_maxZone);
 						notTerrainOrCrusher = FALSE;
 					}
 
 					if (notTerrainOrCrusher) {
 						if (waterGround(r_thisCell, r_topCell))
-							applyZone(r_thisCell, r_topCell, m_groundWaterZones, m_maxZone);
+							applyZone<kLegacy>(r_thisCell, r_topCell, m_groundWaterZones, m_maxZone);
 						else if (groundRubble(r_thisCell, r_topCell))
-							applyZone(r_thisCell, r_topCell, m_groundRubbleZones, m_maxZone);
+							applyZone<kLegacy>(r_thisCell, r_topCell, m_groundRubbleZones, m_maxZone);
 						else if (groundCliff(r_thisCell, r_topCell))
-							applyZone(r_thisCell, r_topCell, m_groundCliffZones, m_maxZone);
+							applyZone<kLegacy>(r_thisCell, r_topCell, m_groundCliffZones, m_maxZone);
 					}
 
 				}
@@ -2957,6 +2957,17 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 		}
 	}
 
+	if (!kLegacy) {
+		ZoneEquivalence::minRootFlatten(m_hierarchicalZones, m_maxZone);
+		ZoneEquivalence::minRootFlatten(m_groundCliffZones, m_maxZone);
+		ZoneEquivalence::minRootFlatten(m_groundWaterZones, m_maxZone);
+		ZoneEquivalence::minRootFlatten(m_groundRubbleZones, m_maxZone);
+		ZoneEquivalence::minRootFlatten(m_terrainZones, m_maxZone);
+		ZoneEquivalence::minRootFlatten(m_crusherZones, m_maxZone);
+	}
+	}
+	{
+	PERFORMANCE_PROFILE_SCOPE(ZoneFlatten);
 	//FLATTEN HIERARCHICAL ZONES
 	for (i=1; i<m_maxZone; i++) {
 		Int zone = m_hierarchicalZones[i];
@@ -3016,6 +3027,100 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
 	}
 #endif
 	m_nextFrameToCalculateZones = 0xffffffff;
+}
+
+// ---- X64.39 verify mode -------------------------------------------------------------------------------------------------------------------
+// Everything the pathfinder consumes from a zone calculation, as named segments of values.
+struct ZoneSnapshot
+{
+	std::vector<std::pair<std::string, std::vector<zoneStorageType> > > parts;
+	ICoord2D cellOrigin;
+	Int cellWidth;
+	ZoneSnapshot() : cellWidth(0) { cellOrigin.x = 0; cellOrigin.y = 0; }
+};
+
+static UnsignedInt s_zoneVerifyComparisons = 0;
+static UnsignedInt s_zoneVerifyMismatches = 0;
+UnsignedInt PathfindZoneManager::verifyComparisons() { return s_zoneVerifyComparisons; }
+UnsignedInt PathfindZoneManager::verifyMismatches() { return s_zoneVerifyMismatches; }
+
+void PathfindZoneManager::captureState(PathfindCell **map, PathfindLayer layers[], const IRegion2D &globalBounds, ZoneSnapshot &out) const
+{
+	std::vector<zoneStorageType> scalars;
+	scalars.push_back(m_maxZone);
+	scalars.push_back(m_zonesAllocated);
+	out.parts.push_back(std::make_pair(std::string("max_zone,zones_allocated"), scalars));
+	const struct { const char *name; const zoneStorageType *table; } tables[] = {
+		{"table:ground_cliff", m_groundCliffZones}, {"table:ground_water", m_groundWaterZones}, {"table:ground_rubble", m_groundRubbleZones},
+		{"table:terrain", m_terrainZones}, {"table:crusher", m_crusherZones}, {"table:hierarchical", m_hierarchicalZones}};
+	for (size_t t = 0; t < sizeof(tables) / sizeof(tables[0]); ++t) {
+		std::vector<zoneStorageType> v;
+		if (tables[t].table) v.assign(tables[t].table, tables[t].table + m_zonesAllocated);
+		out.parts.push_back(std::make_pair(std::string(tables[t].name), v));
+	}
+	std::vector<zoneStorageType> cells;
+	out.cellOrigin = globalBounds.lo;
+	out.cellWidth = globalBounds.hi.x - globalBounds.lo.x + 1;
+	for (Int j = globalBounds.lo.y; j <= globalBounds.hi.y; j++) {
+		for (Int i = globalBounds.lo.x; i <= globalBounds.hi.x; i++) cells.push_back(map[i][j].getZone());
+	}
+	out.parts.push_back(std::make_pair(std::string("cell_zones"), cells));
+	std::vector<zoneStorageType> layerZones;
+	for (Int i = 0; i <= LAYER_LAST; i++) layerZones.push_back(static_cast<zoneStorageType>(layers[i].getZone()));
+	out.parts.push_back(std::make_pair(std::string("layer_zones"), layerZones));
+	std::vector<zoneStorageType> blocks;
+	for (Int x = 0; x < m_zoneBlockExtent.x; x++) {
+		for (Int y = 0; y < m_zoneBlockExtent.y; y++) m_zoneBlocks[x][y].captureState(blocks);
+	}
+	out.parts.push_back(std::make_pair(std::string("zone_blocks(first,num,bridge,passable,4 tables)"), blocks));
+}
+
+void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer layers[], const IRegion2D &globalBounds )
+{
+	const ZoneMode mode = currentZoneMode();
+	if (mode == ZONE_MODE_LEGACY) {
+		calculateZonesImpl<true>(map, layers, globalBounds);
+		return;
+	}
+	if (mode == ZONE_MODE_FAST) {
+		calculateZonesImpl<false>(map, layers, globalBounds);
+		return;
+	}
+	// VERIFY: candidate first, then the legacy oracle on the same inputs. The legacy result is what stays in the game state, so a wrong
+	// candidate can never alter the simulation; any difference is reported (first divergence) and the process stops.
+	ZoneSnapshot fast, legacy;
+	calculateZonesImpl<false>(map, layers, globalBounds);
+	captureState(map, layers, globalBounds, fast);
+	if (getenv("GENERALS_ZONE_VERIFY_INJECT") && s_zoneVerifyComparisons == 3) {
+		// self-test of the verifier: corrupt one candidate value of the hierarchical table; the comparison below must catch it
+		for (size_t p = 0; p < fast.parts.size(); ++p) {
+			if (fast.parts[p].first == "table:hierarchical" && fast.parts[p].second.size() > 5) fast.parts[p].second[5] ^= 1;
+		}
+	}
+	calculateZonesImpl<true>(map, layers, globalBounds);
+	captureState(map, layers, globalBounds, legacy);
+	++s_zoneVerifyComparisons;
+	for (size_t p = 0; p < legacy.parts.size(); ++p) {
+		const std::vector<zoneStorageType> &lv = legacy.parts[p].second;
+		const std::vector<zoneStorageType> &fv = fast.parts[p].second;
+		size_t n = lv.size() < fv.size() ? lv.size() : fv.size();
+		size_t at = n;
+		for (size_t k = 0; k < n; ++k) {
+			if (lv[k] != fv[k]) { at = k; break; }
+		}
+		if (at == n && lv.size() == fv.size()) continue;
+		++s_zoneVerifyMismatches;
+		char where[160] = "";
+		if (legacy.parts[p].first == "cell_zones" && legacy.cellWidth > 0) {
+			sprintf(where, " (cell x=%d y=%d)", static_cast<int>(legacy.cellOrigin.x + static_cast<Int>(at) % legacy.cellWidth), static_cast<int>(legacy.cellOrigin.y + static_cast<Int>(at) / legacy.cellWidth));
+		}
+		printf("ZONE VERIFY MISMATCH at frame %u, comparison %u: segment '%s' index %u%s: legacy=%u candidate=%u (sizes %u/%u)\n",
+			static_cast<unsigned>(TheGameLogic->getFrame()), s_zoneVerifyComparisons, legacy.parts[p].first.c_str(), static_cast<unsigned>(at), where,
+			at < lv.size() ? static_cast<unsigned>(lv[at]) : 0u, at < fv.size() ? static_cast<unsigned>(fv[at]) : 0u,
+			static_cast<unsigned>(lv.size()), static_cast<unsigned>(fv.size()));
+		fflush(stdout);
+		_exit(3);   // no static destructors: the engine singletons are mid-update
+	}
 }
 
 /**

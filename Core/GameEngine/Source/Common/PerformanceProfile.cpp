@@ -29,7 +29,8 @@ const char* name(Category c)
 		"native_begin_render","native_terrain","native_terrain_overlays","native_objects","native_obj_gather","native_obj_process","native_fx_ground","native_fx_shadows","native_fx_water","native_fx_shroud","native_fx_particles","native_geom_upload","native_submit","native_world_overlays","native_ui","native_dev_overlay","native_mouse","native_end_render","zone_calc",
 		"native_shadow_gather","native_shadow_project","native_shadow_emit","native_shadow_decal",
 		"logic_scripts","logic_terrain","logic_crc","logic_recorder","logic_commands","logic_build_assist","logic_partition","logic_destroy","logic_stores","logic_disabled_loop",
-		"zone_label","zone_relabel","zone_blocks","zone_hierarchy"};
+		"zone_label","zone_relabel","zone_blocks","zone_hierarchy",
+		"zone_flatten"};
 	static_assert(sizeof(names)/sizeof(*names)==CategoryCount);
 	return names[static_cast<unsigned int>(c)];
 }

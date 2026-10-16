@@ -7,6 +7,10 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+
+# Resolve the sibling module from this file, not from the interpreter's sys.path: interpreters started with safe-path (-P, PYTHONSAFEPATH or an
+# embedded/_pth distribution) do not add the script directory, which made `import compare` fail with the documented invocation.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import compare
 
 
