@@ -16,7 +16,8 @@ conservative policy, not a space-maximizing one.
 | Run evidence | `runs\`, `normal-launch\` (crash dumps, replays, logs, screenshots) and the small stage metadata `manifest.json`, `ordinaryplay.json`, `graphics.json` | **archived and verified before** a candidate is removed (`build/evidence-archive/native-candidates/<Title>/<name>/`) |
 | Candidate payload | staged retail `.big` assets, `generalsv.exe/.pdb`, INI/WND overrides | regenerable from Git + the legitimate installation with `Stage-NativeOrdinaryPlay.ps1`; not retained merely because a candidate once existed |
 | Performance captures | `C:\perf\...`, `build/performance` | evidence: not managed by this tool |
-| `build/dev-runtimes/zh` (Win32 stage runtimes), `userdata-backups` | | outside the tool's scope; not automatically deletable |
+| `build/dev-runtimes/zh` (Win32 Zero Hour stage runtimes) | ~2.9 GB each | managed by `scripts/zh-runtime/Cleanup-ZHStages.ps1` (section 6) |
+| `userdata-backups` | snapshots of the user's own game data | outside every tool's scope; removed only by hand after a per-file hash comparison with the live data |
 | Steam installation | | never touched; roots that look like Steam are refused |
 
 ## 2. Tool
@@ -61,3 +62,29 @@ is a staging redesign, deliberately not part of this change.
 ## 5. Current state (2026-10-16)
 Dry run against the real tree with `-Active x64-35-attribution -LatestAccepted x64-34-smooth-presentation`: 5 candidates,
 all KEEP, nothing removable, 0.00 GB reclaim (the previous cleanup already removed the superseded set).
+
+## 6. Zero Hour stages, the orchestrator and the 2026-10-17 cleanup
+Before this section the Zero Hour stages (`build/dev-runtimes/zh/<stage>`) had no retention mechanism: 23 stages plus six
+`workflow-check-*` test leftovers grew to ~66 GB, again filling the disk.
+
+* `scripts/zh-runtime/Cleanup-ZHStages.ps1` is the Zero Hour counterpart of the native tool: dry run by default, `-Execute` needs the
+  `-ApprovedPlan` hash the dry run printed, fails closed (unexpected name or entry, reparse point, Steam-looking path = AMBIGUOUS/kept),
+  archives each removed stage's small metadata (manifest, launch receipts) to `build/evidence-archive/zh-stages/<stage>` before removal,
+  and treats `workflow-check-<12 hex>` directories as removable test leftovers (they are recreated by `Test-ZHWorkflow.ps1`). Policy:
+  `scripts/zh-runtime/zh-retention.json` (`keepNewestStages`, `protect`). Safety tests: `scripts/zh-runtime/Test-ZHCleanupWorkflow.ps1`
+  (temporary tree only).
+* `scripts/Clean-DevelopmentArtifacts.ps1` is the single dry-run entry point. It validates the repository, delegates **only** to the two tools
+  above (each needs its own reviewed hash for `-Execute`), and merely *reports* `build/win32`, `build/win64` (regenerable with the CMake presets),
+  `userdata-backups`, `build/evidence-archive` and `build/performance` (refused). Tests: `scripts/Test-CleanDevelopmentArtifacts.ps1`.
+* Hygiene rule: run the dry run after each milestone; stages and candidates are copies of the retail assets and are re-staged from the
+  installation (`Stage-NativeOrdinaryPlay.ps1`, `Stage-ZHRuntime.ps1`), so keeping the newest few is enough.
+
+### 2026-10-17 cleanup record
+Evidence was copied (not moved) outside the repository first: all top-level `build/` entries except `win32`, `win64` and `dev-runtimes`
+(evidence-archive, performance, the stage/x64 evidence directories and the loose logs/CSVs) plus the R1 loose files of the active candidate,
+2 864 files / 7.51 GB, every file SHA256-verified, to `C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode-evidence-backup\20261017`
+(the same physical disk: it protects against a mistaken deletion, not against disk failure - copy it to external storage if that matters).
+Removed: 19 superseded native Generals candidates (plan hash `830F9A59...F4033`, 29.68 GB), 18 superseded Zero Hour stages (51.44 GB, metadata copied to
+the backup first), 6 workflow-check leftovers (0.36 GB) and 8 superseded diagnostic executables in the active candidate (0.23 GB).
+Not removed, by decision or by rule: `win32`, `win64`, the five documentation-referenced Zero Hour stages, all `userdata-backups` (the five
+"duplicates" each contained a different `Replays\00000000.rep` that the live folder no longer has, so none qualified), all evidence.

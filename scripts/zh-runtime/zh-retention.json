@@ -1,0 +1,11 @@
+{
+  "_comment": "Zero Hour stage retention policy (see docs/modernization/NATIVE_CANDIDATE_RETENTION.md, section 'Zero Hour stages'). Names listed here are never removed by Cleanup-ZHStages.ps1.",
+  "keepNewestStages": 2,
+  "protect": [
+    "baseline",
+    "stage3c2-ground-interpolation",
+    "stage3c3-ground-hardening",
+    "stage3c3-ground-hardening-pre-surface-audit",
+    "stage4a3-performance-harness-fix1"
+  ]
+}

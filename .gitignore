@@ -8,7 +8,7 @@
 
 *.user
 *.ncb
-/build*
+/build/
 nbproject/
 project/
 doxygen/
@@ -33,7 +33,6 @@ CPackSourceConfig.cmake
 .cproject
 .project
 *~
-!*.exe
 *.lastbuildstate
 *.unsuccessfulbuild
 *.tlog
@@ -67,3 +66,10 @@ build.ninja
 ## Python
 __pycache__/
 *.pyc
+
+## Generated diagnostics and captures (large). Curated, intentionally tracked evidence lives under docs/modernization/evidence/.
+*.dmp
+*.etl
+*.rep
+*.pdb
+!/docs/modernization/evidence/**
