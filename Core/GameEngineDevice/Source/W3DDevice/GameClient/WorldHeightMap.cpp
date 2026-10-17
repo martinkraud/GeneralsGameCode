@@ -2163,7 +2163,10 @@ void WorldHeightMap::buildNativeTerrainAtlas()
 	while (pow2Edge < edgeHeight) pow2Edge *= 2;
 	m_alphaEdgeHeight = pow2Edge;
 	m_nativeAtlasBuilt = true;
-	++m_nativeAtlasVersion;
+	// Unique across every map of the process: the terrain render object outlives its maps and keeps the uploaded atlas keyed by this
+	// value, so a per-map counter (1 for every freshly built map) would keep the previous map's atlas for the next map.
+	static unsigned s_nativeAtlasSerial = 0;
+	m_nativeAtlasVersion = ++s_nativeAtlasSerial;
 
 	// Same triangle-order table the legacy path derives right after the atlas exists.
 	for (Int y=0; y<(m_height-1); y++)

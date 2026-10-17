@@ -163,6 +163,38 @@ class ZeroHourNativeContract(unittest.TestCase):
         self.assertIn("ModernExperience::classic(), enhancedSide,", scheme)
         self.assertNotIn("classic(), m_side.str()", scheme)
 
+    def test_the_terrain_atlas_version_is_unique_across_maps(self):
+        # X64.45 first native run: black strips across the Zero Hour terrain. The terrain render object outlives its maps and keeps the uploaded
+        # atlas keyed by WorldHeightMap::m_nativeAtlasVersion; a per-map counter is 1 for every freshly built map, so the map after the shell map
+        # (same draw size, no buffer reallocation) kept the shell map's atlas and sampled it with the new map's layout.
+        world = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/WorldHeightMap.cpp")
+        self.assertNotIn("++m_nativeAtlasVersion", world)
+        self.assertIn("static unsigned s_nativeAtlasSerial = 0;", world)
+        self.assertIn("m_nativeAtlasVersion = ++s_nativeAtlasSerial;", world)
+        heightmap = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp")
+        self.assertIn("n.atlasVersion != atlasVersion", heightmap)   # the comparison the unique serial feeds
+
+    def test_the_capture_aids_are_inert_without_their_environment_switch(self):
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        body = host[host.index("void NativeAutoShot()"):]
+        body = body[:body.index(chr(10) + "}" + chr(10))]
+        head = body[:body.index("if (!backend) return;")]
+        self.assertIn('std::getenv("GENERALS_AUTOSHOT")', head)
+        self.assertIn("!directory || !*directory || !StartupDiagnostics::normalLaunch()", head)
+        draw = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp")
+        self.assertIn("NativeAutoShot();", draw)
+        self.assertEqual(draw.count(chr(9) + "NativeAutoShot();"), 1)   # one call (the extern declaration is not indented)
+        # the flow driver only exists behind its own switch and only ever uses the player's screens
+        self.assertIn('std::getenv("GENERALS_AUTOFLOW")', body)
+        self.assertIn('TheShell->push("Menus/SkirmishGameOptionsMenu.wnd");', body)
+        self.assertNotIn("TheGameLogic->setFrame", body)
+        script = read("scripts/native-runtime/Invoke-NativeAutoCapture.ps1")
+        self.assertIn("GENERALS_AUTOFLOW = 'skirmish'", script)
+
+    def test_the_native_screenshot_path_keeps_its_separator(self):
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        self.assertIn("%s" + chr(92) + chr(92) + "Generals64_%04u.bmp", host)   # a lone backslash-G is not an escape: the separator used to be dropped
+
     def test_launcher_default_candidate_is_the_documented_one(self):
         # The .cmd double-click passes no -Name: the default must be the candidate the handoff documents (a stale default once pointed at v1).
         ps1 = read("scripts/native-runtime/Run-ZeroHourCandidate.ps1")

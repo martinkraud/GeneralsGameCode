@@ -4,6 +4,7 @@
 #if defined(_WIN64)
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <string>
 #include <tuple>
@@ -1426,11 +1427,84 @@ bool saveNativeScreenshot()
     CreateDirectoryA(directory, nullptr);
     for (unsigned n = 0; n < 10000; ++n) {
         char path[MAX_PATH];
-        sprintf_s(path, "%s\Generals64_%04u.bmp", directory, n);
+        sprintf_s(path, "%s\\Generals64_%04u.bmp", directory, n);
         if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) continue;
         return WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
     }
     return false;
+}
+
+// Developer capture aid (normal launch only, off unless GENERALS_AUTOSHOT=<existing directory>): writes the composed frame of the
+// shell once (after 360 presented frames) and of the first live match (after GENERALS_AUTOSHOT_FRAMES, default 300, frames), then
+// asks the engine to quit. With -devMode -quickGame this lets a candidate be inspected without anybody at the keyboard.
+void NativeAutoShot()
+{
+    static const char *directory = std::getenv("GENERALS_AUTOSHOT");
+    if (!directory || !*directory || !StartupDiagnostics::normalLaunch() || !TheGameLogic || !TheGlobalData || !TheDisplay) return;
+    auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend());
+    if (!backend) return;
+    static const unsigned gameFramesWanted = [] {
+        const char *text = std::getenv("GENERALS_AUTOSHOT_FRAMES");
+        const int value = text ? std::atoi(text) : 0;
+        return value > 0 ? static_cast<unsigned>(value) : 300u;
+    }();
+    static unsigned shellFrames = 0, gameFrames = 0;
+    static bool shellDone = false, gameDone = false;
+    auto shoot = [&](const char *tag) {
+        char path[MAX_PATH];
+        sprintf_s(path, "%s\\autoshot-%s.bmp", directory, tag);
+        const bool ok = WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
+        StartupDiagnostics::checkpoint("autoshot", ok ? "complete" : "fail", path);
+    };
+    // GENERALS_AUTOFLOW=skirmish (developer aid): reproduce the player's shell -> Skirmish -> Start sequence through the real screens
+    // (push the Skirmish setup screen from the shell, then press its Start button) so a match can be inspected unattended.
+    static const bool autoFlow = [] { const char *text = std::getenv("GENERALS_AUTOFLOW"); return text && !_stricmp(text, "skirmish"); }();
+    if (autoFlow) {
+        static unsigned flowFrames = 0, pushedAt = 0;
+        static bool pushed = false, started = false;
+        ++flowFrames;
+        if (TheGameLogic->isInShellGame() && TheShell) {
+            if (!pushed && flowFrames >= 600) {
+                TheShell->push("Menus/SkirmishGameOptionsMenu.wnd");
+                pushed = true; pushedAt = flowFrames;
+                StartupDiagnostics::checkpoint("autoflow", "observed", "skirmish setup pushed");
+            } else if (pushed && !started && flowFrames >= pushedAt + 240 && TheWindowManager) {
+                GameWindow *parent = TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent"));
+                GameWindow *start = TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey("SkirmishGameOptionsMenu.wnd:ButtonStart"));
+                if (parent && start) {
+                    TheWindowManager->winSendSystemMsg(parent, GBM_SELECTED, (WindowMsgData)start, start->winGetWindowId());
+                    started = true;
+                    StartupDiagnostics::checkpoint("autoflow", "observed", "skirmish start pressed");
+                }
+            }
+        }
+    }
+    // GENERALS_AUTOSHOT_EVERY=<frames>: a numbered sequence of frames (at most 80) instead of the two single captures; never quits.
+    static const unsigned every = [] {
+        const char *text = std::getenv("GENERALS_AUTOSHOT_EVERY");
+        const int value = text ? std::atoi(text) : 0;
+        return value > 0 ? static_cast<unsigned>(value) : 0u;
+    }();
+    if (every) {
+        static unsigned drawn = 0, sequence = 0;
+        if (++drawn % every == 0 && sequence < 80) {
+            char tag[32];
+            sprintf_s(tag, "seq%04u", ++sequence);
+            shoot(tag);
+        }
+        return;
+    }
+    if (TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap() && !TheGameLogic->isClearingGameData() &&
+        TheGameLogic->getFrame() > 0) {
+        if (!gameDone && ++gameFrames >= gameFramesWanted) {
+            shoot("game");
+            gameDone = true;
+            if (TheGameEngine) TheGameEngine->setQuitting(TRUE);
+        }
+    } else if (!shellDone && ++shellFrames >= 360) {
+        shoot("shell");
+        shellDone = true;
+    }
 }
 
 #endif
