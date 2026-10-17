@@ -132,3 +132,7 @@ Average CPU use of the simulation thread is mean tick x TPS: 2.8 % at 30 TPS, 5.
 * The Options render FPS list (30..240) and the logic time-scale presets (step 5) already exist and are separate; the new setting must reuse `FramePacer::setLogicTimeScaleFps`, never `setFramesPerSecondLimit`.
 * Network: `changeLogicTimeScale` is refused in network games and the run-ahead code clamps with `m_framesPerSecondLimit`; a lobby speed would need a protocol decision.
 * Time-sensitive systems to re-verify at non-Normal speeds: audio sync, scripted timers, cinematics, the sleepy-update heap (frame based, no issue), UI auto-repeat and double-click timing (real time).
+
+## 8. Update (X64.42)
+
+The product contract of section 4 is expanded, with the implication research (replay, saves, lockstep, audio, interpolation, UI timers), in `GAME_SPEED_DESIGN.md`. The periodic 70-110 ms tick mentioned in section 6 was a launch-log disk flush and is gone (`X64_42_SIMULATION_TAIL_OPTIMIZATION.md`); the table in section 6 was measured before that fix and overstates the exposure at every speed.

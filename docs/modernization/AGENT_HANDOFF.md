@@ -461,6 +461,12 @@ Speed must drive `FramePacer::setLogicTimeScaleFps`, default 30, campaign Normal
 the staged `generalsv_r1diag.exe` is in the v4 candidate folder; the human step is 2 minutes (see the doc, section 12). `test_stage4b1_reference.py` is now a function-level contract with authorization tables and mutation tests.
 Tail after X64.41: periodic script tick (every 300 frames, 70-110 ms) and update-module spikes; path search is no longer the limiter.
 
+## X64.42 Simulation tail reduction (CP16, delivered)
+Read `X64_42_SIMULATION_TAIL_OPTIMIZATION.md` and `GAME_SPEED_DESIGN.md`. Root cause of the 300-frame script spike AND of the update-module spikes: `StartupDiagnostics::checkpoint` flushed the normal-launch log (`generals64.log`) to disk per record, and the simulation writes
+records on special-power activation, payload delivery and group dispatch (a real-game stall too, not only a benchmark artifact). Fix: no per-record `FlushFileBuffers` in a normal launch (evidence-harness modes still flush; `GENERALS_NORMAL_LOG_FLUSH=1` restores it). Guarded by
+`scripts/performance/test_x64_42_startup_log_contract.py` (with mutation tests). New opt-in tool: `GENERALS_SIM_SCRIPTS=1` (`ScriptProfile`, per-script / condition / action attribution, worst script ticks). A tempting algorithmic fix (snapshot in `computeSuperweaponTarget`) was measured
+(1.5 % of the action) and reverted. Remaining tail: exhaustive failing path searches (~77 ms, a handful per 72 000 ticks) and ZoneCalc coinciding with other work. No threads. Game Speed is a design document only.
+
 ## X64.41 follow-up: R1 root cause (CLOSED)
 R1 (live recording diverging from its re-simulation) = Generals replay header lacked the Skirmish starting cash (`SC=` exists only in the Zero Hour options string); live used 50000, resim 10000, human could not afford the War Factory at frame 1458. Fixed in `Recorder.cpp` (SC written only when non-default). Not a simulation nondeterminism. See `X64_41_PATH_LINE_PHASE_AND_R1.md` sections 15 and 15.1. Closed after a human native test of `dff555c24` (SC=50000 in header, replay clean) and the full validation matrix; fingerprint `74F2CB528BED42ED` unchanged. Next: X64.42 (periodic script tick + update-module spikes), not started.
 
