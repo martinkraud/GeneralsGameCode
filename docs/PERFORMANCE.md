@@ -24,6 +24,10 @@ by the engine. It is deterministic, repeatable, headless (no window, GPU, audio 
 `generalsv.exe -headless -replay bench.rep` and `GENERALS_SIM_BENCH=<output base>` (`scripts/performance/Invoke-SimulationBenchmark.ps1` wraps repeated runs).
 The first `GameLogic::update` (map start, 270-470 ms) is excluded and reported separately.
 
+**Two kinds of benchmark.** The headless deterministic benchmark above is the canonical tool for exact before/after comparisons of serial optimizations. A second, real-game *endurance* measurement (X64.44, `modernization/X64_44_ENDURANCE_BENCHMARK.md`)
+records a time series of a long human-played Skirmish (live objects, achieved tick rate, tick distribution, phase costs, path failures) to find where, if anywhere, a naturally growing match stops sustaining 30 TPS. Its results are not part of this page until
+the native run has been analysed.
+
 **Determinism fingerprint.** FNV-1a over `{logic frame, GameLogic::getCRC(), object count}` every 30 frames (2 400 checkpoints). The value for this benchmark is **`74F2CB528BED42ED`** and it was identical
 in every run of every build and every optimised/legacy switch from X64.38 to X64.42, i.e. the optimisations did not change the simulation. A matching fingerprint is necessary but not sufficient evidence
 (the state CRC does not contain everything, e.g. player money - see [`findings/REPLAY_DETERMINISM_FINDINGS.md`](findings/REPLAY_DETERMINISM_FINDINGS.md)); each optimisation therefore also has a local oracle that compares the actual intermediate data.
