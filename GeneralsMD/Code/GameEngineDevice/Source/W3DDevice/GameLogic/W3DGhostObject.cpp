@@ -45,6 +45,8 @@
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
+#include "Common/StartupDiagnostics.h"
 #include "W3DDevice/GameLogic/W3DGhostObject.h"
 #include "WW3D2/rendobj.h"
 #include "WW3D2/hlod.h"
@@ -78,6 +80,37 @@ protected:
 	RenderObjClass *m_robj;		///<render object representing state at time of snapshot
 	W3DRenderObjectSnapshot *m_next;	///<snapshot of next render object belonging to same drawable
 };
+
+// The native play profile has no legacy scene: render objects are members of the NativeWorldObjects
+// registry instead, which is what "in the scene" means for the checks below.
+static Bool robjInWorld(RenderObjClass *robj)
+{
+	return W3DDisplay::m_3DScene ? robj->Is_In_Scene() : NativeWorldObjects::contains(robj);
+}
+
+static Bool robjAddToWorld(RenderObjClass *robj, RenderObjClass *colorSource = nullptr)
+{
+	if (W3DDisplay::m_3DScene)
+	{
+		if (robj->Is_In_Scene())
+			return false;
+		W3DDisplay::m_3DScene->Add_Render_Object(robj);
+		return true;
+	}
+	if (NativeWorldObjects::contains(robj))
+		return false;
+	NativeWorldObjects::add(robj, colorSource ? NativeWorldObjects::colorOf(colorSource) : NativeWorldObjects::colorOf(robj));
+	return true;
+}
+
+static Bool robjRemoveFromWorld(RenderObjClass *robj)
+{
+	if (W3DDisplay::m_3DScene)
+		return robj->Remove();
+	const Bool had = NativeWorldObjects::contains(robj);
+	NativeWorldObjects::remove(robj);
+	return had;
+}
 
 //Dummy material override which we assign to all ghost objects to disable their
 //texture animation.
@@ -130,6 +163,7 @@ void W3DRenderObjectSnapshot::update(RenderObjClass *robj, DrawableInfo *drawInf
 	{
 		m_robj = robj->Clone();
 		m_robj->Set_ObjectColor(robj->Get_ObjectColor());
+		NativeWorldObjects::inheritColor(m_robj, robj);   // team color of the original (native registry)
 #ifdef DEBUG_FOG_MEMORY
 		m_robjName = m_robj->Get_Name();
 #endif
@@ -157,19 +191,14 @@ void W3DRenderObjectSnapshot::update(RenderObjClass *robj, DrawableInfo *drawInf
 // ------------------------------------------------------------------------------------------------
 Bool W3DRenderObjectSnapshot::addToScene()
 {
-	if (!m_robj->Is_In_Scene())
-	{
-		W3DDisplay::m_3DScene->Add_Render_Object(m_robj);
-		return true;
-	}
-	return false;
+	return robjAddToWorld(m_robj) ? true : false;
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 Bool W3DRenderObjectSnapshot::removeFromScene()
 {
-	return m_robj->Remove();
+	return robjRemoveFromWorld(m_robj);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -385,7 +414,7 @@ void W3DGhostObject::snapShot(int playerIndex)
 				//the current player.
 				if (playerIndex == TheGhostObjectManager->getLocalPlayerIndex())
 				{
-					robj->Remove();	//remove normal object from scene
+					robjRemoveFromWorld(robj);	//remove normal object from scene
 					snap->addToScene();
 				}
 
@@ -441,8 +470,8 @@ void W3DGhostObject::removeParentObject()
 			RenderObjClass *robj = w3dDraw->getRenderObject();
 			if (robj)
 			{
-				DEBUG_ASSERTCRASH(robj->Peek_Scene() != nullptr, ("Removing GhostObject parent not in scene"));
-				robj->Remove();
+				DEBUG_ASSERTCRASH(!W3DDisplay::m_3DScene || robj->Peek_Scene() != nullptr, ("Removing GhostObject parent not in scene"));
+				robjRemoveFromWorld(robj);
 			}
 		}
 	}
@@ -453,7 +482,7 @@ void W3DGhostObject::removeParentObject()
 // ------------------------------------------------------------------------------------------------
 void W3DGhostObject::restoreParentObject()
 {
-	if (TheGlobalData->m_headless)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryPlay())
 		return;
 
 	if (!m_parentObject)
@@ -483,8 +512,8 @@ void W3DGhostObject::restoreParentObject()
 				//removed by the ghost object manager, so restore it.  If we have a render
 				//object that is in the scene, then it was probably added because the model
 				//changed while the object was ghosted (for damage states, garrison, etc.).
-				if (!robj->Is_In_Scene())
-					W3DDisplay::m_3DScene->Add_Render_Object(robj);
+				if (!robjInWorld(robj))
+					robjAddToWorld(robj);
 			}
 		}
 	}

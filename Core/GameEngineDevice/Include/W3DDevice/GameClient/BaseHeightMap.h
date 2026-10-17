@@ -174,7 +174,7 @@ public:
 
 	/// Add a bib at location.
 	void addTerrainBib(Vector3 corners[4], ObjectID id, Bool highlight);
-#if RTS_GENERALS && defined(_WIN64)
+#if defined(_WIN64)
 	/// Native play profile: visits the live building bibs (normal, then highlighted). Returns the count.
 	Int forEachNativeBib( void (*fn)(void *user, const Vector3 corners[4], bool highlight), void *user ) const;
 #endif

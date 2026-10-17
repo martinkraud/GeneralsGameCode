@@ -32,7 +32,9 @@
 #define DEFINE_SHADOW_NAMES
 
 #include "Common/ActionManager.h"
+#include "Common/DisplayRuntime.h"
 #include "Common/EnhancedHud.h"
+#include "Common/StartupDiagnostics.h"
 #include "Common/FramePacer.h"
 #include "Common/GameAudio.h"
 #include "Common/GameType.h"
@@ -3891,8 +3893,8 @@ void InGameUI::postDraw()
 	if (TheGameLogic->getFrame() > 0 )
 	{
 //	Int superweaponCount = 0;
-		Int startX = (Int)(m_superweaponPosition.x * TheDisplay->getWidth());
-		Int startY = (Int)(m_superweaponPosition.y * TheDisplay->getHeight());
+		Int startX = DisplayRuntime::hudX(m_superweaponPosition.x, TheDisplay->getWidth());
+		Int startY = DisplayRuntime::hudY(m_superweaponPosition.y, TheDisplay->getHeight());
 
 		Int bottomMargin = (Int)( (Real)TheTacticalView->getHeight() * 0.82f );
 
@@ -4101,8 +4103,8 @@ void InGameUI::postDraw()
 	{
 //		Int namedTimerCount = 0;
 		Bool reverseXDir = (m_namedTimerPosition.x >= 0.5f);
-		Int startX = (Int)(m_namedTimerPosition.x * TheDisplay->getWidth());
-		Int startY = (Int)(m_namedTimerPosition.y * TheDisplay->getHeight());
+		Int startX = DisplayRuntime::hudX(m_namedTimerPosition.x, TheDisplay->getWidth());
+		Int startY = DisplayRuntime::hudY(m_namedTimerPosition.y, TheDisplay->getHeight());
 		Color bgColor = GameMakeColor( 0, 0, 0, 255 );
 		for (NamedTimerMapIt mapIt = m_namedTimers.begin(); mapIt != m_namedTimers.end(); ++mapIt)
 		{
@@ -4273,7 +4275,7 @@ void InGameUI::createReplayControl()
 // ------------------------------------------------------------------------------------------------
 void InGameUI::playMovie( const AsciiString& movieName )
 {
-	if (TheGlobalData->m_headless)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch())
 		return;
 
 	stopMovie();
@@ -4330,7 +4332,7 @@ VideoBuffer* InGameUI::videoBuffer()
 // ------------------------------------------------------------------------------------------------
 void InGameUI::playCameoMovie( const AsciiString& movieName )
 {
-	if (TheGlobalData->m_headless)
+	if (TheGlobalData->m_headless && !StartupDiagnostics::normalLaunch())
 		return;
 
 	stopCameoMovie();
@@ -4466,8 +4468,9 @@ void InGameUI::militarySubtitle( const AsciiString& label, Int duration )
 
 	// calculate where this screen position should be since the position being passed in is based off 8x6
 	Coord2D multiplier;
-	multiplier.x = (Real)TheDisplay->getWidth() / (Real)DEFAULT_DISPLAY_WIDTH;
-	multiplier.y = (Real)TheDisplay->getHeight() / (Real)DEFAULT_DISPLAY_HEIGHT;
+	multiplier.x = (Real)DisplayRuntime::referenceScaleX(TheDisplay->getWidth());
+	multiplier.y = (Real)DisplayRuntime::referenceScaleY(TheDisplay->getHeight());
+	const DisplayGeometry::Point referenceOrigin = DisplayRuntime::referenceOrigin();
 
 	// lets bring out the data structure!
 	m_militarySubtitle = NEW MilitarySubtitleData;
@@ -4476,8 +4479,8 @@ void InGameUI::militarySubtitle( const AsciiString& label, Int duration )
 	m_militarySubtitle->blockDrawn = TRUE;
 	m_militarySubtitle->blockBeginFrame = currLogicFrame;
 	m_militarySubtitle->lifetime = messageTimeout;
-	m_militarySubtitle->blockPos.x =  m_militarySubtitle->position.x = m_militaryCaptionPosition.x * multiplier.x;
-	m_militarySubtitle->blockPos.y =  m_militarySubtitle->position.y = m_militaryCaptionPosition.y * multiplier.y;
+	m_militarySubtitle->blockPos.x =  m_militarySubtitle->position.x = referenceOrigin.x + m_militaryCaptionPosition.x * multiplier.x;
+	m_militarySubtitle->blockPos.y =  m_militarySubtitle->position.y = referenceOrigin.y + m_militaryCaptionPosition.y * multiplier.y;
 	m_militarySubtitle->incrementOnFrame = currLogicFrame + (Int)(((Real)LOGICFRAMES_PER_SECOND * TheGlobalLanguageData->m_militaryCaptionDelayMS)/1000.0f);
 	m_militarySubtitle->index = 0;
 	for (int i = 1; i < MAX_SUBTITLE_LINES; i ++)
@@ -5568,8 +5571,8 @@ void InGameUI::popupMessage( const AsciiString& identifier, Int x, Int y, Int wi
 	if( y < 0 )
 		y = 0;
 
-	m_popupMessageData->x = TheDisplay->getWidth() * (INT_TO_REAL(x) / 100);
-	m_popupMessageData->y = TheDisplay->getHeight() * (INT_TO_REAL(y) / 100);
+	m_popupMessageData->x = DisplayRuntime::hudX(INT_TO_REAL(x) / 100, TheDisplay->getWidth());
+	m_popupMessageData->y = DisplayRuntime::hudY(INT_TO_REAL(y) / 100, TheDisplay->getHeight());
 	// cap the lower limit of the width
 	if(width < 50)
 		width = 50;
@@ -6321,8 +6324,8 @@ void InGameUI::drawGameTime()
 
 void InGameUI::drawPlayerInfoList()
 {
-	const Int baseX = (Int)(m_playerInfoListPosition.x * TheDisplay->getWidth());
-	const Int baseY = (Int)(m_playerInfoListPosition.y * TheDisplay->getHeight());
+	const Int baseX = DisplayRuntime::hudX(m_playerInfoListPosition.x, TheDisplay->getWidth());
+	const Int baseY = DisplayRuntime::hudY(m_playerInfoListPosition.y, TheDisplay->getHeight());
 	const Int lineH = m_playerInfoList.labels[PlayerInfoList::LabelType_Team]->getFont()->height;
 	const Int columnGap = static_cast<Int>(lineH * (6.0f / 12.0f) + 0.5f);
 

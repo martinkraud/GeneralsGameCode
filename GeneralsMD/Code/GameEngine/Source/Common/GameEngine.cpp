@@ -28,6 +28,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/StartupDiagnostics.h"
+#include "Common/ModernExperience.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/EnduranceTelemetry.h"   // X64.44: opt-in endurance time series (inert unless GENERALS_ENDURANCE)
 #include "Common/DeveloperHarness.h"
@@ -197,6 +198,8 @@ static void updateWindowTitle()
 	}
 
 	UnicodeString productString = TheVersion->getUnicodeProductString();
+	if (StartupDiagnostics::normalLaunch() && ModernExperience::enabled(ModernExperience::FEATURE_MODERN_DISPLAY))
+		productString.clear();   // Modern Experience: plain game title (no author/patch wording in the caption)
 
 	if (!productString.isEmpty())
 	{
@@ -558,7 +561,7 @@ void GameEngine::init()
 		initSubsystem(TheCaveSystem,"TheCaveSystem", MSGNEW("GameEngineSubsystem") CaveSystem(), nullptr);
 		initSubsystem(TheRankInfoStore,"TheRankInfoStore", MSGNEW("GameEngineSubsystem") RankInfoStore(), &xferCRC, nullptr, "Data\\INI\\Rank");
 		initSubsystem(ThePlayerTemplateStore,"ThePlayerTemplateStore", MSGNEW("GameEngineSubsystem") PlayerTemplateStore(), &xferCRC, "Data\\INI\\Default\\PlayerTemplate", "Data\\INI\\PlayerTemplate");
-		initSubsystem(TheParticleSystemManager,"TheParticleSystemManager", createParticleSystemManager(TheGlobalData->m_headless), nullptr);
+		initSubsystem(TheParticleSystemManager,"TheParticleSystemManager", createParticleSystemManager(TheGlobalData->m_headless && !(StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("particles"))), nullptr);
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////

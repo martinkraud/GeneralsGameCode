@@ -29,6 +29,8 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/ModernBranding.h"
+#include "Common/StartupDiagnostics.h"
 
 #include "gamespy/ghttp/ghttp.h"
 
@@ -417,6 +419,14 @@ static void initLabelVersion()
 		if (TheVersion && TheGlobalData)
 		{
 			UnicodeString text = TheVersion->getUnicodeProductVersionHashString();
+			if (ModernBranding::useModernFooter())
+			{
+				// Modern Experience: understated footer; the full product/version/hash string goes to the log.
+				AsciiString full;
+				full.translate(text);
+				StartupDiagnostics::checkpoint("version", "observed", full.str());
+				text = UnicodeString(ModernBranding::footerText());
+			}
 			GadgetStaticTextSetText( labelVersion, text );
 		}
 		else

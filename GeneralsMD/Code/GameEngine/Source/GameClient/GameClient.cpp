@@ -270,7 +270,7 @@ void GameClient::init()
 		TheDisplayStringManager->setName("TheDisplayStringManager");
 	}
 
-	if (!TheGlobalData->m_headless)
+	if (!TheGlobalData->m_headless || StartupDiagnostics::ordinaryMenu())
 	{
 		// create the keyboard
 		TheKeyboard = createKeyboard();
@@ -325,7 +325,7 @@ void GameClient::init()
 		{ StartupDiagnostics::Phase diagnosticPhase("TheFontLibrary.init"); TheFontLibrary->init(); }
 
 	// create the mouse
-	TheMouse = TheGlobalData->m_headless ? NEW MouseDummy : createMouse();
+	TheMouse = (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryMenu()) ? NEW MouseDummy : createMouse();
 	{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.parseIni"); TheMouse->parseIni(); }
 	{ StartupDiagnostics::Phase diagnosticPhase("TheMouse.initCursorResources"); TheMouse->initCursorResources(); }
  	TheMouse->setName("TheMouse");
@@ -343,7 +343,7 @@ void GameClient::init()
 	}
 
 	// create the window manager
-	TheWindowManager = TheGlobalData->m_headless ? NEW GameWindowManagerDummy : createWindowManager();
+	TheWindowManager = (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryMenu()) ? NEW GameWindowManagerDummy : createWindowManager();
 	if( TheWindowManager )
 	{
 

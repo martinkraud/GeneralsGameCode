@@ -594,11 +594,11 @@ void Render2DClass::Render()
 {
     if (!Indices.Count() || IsHidden) return;
 
-    int width, height, bits;
-    bool windowed;
-    WW3D::Get_Device_Resolution(width, height, bits, windowed);
-    RenderBackendViewport viewport = {0, 0, static_cast<unsigned int>(width),
-                                      static_cast<unsigned int>(height), 0.0f, 1.0f};
+    RenderBackendViewport viewport = {
+        static_cast<unsigned int>(ScreenResolution.Left),
+        static_cast<unsigned int>(ScreenResolution.Top),
+        static_cast<unsigned int>(ScreenResolution.Width()),
+        static_cast<unsigned int>(ScreenResolution.Height()), 0.0f, 1.0f};
     const Render2DSubmission submission = {
         Texture, &Shader, Vertices.Count() ? &Vertices[0] : nullptr,
         UVCoordinates.Count() ? &UVCoordinates[0] : nullptr,

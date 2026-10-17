@@ -44,6 +44,7 @@
 #include "W3DDevice/GameClient/W3DAssetManager.h"
 #include "W3DDevice/GameClient/W3DGUICallbacks.h"
 #include "W3DDevice/GameClient/W3DInGameUI.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
 #include "W3DDevice/GameClient/W3DDisplay.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/Common/W3DConvert.h"
@@ -256,6 +257,37 @@ void DebugHintObject::Render(RenderInfoClass & rinfo)
 }
 #endif // RTS_DEBUG
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Scene membership of the hint render objects. The headless world selection has no legacy scene;
+// in the native terrain profile the objects are tracked by the native object registry instead.
+///////////////////////////////////////////////////////////////////////////////////////////////////
+static void hintSceneAdd( RenderObjClass *object )
+{
+	if( W3DDisplay::m_3DScene )
+		W3DDisplay::m_3DScene->Add_Render_Object( object );
+	else
+		NativeWorldObjects::add( object );
+}
+
+static void hintSceneRemove( RenderObjClass *object )
+{
+	if( W3DDisplay::m_3DScene )
+		W3DDisplay::m_3DScene->Remove_Render_Object( object );
+	else
+		NativeWorldObjects::remove( object );
+}
+
+static Bool hintSceneContains( RenderObjClass *object )
+{
+	if( W3DDisplay::m_3DScene )
+		return object->Peek_Scene() != nullptr;
+#if defined(_WIN64)
+	return NativeWorldObjects::contains( object );
+#else
+	return FALSE;
+#endif
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // DEFINITIONS
@@ -523,7 +555,7 @@ void W3DInGameUI::drawMoveHints( View *view )
 			if( m_moveHintRenderObj[ i ]->Is_Hidden() == 1 ) {
 				m_moveHintRenderObj[ i ]->Set_Hidden( 0 );
 				// add to scene
-				W3DDisplay::m_3DScene->Add_Render_Object( m_moveHintRenderObj[ i ] );
+				hintSceneAdd( m_moveHintRenderObj[ i ] );
 				if (m_moveHintAnim[i])
 					m_moveHintRenderObj[i]->Set_Animation(m_moveHintAnim[i], 0, RenderObjClass::ANIM_MODE_ONCE);
 			}
@@ -578,7 +610,7 @@ void W3DInGameUI::drawMoveHints( View *view )
 			if( m_moveHintRenderObj[ i ] )
 				if( m_moveHintRenderObj[ i ]->Is_Hidden() == 0 ) {
 					m_moveHintRenderObj[ i ]->Set_Hidden( 1 );
-					W3DDisplay::m_3DScene->Remove_Render_Object( m_moveHintRenderObj[ i ] );
+					hintSceneRemove( m_moveHintRenderObj[ i ] );
 				}
 
 		}
@@ -627,8 +659,8 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 		}
 	}
 
-	Bool anchorInScene = m_buildingPlacementAnchor->Peek_Scene() != nullptr;
-	Bool arrowInScene	 = m_buildingPlacementArrow->Peek_Scene() != nullptr;
+	Bool anchorInScene = hintSceneContains( m_buildingPlacementAnchor );
+	Bool arrowInScene	 = hintSceneContains( m_buildingPlacementArrow );
 
 	// get out of here if this display isn't up anyway
 	if( isPlacementAnchored() == FALSE )
@@ -636,12 +668,12 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 		if( anchorInScene )
 		{
 			//If our anchor is in the scene, remove it from the scene but don't delete it.
-			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementAnchor );
+			hintSceneRemove( m_buildingPlacementAnchor );
 		}
 		if( arrowInScene )
 		{
 			//If our arrow is in the scene, remove it from the scene but don't delete it.
-			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementArrow );
+			hintSceneRemove( m_buildingPlacementArrow );
 		}
 		return;
 	}
@@ -666,11 +698,11 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 		if( anchorInScene )
 		{
 			//We're switching to the arrow!
-			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementAnchor );
+			hintSceneRemove( m_buildingPlacementAnchor );
 		}
 		if( !arrowInScene )
 		{
-			W3DDisplay::m_3DScene->Add_Render_Object( m_buildingPlacementArrow );
+			hintSceneAdd( m_buildingPlacementArrow );
 			arrowInScene = TRUE;
 		}
 	}
@@ -679,11 +711,11 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 		if( arrowInScene )
 		{
 			//We're switching to the anchor!
-			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementArrow );
+			hintSceneRemove( m_buildingPlacementArrow );
 		}
 		if( !anchorInScene )
 		{
-			W3DDisplay::m_3DScene->Add_Render_Object( m_buildingPlacementAnchor );
+			hintSceneAdd( m_buildingPlacementAnchor );
 			anchorInScene = TRUE;
 		}
 	}

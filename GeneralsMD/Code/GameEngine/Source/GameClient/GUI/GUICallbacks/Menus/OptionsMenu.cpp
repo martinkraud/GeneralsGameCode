@@ -29,6 +29,8 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/ModernBranding.h"
+#include "Common/StartupDiagnostics.h"
 
 #include "gamespy/ghttp/ghttp.h"
 
@@ -53,6 +55,9 @@
 #include "GameClient/GadgetTextEntry.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/FrameRateOptions.h"
+#include "GameClient/ModernDisplayOptions.h"
+#include "GameClient/OptionsTabs.h"
+#include "Common/DisplayRuntime.h"
 #include "GameClient/GadgetRadioButton.h"
 #include "GameClient/GadgetSlider.h"
 #include "GameClient/HeaderTemplate.h"
@@ -220,6 +225,7 @@ static OptionPreferences *pref = nullptr;
 static void setDefaults()
 {
 	resetFrameRateOptions(comboBoxFrameRateLimit);
+	ModernDisplayOptions::reset();
 	constexpr const Bool ModifyDisplaySettings = FALSE;
 
 	//-------------------------------------------------------------------------------------------------
@@ -847,13 +853,15 @@ static void saveOptions()
 
 	GadgetComboBoxGetSelectedPos( comboBoxResolution, &index );
 	Int xres, yres, bitDepth;
+	Bool layoutsRebuilt = FALSE;
 
 	oldDispSettings.xRes = TheDisplay->getWidth();
 	oldDispSettings.yRes = TheDisplay->getHeight();
 	oldDispSettings.bitDepth = TheDisplay->getBitDepth();
 	oldDispSettings.windowed = TheDisplay->getWindowed();
 
-	if (comboBoxResolution && comboBoxResolution->winGetEnabled() && index < TheDisplay->getDisplayModeCount() && index >= 0)
+	// Modern Experience: size, mode, monitor and UI scale are one transaction (ModernDisplayOptions::apply below)
+	if (!DisplayRuntime::modern() && comboBoxResolution && comboBoxResolution->winGetEnabled() && index < TheDisplay->getDisplayModeCount() && index >= 0)
 	{
 		TheDisplay->getDisplayModeDescription(index,&xres,&yres,&bitDepth);
 		if (TheGlobalData->m_xResolution != xres || TheGlobalData->m_yResolution != yres)
@@ -881,8 +889,20 @@ static void saveOptions()
 
 				TheInGameUI->recreateControlBar();
 				TheInGameUI->refreshCustomUiResources();
+				layoutsRebuilt = TRUE;
 			}
 		}
+	}
+
+	// X64.33 Modern Experience: window mode / monitor / UI scale / VSync / unit motion (no-op in Classic). Last, for
+	// the same reason as the resolution change: rebuilding the layouts ends further gadget interaction.
+	if (DisplayRuntime::modern() && ModernDisplayOptions::apply(*pref, layoutsRebuilt))
+	{
+		TheHeaderTemplateManager->onResolutionChanged();
+		TheMouse->onResolutionChanged();
+		TheShell->recreateWindowLayouts();
+		TheInGameUI->recreateControlBar();
+		TheInGameUI->refreshCustomUiResources();
 	}
 
 	// MUST NEVER ADD ANOTHER OPTION HERE AT THE END !
@@ -892,6 +912,8 @@ static void DestroyOptionsLayout() {
 
 	SignalUIInteraction(SHELL_SCRIPT_HOOK_OPTIONS_CLOSED);
 
+	ModernDisplayOptions::forget();
+	OptionsTabs::forget();
 	TheShell->destroyOptionsLayout();
 	OptionsLayout = nullptr;
 }
@@ -899,11 +921,13 @@ static void DestroyOptionsLayout() {
 static void showAdvancedOptions()
 {
 	WinAdvancedDisplay->winHide(FALSE);
+	OptionsTabs::setAdvancedOpen(true);      // Modern Experience: a sub-screen of the panel (no-op in Classic)
 }
 
 static void acceptAdvancedOptions()
 {
 	WinAdvancedDisplay->winHide(TRUE);
+	OptionsTabs::setAdvancedOpen(FALSE);     // Modern Experience: back to the page (no-op in Classic)
 }
 
 static void cancelAdvancedOptions()
@@ -912,6 +936,7 @@ static void cancelAdvancedOptions()
 	GadgetComboBoxSetSelectedPos(comboBoxDetail, (Int)TheGameLODManager->getStaticLODLevel());
 
 	WinAdvancedDisplay->winHide(TRUE);
+	OptionsTabs::setAdvancedOpen(FALSE);     // Modern Experience: back to the page (no-op in Classic)
 }
 
 // TheSuperHackers @tweak Now prints additional version information in the version label.
@@ -925,6 +950,14 @@ static void initLabelVersion()
 		if (TheVersion && TheGlobalData)
 		{
 			UnicodeString text = TheVersion->getUnicodeProductVersionHashString();
+			if (ModernBranding::useModernFooter())
+			{
+				// Modern Experience: understated footer; the full product/version/hash string goes to the log.
+				AsciiString full;
+				full.translate(text);
+				StartupDiagnostics::checkpoint("version", "observed", full.str());
+				text = UnicodeString(ModernBranding::footerText());
+			}
 			GadgetStaticTextSetText( labelVersion, text );
 		}
 		else
@@ -968,7 +1001,7 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 	comboBoxResolution     = TheWindowManager->winGetWindowFromId( nullptr, comboBoxResolutionID );
 	comboBoxDetailID			 = TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ComboBoxDetail" );
 	comboBoxDetail		   = TheWindowManager->winGetWindowFromId( nullptr, comboBoxDetailID );
-	comboBoxFrameRateLimit = createFrameRateOptions(comboBoxDetail, *pref);
+	comboBoxFrameRateLimit = createFrameRateOptions(comboBoxDetail, *pref, DisplayRuntime::modern());
 
 	checkLanguageFilterID  = TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:CheckLanguageFilter" );
 	checkLanguageFilter    = TheWindowManager->winGetWindowFromId( nullptr, checkLanguageFilterID );
@@ -1015,6 +1048,10 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	WinAdvancedDisplayID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:WinAdvancedDisplayOptions" );
 	WinAdvancedDisplay      = TheWindowManager->winGetWindowFromId( nullptr, WinAdvancedDisplayID );
+	// X64.33 Modern Experience (no-op in Classic): the display/gameplay gadgets. The category pages are built at the
+	// END of init (below), after every retail show/hide decision, so their snapshot of "deliberately hidden" is final.
+	ModernDisplayOptions::create( comboBoxResolution, *pref,
+		((TheGameLogic->isInGame() && TheGameLogic->getGameMode() != GAME_SHELL) || TheGameSpyInfo) ? true : false );
 
 	ButtonAdvancedAcceptID		= TheNameKeyGenerator->nameToKey( "OptionsMenu.wnd:ButtonAdvanceAccept" );
 	ButtonAdvancedAccept      = TheWindowManager->winGetWindowFromId( nullptr, ButtonAdvancedAcceptID );
@@ -1213,7 +1250,11 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 		}
 	}
 
-	// populate resolution modes
+	// populate resolution modes (Modern Experience: the mode- and monitor-aware list with aspect families)
+	if (DisplayRuntime::modern())
+		ModernDisplayOptions::populateResolution(comboBoxResolution);
+	else
+	{
 	GadgetComboBoxReset(comboBoxResolution);
 	Int numResolutions = TheDisplay->getDisplayModeCount();
 	UnsignedInt displayWidth = TheDisplay->getWidth();
@@ -1243,6 +1284,7 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 	}
 
 	GadgetComboBoxSetSelectedPos( comboBoxResolution, selectedResIndex );
+	}
 
 	// set the display detail
 	// TheSuperHackers @tweak xezon 24/09/2025 The Detail Combo Box now has the same value order as StaticGameLODLevel for simplicity.
@@ -1391,6 +1433,9 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	// set the gamma slider
  	GadgetSliderSetPosition( sliderGamma, REAL_TO_INT(pref->getGammaValue()) );
+
+	// X64.33 FIX3: category pages (no-op in Classic)
+	OptionsTabs::create();
 
 	// show menu
 	layout->hide( FALSE );
@@ -1572,6 +1617,8 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 				GameWindow *control = (GameWindow *)mData1;
 				Int controlID = control->winGetWindowId();
 
+				ModernDisplayOptions::onSelectionChanged(control);
+
 				if (controlID == comboBoxDetailID)
 				{
 					Int index;
@@ -1639,12 +1686,20 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 					{
 						DoResolutionDialog();
 					}
+					else if (ModernDisplayOptions::confirmationPending())
+					{
+						ModernDisplayOptions::showConfirmation();   // Keep / Revert (automatic revert on timeout)
+					}
 				}
 
 			}
 			else if (controlID == buttonDefaults )
 			{
 				setDefaults();
+			}
+			else if (OptionsTabs::onButton(controlID))
+			{
+				// X64.33 FIX2: category tab selected
 			}
 			else if (controlID == ButtonAdvancedAcceptID )
 			{

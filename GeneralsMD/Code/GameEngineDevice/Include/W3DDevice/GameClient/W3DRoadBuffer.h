@@ -160,6 +160,9 @@ protected:
 	Int					  m_uniqueID;     ///< ID of the road type in INI.
 	Bool					m_isAutoLoaded;
 	Int						m_stackingOrder; ///< Order in the drawing.  0 drawn first, then 1 and so on.
+#if defined(_WIN64)
+	AsciiString		m_nativeTexturePath;	///< INI texture name (the native D3D11 path decodes it itself).
+#endif
 
 #ifdef LOAD_TEST_ASSETS
 	AsciiString		m_texturePath;
@@ -176,6 +179,9 @@ public:
 	void setNumIndices(Int num) {m_numRoadIndices=num;}
 	void setNumVertices(Int num) {m_numRoadVertices=num;}
 	Int getNumIndices() {return m_numRoadIndices;}
+#if defined(_WIN64)
+	const AsciiString &getNativeTexturePath() const {return m_nativeTexturePath;}
+#endif
 #ifdef LOAD_TEST_ASSETS
 	void setAutoLoaded() {m_isAutoLoaded = true;};
 	Bool isAutoLoaded() {return m_isAutoLoaded;};
@@ -201,6 +207,20 @@ public:
 	/// Empties the road buffer.
 	void clearAllRoads();
 	/// Draws the roads.  Uses terrain bounds for culling.
+#if defined(_WIN64)
+	/// Native D3D11 terrain profile: one road type's current CPU geometry, in drawing order.
+	struct NativeRoadBatch {
+		const VertexFormatXYZDUV1 *vertices; Int vertexCount;
+		const UnsignedShort *indices; Int indexCount;
+		const char *texture; Int roadType; Int stacking;
+	};
+	typedef void (*NativeRoadBatchFn)(void *user, const NativeRoadBatch &batch);
+	/// Same culling bounds, stacking order and per-type reload as drawRoads, but hands each type's
+	/// CPU vertex/index data to the callback instead of issuing DX8 draws. Returns batch count.
+	Int forEachNativeBatch(Int minX, Int maxX, Int minY, Int maxY, NativeRoadBatchFn fn, void *user);
+	Int getNumRoadSegments() const {return m_numRoads;}
+	Bool isNativeInitialized() const {return m_initialized;}
+#endif
 	void drawRoads(CameraClass * camera, TextureClass *cloudTexture, TextureClass *noiseTexture, Bool wireframe,
 																	Int minX, Int maxX, Int minY, Int maxY, RefRenderObjListIterator *pDynamicLightsIterator);
 	/// Sets the map pointer.

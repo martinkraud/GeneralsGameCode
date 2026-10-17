@@ -37,6 +37,9 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "GameClient/InGameUI.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include "GameClient/View.h"
 #include "W3DDevice/GameClient/W3DView.h"
 #include "WW3D2/render2d.h"
@@ -71,6 +74,12 @@ protected:
 	/// factory for views
 	virtual View *createView(bool dummy) override
 	{
+#if defined(_WIN64)
+		// Native terrain profile: the headless world selection still needs a real camera
+		// (the terrain pass reads it). Every other profile keeps the dummy view.
+		if (dummy && StartupDiagnostics::ordinaryTerrain())
+			dummy = false;
+#endif
 		if (dummy)
 			return NEW ViewDummy;
 		return NEW W3DView;

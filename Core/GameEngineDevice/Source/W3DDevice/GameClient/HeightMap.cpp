@@ -88,10 +88,8 @@
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/TerrainLogic.h"
 #if defined(_WIN64)
-#if RTS_GENERALS
 #include "W3DDevice/GameClient/W3DRoadBuffer.h"
 #include "W3DDevice/GameClient/W3DBridgeBuffer.h"
-#endif
 #endif
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/W3DDynamicLight.h"
@@ -2023,10 +2021,8 @@ HeightMapRenderObjClass::NativeMapFeatures HeightMapRenderObjClass::nativeMapFea
 	NativeMapFeatures f = {};
 	f.extraBlendTiles = static_cast<unsigned>(m_numExtraBlendTiles);
 	f.shorelineTiles = static_cast<unsigned>(m_numShoreLineTiles);
-#if RTS_GENERALS
 	if (m_roadBuffer) f.roadSegments = static_cast<unsigned>(m_roadBuffer->getNumRoadSegments());
 	if (m_bridgeBuffer) f.bridges = static_cast<unsigned>(m_bridgeBuffer->getNumBridges());
-#endif
 	return f;
 }
 
@@ -2302,7 +2298,6 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 			}
 		}
 
-#if RTS_GENERALS
 		// (3) Roads: per road type, in stacking order, same bounds as the legacy drawRoads call.
 		if (m_roadBuffer && m_roadBuffer->isNativeInitialized()) {
 			struct RoadCtx {
@@ -2420,7 +2415,6 @@ Int HeightMapRenderObjClass::renderNative(CameraClass &camera)
 			RenderInfoClass waypointInfo(camera);
 			m_waypointBuffer->drawWaypoints(waypointInfo);
 		}
-#endif
 	}
 
 	if (doCloud) ++n.stats.cloudFrames;

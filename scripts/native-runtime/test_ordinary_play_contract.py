@@ -223,8 +223,11 @@ class OrdinaryPlayContract(unittest.TestCase):
         self.assertIn("if (!info) input.shrouded = true;", objects)
 
     def test_zero_hour_sources_do_not_mention_play(self):
-        zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")
+        # X64.45: only the byte-identical ordinary host window of WinMain (normal launch) may mention the play profile; GameMain
+        # (the diagnostic dispatch) never does. test_zero_hour_native_contract pins both.
+        zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp")
         self.assertNotIn("ordinaryPlay", zh)
+        self.assertEqual(read("GeneralsMD/Code/Main/WinMain.cpp").count("ordinaryPlay"), 2)
 
     def test_script_surface_is_complete(self):
         common = read("scripts/native-runtime/OrdinaryHostCommon.ps1")

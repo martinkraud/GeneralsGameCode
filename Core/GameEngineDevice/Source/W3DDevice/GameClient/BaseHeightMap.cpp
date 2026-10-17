@@ -309,7 +309,7 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass()
 	}
 #endif
 
-#if RTS_GENERALS && defined(_WIN64)
+#if defined(_WIN64)
 	// Native play profile: the bib list is CPU-only data drawn by NativeWorldEffects on the ground layer.
 	// (The waypoint buffer needs the asset manager and is created by the first native terrain frame.)
 	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryPlay() && StartupDiagnostics::nativeFeature("bibs"))
@@ -2226,7 +2226,7 @@ void BaseHeightMapRenderObjClass::addTerrainBib(Vector3 corners[4],
 		m_bibBuffer->addBib(corners, id, highlight);
 };
 
-#if RTS_GENERALS && defined(_WIN64)
+#if defined(_WIN64)
 Int BaseHeightMapRenderObjClass::forEachNativeBib( void (*fn)(void *user, const Vector3 corners[4], bool highlight), void *user ) const
 {
 	return m_bibBuffer ? m_bibBuffer->forEachNativeBib( fn, user ) : 0;

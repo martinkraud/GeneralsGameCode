@@ -143,9 +143,10 @@ class OrdinaryTerrainContract(unittest.TestCase):
         for term in ("WorldMaterial::TerrainOverlay", "forEachNativeBatch", "forEachNativeBridge", "alpha_only = true",
                      "bridge.alpha_test = 96.0f / 255.0f", "bridge.double_sided = true", "Load_World_Texture"):
             self.assertIn(term, heightmap)
-        # Zero Hour must not see the Generals-only road/bridge headers from the shared source.
+        # X64.45: the road / bridge / waypoint / bib native hooks exist in both titles' device sources, so the shared terrain source
+        # no longer gates them on the title (test_zero_hour_native_contract pins the Zero Hour hooks).
         self.assertIn("W3DDevice/GameClient/W3DRoadBuffer.h", heightmap)
-        self.assertLess(heightmap.index("#if RTS_GENERALS"), heightmap.index("W3DDevice/GameClient/W3DRoadBuffer.h"))
+        self.assertNotIn("RTS_GENERALS", heightmap)
 
     def test_every_summary_format_fits_its_destination_buffer(self):
         # Regression: X64.27 fix1 run 20261013T0630289162651Z died with 0xC0000409 (sprintf_s invalid

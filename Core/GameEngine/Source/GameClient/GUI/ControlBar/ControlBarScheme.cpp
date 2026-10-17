@@ -418,7 +418,14 @@ void ControlBarScheme::validate() const
 void ControlBarScheme::init()
 {
 	// Enhanced gameplay HUD (USA prototype): decide for this scheme's side; anything unsupported stays Original.
-	EnhancedHud::update( DisplayRuntime::modern(), ModernExperience::classic(), m_side.str(),
+#if RTS_ZEROHOUR
+	// X64.45: the Enhanced HUD was built and reviewed against the Generals control bar (12 command slots, the Generals command
+	// sets and side names). Zero Hour keeps the Original bar until it has its own review: no side is "supported" there.
+	const char *const enhancedSide = nullptr;
+#else
+	const char *const enhancedSide = m_side.str();
+#endif
+	EnhancedHud::update( DisplayRuntime::modern(), ModernExperience::classic(), enhancedSide,
 		TheDisplay ? (Int)TheDisplay->getWidth() : 0, TheDisplay ? (Int)TheDisplay->getHeight() : 0, DisplayRuntime::uiScale() );
 	if(TheControlBar)
 	{

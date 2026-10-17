@@ -81,6 +81,10 @@
 #include "WW3D2/mesh.h"
 #include "WW3D2/meshmdl.h"
 #include "WW3D2/segline.h"
+#if defined(_WIN64)
+#include "W3DDevice/GameClient/NativeWorldEffects.h"
+#include "W3DDevice/GameClient/NativeWorldObjects.h"
+#endif
 
 
 #define MAX_DISPLAY_NODES 512
@@ -97,6 +101,12 @@ for the bibs. */
 //=============================================================================
 W3DWaypointBuffer::W3DWaypointBuffer()
 {
+#if defined(_WIN64)
+	m_native = FALSE;
+	m_nodesUsed = 0;
+	for (Int i = 0; i < (Int)ARRAY_SIZE(m_nodeClones); ++i)
+		m_nodeClones[i] = nullptr;
+#endif
 	m_waypointNodeRobj = WW3DAssetManager::Get_Instance()->Create_Render_Obj( "SCMNode" );
 	m_line = new SegmentedLineClass;
 
@@ -113,6 +123,10 @@ W3DWaypointBuffer::W3DWaypointBuffer()
 //=============================================================================
 W3DWaypointBuffer::~W3DWaypointBuffer()
 {
+#if defined(_WIN64)
+	for (Int i = 0; i < (Int)ARRAY_SIZE(m_nodeClones); ++i)
+		REF_PTR_RELEASE( m_nodeClones[i] );
+#endif
 	REF_PTR_RELEASE( m_waypointNodeRobj );
 	REF_PTR_RELEASE( m_texture );
 	REF_PTR_RELEASE( m_line );
@@ -148,8 +162,47 @@ void W3DWaypointBuffer::setDefaultLineStyle()
 //=============================================================================
 /** Draws the waypoints. Uses camera to cull */
 //=============================================================================
+void W3DWaypointBuffer::renderNode( RenderInfoClass &rinfo )
+{
+#if defined(_WIN64)
+	if (m_native)
+	{
+		// One clone per node of this frame (the legacy code renders the same object repeatedly while
+		// moving it); each clone keeps its position and is drawn by the native object pass.
+		if (m_nodesUsed < (Int)ARRAY_SIZE(m_nodeClones))
+		{
+			if (m_nodeClones[m_nodesUsed] == nullptr)
+				m_nodeClones[m_nodesUsed] = m_waypointNodeRobj->Clone();
+			RenderObjClass *clone = m_nodeClones[m_nodesUsed++];
+			if (clone)
+			{
+				clone->Set_Transform( m_waypointNodeRobj->Get_Transform() );
+				NativeWorldObjects::addFrameObject( clone );
+			}
+		}
+		return;
+	}
+#endif
+	WW3D::Render( *m_waypointNodeRobj, rinfo );
+}
+
+void W3DWaypointBuffer::renderLine( RenderInfoClass &rinfo )
+{
+#if defined(_WIN64)
+	if (m_native)
+	{
+		NativeWorldEffects::queueGroundLine( *m_line );
+		return;
+	}
+#endif
+	m_line->Render( rinfo );
+}
+
 void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 {
+#if defined(_WIN64)
+	m_nodesUsed = 0;
+#endif
 
   if ( ! TheInGameUI )
     return;
@@ -201,12 +254,12 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 							}
 
 							m_waypointNodeRobj->Set_Position(Vector3(waypoint->x,waypoint->y,waypoint->z));
-							WW3D::Render(*m_waypointNodeRobj,localRinfo);
+							renderNode(localRinfo);
 						}
 					}
 					//Now render the lines in one pass!
 					m_line->Set_Points( numPoints, points );
-					m_line->Render( localRinfo );
+					renderLine( localRinfo );
 				}
 			}
 		}
@@ -285,7 +338,7 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 							            }
 
 							            m_waypointNodeRobj->Set_Position(Vector3(waypoint->x,waypoint->y,waypoint->z));
-							            WW3D::Render(*m_waypointNodeRobj,localRinfo);
+							            renderNode(localRinfo);
                           lineExists = TRUE;
 						            }
 					            }
@@ -297,7 +350,7 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
                       {
 								        points[ numPoints++ ].Set( Vector3( destinationPoint->x, destinationPoint->y, destinationPoint->z ) );
 							          m_waypointNodeRobj->Set_Position(Vector3(destinationPoint->x,destinationPoint->y,destinationPoint->z));
-							          WW3D::Render(*m_waypointNodeRobj,localRinfo);
+							          renderNode(localRinfo);
                         lineExists = TRUE;
                       }
                     }
@@ -310,7 +363,7 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
                       m_line->Set_Width( 3.0f );
 
 					            m_line->Set_Points( numPoints, points );
-					            m_line->Render( localRinfo );
+					            renderLine( localRinfo );
                     }
                   }
                   //////////////////////////////////////////////////////////////////////
@@ -470,7 +523,7 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 									if (pNearElbow)//did we find a nearest corner?
 									{
 										m_waypointNodeRobj->Set_Position(Vector3(pNearElbow->x,pNearElbow->y,ctr->z));
-										WW3D::Render(*m_waypointNodeRobj,localRinfo); //The little hockey puck
+										renderNode(localRinfo); //The little hockey puck
 										points[ numPoints ].Set( Vector3( pNearElbow->x, pNearElbow->y, ctr->z ) );
 										numPoints++;
 
@@ -496,7 +549,7 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 											if (dot < 0)// we have a second elbow
 											{
 												m_waypointNodeRobj->Set_Position(Vector3(pFarElbow->x,pFarElbow->y,ctr->z));
-												WW3D::Render(*m_waypointNodeRobj,localRinfo); //The little hockey puck
+												renderNode(localRinfo); //The little hockey puck
 												points[ numPoints ].Set( Vector3( pFarElbow->x, pFarElbow->y, ctr->z ) );
 												numPoints++;
 											}
@@ -518,11 +571,11 @@ void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 						continue;
 
 					m_waypointNodeRobj->Set_Position(Vector3(naturalRallyPoint.x,naturalRallyPoint.y,naturalRallyPoint.z));
-					WW3D::Render(*m_waypointNodeRobj,localRinfo); //The little hockey puck
+					renderNode(localRinfo); //The little hockey puck
 
 
 					m_line->Set_Points( numPoints, points );
-					m_line->Render( localRinfo );
+					renderLine( localRinfo );
 
 				}
 

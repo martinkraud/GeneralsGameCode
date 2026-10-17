@@ -127,7 +127,9 @@ class OrdinaryHostContract(unittest.TestCase):
         self.assertLess(host, s.index("else if (!TheGlobalData->m_simulateReplays.empty())"))
         self.assertLess(host, s.index("TheGameEngine->execute();"))
         self.assertLess(host, s.index("StartupDiagnostics::displaySmoke()", init))
-        zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp") + read("GeneralsMD/Code/Main/WinMain.cpp")
+        # X64.45: Zero Hour's GameMain still never dispatches the diagnostic host; its WinMain carries the (byte-identical) ordinary
+        # host window for the normal launch only, pinned by test_zero_hour_native_contract.
+        zh = read("GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp")
         self.assertNotIn("ordinaryHost", zh)
         grammar = read("Core/GameEngine/Include/Common/StartupDiagnostics.h")
         self.assertIn("#if defined(RTS_ZEROHOUR) && RTS_ZEROHOUR", grammar)

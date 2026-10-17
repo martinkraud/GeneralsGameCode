@@ -70,6 +70,9 @@
 #include "WW3D2/mesh.h"
 #include "WW3D2/meshmdl.h"
 #include "WW3D2/scene.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 
 
 //-----------------------------------------------------------------------------
@@ -245,6 +248,13 @@ Bool W3DBridge::load(BodyDamageType curDamageState)
 	strcpy(right, modelName);
 	strlcat(right, ".BRIDGE_RIGHT", ARRAY_SIZE(right));
 
+#if defined(_WIN64)
+	m_nativeTexturePath = textureFile;
+	// The native path decodes the file itself; no legacy TextureClass (and no loader request) is created.
+	if (TheGlobalData->m_headless && StartupDiagnostics::ordinaryTerrain())
+		m_bridgeTexture = nullptr;
+	else
+#endif
 	m_bridgeTexture = pMgr->Get_Texture(textureFile,  MIP_LEVELS_3);
 	m_leftMtx.Make_Identity();
 	m_rightMtx.Make_Identity();
@@ -772,10 +782,22 @@ void W3DBridgeBuffer::freeBridgeBuffers()
 //=============================================================================
 void W3DBridgeBuffer::allocateBridgeBuffers()
 {
+#if defined(_WIN64)
+	// The native terrain profile keeps the headless world selection but needs the (CPU-backed)
+	// bridge geometry; every other headless profile allocates nothing, as before.
+	if (TheGlobalData->m_headless && !StartupDiagnostics::ordinaryTerrain())
+		return;
+#else
 	if (TheGlobalData->m_headless)
 		return;
+#endif
 	m_vertexBridge=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZNDUV1,MAX_BRIDGE_VERTEX+4,DX8VertexBufferClass::USAGE_DYNAMIC));
 	m_indexBridge=NEW_REF(DX8IndexBufferClass,(MAX_BRIDGE_INDEX+4, DX8IndexBufferClass::USAGE_DYNAMIC));
+#if defined(_WIN64)
+	// Native terrain profile: WW3D/DX8Wrapper::Init never ran, so the vertex material presets do not
+	// exist (Get_Preset would dereference null) and the native path does not use a vertex material.
+	if (!TheGlobalData->m_headless)
+#endif
 	m_vertexMaterial=VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);
 #ifdef USE_BRIDGE_NORMALS
 	m_vertexMaterial= NEW VertexMaterialClass();
@@ -1116,9 +1138,8 @@ void W3DBridgeBuffer::updateCenter(CameraClass *camera, RefRenderObjListIterator
 //=============================================================================
 /** Draws the bridges. */
 //=============================================================================
-void W3DBridgeBuffer::drawBridges(CameraClass * camera, Bool wireframe, TextureClass *cloudTexture)
+void W3DBridgeBuffer::refreshBridgeStates()
 {
-
 	Int curBridge;
 	if (TheTerrainLogic) {
 		for (curBridge=0; curBridge<m_numBridges; curBridge++) {
@@ -1153,8 +1174,15 @@ void W3DBridgeBuffer::drawBridges(CameraClass * camera, Bool wireframe, TextureC
 			m_bridges[curBridge].setEnabled(true);
 		}
 	}
+}
 
-
+//=============================================================================
+// W3DBridgeBuffer::drawBridges
+//=============================================================================
+void W3DBridgeBuffer::drawBridges(CameraClass * camera, Bool wireframe, TextureClass *cloudTexture)
+{
+	Int curBridge;
+	refreshBridgeStates();
 
 	if (m_curNumBridgeIndices == 0) {
 		return;
@@ -1211,4 +1239,39 @@ void W3DBridgeBuffer::drawBridges(CameraClass * camera, Bool wireframe, TextureC
 	}
 }
 
-
+#if defined(_WIN64)
+//=============================================================================
+// W3DBridgeBuffer::forEachNativeBridge
+//=============================================================================
+/** Native D3D11 terrain profile: hands each enabled, visible bridge's draw range (the shared
+CPU vertex/index buffers) to the callback instead of issuing DX8 draws. */
+//=============================================================================
+Int W3DBridgeBuffer::forEachNativeBridge(NativeBridgeBatchFn fn, void *user)
+{
+	refreshBridgeStates();
+	if (!m_vertexBridge || !m_indexBridge || m_curNumBridgeIndices == 0) {
+		return 0;
+	}
+	if (!m_vertexBridge->Is_CPU_Backed() || !m_indexBridge->Is_CPU_Backed()) {
+		return 0;
+	}
+	Int drawn = 0;
+	for (Int curBridge=0; curBridge<m_numBridges; curBridge++) {
+		W3DBridge &bridge = m_bridges[curBridge];
+		if (!bridge.isEnabled() || !bridge.isVisible() || bridge.getNumPolygons() <= 0 || bridge.getNumVertex() <= 0) {
+			continue;
+		}
+		NativeBridgeBatch batch;
+		batch.vertices = reinterpret_cast<const VertexFormatXYZNDUV1 *>(m_vertexBridge->Get_CPU_Data());
+		batch.vertexCount = m_curNumBridgeVertices;
+		batch.indices = m_indexBridge->Get_CPU_Data();
+		batch.indexCount = m_curNumBridgeIndices;
+		batch.firstIndex = bridge.getFirstIndex();
+		batch.polygonCount = bridge.getNumPolygons();
+		batch.texture = bridge.getNativeTexturePath().str();
+		fn(user, batch);
+		++drawn;
+	}
+	return drawn;
+}
+#endif

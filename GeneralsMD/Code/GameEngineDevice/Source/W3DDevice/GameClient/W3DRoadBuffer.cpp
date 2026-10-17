@@ -58,6 +58,9 @@
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/W3DAssetManager.h"
+#if defined(_WIN64)
+#include "Common/StartupDiagnostics.h"
+#endif
 #include "W3DDevice/GameClient/W3DDynamicLight.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
 #include "W3DDevice/GameClient/W3DShaderManager.h"
@@ -174,6 +177,12 @@ void RoadType::loadTexture(AsciiString path, Int ID)
 	/// @todo - delay loading textures and only load textures referenced by map.
 	WW3DAssetManager *pMgr = W3DAssetManager::Get_Instance();
 
+#if defined(_WIN64)
+	m_nativeTexturePath = path;
+	// The native path decodes the file itself; no legacy TextureClass (and no loader request) is created.
+	if (!(TheGlobalData->m_headless && StartupDiagnostics::ordinaryTerrain()))
+#endif
+	{
 	m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3);
 	//Hack to disable texture reduction
 	//m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3, WW3D_FORMAT_UNKNOWN,true,TextureBaseClass::TEX_REGULAR, false);
@@ -182,6 +191,7 @@ void RoadType::loadTexture(AsciiString path, Int ID)
 
 	m_roadTexture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
 	m_roadTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
+	}
 
 	m_vertexRoad=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZDUV1,TheGlobalData->m_maxRoadVertex+4, (s_dynamic?DX8VertexBufferClass::USAGE_DYNAMIC:DX8VertexBufferClass::USAGE_DEFAULT)));
 	m_indexRoad=NEW_REF(DX8IndexBufferClass,(TheGlobalData->m_maxRoadIndex+4, (s_dynamic?DX8IndexBufferClass::USAGE_DYNAMIC:DX8IndexBufferClass::USAGE_DEFAULT)));
@@ -3263,6 +3273,66 @@ void W3DRoadBuffer::updateCenter()
 {
 	m_updateBuffers = true;
 }
+
+#if defined(_WIN64)
+//=============================================================================
+// W3DRoadBuffer::forEachNativeBatch
+//=============================================================================
+/** Mirrors the traversal of drawRoads (bounds, visibility refresh, stacking order, per-type reload) for the
+native D3D11 path, which draws from the CPU-backed buffers instead of DX8 state. */
+//=============================================================================
+Int W3DRoadBuffer::forEachNativeBatch(Int minX, Int maxX, Int minY, Int maxY, NativeRoadBatchFn fn, void *user)
+{
+	if (!m_initialized || !m_roadTypes) return 0;
+	IRegion2D bounds;
+	bounds.lo.x = minX*MAP_XY_FACTOR;
+	bounds.hi.x = maxX*MAP_XY_FACTOR;
+	bounds.lo.y = minY*MAP_XY_FACTOR;
+	bounds.hi.y = maxY*MAP_XY_FACTOR;
+
+	Int maxStacking = 0;
+	for (Int i=0; i<m_maxRoadTypes; i++) {
+		if (m_roadTypes[i].getStacking() > maxStacking) {
+			maxStacking = m_roadTypes[i].getStacking();
+		}
+	}
+	Bool loadBuffers = false;
+	if (m_updateBuffers) {
+		if (visibilityChanged(bounds)) {
+			loadBuffers = true;
+		}
+	}
+	m_updateBuffers = false;
+
+	Int batches = 0;
+	for (Int stacking=0; stacking <= maxStacking; stacking++) {
+		for (Int i=0; i<m_maxRoadTypes; i++) {
+			if (stacking != m_roadTypes[i].getStacking()) {
+				continue;
+			}
+			m_curUniqueID = m_roadTypes[i].getUniqueID();
+			m_curRoadType = i;
+			if (loadBuffers) loadRoadsInVertexAndIndexBuffers();
+			if (m_roadTypes[i].getNumIndices() == 0) continue;
+			DX8VertexBufferClass *vb = m_roadTypes[i].getVB();
+			DX8IndexBufferClass *ib = m_roadTypes[i].getIB();
+			if (!vb || !ib || !vb->Is_CPU_Backed() || !ib->Is_CPU_Backed()) continue;
+			NativeRoadBatch batch;
+			batch.vertices = reinterpret_cast<const VertexFormatXYZDUV1 *>(vb->Get_CPU_Data());
+			batch.vertexCount = m_roadTypes[i].getNumVertices();
+			batch.indices = ib->Get_CPU_Data();
+			batch.indexCount = m_roadTypes[i].getNumIndices();
+			batch.texture = m_roadTypes[i].getNativeTexturePath().str();
+			batch.roadType = i;
+			batch.stacking = stacking;
+			fn(user, batch);
+			++batches;
+		}
+	}
+	m_curRoadType = 0;
+	return batches;
+}
+#endif
 
 //=============================================================================
 // W3DRoadBuffer::drawRoads

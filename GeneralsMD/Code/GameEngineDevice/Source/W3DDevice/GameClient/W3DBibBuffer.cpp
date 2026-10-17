@@ -218,8 +218,49 @@ W3DBibBuffer::~W3DBibBuffer()
 /** Constructor. Sets m_initialized to true if it finds the w3d models it needs
 for the bibs. */
 //=============================================================================
+#if defined(_WIN64)
+W3DBibBuffer::W3DBibBuffer(Bool native)
+{
+	m_native = native;
+	m_initialized = false;
+	m_vertexBib = nullptr;
+	m_indexBib = nullptr;
+	m_bibTexture = nullptr;
+	m_highlightBibTexture = nullptr;
+	m_curNumBibVertices = 0;
+	m_curNumBibIndices = 0;
+	m_curNumNormalBibIndices = 0;
+	m_curNumNormalBibVertex = 0;
+	m_updateAllKeys = false;
+	m_isTerrainPass = false;
+	m_indexBibSize = INITIAL_BIB_INDEX;
+	m_vertexBibSize = INITIAL_BIB_VERTEX;
+	clearAllBibs();
+	m_initialized = true;
+}
+
+Int W3DBibBuffer::forEachNativeBib(NativeBibFn fn, void *user) const
+{
+	Int visited = 0;
+	for (Int doHighlight = 0; doHighlight <= 1; doHighlight++)
+	{
+		for (Int curBib = 0; curBib < m_numBibs; curBib++)
+		{
+			if (m_bibs[curBib].m_unused) continue;
+			if (m_bibs[curBib].m_highlight != (Bool)doHighlight) continue;
+			fn(user, m_bibs[curBib].m_corners, doHighlight != 0);
+			++visited;
+		}
+	}
+	return visited;
+}
+#endif
+
 W3DBibBuffer::W3DBibBuffer()
 {
+#if defined(_WIN64)
+	m_native = FALSE;
+#endif
 	m_initialized = false;
 	m_vertexBib = nullptr;
 	m_indexBib = nullptr;
@@ -259,6 +300,10 @@ void W3DBibBuffer::freeBibBuffers()
 //=============================================================================
 void W3DBibBuffer::allocateBibBuffers()
 {
+#if defined(_WIN64)
+	if (m_native)
+		return;
+#endif
 	m_vertexBib=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZDUV1,m_vertexBibSize+4,DX8VertexBufferClass::USAGE_DYNAMIC));
 	m_indexBib=NEW_REF(DX8IndexBufferClass,(m_indexBibSize+4, DX8IndexBufferClass::USAGE_DYNAMIC));
 	m_curNumBibVertices=0;

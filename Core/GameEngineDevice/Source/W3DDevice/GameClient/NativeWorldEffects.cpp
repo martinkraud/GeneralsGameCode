@@ -1171,7 +1171,6 @@ void CollectTracks(D3D11Backend &backend, CameraClass &camera)
 // ---------------------------------------------------------------------------------------------
 void CollectBibs(D3D11Backend &backend, CameraClass &camera)
 {
-#if RTS_GENERALS
     if (!TheTerrainRenderObject) return;
     struct Context { D3D11Backend *backend; Vector3 camera; } context = { &backend, camera.Get_Position() };
     TheTerrainRenderObject->forEachNativeBib(
@@ -1206,9 +1205,6 @@ void CollectBibs(D3D11Backend &backend, CameraClass &camera)
             e.layer = NativeWorldObjects::EffectLayerGround;
             if (NativeWorldObjects::emitEffect(*c.backend, e)) ++g_stats.bibs; else ++g_stats.dropped;
         }, &context);
-#else
-    (void)backend; (void)camera;   // Zero Hour: the bib buffer has no native form yet
-#endif
 }
 
 void CollectGroundLines(D3D11Backend &backend, CameraClass &camera)

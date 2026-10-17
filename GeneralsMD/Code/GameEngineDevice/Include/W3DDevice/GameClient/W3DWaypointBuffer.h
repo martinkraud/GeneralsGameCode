@@ -74,10 +74,22 @@ public:
 
 	void drawWaypoints(RenderInfoClass &rinfo);
 	void freeWaypointBuffers();
+#if defined(_WIN64)
+	/// Native play profile: nodes and lines are handed to the native object pass / ground layer instead of
+	/// being rendered through the DX8 pipeline. The path computation in drawWaypoints is unchanged.
+	void setNative( Bool native ) { m_native = native; }
+#endif
 
 
 private:
   void setDefaultLineStyle();
+	void renderNode( RenderInfoClass &rinfo );	///< draws m_waypointNodeRobj at its current position
+	void renderLine( RenderInfoClass &rinfo );	///< draws m_line
+#if defined(_WIN64)
+	Bool m_native;
+	Int m_nodesUsed;
+	RenderObjClass *m_nodeClones[512];
+#endif
 
 	RenderObjClass *m_waypointNodeRobj;
 	SegmentedLineClass *m_line;
