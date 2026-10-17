@@ -1,6 +1,6 @@
 #Requires -Version 7.0
 # X64.45: unattended capture of a staged normal-launch candidate for terrain / world inspection (developer aid, not a validation gate).
-# Starts the staged executable like a player would, drives the real shell -> Skirmish setup -> Start screens (GENERALS_AUTOFLOW=skirmish) or
+# Starts the staged executable like a player would, drives the real shell screens (GENERALS_AUTOFLOW=skirmish|campaign|challenge: Skirmish setup -> Start, Single Player -> USA -> Easy, General's Challenge -> Easy -> general -> Play) or
 # -devMode -quickGame, writes the composed frame of the shell and of the running match (GENERALS_AUTOSHOT) and quits the game by itself.
 # A window is shown on the desktop for about a minute. The stage's generals64.log is copied next to the images; the stage itself is run in
 # place, so use a disposable stage (never the candidate you intend to hand to a human): the strict stage check fails afterwards.
@@ -8,7 +8,8 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
-      [ValidateSet('Skirmish','QuickGame')][string]$Flow = 'Skirmish',
+      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','QuickGame')][string]$Flow = 'Skirmish',
+      [ValidateRange(0,11)][int]$General = 0,
       [ValidateRange(120,20000)][int]$MatchFrames = 1500,
       [ValidateRange(60,600)][int]$TimeoutSeconds = 240,
       [string]$Disable = '')
@@ -23,14 +24,15 @@ $out = Join-Path $script:ZHRepository ('build/diag/autocapture-' + [DateTime]::U
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 $env:GENERALS_AUTOSHOT = $out
 $env:GENERALS_AUTOSHOT_FRAMES = "$MatchFrames"
-if ($Flow -eq 'Skirmish') { $env:GENERALS_AUTOFLOW = 'skirmish' }
+if ($Flow -ne 'QuickGame') { $env:GENERALS_AUTOFLOW = $Flow.ToLowerInvariant() }
+if ($Flow -in 'Challenge','SaveLoad') { $env:GENERALS_AUTOFLOW_GENERAL = "$General" }
 if ($Disable) { $env:GENERALS_NATIVE_DISABLE = $Disable }
 $arguments = if ($Flow -eq 'QuickGame') { @('-devMode', '-quickGame', '-noaudio') } else { @('-noaudio') }
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $manifest.GamePath -PassThru
 try {
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Write-Warning 'Timed out; the game is terminated.'; $process.Kill() }
 } finally {
-    $env:GENERALS_AUTOSHOT = $null; $env:GENERALS_AUTOSHOT_FRAMES = $null; $env:GENERALS_AUTOFLOW = $null; $env:GENERALS_NATIVE_DISABLE = $null
+    $env:GENERALS_AUTOSHOT = $null; $env:GENERALS_AUTOSHOT_FRAMES = $null; $env:GENERALS_AUTOFLOW = $null; $env:GENERALS_AUTOFLOW_GENERAL = $null; $env:GENERALS_NATIVE_DISABLE = $null
 }
 $log = Join-Path $manifest.GamePath 'generals64.log'
 if (Test-Path -LiteralPath $log) { Copy-Item -LiteralPath $log -Destination (Join-Path $out 'generals64.log') }

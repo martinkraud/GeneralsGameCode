@@ -186,10 +186,20 @@ class ZeroHourNativeContract(unittest.TestCase):
         self.assertEqual(draw.count(chr(9) + "NativeAutoShot();"), 1)   # one call (the extern declaration is not indented)
         # the flow driver only exists behind its own switch and only ever uses the player's screens
         self.assertIn('std::getenv("GENERALS_AUTOFLOW")', body)
-        self.assertIn('TheShell->push("Menus/SkirmishGameOptionsMenu.wnd");', body)
+        self.assertIn('TheShell->push(step.a);', body)
+        self.assertIn('"Menus/SkirmishGameOptionsMenu.wnd"', body)
+        # X64.46: Campaign and Challenge go through the real MainMenu / ChallengeMenu buttons (GBM_SELECTED), never through world state
+        for name in ("MainMenu.wnd:ButtonSinglePlayer", "MainMenu.wnd:ButtonUSA", "MainMenu.wnd:ButtonChallenge", "MainMenu.wnd:ButtonEasy",
+                     "ChallengeMenu.wnd:GeneralPosition", "ChallengeMenu.wnd:ButtonPlay",
+                     "QuitMenu.wnd:ButtonSaveLoad", "PopupSaveLoad.wnd:ButtonSave", "SaveLoad.wnd:ButtonLoad"):
+            self.assertIn(name, body)
+        self.assertIn("GBM_SELECTED", body)
+        self.assertNotIn("MSG_NEW_GAME", body)
+        self.assertNotIn("startNewGame", body)
         self.assertNotIn("TheGameLogic->setFrame", body)
         script = read("scripts/native-runtime/Invoke-NativeAutoCapture.ps1")
-        self.assertIn("GENERALS_AUTOFLOW = 'skirmish'", script)
+        self.assertIn("$env:GENERALS_AUTOFLOW = $Flow.ToLowerInvariant()", script)
+        self.assertIn("'Skirmish','Campaign','Challenge','SaveLoad','QuickGame'", script)
 
     def test_the_native_screenshot_path_keeps_its_separator(self):
         host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
@@ -221,6 +231,20 @@ class ZeroHourNativeContract(unittest.TestCase):
                 self.assertIn("userdata-backups", ps1)
         self.assertNotIn("Program Files", ps1)
         self.assertNotIn("steamapps", ps1)
+
+
+    def test_unavailable_movies_are_skipped_not_dereferenced(self):
+        # X64.46: with no decoder TheVideoPlayer->open() returns null. ChallengeLoadScreen (Zero Hour only) used to read the
+        # stream's size unconditionally (access violation on Win64); it must skip the movie and keep the static challenge presentation.
+        load = read("Core/GameEngine/Source/GameClient/GUI/LoadScreen.cpp")
+        start = load.index("void ChallengeLoadScreen::init(")
+        body = load[start:load.index("void ChallengeLoadScreen::reset()")]
+        self.assertIn("const Bool movieUnavailable = (m_videoStream == nullptr);", body)
+        self.assertIn("!movieUnavailable && (m_videoBuffer == nullptr", body)
+        self.assertIn("activatePiecesMinSpec(generalPlayer, generalOpponent);", body)
+        # every movie that cannot be opened is recorded once in generals64.log
+        bink = read("Core/GameEngineDevice/Source/VideoDevice/Bink/BinkVideoPlayer.cpp")
+        self.assertIn('StartupDiagnostics::checkpoint("movie", "skipped", movieTitle.str());', bink)
 
 
 if __name__ == "__main__":

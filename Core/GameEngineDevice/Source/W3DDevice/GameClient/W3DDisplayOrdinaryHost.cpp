@@ -60,6 +60,14 @@
 #include "Common/Money.h"
 #include "GameClient/Water.h"
 #include "GameClient/GameWindow.h"
+#include "GameClient/GadgetListBox.h"
+#include "GameClient/GUICallbacks.h"
+#include "Common/KindOf.h"
+#include "Common/XferCRC.h"
+#include "Common/ThingTemplate.h"
+#include "GameLogic/PartitionManager.h"
+#include "GameLogic/AI.h"
+#include "Common/PlayerTemplate.h"
 #include "Common/Radar.h"
 #include "Common/NameKeyGenerator.h"
 #include "GameLogic/TerrainLogic.h"
@@ -1456,27 +1464,191 @@ void NativeAutoShot()
         const bool ok = WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
         StartupDiagnostics::checkpoint("autoshot", ok ? "complete" : "fail", path);
     };
-    // GENERALS_AUTOFLOW=skirmish (developer aid): reproduce the player's shell -> Skirmish -> Start sequence through the real screens
-    // (push the Skirmish setup screen from the shell, then press its Start button) so a match can be inspected unattended.
-    static const bool autoFlow = [] { const char *text = std::getenv("GENERALS_AUTOFLOW"); return text && !_stricmp(text, "skirmish"); }();
-    if (autoFlow) {
-        static unsigned flowFrames = 0, pushedAt = 0;
-        static bool pushed = false, started = false;
+    // GENERALS_AUTOFLOW=skirmish|campaign|challenge|saveload (developer aid): reproduce the player's frontend sequence through the real
+    // screens: each step sends the same GBM_SELECTED a mouse click would to the real, visible and enabled button (its owning top window
+    // receives it, as for a click), pushes the real screen, or opens the quit menu like Esc. Campaign: Single Player -> USA -> Easy.
+    // Challenge: Single Player -> General's Challenge -> Easy -> general GENERALS_AUTOFLOW_GENERAL (default 0) -> Play. Save/Load:
+    // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
+    // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
+    // world came back. Nothing about the world is constructed or edited here.
+    enum StepKind { PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
+    static const Step skirmishSteps[] = {
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
+        { PRESS, "SkirmishGameOptionsMenu.wnd:ButtonStart", nullptr, 240, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step campaignSteps[] = {
+        { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonSinglePlayer", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonUSA", nullptr, 300, 1 },
+        { PRESS, "MainMenu.wnd:ButtonEasy", nullptr, 300, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step challengeSteps[] = {
+        { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonSinglePlayer", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonChallenge", nullptr, 300, 1 },
+        { PRESS, "MainMenu.wnd:ButtonEasy", nullptr, 300, 1 }, { PRESS, "ChallengeMenu.wnd:GeneralPosition", nullptr, 300, 1 },
+        { PRESS, "ChallengeMenu.wnd:ButtonPlay", nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step saveLoadSteps[] = {
+        { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonSinglePlayer", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonChallenge", nullptr, 300, 1 },
+        { PRESS, "MainMenu.wnd:ButtonEasy", nullptr, 300, 1 }, { PRESS, "ChallengeMenu.wnd:GeneralPosition", nullptr, 300, 1 },
+        { PRESS, "ChallengeMenu.wnd:ButtonPlay", nullptr, 120, 1 },
+        { WAIT_FRAMES, nullptr, nullptr, 300, 2 }, { WAIT_INPUT, nullptr, nullptr, 1, 2 }, { STATE, "before_save", nullptr, 1, 2 },
+        { QUIT_MENU, nullptr, nullptr, 60, 2 }, { PRESS, "QuitMenu.wnd:ButtonSaveLoad", nullptr, 120, 2 },
+        { SELECT_ROW, "PopupSaveLoad.wnd:ListboxGames", nullptr, 120, 2 }, { PRESS, "PopupSaveLoad.wnd:ButtonSave", nullptr, 30, 2 },
+        { PRESS_EITHER, "PopupSaveLoad.wnd:ButtonSaveDescConfirm", "PopupSaveLoad.wnd:ButtonOverwriteConfirm", 60, 2 },
+        { STATE, "saved", nullptr, 60, 2 },
+        { PRESS, "QuitMenu.wnd:ButtonExit", nullptr, 60, 2 }, { PRESS_EITHER, "QuitMessageBox.wnd:ButtonYes", "MessageBox.wnd:ButtonYes", 120, 2 },
+        { PRESS_OPTIONAL, "ScoreScreen.wnd:ButtonOk", "ScoreScreen.wnd:ButtonContinue", 300, 0 },
+        { PRESS_OPTIONAL, "ChallengeMenu.wnd:ButtonBack", "ChallengeMenu.wnd:ButtonBack", 300, 0 },
+        { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonLoadReplay", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonLoadGame", nullptr, 300, 1 },
+        { SELECT_ROW, "SaveLoad.wnd:ListboxGames", nullptr, 300, 1 }, { PRESS, "SaveLoad.wnd:ButtonLoad", nullptr, 30, 1 },
+        { STATE, "after_load", nullptr, 0, 2 }, { WAIT_FRAMES, nullptr, nullptr, 150, 2 }, { WAIT_INPUT, nullptr, nullptr, 1, 2 },
+        { STATE, "after_load_150_frames", nullptr, 1, 2 },
+        { QUIT_MENU, nullptr, nullptr, 60, 2 }, { PRESS, "QuitMenu.wnd:ButtonSaveLoad", nullptr, 120, 2 },
+        { SELECT_ROW, "PopupSaveLoad.wnd:ListboxGames", nullptr, 120, 2 }, { PRESS, "PopupSaveLoad.wnd:ButtonSave", nullptr, 30, 2 },
+        { PRESS_EITHER, "PopupSaveLoad.wnd:ButtonSaveDescConfirm", "PopupSaveLoad.wnd:ButtonOverwriteConfirm", 60, 2 },
+        { STATE, "saved_again", nullptr, 60, 2 }, { END, nullptr, nullptr, 0, 0 } };
+    static const int autoFlow = [] {
+        const char *text = std::getenv("GENERALS_AUTOFLOW");
+        if (!text) return 0;
+        if (!_stricmp(text, "skirmish")) return 1;
+        if (!_stricmp(text, "campaign")) return 2;
+        if (!_stricmp(text, "challenge")) return 3;
+        if (!_stricmp(text, "saveload")) return 4;
+        return 0;
+    }();
+    static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
+    static bool flowFailed = false;
+    if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : saveLoadSteps;
         ++flowFrames;
-        if (TheGameLogic->isInShellGame() && TheShell) {
-            if (!pushed && flowFrames >= 600) {
-                TheShell->push("Menus/SkirmishGameOptionsMenu.wnd");
-                pushed = true; pushedAt = flowFrames;
-                StartupDiagnostics::checkpoint("autoflow", "observed", "skirmish setup pushed");
-            } else if (pushed && !started && flowFrames >= pushedAt + 240 && TheWindowManager) {
-                GameWindow *parent = TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent"));
-                GameWindow *start = TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey("SkirmishGameOptionsMenu.wnd:ButtonStart"));
-                if (parent && start) {
-                    TheWindowManager->winSendSystemMsg(parent, GBM_SELECTED, (WindowMsgData)start, start->winGetWindowId());
-                    started = true;
-                    StartupDiagnostics::checkpoint("autoflow", "observed", "skirmish start pressed");
+        const Step &step = steps[stepIndex];
+        const bool shell = TheGameLogic->isInShellGame();
+        const bool running = TheGameLogic->isInGame() && !shell && !TheGameLogic->isLoadingMap() && !TheGameLogic->isLoadingSave() &&
+                             !TheGameLogic->isClearingGameData() && TheGameLogic->getFrame() > 0;
+        const bool context = step.where == 0 || (step.where == 1 && shell && !TheGameLogic->isLoadingMap()) || (step.where == 2 && running);
+        if (step.kind != END && context && flowFrames >= stepAt + step.wait) {
+            char detail[320];
+            auto topWindow = [](GameWindow *w) { while (w && w->winGetParent()) w = w->winGetParent(); return w; };
+            auto usable = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden() || !BitIsSet(c->winGetStatus(), WIN_STATUS_ENABLED)) return false; return w != nullptr; };
+            auto find = [](const char *name) { return TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey(name)); };
+            auto advance = [&](const char *what, const char *name) {
+                sprintf_s(detail, "step %u: %s %s", stepIndex, what, name ? name : "");
+                StartupDiagnostics::checkpoint("autoflow", "observed", detail);
+                ++stepIndex; stepAt = flowFrames; waitFromFrame = TheGameLogic->getFrame();
+            };
+            bool done = false;
+            if (step.kind == PUSH) {
+                TheShell->push(step.a); advance("pushed", step.a); done = true;
+            } else if (step.kind == PRESS || step.kind == PRESS_EITHER || step.kind == PRESS_OPTIONAL) {
+                AsciiString name = step.a;
+                if (!strcmp(step.a, "ChallengeMenu.wnd:GeneralPosition")) {
+                    const char *general = std::getenv("GENERALS_AUTOFLOW_GENERAL");
+                    name.format("ChallengeMenu.wnd:GeneralPosition%d", general ? std::atoi(general) : 0);
                 }
+                GameWindow *button = find(name.str());
+                if ((step.kind == PRESS_EITHER || step.kind == PRESS_OPTIONAL) && !usable(button)) { name = step.b; button = find(name.str()); }
+                if (!usable(button) && !strncmp(name.str(), "MainMenu.wnd:", 13) && flowFrames % 90 == 0) {
+                    // the main menu can still be entering when the first key arrives: the player keeps moving the mouse
+                    GameWindow *menu = find("MainMenu.wnd:MainMenuParent");
+                    if (menu) TheWindowManager->winSendInputMsg(menu, GWM_CHAR, KEY_SPACE, KEY_STATE_DOWN);
+                }
+                if (usable(button)) {
+                    GameWindow *top = button->winGetOwner() ? button->winGetOwner() : topWindow(button);   // the gadget sends its click to its owner
+                    TheWindowManager->winSendSystemMsg(top, GBM_SELECTED, (WindowMsgData)button, button->winGetWindowId());
+                    advance("pressed", name.str()); done = true;
+                }
+            } else if (step.kind == SELECT_ROW) {
+                GameWindow *list = find(step.a);
+                if (usable(list)) {
+                    GadgetListBoxSetSelected(list, 0);
+                    TheWindowManager->winSendSystemMsg(list->winGetOwner() ? list->winGetOwner() : topWindow(list), GLM_SELECTED, (WindowMsgData)list, 0);
+                    advance("selected row 0 of", step.a); done = true;
+                }
+            } else if (step.kind == WAIT_INPUT) {
+                if (TheInGameUI && TheInGameUI->getInputEnabled()) { advance("the player has input control", nullptr); done = true; }
+            } else if (step.kind == WAKE_MENU) {
+                GameWindow *menu = find(step.a);
+                if (menu) {
+                    TheWindowManager->winSendInputMsg(menu, GWM_CHAR, KEY_SPACE, KEY_STATE_DOWN);
+                    advance("sent a key to", step.a); done = true;
+                }
+            } else if (step.kind == QUIT_MENU) {
+                ToggleQuitMenu(); advance("opened the quit menu (Esc)", nullptr); done = true;
+            } else if (step.kind == WAIT_FRAMES) {
+                if (TheGameLogic->getFrame() >= waitFromFrame + step.wait) { advance("waited logic frames", nullptr); done = true; }
+            } else if (step.kind == STATE) {
+                Player *player = ThePlayerList ? ThePlayerList->getLocalPlayer() : nullptr;
+                unsigned structures = 0;
+                for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject()) if (obj->isKindOf(KINDOF_STRUCTURE)) ++structures;
+                sprintf_s(detail, "state %s: frame=%u side=%s money=%u rank=%d skill=%d objects=%u structures=%u logic_crc=%08X", step.a,
+                          TheGameLogic->getFrame(), player && player->getPlayerTemplate() ? player->getPlayerTemplate()->getName().str() : "?",
+                          player ? player->getMoney()->countMoney() : 0u, player ? player->getRankLevel() : -1, player ? player->getSkillPoints() : -1,
+                          TheGameLogic->getObjectCount(), structures, TheGameLogic->getCRC(CRC_RECALC));
+                StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                // the engine's logic CRC split like the X64.41 trace (objects / partition / players / ai) and one CRC per object, so a
+                // difference between the saved world and the loaded one names what differs instead of just saying that it does
+                auto crcOf = [](Snapshot *snapshot) {
+                    XferCRC *x = NEW XferCRC; x->open("autoflowComponent"); x->xferSnapshot(snapshot); x->close();
+                    const UnsignedInt c = x->getCRC(); delete x; return c; };
+                static std::map<unsigned, unsigned> savedObjects;
+                static std::map<unsigned, std::string> savedNames;
+                const bool isSaved = !strcmp(step.a, "saved"), isLoaded = !strcmp(step.a, "after_load");
+                std::map<unsigned, unsigned> now;
+                std::map<unsigned, std::string> names;
+                for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject()) {
+                    now[obj->getID()] = crcOf(obj);
+                    names[obj->getID()] = obj->getTemplate() ? obj->getTemplate()->getName().str() : "?";
+                }
+                sprintf_s(detail, "components %s: partition=%08X players=%08X ai=%08X rng=%08X", step.a, crcOf(ThePartitionManager), crcOf(ThePlayerList),
+                          crcOf(TheAI), static_cast<unsigned>(GetGameLogicRandomSeedCRC()));
+                StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                if (isSaved) { savedObjects = now; savedNames = names; }
+                if (isLoaded) {
+                    unsigned same = 0, differ = 0, missing = 0, extra = 0, shown = 0;
+                    for (const auto &entry : savedObjects) {
+                        auto it = now.find(entry.first);
+                        if (it == now.end()) { ++missing; continue; }
+                        if (it->second == entry.second) { ++same; continue; }
+                        ++differ;
+                        if (shown++ < 6) {
+                            sprintf_s(detail, "object differs: id=%u template=%s saved=%08X loaded=%08X", entry.first, savedNames[entry.first].c_str(), entry.second, it->second);
+                            StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                        }
+                    }
+                    for (const auto &entry : now) if (!savedObjects.count(entry.first)) ++extra;
+                    sprintf_s(detail, "objects compared saved vs loaded: identical=%u differ=%u missing_after_load=%u new_after_load=%u", same, differ, missing, extra);
+                    StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                }
+                ++stepIndex; stepAt = flowFrames; waitFromFrame = TheGameLogic->getFrame(); done = true;
             }
+            if (!done && step.kind == PRESS_OPTIONAL && flowFrames >= stepAt + step.wait + 1500) {
+                advance("not shown, skipped", step.a);
+                done = true;
+            }
+            if (!done && flowFrames >= stepAt + step.wait + 3600) {
+                // never became available: report it once, stop driving and quit so the log is flushed
+                char chain[200] = "missing";
+                if (step.a) {
+                    GameWindow *w = find(step.a);
+                    int used = w ? 0 : 7;
+                    if (w) chain[0] = 0;
+                    for (GameWindow *c = w; c && used < 150; c = c->winGetParent())
+                        used += sprintf_s(chain + used, sizeof(chain) - used, "[hidden=%d enabled=%d]", c->winIsHidden() ? 1 : 0, BitIsSet(c->winGetStatus(), WIN_STATUS_ENABLED) ? 1 : 0);
+                }
+                sprintf_s(detail, "step %u: %s not available: %s", stepIndex, step.a ? step.a : "", chain);
+                StartupDiagnostics::checkpoint("autoflow", "fail", detail);
+                shoot("flowfail");
+                flowFailed = true;
+                TheGameEngine->setQuitting(TRUE);
+            }
+        } else if (step.kind != END && !context && flowFrames % 900 == 0) {
+            // waiting for a context that does not come: say what the engine thinks it is doing
+            char detail[200];
+            sprintf_s(detail, "step %u waits for context %d: shell=%d in_game=%d loading_map=%d loading_save=%d clearing=%d frame=%u input=%d", stepIndex,
+                      step.where, shell ? 1 : 0, TheGameLogic->isInGame() ? 1 : 0, TheGameLogic->isLoadingMap() ? 1 : 0, TheGameLogic->isLoadingSave() ? 1 : 0,
+                      TheGameLogic->isClearingGameData() ? 1 : 0, TheGameLogic->getFrame(), TheInGameUI && TheInGameUI->getInputEnabled() ? 1 : 0);
+            StartupDiagnostics::checkpoint("autoflow", "waiting", detail);
+            if (flowFrames % 2700 == 0) shoot("stalled");
+        } else if (step.kind == END && stepAt != 0xFFFFFFFFu) {
+            StartupDiagnostics::checkpoint("autoflow", "observed", "flow complete");
+            stepAt = 0xFFFFFFFFu;
+            if (autoFlow >= 4) TheGameEngine->setQuitting(TRUE);
         }
     }
     // GENERALS_AUTOSHOT_EVERY=<frames>: a numbered sequence of frames (at most 80) instead of the two single captures; never quits.
@@ -1499,7 +1671,7 @@ void NativeAutoShot()
         if (!gameDone && ++gameFrames >= gameFramesWanted) {
             shoot("game");
             gameDone = true;
-            if (TheGameEngine) TheGameEngine->setQuitting(TRUE);
+            if (TheGameEngine && autoFlow < 4) TheGameEngine->setQuitting(TRUE);
         }
     } else if (!shellDone && ++shellFrames >= 360) {
         shoot("shell");
