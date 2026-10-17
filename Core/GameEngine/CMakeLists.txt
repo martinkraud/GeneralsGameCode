@@ -46,6 +46,7 @@ set(GAMEENGINE_SRC
     Include/Common/FrameRateLimit.h
     Include/Common/PerformanceProfile.h
     Include/Common/ScriptProfile.h
+    Include/Common/EnduranceTelemetry.h
     Include/Common/PresentationClock.h
     Include/Common/GroundTranslation.h
     Include/Common/GroundTranslationPolicy.h
@@ -605,6 +606,7 @@ set(GAMEENGINE_SRC
     Source/Common/DiscreteCircle.cpp
     Source/Common/PerformanceProfile.cpp
     Source/Common/ScriptProfile.cpp
+    Source/Common/EnduranceTelemetry.cpp
     Source/Common/DeveloperHarness.cpp
     Source/Common/DeveloperToolsRuntime.cpp
     Source/Common/DeveloperInteractive.cpp

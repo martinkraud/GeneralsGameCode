@@ -7,7 +7,9 @@
 // hundred per 72 000 ticks) plus a signature update for every search that reaches the main loop; timing runs and diagnostic runs are kept apart.
 #pragma once
 
+#include <cstddef>
 #include <cstdio>
+#include <string>
 
 class Pathfinder;
 class Object;
@@ -17,7 +19,7 @@ struct Coord3D;
 
 namespace PathFailureDiag
 {
-extern int g_state;                 // -1 = not read yet, 0 = off, 1 = on
+extern int g_state;                 // -1 = not read yet, 0 = off, 1 = full characterisation (GENERALS_SIM_PATHFAIL), 2 = lite endurance mode (EnduranceTelemetry)
 extern unsigned g_mutations;        // pathfinder cell-state mutations (unit position / goal / terrain type / obstacle changes)
 bool initState();
 inline bool enabled() { return g_state > 0 ? true : (g_state == 0 ? false : initState()); }
@@ -57,4 +59,17 @@ struct Search
 
 void report(FILE *out);
 void writeCsv(FILE *out);
+
+// X64.44 lite mode (used by EnduranceTelemetry; never combined with the full mode): cheap counters for every search plus a rate-limited analysis of an
+// expensive failure (>= 5 ms, at most one per 300 logic frames). The analysis time is measured so the telemetry can subtract it from the tick it ran in.
+struct LiteCounters
+{
+	unsigned long long searches = 0, successes = 0, failures = 0, expensiveFailures = 0, analyses = 0, failurePops = 0, zoneRecalcs = 0, mutations = 0;
+	unsigned long long frontierCliff = 0, frontierStructure = 0, frontierAllyBusy = 0, frontierEnemyFixed = 0, frontierOffMap = 0, blockerUnits = 0, analysedClosedCells = 0;
+	double failureMs = 0, successMs = 0, worstFailureMs = 0, analysisMs = 0;
+};
+void enableLite();                       // switches the diagnostic to lite mode unless the full mode is already on
+const LiteCounters &lite();
+const char *sampleCsvHeader();
+size_t drainSampleCsv(std::string &out);  // appends the CSV rows of the analysed expensive failures since the last call
 }

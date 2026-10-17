@@ -31,6 +31,7 @@
 #include "Common/SimulationTickStats.h"
 #include "Common/DeterminismFingerprint.h"
 #include "Common/ScriptProfile.h"
+#include "Common/EnduranceTelemetry.h"
 #include "GameLogic/Pathfinder/PathFailureDiag.h"
 
 #include <algorithm>
@@ -105,7 +106,10 @@ public:
 		const UnsignedInt before = TheGameLogic->getFrame();
 		const PerformanceProfile::Tick t0 = PerformanceProfile::now();
 		m_recorder.beginFrame(t0, before, LOGICFRAMES_PER_SECOND, LOGICFRAMES_PER_SECOND);
-		TheGameLogic->UPDATE();
+		{
+			EnduranceTelemetry::LogicTick enduranceTick;   // X64.44: timing only here (the bench recorder is active); inert unless GENERALS_ENDURANCE
+			TheGameLogic->UPDATE();
+		}
 		const PerformanceProfile::Tick t1 = PerformanceProfile::now();
 		const UnsignedInt after = TheGameLogic->getFrame();
 		m_recorder.endFrame(t1, after);
@@ -610,7 +614,10 @@ int ReplaySimulation::simulateReplaysInThisProcess(const std::vector<AsciiString
 				if (bench.enabled())
 					bench.tick();
 				else
+				{
+					EnduranceTelemetry::LogicTick enduranceTick;   // X64.44: inert unless GENERALS_ENDURANCE (validation of the telemetry on a deterministic replay)
 					TheGameLogic->UPDATE();
+				}
 				if (TheRecorder->sawCRCMismatch())
 				{
 					if (!mismatchSeen) numErrors++;

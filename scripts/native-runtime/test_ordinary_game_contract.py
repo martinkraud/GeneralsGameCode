@@ -25,8 +25,8 @@ def expected_engine(baseline_source):
     assert baseline_source.count(old) == 1
     import sys, pathlib
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-    import x64_33_deltas
-    return x64_33_deltas.with_modern_caption_hunk(baseline_source.replace(old, new))
+    import x64_33_deltas, x64_44_deltas
+    return x64_44_deltas.with_endurance_hooks(x64_33_deltas.with_modern_caption_hunk(baseline_source.replace(old, new)))
 
 
 def body(source, signature):

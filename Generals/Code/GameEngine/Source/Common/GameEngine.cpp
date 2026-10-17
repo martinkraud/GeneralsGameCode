@@ -30,6 +30,7 @@
 #include "Common/ModernExperience.h"
 #include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
+#include "Common/EnduranceTelemetry.h"   // X64.44: opt-in endurance time series (inert unless GENERALS_ENDURANCE)
 #include "Common/DeveloperHarness.h"
 
 #include "Common/ActionManager.h"
@@ -754,6 +755,7 @@ DECLARE_PERF_TIMER(GameEngine_update)
 void GameEngine::update()
 {
 	PERFORMANCE_PROFILE_SCOPE(EngineUpdate);
+	EnduranceTelemetry::engineFrame();
 	USE_PERF_TIMER(GameEngine_update)
 	{
 		{
@@ -777,7 +779,10 @@ void GameEngine::update()
 		// TheSuperHackers @info Ignores frozen time because the script engine needs updating in the logic update regardless.
 		if (canUpdateGameLogic(FramePacer::IgnoreFrozenTime))
 		{
-			TheGameLogic->UPDATE();
+			{
+				EnduranceTelemetry::LogicTick enduranceTick;
+				TheGameLogic->UPDATE();
+			}
 
 			if (!TheFramePacer->isTimeFrozen())
 			{

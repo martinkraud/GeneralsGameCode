@@ -26,7 +26,7 @@
 // Friend of Pathfinder (declared in AIPathfind.h): the only place that reads its private lists and map.
 struct PathFailureDiagAccess
 {
-	static void analyze(PathFailureDiag::Search &s, int cellsAllocated);
+	static void analyze(PathFailureDiag::Search &s, int cellsAllocated, bool lite);
 };
 
 namespace PathFailureDiag
@@ -76,6 +76,10 @@ struct SigStat
 };
 
 std::vector<FailRec> s_records;
+LiteCounters s_lite;
+std::vector<FailRec> s_liteSamples;
+unsigned s_lastAnalysisFrame = 0;
+bool s_haveAnalysis = false;
 std::unordered_map<unsigned long long, SigStat> s_sigs;
 std::map<std::string, unsigned> s_blockerTemplates, s_blockerSides;
 std::map<std::string, unsigned> s_blockerRel;
@@ -98,6 +102,12 @@ bool initState()
 	g_state = getenv("GENERALS_SIM_PATHFAIL") ? 1 : 0;
 	return g_state > 0;
 }
+void enableLite()
+{
+	if (g_state < 0) initState();
+	if (g_state != 1) g_state = 2;
+}
+const LiteCounters &lite() { s_lite.zoneRecalcs = s_zoneRecalcs; s_lite.mutations = g_mutations; return s_lite; }
 void setHierarchical(int found) { s_hierarchical = found; }
 void noteZoneRecalculation() { ++s_zoneRecalcs; }
 
@@ -110,6 +120,9 @@ void Search::begin(Pathfinder *p, Object *o, const LocomotorSet *l, const Coord3
 	zone1 = z1; zone2 = z2; radius = rad; center = ctr; human = isHuman; crusher = isCrusher; tunneling = tunnel;
 	layer = startLayer; destLayer = goalLayer; ignoreObstacle = ignoreId;
 	startTick = PerformanceProfile::now();
+	++s_searches;
+	++s_lite.searches;
+	if (g_state != 1) return;
 	// request signature: everything the search outcome depends on in the STATIC part of its input (cells, class of mover, flags); not unit positions.
 	unsigned long long h = 1469598103934665603ULL;
 	h = mix(h, static_cast<unsigned long long>(start->getXIndex())); h = mix(h, static_cast<unsigned long long>(start->getYIndex()));
@@ -118,7 +131,6 @@ void Search::begin(Pathfinder *p, Object *o, const LocomotorSet *l, const Coord3
 	h = mix(h, ctr ? 1 : 0); h = mix(h, isHuman ? 1 : 0); h = mix(h, static_cast<unsigned long long>(startLayer)); h = mix(h, static_cast<unsigned long long>(goalLayer));
 	h = mix(h, ignoreId); h = mix(h, tunnel ? 1 : 0);
 	signature = h;
-	++s_searches;
 }
 
 void Search::succeeded()
@@ -126,7 +138,9 @@ void Search::succeeded()
 	if (!active || done) return;
 	done = true;
 	++s_successes;
-	s_successMs += static_cast<double>(PerformanceProfile::now() - startTick) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
+	const double okMs = static_cast<double>(PerformanceProfile::now() - startTick) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
+	s_successMs += okMs;
+	if (g_state != 1) { ++s_lite.successes; s_lite.successMs += okMs; return; }
 	SigStat &st = s_sigs[signature];
 	if (st.count == 0) { st.firstFrame = TheGameLogic->getFrame(); st.zoneRecalcAtFirst = s_zoneRecalcs; }
 	if (st.lastResult == 0) ++st.flips;
@@ -137,18 +151,38 @@ void Search::failed(int cellsAllocated)
 {
 	if (!active || done) return;
 	done = true;
-	PathFailureDiagAccess::analyze(*this, cellsAllocated);
+	if (g_state == 2)
+	{
+		const double ms = static_cast<double>(PerformanceProfile::now() - startTick) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
+		++s_lite.failures; s_lite.failureMs += ms; s_lite.failurePops += pops;
+		if (ms > s_lite.worstFailureMs) s_lite.worstFailureMs = ms;
+		if (ms >= 5.0)
+		{
+			++s_lite.expensiveFailures;
+			const unsigned frame = TheGameLogic->getFrame();
+			if (!s_haveAnalysis || frame - s_lastAnalysisFrame >= 300)
+			{
+				s_haveAnalysis = true; s_lastAnalysisFrame = frame;
+				const unsigned long long t0 = PerformanceProfile::now();
+				PathFailureDiagAccess::analyze(*this, cellsAllocated, true);
+				s_lite.analysisMs += static_cast<double>(PerformanceProfile::now() - t0) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
+				++s_lite.analyses;
+			}
+		}
+		return;
+	}
+	PathFailureDiagAccess::analyze(*this, cellsAllocated, false);
 }
 
 }   // namespace PathFailureDiag
 
-void PathFailureDiagAccess::analyze(PathFailureDiag::Search &s, int cellsAllocated)
+void PathFailureDiagAccess::analyze(PathFailureDiag::Search &s, int cellsAllocated, bool lite)
 {
 	using namespace PathFailureDiag;
 	Pathfinder &pf = *s.pf;
 	FailRec r;
 	r.ms = static_cast<double>(PerformanceProfile::now() - s.startTick) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
-	++s_failures; s_failMs += r.ms;
+	if (!lite) { ++s_failures; s_failMs += r.ms; }
 	r.frame = TheGameLogic->getFrame();
 	r.pops = s.pops; r.cells = static_cast<unsigned>(cellsAllocated); r.sig = s.signature; r.hier = s_hierarchical;
 	r.zone1 = s.zone1; r.zone2 = s.zone2; r.radius = s.radius; r.center = s.center; r.human = s.human; r.crusher = s.crusher;
@@ -169,6 +203,7 @@ void PathFailureDiagAccess::analyze(PathFailureDiag::Search &s, int cellsAllocat
 		}
 	}
 	// repetition
+	if (!lite)
 	{
 		SigStat &st = s_sigs[s.signature];
 		if (st.count == 0) { st.firstFrame = r.frame; st.zoneRecalcAtFirst = s_zoneRecalcs; }
@@ -321,6 +356,13 @@ void PathFailureDiagAccess::analyze(PathFailureDiag::Search &s, int cellsAllocat
 			r.staticBfs = reached ? 1 : 0;
 		}
 	}
+	if (lite)
+	{
+		s_lite.frontierCliff += r.frontier[R_TERRAIN_CLIFF]; s_lite.frontierStructure += r.frontier[R_TERRAIN_OBSTACLE]; s_lite.frontierAllyBusy += r.frontier[R_ALLY_NOT_IDLE];
+		s_lite.frontierEnemyFixed += r.frontier[R_ENEMY_FIXED]; s_lite.frontierOffMap += r.frontier[R_OFF_MAP]; s_lite.blockerUnits += r.blockerUnits; s_lite.analysedClosedCells += r.closed;
+		if (s_liteSamples.size() < 20000) s_liteSamples.push_back(r);
+		return;
+	}
 	s_records.push_back(r);
 }
 
@@ -438,18 +480,33 @@ void report(FILE *out)
 	}
 }
 
+namespace
+{
+const char kCsvHeader[] = "frame,object,template,player,team,human,aistate,cmd,attackPath,hier,surfaces,crusher,radius,center,layer,destLayer,fromX,fromY,rawToX,rawToY,startX,startY,goalX,goalY,zone1,zone2,pops,cellsAllocated,closed,ms,sig,repeat,prevFrame,zoneRecalcsSincePrev,goalType,goalFlags,goalPinched,goalObstacle,goalNeighbours,goalValidNeighbours,goalReachedNeighbours,nearestClosedCells,bboxW,bboxH,fCliff,fWater,fRubble,fStruct,fOther,fOffMap,fAllyNoAI,fAllyBusy,fEnemyFixed,fPasses,blockerUnits,staticBfs,bfsCells,goalToEdge\n";
+void formatRow(std::string &out, const FailRec &r)
+{
+	char line[3072];
+	snprintf(line, sizeof(line), "%u,%u,%s,%d,%s,%d,%s,%s,%d,%d,%u,%d,%d,%d,%d,%d,%.1f,%.1f,%.1f,%.1f,%d,%d,%d,%d,%d,%d,%u,%u,%u,%.4f,%016llX,%u,%u,%u,%s,%s,%d,%s,%d,%d,%d,%.2f,%d,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%u,%.0f\n",
+		r.frame, r.object, r.tmpl.c_str(), r.player, r.team.c_str(), r.human, aiStateName(r.aiState), cmdName(r.cmd), r.attackPath, r.hier, r.surfaces, r.crusher, r.radius, r.center, r.layer, r.destLayer, r.fx, r.fy, r.rx, r.ry, r.sx, r.sy, r.gx, r.gy, r.zone1, r.zone2, r.pops, r.cells, r.closed, r.ms, r.sig, r.repeat, r.sigPrevFrame, r.zoneRecalcsSincePrev, cellTypeName(r.goalType), flagName(r.goalFlags), r.goalPinched, r.goalObstacle.c_str(), r.goalNeighbours, r.goalValidNeighbours, r.goalReachedNeighbours, r.nearestClosed, r.bboxW, r.bboxH, r.frontier[R_TERRAIN_CLIFF], r.frontier[R_TERRAIN_WATER], r.frontier[R_TERRAIN_RUBBLE], r.frontier[R_TERRAIN_OBSTACLE], r.frontier[R_TERRAIN_OTHER], r.frontier[R_OFF_MAP], r.frontier[R_ALLY_NO_AI], r.frontier[R_ALLY_NOT_IDLE], r.frontier[R_ENEMY_FIXED], r.frontier[R_PASSES], r.blockerUnits, r.staticBfs, r.bfsCells, r.goalToEdgeMin);
+	out += line;
+}
+}
+
+const char *sampleCsvHeader() { return kCsvHeader; }
+
+size_t drainSampleCsv(std::string &out)
+{
+	const size_t n = s_liteSamples.size();
+	for (const FailRec &r : s_liteSamples) formatRow(out, r);
+	s_liteSamples.clear();
+	return n;
+}
+
 void writeCsv(FILE *out)
 {
 	if (!out || !enabled()) return;
-	fprintf(out, "frame,object,template,player,team,human,aistate,cmd,attackPath,hier,surfaces,crusher,radius,center,layer,destLayer,fromX,fromY,rawToX,rawToY,startX,startY,goalX,goalY,zone1,zone2,pops,cellsAllocated,closed,ms,sig,repeat,prevFrame,zoneRecalcsSincePrev,goalType,goalFlags,goalPinched,goalObstacle,goalNeighbours,goalValidNeighbours,goalReachedNeighbours,nearestClosedCells,bboxW,bboxH,fCliff,fWater,fRubble,fStruct,fOther,fOffMap,fAllyNoAI,fAllyBusy,fEnemyFixed,fPasses,blockerUnits,staticBfs,bfsCells,goalToEdge\n");
-	for (const FailRec &r : s_records)
-	{
-		fprintf(out, "%u,%u,%s,%d,%s,%d,%s,%s,%d,%d,%u,%d,%d,%d,%d,%d,%.1f,%.1f,%.1f,%.1f,%d,%d,%d,%d,%d,%d,%u,%u,%u,%.4f,%016llX,%u,%u,%u,%s,%s,%d,%s,%d,%d,%d,%.2f,%d,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%u,%.0f\n",
-			r.frame, r.object, r.tmpl.c_str(), r.player, r.team.c_str(), r.human, aiStateName(r.aiState), cmdName(r.cmd), r.attackPath, r.hier, r.surfaces, r.crusher, r.radius, r.center, r.layer, r.destLayer,
-			r.fx, r.fy, r.rx, r.ry, r.sx, r.sy, r.gx, r.gy, r.zone1, r.zone2, r.pops, r.cells, r.closed, r.ms, r.sig, r.repeat, r.sigPrevFrame, r.zoneRecalcsSincePrev,
-			cellTypeName(r.goalType), flagName(r.goalFlags), r.goalPinched, r.goalObstacle.c_str(), r.goalNeighbours, r.goalValidNeighbours, r.goalReachedNeighbours, r.nearestClosed, r.bboxW, r.bboxH,
-			r.frontier[R_TERRAIN_CLIFF], r.frontier[R_TERRAIN_WATER], r.frontier[R_TERRAIN_RUBBLE], r.frontier[R_TERRAIN_OBSTACLE], r.frontier[R_TERRAIN_OTHER], r.frontier[R_OFF_MAP],
-			r.frontier[R_ALLY_NO_AI], r.frontier[R_ALLY_NOT_IDLE], r.frontier[R_ENEMY_FIXED], r.frontier[R_PASSES], r.blockerUnits, r.staticBfs, r.bfsCells, r.goalToEdgeMin);
-	}
+	fputs(kCsvHeader, out);
+	std::string text;
+	for (const FailRec &r : s_records) { text.clear(); formatRow(text, r); fputs(text.c_str(), out); }
 }
 }
