@@ -31,6 +31,7 @@
 #include "Common/SimulationTickStats.h"
 #include "Common/DeterminismFingerprint.h"
 #include "Common/ScriptProfile.h"
+#include "GameLogic/Pathfinder/PathFailureDiag.h"
 
 #include <algorithm>
 #include <array>
@@ -272,6 +273,12 @@ private:
 			if (envText("GENERALS_LINE_TRACE_HASH")) line(f, "line decision digest: %016llX\n", Pathfinder::lineTraceDigest());
 		}
 		if (m_recorder.deepPaths()) reportPaths(out, base);
+		if (PathFailureDiag::enabled())
+		{
+			PathFailureDiag::report(out[0]);
+			if (FILE *f = fopen((base + "_pathfail.txt").c_str(), "w")) { PathFailureDiag::report(f); fclose(f); }
+			if (FILE *f = fopen((base + "_pathfail.csv").c_str(), "w")) { PathFailureDiag::writeCsv(f); fclose(f); }
+		}
 		if (ScriptProfile::enabled())
 		{
 			ScriptProfile::report(out[0]);

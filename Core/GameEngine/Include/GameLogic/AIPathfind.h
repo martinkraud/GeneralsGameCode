@@ -117,6 +117,7 @@ public:
  */
 class Pathfinder : PathfindServicesInterface, public Snapshot
 {
+	friend struct PathFailureDiagAccess;   // X64.43: read-only diagnostic access (see PathFailureDiag.h)
 public:
 	// X64.40 open-list statistics (GENERALS_PATH_LEGACY=1 disables the index, GENERALS_PATH_VERIFY=1 checks every insertion against the original walk,
 	// GENERALS_PATH_TRACE_HASH=1 hashes the complete open-list evolution).

@@ -5,7 +5,7 @@ it has been false since the X64.35 profiling scopes, so it could neither tell an
 rest of the file. This module replaces that model:
 
   * the file is split into top-level definitions (functions, struct blocks) with a brace counter that ignores #else branches;
-  * measurement code is removed before comparing (PERFORMANCE_PROFILE_SCOPE, PerformanceProfile::..., pathProfile / dispatch statements, `if (pathProfile.enabled()...)`)
+  * measurement code is removed before comparing (PERFORMANCE_PROFILE_SCOPE, PerformanceProfile::..., pathProfile / dispatch statements, `if (pathProfile.enabled()...)`; X64.43: PathFailureDiag::... statements, the failDiag observer and `if (PathFailureDiag::...)`)
     and braces are ignored, so adding or removing profiler hooks is not a behaviour change - everything else, in order, is;
   * every definition must then equal the reference, EXCEPT definitions listed in an explicit table of authorized changes (milestone, reason, what protects it);
   * definitions added or removed since the reference must be listed too, so the table cannot silently grow, and a listed entry that no longer differs is reported as stale.
@@ -146,7 +146,7 @@ def definitions(source):
     return result
 
 
-PROFILE_IDENTS = ('pathProfile', 'dispatch')
+PROFILE_IDENTS = ('pathProfile', 'dispatch', 'failDiag')   # X64.43: failDiag is the read-only PathFailureDiag::Search observer
 
 
 def _skip_statement(t, i):
@@ -188,10 +188,13 @@ def normalise(body):
         if x == 'PerformanceProfile' and i + 1 < n and t[i + 1] == '::':
             i = _skip_statement(t, i)
             continue
+        if x == 'PathFailureDiag' and i + 1 < n and t[i + 1] == '::':   # X64.43 read-only diagnostic hooks
+            i = _skip_statement(t, i)
+            continue
         if x in PROFILE_IDENTS and i + 1 < n and t[i + 1] == '.':
             i = _skip_statement(t, i)
             continue
-        if x == 'if' and i + 3 < n and t[i + 1] == '(' and t[i + 2] in PROFILE_IDENTS and t[i + 3] == '.':
+        if x == 'if' and i + 3 < n and t[i + 1] == '(' and ((t[i + 2] in PROFILE_IDENTS and t[i + 3] == '.') or (t[i + 2] == 'PathFailureDiag' and t[i + 3] == '::')):
             d = 0
             j = i + 1
             while j < n:

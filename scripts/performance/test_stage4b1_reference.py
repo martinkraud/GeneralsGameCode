@@ -135,5 +135,19 @@ class Stage4B1Reference(unittest.TestCase):
         self.assertEqual(self._compare(mutated), [])
 
 
+    def test_x64_43_diagnostic_hooks_are_not_behavioural(self):
+        cur = current_source()
+        mutated = cur.replace('failDiag.pop();', 'failDiag.pop(); PathFailureDiag::noteMapMutation(); if (PathFailureDiag::enabled()) PathFailureDiag::setHierarchical(7);', 1)
+        self.assertNotEqual(mutated, cur)
+        self.assertEqual(self._compare(mutated), [])
+
+    def test_mutation_behavioural_edit_next_to_x64_43_hooks_is_reported(self):
+        cur = current_source()
+        anchor = 'if (parentCell == goalCell)\n\t\t{\n\t\t\tfailDiag.succeeded();'
+        self.assertEqual(cur.count(anchor), 1)
+        mutated = cur.replace(anchor, 'if (parentCell != goalCell)\n\t\t{\n\t\t\tfailDiag.succeeded();', 1)
+        self.assertTrue(any('internalFindPath' in x for x in self._compare(mutated)), self._compare(mutated))
+
+
 if __name__ == '__main__':
     unittest.main()

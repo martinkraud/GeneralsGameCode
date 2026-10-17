@@ -30,6 +30,7 @@
 
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/Pathfinder/ZoneEquivalence.h"
+#include "GameLogic/Pathfinder/PathFailureDiag.h"   // X64.43 diagnostic (inert unless GENERALS_SIM_PATHFAIL)
 #include <string>
 #include <utility>
 #include <vector>
@@ -1435,6 +1436,7 @@ void PathfindCell::releaseInfo()
  */
 void PathfindCell::setGoalUnit(ObjectID unitID, const ICoord2D &pos )
 {
+	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
 	if (unitID==INVALID_ID) {
 		// removing goal.
 		if (m_info) {
@@ -1477,6 +1479,7 @@ void PathfindCell::setGoalUnit(ObjectID unitID, const ICoord2D &pos )
  */
 void PathfindCell::setGoalAircraft(ObjectID unitID, const ICoord2D &pos )
 {
+	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
 	if (unitID==INVALID_ID) {
 		// removing goal.
 		if (m_info) {
@@ -1507,6 +1510,7 @@ void PathfindCell::setGoalAircraft(ObjectID unitID, const ICoord2D &pos )
  */
 void PathfindCell::setPosUnit(ObjectID unitID, const ICoord2D &pos )
 {
+	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
 	if (unitID==INVALID_ID) {
 		// removing position.
 		if (m_info) {
@@ -1571,6 +1575,7 @@ inline ObjectID PathfindCell::getObstacleID() const
  */
 Bool PathfindCell::setTypeAsObstacle( Object *obstacle, Bool isFence, const ICoord2D &pos )
 {
+	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
 	if (m_type!=PathfindCell::CELL_CLEAR && m_type != PathfindCell::CELL_IMPASSABLE) {
 		return false;
 	}
@@ -1629,6 +1634,7 @@ Bool PathfindCell::setTypeAsObstacle( Object *obstacle, Bool isFence, const ICoo
  */
 void PathfindCell::setType( CellType type )
 {
+	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
 #if RETAIL_COMPATIBLE_PATHFINDING_ALLOCATION
 	if (s_useFixedPathfinding) {
 		if (m_obstacleID != INVALID_ID) {
@@ -1659,6 +1665,7 @@ void PathfindCell::setType( CellType type )
  */
 Bool PathfindCell::removeObstacle( Object *obstacle )
 {
+	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
 	if (m_type == PathfindCell::CELL_RUBBLE) {
 		m_type = PathfindCell::CELL_CLEAR;
 	}
@@ -6290,6 +6297,7 @@ void Pathfinder::processPathfindQueue()
 	if (m_zoneManager.needToCalculateZones()) {
 		{
 			PERFORMANCE_PROFILE_SCOPE(ZoneCalc);   // X64.35 attribution only; calls == zone recalculations
+			if (PathFailureDiag::enabled()) PathFailureDiag::noteZoneRecalculation();
 			m_zoneManager.calculateZones(m_map, m_layers, m_extent);
 		}
 		return;
@@ -6887,6 +6895,7 @@ Path *Pathfinder::findPath( Object *obj, const LocomotorSet& locomotorSet, const
 
 	m_zoneManager.clearPassableFlags();
 	Path *hPat = findHierarchicalPath(isHuman, locomotorSet, from, rawTo, false);
+	if (PathFailureDiag::enabled()) PathFailureDiag::setHierarchical(hPat ? 1 : 0);
 	if (hPat) {
 		deleteInstance(hPat);
 	}	else {
@@ -7049,6 +7058,8 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 		m_isTunneling = true;
 	}
 
+	PathFailureDiag::Search failDiag;
+	if (PathFailureDiag::enabled()) failDiag.begin(this, obj, &locomotorSet, from, rawTo, to, parentCell, goalCell, zone1, zone2, radius, centerInCell, isHuman, isCrusher, m_isTunneling, layer, destinationLayer, m_ignoreObstacleID);
 	parentCell->startPathfind(goalCell);
 
 	// initialize "open" list to contain start cell
@@ -7077,11 +7088,13 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 		// take head cell off of open list - it has lowest estimated total path cost
 		parentCell = m_openList.getHead();
 		PerformanceProfile::pathCount(PerformanceProfile::PathWork::HeadPops);
+		failDiag.pop();
 		PerformanceProfile::PathIteration phaseIteration; // Stage4A.2 observer
 		parentCell->removeFromOpenList(m_openList);
 
 		if (parentCell == goalCell)
 		{
+			failDiag.succeeded();
 			// success - found a path to the goal
 			Bool show = TheGlobalData->m_debugAI==AI_DEBUG_PATHS;
 #ifdef INTENSE_DEBUG
@@ -7131,6 +7144,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 	}
 
 	// failure - goal cannot be reached
+	if (failDiag.active) failDiag.failed(cellCount);
 #if defined(RTS_DEBUG)
 #ifdef INTENSE_DEBUG
 	DEBUG_LOG(("internal find path FAILURE..."));
