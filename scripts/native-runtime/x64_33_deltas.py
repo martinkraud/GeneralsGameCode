@@ -11,6 +11,10 @@ Every hunk is a (new_text, old_text) pair in LF line endings.
 """
 
 DELTAS = {
+    # X64.48A (second-PC correctness pass): the open combo box owns its list rectangle in the mouse path (Generals Skirmish slots 7/8 lost clicks).
+    "Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp": [
+        ('\t// X64.48A: an open combo box (the "lone window") owns the rectangle of its drop-down list. The list is a child that extends the combo window\n\t// downwards, and the sibling scan below tries windows in creation order: an earlier sibling that takes no input and overlaps the list (the\n\t// Generals Skirmish screen\'s "Starting Cash" label lies over the lists of player slots 7 and 8) was found first and then discarded as "no input",\n\t// so the click on the list row was lost. The open combo is tried first.\n\tif (m_loneWindow && BitIsSet(m_loneWindow->winGetStyle(), GWS_COMBO_BOX) && !BitIsSet(m_loneWindow->m_status, WIN_STATUS_HIDDEN) &&\n\t\tBitIsSet(m_loneWindow->m_status, WIN_STATUS_ENABLED) && m_loneWindow->winPointInWindow(mousePos->x, mousePos->y))\n\t{\n\t\treturn m_loneWindow->winPointInChild(mousePos->x, mousePos->y);\n\t}\n\n', ""),
+    ],
     "Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp": [
         ("""    // X64.33: any valid size; the diagnostic profiles still pass 800x600 and are validated by their own gates.
     if(!configuration.window || configuration.width<1 || configuration.height<1 ||

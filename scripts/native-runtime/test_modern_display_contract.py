@@ -135,7 +135,9 @@ class ModernDisplayContracts(unittest.TestCase):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import x64_33_deltas
         # X64.36 adds exactly one reviewed file: the Enhanced HUD image-fit hook in the push button draw
+        # X64.48A adds exactly one more reviewed file: the open combo box owns its list rectangle in the mouse path (GameWindowManager.cpp, one hunk)
         self.assertEqual(sorted(x64_33_deltas.DELTAS), [
+            "Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp",
             "Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp",
             "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.cpp",
             "Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.h",

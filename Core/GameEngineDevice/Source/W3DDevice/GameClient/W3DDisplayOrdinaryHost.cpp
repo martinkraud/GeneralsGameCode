@@ -1478,23 +1478,23 @@ void NativeAutoShot()
             Region3D map; TheTerrainLogic->getExtent(&map);
             int ox = 0, oy = 0; TheTacticalView->getOrigin(&ox, &oy);
             const int w = TheTacticalView->getWidth(), h = TheTacticalView->getHeight();
-            char detail[700];
+            char footprint[700];
             const Coord3D &cam = TheTacticalView->getPosition();
-            int used = sprintf_s(detail, "map x=%.0f..%.0f y=%.0f..%.0f camera=%.0f,%.0f view=%dx%d at %d,%d ground", map.lo.x, map.hi.x, map.lo.y, map.hi.y, cam.x, cam.y, w, h, ox, oy);
+            int used = sprintf_s(footprint, "map x=%.0f..%.0f y=%.0f..%.0f camera=%.0f,%.0f view=%dx%d at %d,%d ground", map.lo.x, map.hi.x, map.lo.y, map.hi.y, cam.x, cam.y, w, h, ox, oy);
             const int xs[] = { 0, w / 2, w - 1 }, ys[] = { 0, h / 2, h - 1 };
             for (int yi = 0; yi < 3; ++yi) for (int xi = 0; xi < 3; ++xi) {
                 ICoord2D sp = { ox + xs[xi], oy + ys[yi] }; Coord3D g;
                 if (TheTacticalView->screenToTerrain(&sp, &g)) {
                     float rgb[3] = { 1.0f, 1.0f, 1.0f };
                     NativeWorldEffects::shroudMultiplierAt(g.x, g.y, rgb);
-                    used += sprintf_s(detail + used, sizeof(detail) - used, " [%d,%d]=%.0f,%.0f/shroud%.2f", xi, yi, g.x, g.y, rgb[0]);
+                    used += sprintf_s(footprint + used, sizeof(footprint) - used, " [%d,%d]=%.0f,%.0f/shroud%.2f", xi, yi, g.x, g.y, rgb[0]);
                 }
             }
             unsigned shroudCounts[4]; NativeWorldEffects::shroudSummary(shroudCounts);
-            used += sprintf_s(detail + used, sizeof(detail) - used, " shroud_cells[unexplored=%u fogged=%u clear=%u total=%u]", shroudCounts[0], shroudCounts[1], shroudCounts[2], shroudCounts[3]);
+            used += sprintf_s(footprint + used, sizeof(footprint) - used, " shroud_cells[unexplored=%u fogged=%u clear=%u total=%u]", shroudCounts[0], shroudCounts[1], shroudCounts[2], shroudCounts[3]);
             const NativeWorldEffects::Stats fxs = NativeWorldEffects::stats();
-            used += sprintf_s(detail + used, sizeof(detail) - used, " shroud_cells_drawn=%u effects_dropped=%u shroud_on=%d", fxs.shroudCells, fxs.dropped, TheGlobalData->m_shroudOn ? 1 : 0);
-            StartupDiagnostics::checkpoint("view_footprint", "observed", detail);
+            used += sprintf_s(footprint + used, sizeof(footprint) - used, " shroud_cells_drawn=%u effects_dropped=%u shroud_on=%d", fxs.shroudCells, fxs.dropped, TheGlobalData->m_shroudOn ? 1 : 0);
+            StartupDiagnostics::checkpoint("view_footprint", "observed", footprint);
         }
         char path[MAX_PATH];
         sprintf_s(path, "%s\\autoshot-%s.bmp", directory, tag);
@@ -1565,13 +1565,13 @@ void NativeAutoShot()
                              !TheGameLogic->isClearingGameData() && TheGameLogic->getFrame() > 0;
         const bool context = step.where == 0 || (step.where == 1 && shell && !TheGameLogic->isLoadingMap()) || (step.where == 2 && running);
         if (step.kind != END && context && flowFrames >= stepAt + step.wait) {
-            char detail[1400];
+            char flowText[1400];
             auto topWindow = [](GameWindow *w) { while (w && w->winGetParent()) w = w->winGetParent(); return w; };
             auto usable = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden() || !BitIsSet(c->winGetStatus(), WIN_STATUS_ENABLED)) return false; return w != nullptr; };
             auto find = [](const char *name) { return TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey(name)); };
             auto advance = [&](const char *what, const char *name) {
-                sprintf_s(detail, "step %u: %s %s", stepIndex, what, name ? name : "");
-                StartupDiagnostics::checkpoint("autoflow", "observed", detail);
+                sprintf_s(flowText, "step %u: %s %s", stepIndex, what, name ? name : "");
+                StartupDiagnostics::checkpoint("autoflow", "observed", flowText);
                 ++stepIndex; stepAt = flowFrames; waitFromFrame = TheGameLogic->getFrame();
             };
             bool done = false;
@@ -1609,7 +1609,7 @@ void NativeAutoShot()
                         char name[96];
                         sprintf_s(name, "SkirmishGameOptionsMenu.wnd:ComboBoxPlayer%d", i);
                         GameWindow *combo = find(name);
-                        if (!combo) { sprintf_s(detail, "slot %d: combo missing", i); StartupDiagnostics::checkpoint("slotprobe", "fail", detail); continue; }
+                        if (!combo) { sprintf_s(flowText, "slot %d: combo missing", i); StartupDiagnostics::checkpoint("slotprobe", "fail", flowText); continue; }
                         if (step.kind == SLOT_FILL) {
                             if (i == 0) continue;                                   // the human slot
                             const int entries = GadgetComboBoxGetLength(combo);
@@ -1643,12 +1643,12 @@ void NativeAutoShot()
                         GameWindow *hit = underMouse(cx + cw / 2, cy + ch / 2);
                         {
                             GameWindow *top = combo; while (top->winGetParent()) top = top->winGetParent();
-                            sprintf_s(detail, "slot %d context: top status=0x%x (above=%d below=%d hidden=%d enabled=%d) combo status=0x%x hit_ignoring_enabled=%s modal=%d captor=%d", i,
+                            sprintf_s(flowText, "slot %d context: top status=0x%x (above=%d below=%d hidden=%d enabled=%d) combo status=0x%x hit_ignoring_enabled=%s modal=%d captor=%d", i,
                                       (unsigned)top->winGetStatus(), BitIsSet(top->winGetStatus(), WIN_STATUS_ABOVE) ? 1 : 0, BitIsSet(top->winGetStatus(), WIN_STATUS_BELOW) ? 1 : 0,
                                       BitIsSet(top->winGetStatus(), WIN_STATUS_HIDDEN) ? 1 : 0, BitIsSet(top->winGetStatus(), WIN_STATUS_ENABLED) ? 1 : 0, (unsigned)combo->winGetStatus(),
                                       describe(underMouse(cx + cw / 2, cy + ch / 2, true)).c_str(),
                                       0, TheWindowManager->winGetCapture() ? 1 : 0);
-                            if (i == 1 || i == 7) StartupDiagnostics::checkpoint("slotprobe", "context", detail);
+                            if (i == 1 || i == 7) StartupDiagnostics::checkpoint("slotprobe", "context", flowText);
                         }
                         const bool comboHit = hit == combo || (hit && hit->winGetParent() == combo);
                         GameWindow *drop = GadgetComboBoxGetDropDownButton(combo);
@@ -1700,10 +1700,10 @@ void NativeAutoShot()
                                 }
                             }
                         }
-                        sprintf_s(detail, "slot %d display=%dx%d combo=%d,%d %dx%d hit_combo=%d(%s) drop=%d,%d %dx%d hit_drop=%s list_open=%d list=%d,%d %dx%d rows=%d reachable=%d first_unreachable_row=%d at=%d,%d by=%s ignoring_enabled=%s chain=%s",
+                        sprintf_s(flowText, "slot %d display=%dx%d combo=%d,%d %dx%d hit_combo=%d(%s) drop=%d,%d %dx%d hit_drop=%s list_open=%d list=%d,%d %dx%d rows=%d reachable=%d first_unreachable_row=%d at=%d,%d by=%s ignoring_enabled=%s chain=%s",
                                   i, TheDisplay->getWidth(), TheDisplay->getHeight(), cx, cy, cw, ch, comboHit ? 1 : 0, describe(hit).c_str(), dx, dy, dw, dh, describe(hitDrop).c_str(),
                                   open ? 1 : 0, lx, ly, lw, lh, entries, rowsOk, firstBad, badX, badY, badWindow.c_str(), badIgnoringEnabled.c_str(), chain.c_str());
-                        StartupDiagnostics::checkpoint("slotprobe", (comboHit && (!open || rowsOk == entries)) ? "ok" : "defect", detail);
+                        StartupDiagnostics::checkpoint("slotprobe", (comboHit && (!open || rowsOk == entries)) ? "ok" : "defect", flowText);
                         GadgetComboBoxHideList(combo);
                     }
                     advance(step.kind == SLOT_FILL ? "filled the Skirmish slots" : "probed the Skirmish slots", nullptr); done = true;
@@ -1724,11 +1724,11 @@ void NativeAutoShot()
                 Player *player = ThePlayerList ? ThePlayerList->getLocalPlayer() : nullptr;
                 unsigned structures = 0;
                 for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject()) if (obj->isKindOf(KINDOF_STRUCTURE)) ++structures;
-                sprintf_s(detail, "state %s: frame=%u side=%s money=%u rank=%d skill=%d objects=%u structures=%u logic_crc=%08X", step.a,
+                sprintf_s(flowText, "state %s: frame=%u side=%s money=%u rank=%d skill=%d objects=%u structures=%u logic_crc=%08X", step.a,
                           TheGameLogic->getFrame(), player && player->getPlayerTemplate() ? player->getPlayerTemplate()->getName().str() : "?",
                           player ? player->getMoney()->countMoney() : 0u, player ? player->getRankLevel() : -1, player ? player->getSkillPoints() : -1,
                           TheGameLogic->getObjectCount(), structures, TheGameLogic->getCRC(CRC_RECALC));
-                StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                StartupDiagnostics::checkpoint("autoflow", "state", flowText);
                 // the engine's logic CRC split like the X64.41 trace (objects / partition / players / ai) and one CRC per object, so a
                 // difference between the saved world and the loaded one names what differs instead of just saying that it does
                 auto crcOf = [](Snapshot *snapshot) {
@@ -1743,9 +1743,9 @@ void NativeAutoShot()
                     now[obj->getID()] = crcOf(obj);
                     names[obj->getID()] = obj->getTemplate() ? obj->getTemplate()->getName().str() : "?";
                 }
-                sprintf_s(detail, "components %s: partition=%08X players=%08X ai=%08X rng=%08X", step.a, crcOf(ThePartitionManager), crcOf(ThePlayerList),
+                sprintf_s(flowText, "components %s: partition=%08X players=%08X ai=%08X rng=%08X", step.a, crcOf(ThePartitionManager), crcOf(ThePlayerList),
                           crcOf(TheAI), static_cast<unsigned>(GetGameLogicRandomSeedCRC()));
-                StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                StartupDiagnostics::checkpoint("autoflow", "state", flowText);
                 if (isSaved) { savedObjects = now; savedNames = names; }
                 if (isLoaded) {
                     unsigned same = 0, differ = 0, missing = 0, extra = 0, shown = 0;
@@ -1755,13 +1755,13 @@ void NativeAutoShot()
                         if (it->second == entry.second) { ++same; continue; }
                         ++differ;
                         if (shown++ < 6) {
-                            sprintf_s(detail, "object differs: id=%u template=%s saved=%08X loaded=%08X", entry.first, savedNames[entry.first].c_str(), entry.second, it->second);
-                            StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                            sprintf_s(flowText, "object differs: id=%u template=%s saved=%08X loaded=%08X", entry.first, savedNames[entry.first].c_str(), entry.second, it->second);
+                            StartupDiagnostics::checkpoint("autoflow", "state", flowText);
                         }
                     }
                     for (const auto &entry : now) if (!savedObjects.count(entry.first)) ++extra;
-                    sprintf_s(detail, "objects compared saved vs loaded: identical=%u differ=%u missing_after_load=%u new_after_load=%u", same, differ, missing, extra);
-                    StartupDiagnostics::checkpoint("autoflow", "state", detail);
+                    sprintf_s(flowText, "objects compared saved vs loaded: identical=%u differ=%u missing_after_load=%u new_after_load=%u", same, differ, missing, extra);
+                    StartupDiagnostics::checkpoint("autoflow", "state", flowText);
                 }
                 ++stepIndex; stepAt = flowFrames; waitFromFrame = TheGameLogic->getFrame(); done = true;
             }
@@ -1779,19 +1779,19 @@ void NativeAutoShot()
                     for (GameWindow *c = w; c && used < 150; c = c->winGetParent())
                         used += sprintf_s(chain + used, sizeof(chain) - used, "[hidden=%d enabled=%d]", c->winIsHidden() ? 1 : 0, BitIsSet(c->winGetStatus(), WIN_STATUS_ENABLED) ? 1 : 0);
                 }
-                sprintf_s(detail, "step %u: %s not available: %s", stepIndex, step.a ? step.a : "", chain);
-                StartupDiagnostics::checkpoint("autoflow", "fail", detail);
+                sprintf_s(flowText, "step %u: %s not available: %s", stepIndex, step.a ? step.a : "", chain);
+                StartupDiagnostics::checkpoint("autoflow", "fail", flowText);
                 shoot("flowfail");
                 flowFailed = true;
                 TheGameEngine->setQuitting(TRUE);
             }
         } else if (step.kind != END && !context && flowFrames % 900 == 0) {
             // waiting for a context that does not come: say what the engine thinks it is doing
-            char detail[200];
-            sprintf_s(detail, "step %u waits for context %d: shell=%d in_game=%d loading_map=%d loading_save=%d clearing=%d frame=%u input=%d", stepIndex,
+            char flowText[200];
+            sprintf_s(flowText, "step %u waits for context %d: shell=%d in_game=%d loading_map=%d loading_save=%d clearing=%d frame=%u input=%d", stepIndex,
                       step.where, shell ? 1 : 0, TheGameLogic->isInGame() ? 1 : 0, TheGameLogic->isLoadingMap() ? 1 : 0, TheGameLogic->isLoadingSave() ? 1 : 0,
                       TheGameLogic->isClearingGameData() ? 1 : 0, TheGameLogic->getFrame(), TheInGameUI && TheInGameUI->getInputEnabled() ? 1 : 0);
-            StartupDiagnostics::checkpoint("autoflow", "waiting", detail);
+            StartupDiagnostics::checkpoint("autoflow", "waiting", flowText);
             if (flowFrames % 2700 == 0) shoot("stalled");
         } else if (step.kind == END && stepAt != 0xFFFFFFFFu) {
             StartupDiagnostics::checkpoint("autoflow", "observed", "flow complete");
