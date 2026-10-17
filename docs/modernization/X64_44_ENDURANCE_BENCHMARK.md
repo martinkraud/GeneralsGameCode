@@ -1,7 +1,7 @@
 # X64.44 - Real-game scalability / chokepoint endurance benchmark (CP18)
 
-Status: **instrumentation delivered; native run pending.** This is a measurement milestone. Nothing about the simulation, the pathfinder, the AI, timing, gameplay or replays was changed, and no
-conclusion is published here: the conclusions belong to the human endurance run that this document prepares. Optimization, multithreading, Enhanced AI and Game Speed are explicitly out of scope.
+Status: **CLOSED - instrumentation delivered, native run completed and analysed (section 9).** This is a measurement milestone. Nothing about the simulation, the pathfinder, the AI, timing, gameplay or replays was changed.
+Optimization, multithreading, Enhanced AI and Game Speed were explicitly out of scope.
 
 Starting state: `dev/modern-engine` = `origin/dev/modern-engine` = `274c32e0a` (X64.43), clean tree. Authoritative benchmark fingerprint `74F2CB528BED42ED`.
 
@@ -124,3 +124,72 @@ statements scoped like "in this workload on this machine, sustained 30 TPS began
 One human-played match is one sample on one machine; it is not deterministic. The tick figures come from the logic thread only; render cost shows up in `achieved_tps` / `engine_frames`, not in the tick time. `stationary_nonidle_units` is an
 estimate of potential blockers from AI state, not the exact `checkForMovement` outcome (the sampled failure analyses give the exact frontier). The failure analysis is rate-limited (one per 10 s of game time), so its counts are samples. The
 object scan counts live objects of the engine's list, including scenery and projectiles in `objects_total`. Intervals with paused frames are excluded from lag and TPS conclusions.
+
+## 9. Native result (2026-10-17) - CLOSED
+
+Evidence: `build/endurance-telemetry/x64-44-endurance-v1-20261017T075742Z/` (interval/tick/pathfail CSV, meta, summary, `analysis.json`, and `endurance-run-00000000.rep`, the preserved replay of the match; hash verified), candidate receipts in
+`build/dev-runtimes/native/Generals/x64-44-endurance-v1/normal-launch/` (exit code 0, no crash dump). These directories are git-ignored build output and are not touched by the cleanup tools.
+
+### 9.1 The run
+
+Twilight Flame (an 8-slot map; not a 6-player map), one human plus 5 Brutal AI (China, America, 3x GLA), normal launch, Normal speed. **92 656 ticks = 51.5 min of game time, 51.3 min of wall time, no pauses.** The AI armies did **not** reach the
+historical pathological size: no huge stationary armies at chokepoints were observed by the player, and the telemetry agrees (peak 153 stationary non-idle units).
+
+| minute | objects | units | stationary non-idle | p99 tick ms | worst ms | ai_object_base_update ms/tick | path_search ms/tick |
+|---|---|---|---|---|---|---|---|
+| 5 | 711 | 109 | 25 | 7.1 | 17.0 | 0.72 | 0.06 |
+| 10 | 911 | 267 | 92 | 10.4 | 21.4 | 2.18 | 0.13 |
+| 15 | 1 006 | 343 | 94 | 11.1 | 41.5 | 2.64 | 0.14 |
+| 20 | 1 022 | 351 | 96 | 11.7 | 28.3 | 2.38 | 0.13 |
+| 25 | 1 024 | 362 | 99 | 12.8 | 41.9 | 2.36 | 0.16 |
+| 30 | 1 068 | 427 | 134 | 13.0 | 40.2 | 2.54 | 0.18 |
+| 35 | 1 047 | 423 | 118 | 10.9 | 32.1 | 2.18 | 0.13 |
+| 40 | 1 038 | 420 | 69 | 12.8 | 39.1 | 2.74 | 0.20 |
+| 45 | 953 | 357 | 43 | 8.2 | 15.3 | 1.41 | 0.03 |
+| 50 | 841 | 274 | 42 | 9.8 | 12.2 | 1.13 | 0.04 |
+| 51.5 | 727 | 213 | 26 | 5.6 | 11.0 | 0.90 | 0.01 |
+
+(5-minute windows; each row is the end of its window.) Peaks: **1 227 live objects (28 min), 469 units (35 min), 222 structures (15.7 min), 153 stationary non-idle units (29 min)**; per-slot unit peaks: human 163, AIs 56-118. The world reached about 1 000 objects by ~10 min,
+plateaued, and shrank after ~40 min as AIs were destroyed.
+
+### 9.2 PROVEN FOR THIS RUN (this workload, this machine, one match)
+
+* **Within budget:** tick mean 4.15 ms (12 % of 33.333 ms), median 4.01, p95 6.87, p99 10.97 (33 %), p99.9 17.2 (52 %), worst 41.9 ms (126 %). Ticks above 16.67 / 25 / 33.333 / 50 ms: 109 / 30 / 6 / 0 (0.118 % / 0.032 % / 0.0065 % / 0 %).
+  Derived missed deadlines 6, longest catch-up run 1, maximum backlog 8.5 ms.
+* **Cadence:** 308 un-paused intervals, achieved rate median 29.998 TPS (range 29.89-30.18); interval wall time 9.907-10.037 s (ideal 10.000); the queue-model real-time lag at the end was 0.35 s over 51 minutes. Render FPS median 95, minimum 51, never near
+  the 30 boundary, so the logic was not render-bound. **No scalability knee and no sustained degradation occurred.**
+* **CPU attribution (share of the summed tick time):** ai_object_base_update 48 %, object_update_loops 21 %, partition 7.6 %, scripts 5.4 %, path search 2.8 %, locomotor 2.7 %, path request entries 2.3 %, ai_player_strategy 1.6 %, ZoneCalc (all parts) 1.4 %
+  (783 recalculations, 7.05 ms each). `ai_object_base_update` cost 4-8 microseconds per unit per tick, **linear** with the unit count (7.7 / 7.2 / 6.2 / 5.8 / 4.0 us per unit in successive 10-minute windows); no superlinear growth was observed.
+* **Pathfinding:** 54 142 searches, 834 exhausted the open list (1.5 %), 128 of those took >= 5 ms, worst failing search 33 ms, total failing time 1.79 s = 0.47 % of tick time. All 44 sampled lite analyses had blocking units on the explored frontier (the X64.43
+  mechanism, at small scale); 20 of the 44 had no hierarchical path (fallback), 41 of 44 were terrain-connected. Not a meaningful scalability cost in this run.
+* **The tail events are deterministic simulation events.** The complete match (92 656 frames, human commands included) was re-simulated headless from the preserved replay: **zero CRC mismatches, 3 088 matching fingerprint checkpoints (digest `BBEBE2E01257A379`),
+  926 replay CRC checks**, and 26 of the 30 slowest native ticks occurred on the same simulation frames (per-tick correlation 0.89). Most are path searches of 20-34 ms; one is a 38.7 ms script action (`AI player build near a supply source`, script
+  `GLA Base Expand Start 26`, frame 37 450, 20.8 min); one is an ~18 ms `ai_player_strategy` tick (frame 18 702, 10.4 min). One event each: nothing is optimised on this basis.
+* **First long real-game determinism validation:** a 51-minute human-played Skirmish recorded by the native build re-simulates with no divergence (the Starting Cash replay fix of X64.41 was present). This is evidence for this match and this build; it is
+  not a proof of general replay or network determinism.
+* **Real graphical game vs headless:** the same simulation costs 4.15 ms per tick in the native game and 2.12 ms headless (**about 1.95x**, uniform across ticks while the tail events cost about the same). The cause is **not known** (candidates: client-side
+  modules attached to objects, cache pressure from rendering on the same thread, memory behaviour). It applies to this observed run, not to all workloads; the canonical headless numbers in `PERFORMANCE.md` are therefore a lower bound on real-game cost.
+
+### 9.3 SUGGESTED (not demonstrated)
+
+* Substantial measured headroom exists at this scale. At the observed 4-8 us per unit per tick a rough linear extrapolation reaches the budget at several times this unit count; this is an extrapolation, **not a supported limit**, and no unit-count maximum is claimed.
+* The occasional over-budget ticks are rare single-thread bursts (path search, one script action, one AI strategy tick), which parallelising the per-object loop would not remove.
+
+### 9.4 NOT TESTED / NOT ESTABLISHED
+
+* The historical pathological workload (very large AI armies accumulating at cliffs and chokepoints, armies failing to attack, progressive slowdown) was **not reproduced**; this run says nothing about performance under it. That workload was remembered from Zero Hour and
+  is to be measured there.
+* Other maps, Zero Hour, multi-hour matches, larger or different AI mixes, multiplayer/lockstep.
+* The player's report of occasional mouse clicks that needed repeating: **unconfirmed**. There are no click timestamps and the telemetry has no per-render-frame timing (only per-interval render frame counts and logic-tick times), so no correlation can be established or
+  excluded. Do not treat it as simulation lag.
+
+### 9.5 Telemetry fix made at closeout
+
+The summary reported `last_frame=1`: the update that leaves the game resets the frame counter and had been recorded as the final "tick" (in this run: frame 92 656, 32.1 ms, the world teardown; the published count of 30 ticks above 25 ms includes it, 29 without).
+`LogicTick` now treats an update whose frame counter went backwards as a non-tick (`scripts/performance/test_x64_44_endurance_contract.py`, 3 new tests). Telemetry-only change; fingerprint `74F2CB528BED42ED` unchanged with it on. Not yet confirmed natively.
+
+### 9.6 Decision (precommitted rules A-D)
+
+Outcome **A** for the observed workload: the serial simulation remained healthy at the largest natural scale reached. **Do not add multithreading before Zero Hour on this evidence; the serial CPU optimization phase stays closed.** Next major work: Zero Hour native
+validation and completeness, then repeat the endurance telemetry there (reusing `GENERALS_ENDURANCE`). Open backlog items from this run: the 1.95x real-vs-headless per-object overhead (cause unknown), and an optional per-render-frame hitch log if the input report needs
+chasing.

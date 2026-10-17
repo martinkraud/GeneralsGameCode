@@ -23,6 +23,7 @@ How to read the tables:
 | P-5 | Negative results: superweapon-target snapshot, shadow-volume reuse | AI / renderer | - | ~4 ms per run; 0 ms | - | good | `4caebb9e2`, `f0c347b34` (+ X64.42 doc) | INSUFFICIENT value - not recommended |
 | P-6 | `PATHFIND_CELLS_PER_FRAME` is not a CPU bound | pathfinder queue | one request may expand the whole map | documentation of semantics | - | good (source reading + observed 107 143 expansions) | `bbcb68df1` | POSSIBLE (documentation) |
 | P-7 | Remaining exhausted A* searches are sealed pockets (stationary non-idle allied / uncrushable enemy units); no exact shortcut | pathfinder (`checkForMovement`, `internalFindPath`) | 6-7 searches above 20 ms per heavy run | explanation + decision not to optimise (ceiling 0.16-0.7 s per run) | - | strong (diagnostic on 14 maps, repeat and state-mutation measurement) | (diagnostic only; see the X64.43 document) | POSSIBLE (explanation only) |
+| P-8 | Graphical game costs ~1.95x the headless tick for the same simulation (this run) | native client vs headless | mean tick 4.15 vs 2.12 ms | observation only; cause unknown | - | limited (one run, re-simulated) | (X64.44 closeout) | INSUFFICIENT EVIDENCE |
 
 ## AMD64 porting - [`AMD64_PORTING_FINDINGS.md`](AMD64_PORTING_FINDINGS.md)
 
@@ -44,6 +45,7 @@ How to read the tables:
 | R-1 | Generals replay header omitted the Skirmish Starting Cash | `GameInfoToAsciiString`, `RecorderClass::startRecording`, `Player::init` | re-simulation diverges at the first purchase the smaller bank cannot afford (frame 1458 in the proven case); the state CRC does not contain money | strong (forced-cash trace matches 6 640 frames, native test of the fix) | `dff555c24` | POSSIBLE (any build exposing non-default cash in Generals) |
 | R-2 | Deterministic benchmark + fingerprint + CRC-trace methodology | `ReplaySimulation.cpp`, `DeterminismFingerprint.h`, `scripts/diagnostics/` | - | strong (used to verify every optimization) | `4d1db422a`, `94428fa89` | POSSIBLE (tooling) |
 | R-3 | AMD64 floating-point policy characterised, cross-architecture equivalence **not** proven | `setFPMode` (`GameLogic.cpp`) | - | good | `4a36a0cd2` | POSSIBLE |
+| R-4 | 51-minute human-played match re-simulates headless with zero CRC mismatches | `ReplaySimulation.cpp`, replay CRC | - | strong for this match; not a general proof | - | (X64.44 closeout) | OBSERVATION |
 
 ## Related documents
 

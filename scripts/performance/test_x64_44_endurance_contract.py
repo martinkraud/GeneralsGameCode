@@ -26,6 +26,17 @@ def strip_comments(source):
     return re.sub(r"//[^\n]*", "", source)
 
 
+EXIT_GUARD = "if (frameAfter < m_frameBefore) { ++s.nonTickUpdates; return; }"
+
+
+def exit_guard_problems(source):
+    if EXIT_GUARD not in source:
+        return ["the game-exit update guard is missing"]
+    if source.index(EXIT_GUARD) > source.index("s.lastFrame = frameAfter;"):
+        return ["the game-exit guard comes after s.lastFrame is updated"]
+    return []
+
+
 def telemetry_problems(source):
     found = []
     source = strip_comments(source)
@@ -69,6 +80,18 @@ class EnduranceContract(unittest.TestCase):
     def test_the_engine_hooks_wrap_only_the_logic_update(self):
         for path in ENGINES:
             self.assertEqual(engine_problems(path.read_text(encoding="utf-8")), [], str(path))
+
+    def test_the_game_exit_update_is_not_recorded_as_a_tick(self):
+        self.assertEqual(exit_guard_problems(self.src), [])
+
+    def test_mutation_removing_the_exit_guard_is_detected(self):
+        mutated = self.src.replace(EXIT_GUARD, "", 1)
+        self.assertNotEqual(mutated, self.src)
+        self.assertTrue(exit_guard_problems(mutated))
+
+    def test_mutation_guard_after_the_last_frame_update_is_detected(self):
+        mutated = self.src.replace(EXIT_GUARD, "", 1).replace("s.lastFrame = frameAfter;", "s.lastFrame = frameAfter;" + chr(10) + "	" + EXIT_GUARD, 1)
+        self.assertTrue(exit_guard_problems(mutated))
 
     def test_mutation_a_flush_is_detected(self):
         mutated = self.src.replace("WriteFile(h, text.data()", "FlushFileBuffers(h); WriteFile(h, text.data()", 1)

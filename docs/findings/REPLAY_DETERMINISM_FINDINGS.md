@@ -104,3 +104,10 @@ local oracles that compare the actual intermediate data.
 `0x0008001f` instead of Win32's `0x000a001f`; `MXCSR 0x1f80` on both); no invalid-parameter callback fires. SSE2 single operations round to binary32 naturally, but double expressions, library calls and
 instruction order are not governed by the x87 precision setting. **No startup register setting proves that a 32-bit and a 64-bit build simulate identically**, and cross-architecture replay/lockstep
 compatibility is **not validated** in this fork. Details: `docs/modernization/X64_11_NATIVE_STARTUP_READINESS.md` ("AMD64 floating-point decision"), test `NativeStartupFPTest.cpp`.
+
+---
+
+## R-4. A complete 51-minute human-played Skirmish re-simulates without divergence (X64.44, observation)
+
+The native build recorded a 92 656-frame match (human + 5 Brutal AI, Twilight Flame, Starting Cash fix present). Headless re-simulation of the preserved replay produced **zero CRC mismatches over 926 replay CRC checks and 3 088 fingerprint checkpoints**, and reproduced 26 of the 30 slowest native ticks on the same
+frames. This is the first long real-game determinism validation of this fork (one match, one build, one machine). It is **not** a proof of replay determinism in general, of cross-architecture determinism, or of network lockstep (R-3 is unchanged).

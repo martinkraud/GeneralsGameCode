@@ -308,3 +308,10 @@ Record: `docs/modernization/X64_43_FAILING_PATH_INVESTIGATION.md`.
 
 * "Exhaustive failing path searches" (the remaining ~70-80 ms tail): characterised (≈104 000 pops over ≈21 000 distinct cells and ≈6 M line-walk callbacks) but no exact optimisation is known.
 * One-off 30-60 ms script values seen in a 16-map table did not reproduce on re-run and are noise, not an engine regression. Frame 0 (map load) AI supply-source setup of 15-120 ms is a one-time load cost, not a gameplay tick.
+
+---
+
+## P-8. The graphical game costs about 1.95x the headless tick for the same simulation (X64.44, observation)
+
+**Classification: insufficient evidence for a cause.** The preserved 92 656-tick match cost 4.15 ms per tick in the native game and 2.12 ms re-simulated headless (per-tick correlation 0.89); the slowest ticks cost about the same in both (26 of the 30 slowest coincide), so the extra cost is
+roughly uniform rather than a tail effect. Candidate causes (not examined): object-attached client-side modules, cache pressure from rendering on the same thread, memory behaviour. Applies to this run only. Backlog item; not investigated.

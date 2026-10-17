@@ -25,8 +25,7 @@ by the engine. It is deterministic, repeatable, headless (no window, GPU, audio 
 The first `GameLogic::update` (map start, 270-470 ms) is excluded and reported separately.
 
 **Two kinds of benchmark.** The headless deterministic benchmark above is the canonical tool for exact before/after comparisons of serial optimizations. A second, real-game *endurance* measurement (X64.44, `modernization/X64_44_ENDURANCE_BENCHMARK.md`)
-records a time series of a long human-played Skirmish (live objects, achieved tick rate, tick distribution, phase costs, path failures) to find where, if anywhere, a naturally growing match stops sustaining 30 TPS. Its results are not part of this page until
-the native run has been analysed.
+records a time series of a long human-played Skirmish (live objects, achieved tick rate, tick distribution, phase costs, path failures) to find where, if anywhere, a naturally growing match stops sustaining 30 TPS. Its first result is in section 10.
 
 **Determinism fingerprint.** FNV-1a over `{logic frame, GameLogic::getCRC(), object count}` every 30 frames (2 400 checkpoints). The value for this benchmark is **`74F2CB528BED42ED`** and it was identical
 in every run of every build and every optimised/legacy switch from X64.38 to X64.42, i.e. the optimisations did not change the simulation. A matching fingerprint is necessary but not sufficient evidence
@@ -181,3 +180,12 @@ and the `*_VERIFY` switches to compare an optimisation against the original on e
 
 After X64.43: yes, for this workload. The heavy 8-player benchmark misses the 33.333 ms budget about 8 times in 72 000 ticks with a 0.7 ms median; the remaining tail is workload-specific (large armies sealing chokepoints) and has no cheap exact
 shortcut; `ai_object_base_update` is throughput, not tail; further gains would need parallelism or behaviour changes. The proposed next measurement is a real-game scalability benchmark (design in the X64.43 document), not another optimization.
+
+## 10. Real-game endurance result (X64.44; one match, this machine)
+
+A 51.5-minute human-played Twilight Flame Skirmish (human + 5 Brutal AI, normal launch, Normal speed) reached **1 227 live objects and 469 units** at its peak. Tick time: mean 4.15 ms (12 % of the 33.333 ms budget), median 4.01, p95 6.87, p99 10.97, p99.9 17.2, worst 41.9 ms; 6 ticks over 33.333 ms
+and none over 50 ms; achieved cadence median 29.998 TPS; real-time lag after 51 minutes 0.35 s; render FPS median 95 (minimum 51). No scalability knee or sustained degradation. `ai_object_base_update` is the dominant phase (48 %) at 4-8 microseconds
+per unit per tick and scaled linearly with units; path search was 2.8 % of tick time and failing searches 0.47 %. Details, per-window table and the proven / suggested / not-tested split: [`modernization/X64_44_ENDURANCE_BENCHMARK.md`](modernization/X64_44_ENDURANCE_BENCHMARK.md).
+
+Limits that matter for reading these numbers: the historical pathological workload (huge AI armies stuck at chokepoints, remembered from Zero Hour) did **not** occur in this run and is not tested; nothing here is a unit-count limit; the same simulation cost about 1.95x more per tick in the graphical game
+than headless in this run (cause unknown), so the headless numbers above are a lower bound on real-game cost.

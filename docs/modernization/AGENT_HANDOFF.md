@@ -461,10 +461,9 @@ Speed must drive `FramePacer::setLogicTimeScaleFps`, default 30, campaign Normal
 the staged `generalsv_r1diag.exe` is in the v4 candidate folder; the human step is 2 minutes (see the doc, section 12). `test_stage4b1_reference.py` is now a function-level contract with authorization tables and mutation tests.
 Tail after X64.41: periodic script tick (every 300 frames, 70-110 ms) and update-module spikes; path search is no longer the limiter.
 
-## X64.44 Real-game endurance benchmark (CP18, instrumentation delivered, native run pending)
-Read `X64_44_ENDURANCE_BENCHMARK.md`. Measurement only. `GENERALS_ENDURANCE=<dir>` (`Core/GameEngine/Source/Common/EnduranceTelemetry.cpp`, hooks in both `GameEngine::update`s) writes a 10 s game-time interval CSV, a per-tick file, meta and summary, using buffered
-`WriteFile` only (never flush). `PathFailureDiag` got a lite mode (counters + one rate-limited, time-excluded failure analysis per 300 frames). Analysis: `scripts/diagnostics/Analyze-EnduranceTelemetry.py`. Launcher: `scripts/native-runtime/Run-EnduranceTest.cmd/.ps1`;
-candidate `x64-44-endurance-v1`. Nothing is concluded until the human run returns; do not optimise or change AI/pathing meanwhile. Decision criteria A-D are in the document.
+## X64.44 Real-game endurance benchmark (CP18, CLOSED)
+Read `X64_44_ENDURANCE_BENCHMARK.md` (section 9 has the native result). Measurement only. 51.5-minute Twilight Flame match, human + 5 Brutal AI: peak 1 227 objects / 469 units; tick mean 4.15 ms, p99 10.97, worst 41.9; 6 ticks over 33.333 ms; 29.998 TPS; no knee. The huge-army chokepoint workload did NOT occur and is NOT tested (it was remembered from Zero Hour). The match re-simulates headless with zero CRC mismatches (preserved replay in `build/endurance-telemetry/x64-44-endurance-v1-20261017T075742Z/`). The graphical game costs ~1.95x the headless tick for the same simulation (cause unknown, backlog).
+Decision A: no multithreading before Zero Hour, serial CPU phase closed. `GENERALS_ENDURANCE` telemetry is reusable for Zero Hour (launcher `scripts/native-runtime/Run-EnduranceTest.*`, analysis `scripts/diagnostics/Analyze-EnduranceTelemetry.py`).
 
 ## X64.43 Exhaustive failing path searches (CP17, investigation)
 Read `X64_43_FAILING_PATH_INVESTIGATION.md`. Decision C: no production change. `GENERALS_SIM_PATHFAIL=1` (`Core/GameEngine/Source/GameLogic/AI/PathFailureDiag.cpp`, read-only, off by default, contract test + Stage4B.1 guard extension)

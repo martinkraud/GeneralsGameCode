@@ -374,6 +374,9 @@ LogicTick::~LogicTick()
 		PerformanceProfile::activeRecorder = nullptr;
 	}
 	if (frameAfter == m_frameBefore) { ++s.nonTickUpdates; return; }     // paused / frozen / waiting: not a completed tick
+	// The update that leaves the game (exit to the shell) resets the frame counter: it is the world teardown, not a simulation tick (X64.44 closeout:
+	// without this guard it was recorded as the last tick and the summary reported last_frame=1).
+	if (frameAfter < m_frameBefore) { ++s.nonTickUpdates; return; }
 	const double analysisMs = PathFailureDiag::lite().analysisMs - m_analysisBefore;
 	double tickMs = msFrom(m_start, end) - analysisMs;
 	if (tickMs < 0) tickMs = 0;
