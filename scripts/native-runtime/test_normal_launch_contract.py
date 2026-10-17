@@ -219,7 +219,8 @@ class NormalLaunchContract(unittest.TestCase):
 
     def test_staging_applies_the_overlay_unless_classic(self):
         a = read("scripts/native-runtime/Stage-NativeOrdinaryPlay.ps1")
-        self.assertIn("-ModernExtensions:(!$Classic)", a)
+        # X64.45: the shortcut-sidebar overlay adapts Generals to Zero Hour's design; Zero Hour already ships it and never gets one.
+        self.assertIn("-ModernExtensions:(($Title -eq 'Generals') -and !$Classic)", a)
         b = read("scripts/native-runtime/Stage-NativeInitOnly.ps1")
         self.assertIn("modern_extensions.py", b)
         # the overlay is written before the manifest inventory is taken (so the integrity gate covers it)

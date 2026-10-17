@@ -3,9 +3,10 @@
 # user-data root, original frontend lifecycle. The only machine checks are the process exit code and the
 # lightweight generals64.log written next to the executable.
 [CmdletBinding()]
-param([Parameter(Mandatory)][ValidateSet('Generals')][string]$Title,
+param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
       [switch]$RunNormalLaunch,
+      [switch]$Classic,   # -classic: the player-visible switch that turns every Modern Experience extension off (not a diagnostic token)
       [ValidateRange(60,14400)][int]$TimeoutSeconds=7200)
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
 if (!$RunNormalLaunch) { throw 'Normal launch requires explicit developer review and -RunNormalLaunch' }
@@ -23,6 +24,7 @@ $null=Restore-NativeRuntimeCrashDumps $manifest.GamePath $runs "$stamp.previous"
 $info=[Diagnostics.ProcessStartInfo]::new($exe)
 $info.WorkingDirectory=$manifest.GamePath; $info.UseShellExecute=$false
 $info.CreateNoWindow=$false; $info.WindowStyle=[Diagnostics.ProcessWindowStyle]::Normal
+if ($Classic) { $info.ArgumentList.Add('-classic') }
 $process=[Diagnostics.Process]::new(); $process.StartInfo=$info
 $started=$false; $timeout=$false; $exit=$null; $errorText=$null; $pidValue=$null
 try {

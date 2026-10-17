@@ -1,6 +1,6 @@
 #Requires -Version 7.0
 [CmdletBinding()]
-param([Parameter(Mandatory)][ValidateSet('Generals')][string]$Title,
+param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$AssetSource,
       [switch]$Classic)
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
@@ -8,7 +8,8 @@ param([Parameter(Mandatory)][ValidateSet('Generals')][string]$Title,
 $build=Get-NativeBuild $Title
 $null=Assert-NativeGraphicsDependencies $build.Executable (Split-Path $build.Executable -Parent)
 # Normal-launch candidates carry the modern extension overlay unless -Classic is given.
-& (Join-Path $PSScriptRoot 'Stage-NativeInitOnly.ps1') -Title $Title -Name $Name -AssetSource $AssetSource -ModernExtensions:(!$Classic)
+# The shortcut-sidebar data overlay adapts the Generals bars to Zero Hour's design; Zero Hour already ships it, so it never gets one.
+& (Join-Path $PSScriptRoot 'Stage-NativeInitOnly.ps1') -Title $Title -Name $Name -AssetSource $AssetSource -ModernExtensions:(($Title -eq 'Generals') -and !$Classic)
 $manifest=Read-NativeStage $Title $Name
 $host_=[pscustomobject]@{
     Mode=(Get-NativeOrdinaryPlayMode);StagePath=$manifest.StagePath
