@@ -8,7 +8,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
-      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','QuickGame')][string]$Flow = 'Skirmish',
+      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','Slots','QuickGame')][string]$Flow = 'Skirmish',
       [ValidateRange(0,11)][int]$General = 0,
       [switch]$LookAtCenter,              # developer aid: camera over the map centre before the match frame (GENERALS_AUTOSHOT_LOOKAT)
       [string]$ClientSize = '',           # developer override WxH (GENERALS_FORCE_CLIENT_SIZE), e.g. 5120x1440 on a smaller screen

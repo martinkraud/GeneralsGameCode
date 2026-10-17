@@ -61,6 +61,8 @@
 #include "GameClient/Water.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/GadgetListBox.h"
+#include "GameClient/GadgetComboBox.h"
+#include "GameClient/WinInstanceData.h"
 #include "GameClient/GUICallbacks.h"
 #include "Common/KindOf.h"
 #include "Common/XferCRC.h"
@@ -1506,7 +1508,7 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { SLOT_FILL, SLOT_PROBE, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
@@ -1538,6 +1540,10 @@ void NativeAutoShot()
         { SELECT_ROW, "PopupSaveLoad.wnd:ListboxGames", nullptr, 120, 2 }, { PRESS, "PopupSaveLoad.wnd:ButtonSave", nullptr, 30, 2 },
         { PRESS_EITHER, "PopupSaveLoad.wnd:ButtonSaveDescConfirm", "PopupSaveLoad.wnd:ButtonOverwriteConfirm", 60, 2 },
         { STATE, "saved_again", nullptr, 60, 2 }, { END, nullptr, nullptr, 0, 0 } };
+    // X64.48A: fill every Skirmish slot with an AI through the real combo boxes, then probe each slot's controls the way the mouse reaches them
+    static const Step slotSteps[] = {
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { SLOT_FILL, nullptr, nullptr, 300, 1 },
+        { SLOT_PROBE, nullptr, nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;
@@ -1545,12 +1551,13 @@ void NativeAutoShot()
         if (!_stricmp(text, "campaign")) return 2;
         if (!_stricmp(text, "challenge")) return 3;
         if (!_stricmp(text, "saveload")) return 4;
+        if (!_stricmp(text, "slots")) return 5;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -1558,7 +1565,7 @@ void NativeAutoShot()
                              !TheGameLogic->isClearingGameData() && TheGameLogic->getFrame() > 0;
         const bool context = step.where == 0 || (step.where == 1 && shell && !TheGameLogic->isLoadingMap()) || (step.where == 2 && running);
         if (step.kind != END && context && flowFrames >= stepAt + step.wait) {
-            char detail[320];
+            char detail[1400];
             auto topWindow = [](GameWindow *w) { while (w && w->winGetParent()) w = w->winGetParent(); return w; };
             auto usable = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden() || !BitIsSet(c->winGetStatus(), WIN_STATUS_ENABLED)) return false; return w != nullptr; };
             auto find = [](const char *name) { return TheWindowManager->winGetWindowFromId(nullptr, TheNameKeyGenerator->nameToKey(name)); };
@@ -1594,6 +1601,112 @@ void NativeAutoShot()
                     GadgetListBoxSetSelected(list, 0);
                     TheWindowManager->winSendSystemMsg(list->winGetOwner() ? list->winGetOwner() : topWindow(list), GLM_SELECTED, (WindowMsgData)list, 0);
                     advance("selected row 0 of", step.a); done = true;
+                }
+            } else if (step.kind == SLOT_FILL || step.kind == SLOT_PROBE) {
+                GameWindow *parent = find("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent");
+                if (parent) {
+                    for (int i = 0; i < 8; ++i) {
+                        char name[96];
+                        sprintf_s(name, "SkirmishGameOptionsMenu.wnd:ComboBoxPlayer%d", i);
+                        GameWindow *combo = find(name);
+                        if (!combo) { sprintf_s(detail, "slot %d: combo missing", i); StartupDiagnostics::checkpoint("slotprobe", "fail", detail); continue; }
+                        if (step.kind == SLOT_FILL) {
+                            if (i == 0) continue;                                   // the human slot
+                            const int entries = GadgetComboBoxGetLength(combo);
+                            const int pos = entries > 5 ? 5 : entries - 1;           // an AI entry
+                            GadgetComboBoxSetSelectedPos(combo, pos);
+                            TheWindowManager->winSendSystemMsg(parent, GCM_SELECTED, (WindowMsgData)combo, pos);
+                            continue;
+                        }
+                        // the window the real mouse path (GameWindowManager::winProcessMouseEvent) would hand a click at this point to
+                        GameWindow *rawHit = nullptr;   // what the mouse path found before it discards windows that take no input
+                        auto underMouse = [&rawHit](int x, int y, bool ignoreEnabled = false) -> GameWindow * {
+                            ICoord2D pos = { x, y };
+                            GameWindow *tip = nullptr;
+                            GameWindow *w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_ABOVE, WIN_STATUS_HIDDEN);
+                            if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_NONE, WIN_STATUS_ABOVE | WIN_STATUS_BELOW | WIN_STATUS_HIDDEN);
+                            if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_BELOW, WIN_STATUS_HIDDEN);
+                            rawHit = w;
+                            if (w && BitIsSet(w->winGetStatus(), WIN_STATUS_NO_INPUT))
+                                w = (w->winGetParent() && BitIsSet(w->winGetParent()->winGetInstanceData()->getStyle(), GWS_COMBO_BOX)) ? w->winGetParent() : nullptr;
+                            (void)ignoreEnabled;
+                            return w;
+                        };
+                        // probe: where the combo is, and whether the mouse reaches it (and each row of its open list) instead of another window
+                        auto describe = [](GameWindow *w) -> std::string {
+                            if (!w) return "none";
+                            std::string n = w->winGetInstanceData() ? w->winGetInstanceData()->m_decoratedNameString.str() : "?";
+                            return n.empty() ? "(unnamed)" : n;
+                        };
+                        int cx, cy, cw, ch;
+                        combo->winGetScreenPosition(&cx, &cy); combo->winGetSize(&cw, &ch);
+                        GameWindow *hit = underMouse(cx + cw / 2, cy + ch / 2);
+                        {
+                            GameWindow *top = combo; while (top->winGetParent()) top = top->winGetParent();
+                            sprintf_s(detail, "slot %d context: top status=0x%x (above=%d below=%d hidden=%d enabled=%d) combo status=0x%x hit_ignoring_enabled=%s modal=%d captor=%d", i,
+                                      (unsigned)top->winGetStatus(), BitIsSet(top->winGetStatus(), WIN_STATUS_ABOVE) ? 1 : 0, BitIsSet(top->winGetStatus(), WIN_STATUS_BELOW) ? 1 : 0,
+                                      BitIsSet(top->winGetStatus(), WIN_STATUS_HIDDEN) ? 1 : 0, BitIsSet(top->winGetStatus(), WIN_STATUS_ENABLED) ? 1 : 0, (unsigned)combo->winGetStatus(),
+                                      describe(underMouse(cx + cw / 2, cy + ch / 2, true)).c_str(),
+                                      0, TheWindowManager->winGetCapture() ? 1 : 0);
+                            if (i == 1 || i == 7) StartupDiagnostics::checkpoint("slotprobe", "context", detail);
+                        }
+                        const bool comboHit = hit == combo || (hit && hit->winGetParent() == combo);
+                        GameWindow *drop = GadgetComboBoxGetDropDownButton(combo);
+                        int dx = 0, dy = 0, dw = 0, dh = 0;
+                        if (drop) { drop->winGetScreenPosition(&dx, &dy); drop->winGetSize(&dw, &dh); }
+                        GameWindow *hitDrop = drop ? underMouse(dx + dw / 2, dy + dh / 2) : nullptr;
+                        if (drop) TheWindowManager->winSendSystemMsg(combo, GBM_SELECTED, (WindowMsgData)drop, drop->winGetWindowId());
+                        GameWindow *list = GadgetComboBoxGetListBox(combo);
+                        int lx = 0, ly = 0, lw = 0, lh = 0, entries = 0, rowsOk = 0, firstBad = -1;
+                        std::string badWindow = "-", badIgnoringEnabled = "-", chain = "-";
+                        int badX = 0, badY = 0;
+                        const bool open = list && !list->winIsHidden();
+                        if (open) {
+                            list->winGetScreenPosition(&lx, &ly); list->winGetSize(&lw, &lh);
+                            entries = GadgetListBoxGetNumEntries(list);
+                            for (int row = 0; row < entries; ++row) {
+                                const int rowH = entries ? lh / entries : lh;
+                                GameWindow *w = underMouse(lx + lw / 2, ly + row * rowH + rowH / 2);
+                                if (w == list || (w && (w->winGetParent() == list || w->winGetParent() == combo))) ++rowsOk;
+                                else if (firstBad < 0) {
+                                    firstBad = row; badWindow = describe(w); badX = lx + lw / 2; badY = ly + row * rowH + rowH / 2;
+                                    badIgnoringEnabled = describe(underMouse(badX, badY, true));
+                                    {   // every sibling of the combo whose rectangle covers the point, in the order the mouse path tries them
+                                        std::string covering;
+                                        GameWindow *container = combo->winGetParent();
+                                        for (GameWindow *sib = container ? container->winGetChild() : nullptr; sib; sib = sib->winGetNext()) {
+                                            int sx, sy, sw, sh; sib->winGetScreenPosition(&sx, &sy); sib->winGetSize(&sw, &sh);
+                                            if (badX >= sx && badX <= sx + sw && badY >= sy && badY <= sy + sh && !sib->winIsHidden()) {
+                                                char one[260]; sprintf_s(one, "%s key=%s #%d[%d,%d %dx%d st=0x%x] ", describe(sib).c_str(), TheNameKeyGenerator->keyToName((NameKeyType)sib->winGetWindowId()).str(), sib->winGetWindowId(), sx, sy, sw, sh, (unsigned)sib->winGetStatus());
+                                                covering += one;
+                                            }
+                                        }
+                                        char note[1000]; sprintf_s(note, "slot %d covering_siblings_at_%d,%d=%s", i, badX, badY, covering.c_str());
+                                        StartupDiagnostics::checkpoint("slotprobe", "covering", note);
+                                    }
+                                    if (rawHit) {
+                                        int rx, ry, rw, rh; rawHit->winGetScreenPosition(&rx, &ry); rawHit->winGetSize(&rw, &rh);
+                                        char one[260]; sprintf_s(one, "RAW=%s[%d,%d %dx%d status=0x%x]", describe(rawHit).c_str(), rx, ry, rw, rh, (unsigned)rawHit->winGetStatus());
+                                        badIgnoringEnabled = one;
+                                    }
+                                    // the windows between the list and the top: a point outside any of their rectangles can never reach the list
+                                    chain.clear();
+                                    for (GameWindow *a = list; a; a = a->winGetParent()) {
+                                        int ax, ay, aw, ah; a->winGetScreenPosition(&ax, &ay); a->winGetSize(&aw, &ah);
+                                        IRegion2D reg; a->winGetRegion(&reg);
+                                        char one[200]; sprintf_s(one, "%s[screen %d,%d %dx%d region %d,%d..%d,%d%s]", describe(a).c_str(), ax, ay, aw, ah, reg.lo.x, reg.lo.y, reg.hi.x, reg.hi.y, (ay + ah > badY && ay <= badY && ax <= badX && ax + aw > badX) ? "" : " OUTSIDE");
+                                        chain += one; chain += " < ";
+                                    }
+                                }
+                            }
+                        }
+                        sprintf_s(detail, "slot %d display=%dx%d combo=%d,%d %dx%d hit_combo=%d(%s) drop=%d,%d %dx%d hit_drop=%s list_open=%d list=%d,%d %dx%d rows=%d reachable=%d first_unreachable_row=%d at=%d,%d by=%s ignoring_enabled=%s chain=%s",
+                                  i, TheDisplay->getWidth(), TheDisplay->getHeight(), cx, cy, cw, ch, comboHit ? 1 : 0, describe(hit).c_str(), dx, dy, dw, dh, describe(hitDrop).c_str(),
+                                  open ? 1 : 0, lx, ly, lw, lh, entries, rowsOk, firstBad, badX, badY, badWindow.c_str(), badIgnoringEnabled.c_str(), chain.c_str());
+                        StartupDiagnostics::checkpoint("slotprobe", (comboHit && (!open || rowsOk == entries)) ? "ok" : "defect", detail);
+                        GadgetComboBoxHideList(combo);
+                    }
+                    advance(step.kind == SLOT_FILL ? "filled the Skirmish slots" : "probed the Skirmish slots", nullptr); done = true;
                 }
             } else if (step.kind == WAIT_INPUT) {
                 if (TheInGameUI && TheInGameUI->getInputEnabled()) { advance("the player has input control", nullptr); done = true; }

@@ -1176,6 +1176,16 @@ bool GameWindowManager::isMouseWithinWindow(GameWindow* window, const ICoord2D* 
 
 GameWindow* GameWindowManager::findWindowUnderMouse(GameWindow*& toolTipWindow, const ICoord2D* mousePos, unsigned int requiredStatusMask, unsigned int forbiddenStatusMask)
 {
+	// X64.48A: an open combo box (the "lone window") owns the rectangle of its drop-down list. The list is a child that extends the combo window
+	// downwards, and the sibling scan below tries windows in creation order: an earlier sibling that takes no input and overlaps the list (the
+	// Generals Skirmish screen's "Starting Cash" label lies over the lists of player slots 7 and 8) was found first and then discarded as "no input",
+	// so the click on the list row was lost. The open combo is tried first.
+	if (m_loneWindow && BitIsSet(m_loneWindow->winGetStyle(), GWS_COMBO_BOX) && !BitIsSet(m_loneWindow->m_status, WIN_STATUS_HIDDEN) &&
+		BitIsSet(m_loneWindow->m_status, WIN_STATUS_ENABLED) && m_loneWindow->winPointInWindow(mousePos->x, mousePos->y))
+	{
+		return m_loneWindow->winPointInChild(mousePos->x, mousePos->y);
+	}
+
 	for (GameWindow* window = m_windowList; window; window = window->m_next)
 	{
 		if (!isMouseWithinWindow(window, mousePos, requiredStatusMask, forbiddenStatusMask))
