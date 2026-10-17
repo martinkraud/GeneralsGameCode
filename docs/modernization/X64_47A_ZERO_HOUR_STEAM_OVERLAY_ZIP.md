@@ -86,3 +86,6 @@ Report: anything that fails to start, any dialog text, whether Task Manager says
 
 ## 11. Blockers for "extract over the Steam install -> Steam Play"
 None found in the automated work. Open questions only the real test can answer: Steam overlay / playtime behaviour with the replaced launcher, the pristine-installation layout on another PC (assumed identical depot), the app-local VC++ DLLs on a machine with a very old or very new Visual C++ redistributable (side by side, app-local wins), and antivirus reactions to an unsigned `Generals.exe` (the package is not code-signed; a signing decision belongs to the later release milestone).
+
+## 12. Follow-up (X64.47B)
+The builder and validator were generalized with `-Title Generals|ZeroHour` for the Generals preview ZIP (`X64_47B_GENERALS_STEAM_OVERLAY_ZIP.md`). This Zero Hour package was re-validated with the generalized validator after the change: 16 of 16 checks (the validator added a "main menu / shell reached" check). Roadmap change recorded in X64.47B: Zero Hour performance/endurance validation (X64.48) now comes before the Enhanced HUD; the two previews are to be tested together on a second PC. The build-path privacy finding of section 3 applies to both packages (proposed fix `/PDBALTPATH:%_PDB%`, X64.51).
