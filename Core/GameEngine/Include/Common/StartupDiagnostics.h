@@ -158,8 +158,15 @@ inline void checkpoint(const char *stage, const char *status,
         ++s.records, utc.dwHighDateTime, utc.dwLowDateTime, qpc.QuadPart,
         GetCurrentProcessId(), GetCurrentThreadId(), stage, status, code, clean);
     DWORD written = 0;
+    // X64.42: the normal-launch log is written from gameplay code (special power activation, payload delivery, group dispatch). A
+    // FlushFileBuffers per record is a synchronous disk flush on the simulation thread: 10-85 ms per superweapon fire in a large AI battle
+    // (the periodic 70-110 ms "script tick"). WriteFile alone hands the record to the OS, which keeps it across a process crash, so the
+    // log keeps its forensic value; only an OS crash / power loss could lose the last records. The evidence-harness modes (enabled())
+    // still flush every record. GENERALS_NORMAL_LOG_FLUSH=1 restores the per-record flush in a normal launch (A/B and forensics).
+    static const bool flushNormalLog = getenv("GENERALS_NORMAL_LOG_FLUSH") != nullptr;
+    const bool flush = enabled() || !s.normalLog || flushNormalLog;
     if (size <= 0 || !WriteFile(s.file, line, size, &written, nullptr) ||
-        written != static_cast<DWORD>(size) || !FlushFileBuffers(s.file)) {
+        written != static_cast<DWORD>(size) || (flush && !FlushFileBuffers(s.file))) {
         if (s.normalLog && !enabled()) { s.normalLog = false; return; }   // log trouble never stops the game
         s.healthy = false;
     }

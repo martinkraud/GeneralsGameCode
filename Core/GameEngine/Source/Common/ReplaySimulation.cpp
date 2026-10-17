@@ -30,6 +30,7 @@
 #include "GameLogic/AIPathfind.h"
 #include "Common/SimulationTickStats.h"
 #include "Common/DeterminismFingerprint.h"
+#include "Common/ScriptProfile.h"
 
 #include <algorithm>
 #include <array>
@@ -92,6 +93,7 @@ public:
 		m_freq = static_cast<double>(PerformanceProfile::frequency());
 		m_previous = PerformanceProfile::activeRecorder;
 		PerformanceProfile::activeRecorder = &m_recorder;
+		if (envText("GENERALS_SIM_SCRIPTS")) ScriptProfile::enable();   // X64.42: script attribution (adds clock reads; keep apart from timing runs)
 		m_recorder.start(PerformanceProfile::now());
 		m_wallStart = PerformanceProfile::now();
 	}
@@ -270,6 +272,11 @@ private:
 			if (envText("GENERALS_LINE_TRACE_HASH")) line(f, "line decision digest: %016llX\n", Pathfinder::lineTraceDigest());
 		}
 		if (m_recorder.deepPaths()) reportPaths(out, base);
+		if (ScriptProfile::enabled())
+		{
+			ScriptProfile::report(out[0]);
+			if (FILE *f = fopen((base + "_scripts.txt").c_str(), "w")) { ScriptProfile::report(f); fclose(f); }
+		}
 		if (FILE *f = fopen((base + "_fingerprint.txt").c_str(), "w"))
 		{
 			for (const DeterminismFingerprint::Checkpoint &c : m_trace) line(f, "%s\n", DeterminismFingerprint::format(c).c_str());

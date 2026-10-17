@@ -54,6 +54,7 @@
 #include "GameLogic/ScriptActions.h"
 #include "GameLogic/ScriptConditions.h"
 #include "GameLogic/ScriptEngine.h"
+#include "Common/ScriptProfile.h"   // X64.42: opt-in script attribution (inert unless GENERALS_SIM_SCRIPTS)
 #include "GameLogic/SidesList.h"
 
 
@@ -4783,6 +4784,7 @@ DECLARE_PERF_TIMER(ScriptEngine)
 void ScriptEngine::update()
 {
 	USE_PERF_TIMER(ScriptEngine)
+	ScriptProfile::FrameProbe scriptProfileFrame(TheGameLogic->getFrame());
 #ifdef SPECIAL_SCRIPT_PROFILING
 #ifdef DEBUG_LOGGING
 	__int64 startTime64;
@@ -6267,6 +6269,7 @@ void ScriptEngine::executeScript( Script *pScript )
 	if (delaySeconds>0) {
 		pScript->setFrameToEvaluate(TheGameLogic->getFrame()+delaySeconds*LOGICFRAMES_PER_SECOND);
 	}
+	ScriptProfile::ScriptTimer scriptProfileTimer(pScript, ScriptProfile::enabled() ? pScript->getName().str() : nullptr);
 #ifdef DEBUG_LOGGING
 #ifdef SPECIAL_SCRIPT_PROFILING
 	__int64 startTime64;
@@ -6351,6 +6354,22 @@ void ScriptEngine::executeScript( Script *pScript )
 //-------------------------------------------------------------------------------------------------
 Bool ScriptEngine::evaluateCondition( Condition *pCondition )
 {
+	if (ScriptProfile::enabled()) {
+		const int type = pCondition->getConditionType();
+		if (!ScriptProfile::conditionNameKnown(type)) ScriptProfile::setConditionName(type, getConditionTemplate(type)->getName().str());
+		ScriptProfile::ConditionProbe probe(type);
+		Bool result;
+		switch (type) {
+			default: result = TheScriptConditions->evaluateCondition(pCondition); break;
+			case Condition::CONDITION_FALSE: result = false; break;
+			case Condition::CONDITION_TRUE: result = true; break;
+			case Condition::COUNTER: result = evaluateCounter(pCondition); break;
+			case Condition::FLAG: result = evaluateFlag(pCondition); break;
+			case Condition::TIMER_EXPIRED: result = evaluateTimer(pCondition); break;
+		}
+		probe.finish(result != FALSE);
+		return result;
+	}
 	switch (pCondition->getConditionType()) {
 		default:
 			return TheScriptConditions->evaluateCondition(pCondition);
@@ -6929,6 +6948,8 @@ void ScriptEngine::executeActions( ScriptAction *pActionHead )
 	ScriptAction *pCurAction;
 	UnicodeString uStr1;
 	for (pCurAction = pActionHead; pCurAction; pCurAction = pCurAction->getNext()) {
+		if (ScriptProfile::enabled() && !ScriptProfile::actionNameKnown(pCurAction->getActionType())) ScriptProfile::setActionName(pCurAction->getActionType(), getActionTemplate(pCurAction->getActionType())->getName().str());
+		ScriptProfile::ActionProbe actionProbe(pCurAction->getActionType());
 		switch (pCurAction->getActionType()) {
 			default: if (TheScriptActions) TheScriptActions->executeAction(pCurAction); break;
 			case ScriptAction::SET_COUNTER: setCounter(pCurAction);	break;
@@ -7184,6 +7205,7 @@ void ScriptEngine::setSequentialTimer(Team *team, Int frameCount)
 
 void ScriptEngine::evaluateAndProgressAllSequentialScripts()
 {
+	ScriptProfile::SequentialProbe sequentialProbe;
 	VecSequentialScriptPtrIt it;
 	size_t currIndex = 0;
 	size_t prevIndex = ~0u;
