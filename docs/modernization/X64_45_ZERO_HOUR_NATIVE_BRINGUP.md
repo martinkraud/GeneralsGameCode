@@ -1,6 +1,6 @@
 # X64.45 - Zero Hour native audit and bring-up (CP19)
 
-Status: **first Zero Hour native candidate prepared and preflighted; not executed.** The human performs the first native run. Nothing in this
+Status: **first native run done (it reached gameplay, one major terrain defect found and fixed, section 11); second candidate `x64-45-zh-bringup-v3` prepared and preflighted, not executed.** The human performs the native runs. Nothing in this
 document is a claim that Zero Hour "works" natively: every rendering, audio, UI and gameplay row below is *implemented* or *unverified* until that
 run. Method labels used throughout: **Static** (source read / diff against Generals), **Built** (compiled and unit/contract tested),
 **Ran headless** (executed by the agent without a window), **Not run natively** (needs the human).
@@ -21,7 +21,7 @@ Starting state: `dev/modern-engine` = `origin/dev/modern-engine` = `05617f2b6` (
 * **Done (Built):** the existing, reviewed Generals native hooks were ported to Zero Hour mechanically (section 4). The shared native terrain code no
   longer gates roads, bridges, waypoints and bibs on the title. The Win64 and Win32 builds and all test suites pass (section 5). Zero Hour's headless
   init-only gate passes on the current build with the real Steam assets (**Ran headless**, evidence `evidence/x64-45-zh-init-only/`).
-* **Prepared:** candidate `x64-45-zh-bringup-v2`, staged outside the Steam installation, integrity-preflighted (section 8). **Not launched.**
+* **Prepared:** candidate `x64-45-zh-bringup-v3` (v2 was the first one, run once by the human; section 11), staged outside the Steam installation, integrity-preflighted (section 8). **Not launched.**
 * **Not established (important):** any native Zero Hour behaviour, Zero Hour replay determinism (the one available Zero Hour replay does not
   re-simulate on *any* build, including the 2026-10-07 baseline; section 7), performance, the Zero Hour-only features (section 3).
 
@@ -133,14 +133,14 @@ requires that the shared terrain source is *not* title gated; the normal-launch 
 | `m_headless` uses | the set of `m_headless` call sites in the Zero Hour tree equals the Generals tree (the only difference is the Generals-only diagnostic `GameMain` branch), so no un-gated headless skip remains |
 | Zero Hour replay re-simulation (Win32 `generalszh.exe -headless -replay`, the only available replay `00000000.rep`, 74 s, recorded 2026-10-09) | **CRC mismatch at frame 100 with the current build and also with the Win32 builds of stages `baseline` (2026-10-07), `stage3c3-ground-hardening` and `stage4a3-performance-harness-fix1`** (`evidence/x64-45-zh-replay-check/`). So it is not caused by the optimizations or by this milestone; cause unknown (candidates: replay recorded under different options / content, start-cash or map identity). **Zero Hour determinism is NOT ESTABLISHED.** The first native candidate run records a fresh Zero Hour replay for a proper check |
 
-## 8. The first candidate
+## 8. The current candidate (v3; v2 was run once, see section 11)
 
-* **Runtime:** `C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\dev-runtimes\native\ZeroHour\x64-45-zh-bringup-v2\game\generalszh.exe`
-  (AMD64 PE, SHA-256 `8E86F3D710A9C895B57D0E7946BA871E89CB924554EEC2AC1A4068882CA79A3F`, built from `fb4381382`; the stage manifest pins it and the launcher re-verifies the whole stage).
+* **Runtime:** `C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\dev-runtimes\native\ZeroHour\x64-45-zh-bringup-v3\game\generalszh.exe`
+  (AMD64 PE, SHA-256 `05BCFA054EA33D230497A08786FBBB3C7C6D507785B58AB79E353C4D7467593B`, built from `a1211da11`; the stage manifest pins it and the launcher re-verifies the whole stage).
 * **Launcher** (repository root; nothing else is needed): double-click `scripts\native-runtime\Run-ZeroHourCandidate.cmd`, or
 
 ```powershell
-pwsh -NoProfile -File scripts\native-runtime\Run-ZeroHourCandidate.ps1 -Name x64-45-zh-bringup-v2
+pwsh -NoProfile -File scripts\native-runtime\Run-ZeroHourCandidate.ps1 -Name x64-45-zh-bringup-v3
 ```
 
   Options: `-PreflightOnly` (verify, print the plan, write and start nothing - already run, PASS), `-Classic` (starts with the player-visible `-classic` switch: every Modern Experience extension off),
@@ -170,7 +170,7 @@ pwsh -NoProfile -File scripts\native-runtime\Run-ZeroHourCandidate.ps1 -Name x64
   some animated scrolling textures are static (mapper table, section 3); LAN / GameSpy are not modernized; the Zero Hour campaign and General's Challenge are unexercised; the registry `Version` stamp differs from Steam's.
 * **Crash-isolation switches** (set before the launcher, PowerShell): `$env:GENERALS_NATIVE_DISABLE = 'particles,ghosts'` (any of `particles, ghosts, shadows, water, shroud, lines, scorches, mappers, bibs, waypoints, shellmap`),
   or `-Classic`. Do not use them on the first run; they are for isolating a crash afterwards.
-* **Evidence locations:** per run, `build\dev-runtimes\native\ZeroHour\x64-45-zh-bringup-v2\normal-launch\<stamp>.exit.json` (exit code, timing, stage-restored verdict) and `<stamp>.generals64.log` (checkpoints,
+* **Evidence locations:** per run, `build\dev-runtimes\native\ZeroHour\x64-45-zh-bringup-v3\normal-launch\<stamp>.exit.json` (exit code, timing, stage-restored verdict) and `<stamp>.generals64.log` (checkpoints,
   audio statistics every 30 s, special-power and delivery traces); crash dumps are moved to `normal-launch\crash-<stamp>\` and the launcher then fails the run; the engine also writes
   `Documents\Command and Conquer Generals Zero Hour Data\CrashDumps`; backups under `build\dev-runtimes\userdata-backups\` (`<timestamp>-<guid>\` full backup, `zh-native-settings-*` snapshot).
 
@@ -190,6 +190,9 @@ it throw "Game crashed: ... preserved" on purpose.
 | Z-4 | Zero Hour animated UV mappers have no native form | deferred, cosmetic |
 | Z-5 | Three Zero Hour-only Options controls are hidden on the Modern pages | deferred, low |
 | Z-6 | `scripts/rendering` reference tests fail (8) on the X64.44 tree already | pre-existing, not investigated |
+| Z-7 | Black terrain strips on the map after the shell map: the native terrain atlas version was a per-map counter (section 11; `AMD64_PORTING_FINDINGS.md` A-7) | defect, fixed (A/B proven unattended; human validation pending) |
+| Z-8 | The fresh Zero Hour replay does not re-simulate cleanly: first replay CRC (frame 0) mismatches on Win64, Win32 crashes at start (section 11) | open, backlog |
+| Z-9 | Enhanced HUD is inert for Zero Hour (known; required later completeness work, not a regression) | deferred |
 
 ## 10. Deferred, risks, decision gate
 
@@ -198,3 +201,50 @@ it throw "Game crashed: ... preserved" on purpose.
   controls; Zero Hour's `Options.ini` is shared with the Win32 game (the backup protects it); the stage is tied to this exact build.
 * **Decision gate (after the human run):** (1) startup + main menu + Skirmish world frame work -> fix whatever the checklist surfaced, then Zero Hour endurance telemetry and a fresh replay re-simulation;
   (2) a crash or blank frame -> preserved evidence first, root cause, a bounded fix, a new candidate; (3) only after Zero Hour is accepted reconsider the serial CPU phase (X64.44 decision A) with Zero Hour numbers.
+
+## 11. First native run (2026-10-17) and the terrain defect
+
+### 11.1 What the human saw
+Candidate v2 launched normally and reached gameplay: the window, the shell, Skirmish setup, map load, the first world frame, player objects, AI activity, radar and the original Zero Hour control bar all worked and the process exited with 0 (exit receipt
+`first-native-run.exit.json`, log `first-native-run.generals64.log`, both under `evidence/x64-45-zh-terrain-strips/`; no crash dump). One major defect: regular black rectangular strips across the terrain
+(`human-first-native-run-1.jpg`, `-2.jpg`). Objects, shroud and UI were unaffected; the strips were aligned with the terrain's cell grid. The Enhanced HUD is inert for Zero Hour (known limitation, kept as required later work).
+
+### 11.2 Evidence preserved before anything else
+The fresh replay (`Replays\00000000.rep`, hash `52C11EA4...7BFA`), `Options.ini`, the log, the exit receipt, the candidate manifest and the human screenshots were copied to `build/evidence-archive/zh-first-native-run-20261017/` (git-ignored).
+
+### 11.3 Root cause (proven by an unattended A/B, not guessed from the screenshots)
+* The data was ruled out first: the map's 21 texture classes all resolve and decode, the atlas placement leaves nothing unplaced, the lighting is the same as Generals', the Generals and Zero Hour versions of the map have the same steepness profile.
+* The same map started with `-devMode -quickGame` (no shell map before it) rendered correctly at start positions 0, 2 and 3; the human's sequence (shell map first, then Skirmish) did not. A one-switch developer aid (`GENERALS_AUTOFLOW=skirmish`, section 11.5) reproduced the
+  human's sequence unattended, through the real screens: **strips present, 13.12 % pure-black pixels in the world view** (`unattended-shell-then-skirmish-BEFORE-fix.jpg`).
+* `HeightMapRenderObjClass::renderNative` re-uploads its tile atlas only when `WorldHeightMap::m_nativeAtlasVersion` differs from the uploaded one. That version was a per-map counter incremented once when the atlas is built, i.e. **1 for every freshly built map**.
+  The terrain render object outlives its maps and keeps its native resources when the next map has the same draw size (the vertex-buffer tiles are reused, only the vertex contents are rewritten). The map after the shell map was therefore drawn with the shell map's atlas:
+  its UVs address its own class layout, which in the old atlas lands on other textures and on the uncovered (black) texels between class blocks, in the periodic pattern of the atlas grid.
+* Fix (`WorldHeightMap.cpp`, one function, `buildNativeTerrainAtlas`): the version is a process-wide serial. With only that change the identical unattended sequence gives **0.06 %** black (`unattended-shell-then-skirmish-AFTER-fix.jpg`).
+* **Shared or Zero Hour specific:** the code is shared with Generals. It only shows when consecutive maps keep the same draw size and have different class layouts; an unfixed Generals build did not reproduce it in the one sequence tried (different shell map, different map), so why the
+  Generals runs never showed it is **not established** - the fix covers both titles. The road-buffer difference identified earlier (Zero Hour's per-segment visibility culling) was **not** involved: the strips are on the base terrain pass and disappear with the atlas fix alone.
+* No retained Zero Hour stage can date the defect: the Win32 stages use the legacy renderer and the earlier native Zero Hour run (`x64-20-fix1`) was a headless/graphics smoke without a world. It appeared with the first native Zero Hour frame sequence that follows a shell map.
+
+### 11.4 Changes
+`Core/GameEngineDevice/Source/W3DDevice/GameClient/WorldHeightMap.cpp` (`buildNativeTerrainAtlas`: serial); `W3DDisplayOrdinaryHost.cpp` / `W3DDisplay.cpp` (developer capture aids, and the native Print Screen path used `"%s\Generals64_..."` where a lone backslash-G is not an escape, so the
+directory separator was dropped); `scripts/native-runtime/Invoke-NativeAutoCapture.ps1`; contract tests in `test_zero_hour_native_contract.py` (unique serial, inert aids, screenshot path). Finding: `AMD64_PORTING_FINDINGS.md` A-7.
+
+### 11.5 Developer capture aids (new, inert by default)
+Only in a normal launch and only when the variable is set: `GENERALS_AUTOSHOT=<existing directory>` writes the composed frame of the shell (after 360 presented frames) and of the first live match (after `GENERALS_AUTOSHOT_FRAMES`, default 300, frames) as BMP and quits; `GENERALS_AUTOSHOT_EVERY=<frames>` writes
+a numbered sequence instead; `GENERALS_AUTOFLOW=skirmish` pushes the Skirmish setup screen from the shell and presses its Start button. `scripts/native-runtime/Invoke-NativeAutoCapture.ps1 -Title ZeroHour -Name <disposable stage>` wraps them (a window is shown for about a minute), converts the frames to PNG
+and prints the pure-black share of the world view (the regression indicator: 13.12 % broken, 0.06 % fixed). Run it on a disposable stage, never on a candidate meant for a human (the stage integrity check fails afterwards).
+
+### 11.6 Validation after the fix
+Win64: `z_generals`, `g_generals` and the full `x64-38` target set build; ctest 16/16; `z_googletest` 419 and `g_googletest` 420 pass. Win32 full Release: ctest 23/23, gtest 382 pass. Python: native-runtime 225 (7 skipped), performance 49, diagnostics 5 pass. The unattended capture of the final executable (disposable stage): 0.06 % black in the match frame.
+Human validation of v3 is still required.
+
+### 11.7 Fresh replay (preserved first, then examined; Win32 and Win64 `-headless -replay`)
+The replay is the 934-frame match of the first run (the file stays in the git-ignored archive; the console outputs of the re-simulations are `fresh-replay-*` in `evidence/x64-45-zh-terrain-strips/`; the Win32 output is empty because the process crashed).
+* Win64 re-simulation: **"CRC Mismatch in Frame 0"** - the first replay CRC comparison already differs. With `GENERALS_SIM_IGNORE_CRC=1` the simulation runs the 933 frames and two runs give the **identical** fingerprint (`FA0C5DA93229F94F`, 31 checkpoints): the simulation is self-consistent; the live recording and the re-simulation
+  differ at the start state (the harness counts only the first mismatch, so later CRC agreement or disagreement is **not** established).
+* Win32 re-simulation of the same file: the process crashes immediately with an access violation (0xC0000005), before any output; cause not examined.
+* This is a different symptom from the old replay (recorded by a Win32 stage; mismatch at frame 100 on every Win32 build incl. 2026-10-07). Zero Hour replay determinism therefore stays **NOT ESTABLISHED**; the frame-0 start-state difference (the family of the Generals R-1 lesson: a setting the replay header does not carry, or one the headless re-simulation sets differently)
+  and the Win32 crash are backlog items. No replay semantics were changed.
+
+### 11.8 Remaining native-completeness gaps (unchanged by this fix)
+Section 3 still applies: Enhanced HUD (required later work), the three Zero Hour-only Options controls hidden on the Modern pages, animated UV mappers, movies, campaign / General's Challenge unexercised, Save/Load unexercised, audio and performance never judged on Zero Hour, replay determinism (11.7). The first-run observations
+(AI active and building, radar, command bar) are positive but are one human run of one map.

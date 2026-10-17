@@ -75,6 +75,14 @@ special-power activation -> `OCLSpecialPower` -> `DeliverPayload` -> locomotor w
 remaining hits are LAN / GameSpy / UI list-box item data and were **not individually audited**. Treat this as "no truncation of an object, module, handle or callback pointer found on that path",
 not as "the engine is pointer-clean".
 
+### A-7. The native terrain atlas was keyed by a per-map counter (black strips on the second map)
+
+The native terrain pass uploads a CPU-built tile atlas once and re-uploads it only when `WorldHeightMap::m_nativeAtlasVersion` changes. The version was a **per-map** counter (`++m_nativeAtlasVersion`), so every freshly built map had version 1.
+The terrain render object outlives its maps; when the next map had the same draw size the vertex-buffer tiles were reused (no reallocation, no release of the native resources) and the new map was drawn with the previous map's atlas. The new map's UVs address its own class layout, so
+they landed on other textures and on uncovered atlas texels: regular black strips across the Zero Hour terrain after the shell map (first Zero Hour native run, 2026-10-17). The same map started without a shell map before it rendered correctly; fix: a process-wide unique serial
+(`WorldHeightMap.cpp`). Found by an unattended reproduction of the player's shell -> Skirmish -> Start sequence and an A/B of that single line (`docs/modernization/evidence/x64-45-zh-terrain-strips/`). **Shared code**; it only shows when the consecutive maps keep the same
+draw size and have different class layouts, which is why the earlier Generals runs did not show it (an unfixed Generals build did not reproduce it in the one sequence tried). **MKRaudstein-specific** (the native terrain path), but the pattern - a cache key that restarts at 1 for each new owner while the cache outlives the owners - is general.
+
 ## B. Third-party and platform constraints encountered
 
 ### B-1. The DirectX 8 / D3DX helper dependency is not available as AMD64 binaries

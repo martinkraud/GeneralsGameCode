@@ -35,6 +35,7 @@ How to read the tables:
 | A-4 | Diagnostics / stack walking used the x86 `CONTEXT` | `Except.cpp`, `debug_*.cpp`, `StackDump.cpp` | 92 compile-error occurrences | good (build + platform test) | `923f730fe` | POSSIBLE |
 | A-5 | x87 precision control is ignored on AMD64 | `setFPMode` (`GameLogic.cpp`) | none observed; equivalence unproven | good (probe test; characterisation only) | `4a36a0cd2` | POSSIBLE (cross-architecture determinism) |
 | A-6 | Pointer-truncation compiler scan (negative evidence) | whole engine | 194 hits, special-power path clean | limited (path audited, rest not) | - | INSUFFICIENT |
+| A-7 | Native terrain atlas keyed by a per-map counter (stale atlas on the second map) | `WorldHeightMap::buildNativeTerrainAtlas`, `HeightMapRenderObjClass::renderNative` | regular black terrain strips after the shell map (Zero Hour) | strong (unattended A/B of the one-line fix) | (X64.45 fix) | FORK (pattern is general) |
 | B-1 | D3DX/DX8 helper binaries are 32-bit only | `WW3D2` helpers | link failure (17 helper names per title) | good (characterisation tests, 3 -> 0 external helpers) | `91c1e3e12` ... `09b2983af` | FORK |
 | B-2 | Miles Sound System is 32-bit | audio device layer | no AMD64 mixer | good | `bb98b8c01` | FORK |
 

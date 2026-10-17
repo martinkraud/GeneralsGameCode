@@ -1,0 +1,216 @@
+1	01dd5e20dd30ce30	272762579196	25664	23504	WinMain	normal_launch	0	generals64.log
+2	01dd5e20dd30ce30	272762579843	25664	23504	WinMain	begin	0	GeneralsMD AMD64 normal launch
+3	01dd5e20dd30ce30	272762580222	25664	23504	exception_filter	complete	0	
+4	01dd5e20dd30ce30	272762580287	25664	23504	memory	begin	0	
+5	01dd5e20dd30ce30	272762580351	25664	23504	memory	complete	0	
+6	01dd5e20dd30ce30	272762580411	25664	23504	startup_parse	begin	0	
+7	01dd5e20dd316a6b	272762626171	25664	23504	HWND_DX8_browser_input	skipped	0	
+8	01dd5e20dd31917a	272762632416	25664	23504	minidumper	begin	0	C:\Users\buskr\Documents\Command and Conquer Generals Zero Hour Data\
+9	01dd5e20dd31b877	272762643025	25664	23504	dump_path	resolved	0	C:\Users\buskr\Documents\Command and Conquer Generals Zero Hour Data\CrashDumps\
+10	01dd5e20dd31b877	272762646684	25664	23504	minidumper	complete	0	
+11	01dd5e20dd31b877	272762646755	25664	23504	app_window	begin	0	ordinary WndProc; windowed 800x600 client
+12	01dd5e20dd31df8a	272762654049	25664	23504	app_window_class	complete	0	Game Window
+13	01dd5e20dd340279	272762790429	25664	23504	app_window	complete	0	client=800x600 windowed=1 class=Game Window
+14	01dd5e20dd340279	272762790825	25664	23504	review_window	observed	0	review_scale=100% window_client=800x600 logical=800x600
+15	01dd5e20dd340279	272762791279	25664	23504	instance	begin	0	
+16	01dd5e20dd340279	272762791682	25664	23504	instance	complete	0	
+17	01dd5e20dd340279	272762794181	25664	23504	engine_init	begin	0	
+18	01dd5e20dd342980	272762806580	25664	23504	TheLocalFileSystem	begin	0	
+19	01dd5e20dd34508a	272762808432	25664	23504	TheLocalFileSystem	complete	0	
+20	01dd5e20dd34508a	272762808579	25664	23504	TheArchiveFileSystem	begin	0	
+21	01dd5e20dd433546	272763787832	25664	23504	TheArchiveFileSystem	complete	0	
+22	01dd5e20dd433546	272763788018	25664	23504	TheWritableGlobalData	begin	0	
+23	01dd5e20dd478cea	272764070021	25664	23504	TheWritableGlobalData	complete	0	
+24	01dd5e20dd478cea	272764077095	25664	23504	TheGameText	begin	0	
+25	01dd5e20dd4850a4	272764124649	25664	23504	TheGameText	complete	0	
+26	01dd5e20dd4850a4	272764127228	25664	23504	TheScienceStore	begin	0	
+27	01dd5e20dd48774e	272764137060	25664	23504	TheScienceStore	complete	0	
+28	01dd5e20dd48774e	272764137192	25664	23504	TheMultiplayerSettings	begin	0	
+29	01dd5e20dd489e87	272764139378	25664	23504	TheMultiplayerSettings	complete	0	
+30	01dd5e20dd489e87	272764139445	25664	23504	TheTerrainTypes	begin	0	
+31	01dd5e20dd49138a	272764170336	25664	23504	TheTerrainTypes	complete	0	
+32	01dd5e20dd49138a	272764170457	25664	23504	TheTerrainRoads	begin	0	
+33	01dd5e20dd49138a	272764176818	25664	23504	TheTerrainRoads	complete	0	
+34	01dd5e20dd49138a	272764176938	25664	23504	TheGlobalLanguageData	begin	0	
+35	01dd5e20dd493a98	272764179230	25664	23504	TheGlobalLanguageData	complete	0	
+36	01dd5e20dd493a98	272764179793	25664	23504	TheAudio	begin	0	
+37	01dd5e20dd60c5ce	272765727887	25664	23504	TheAudio	complete	0	
+38	01dd5e20dd60c5ce	272765728272	25664	23504	TheFunctionLexicon	begin	0	
+39	01dd5e20dd60c5ce	272765729399	25664	23504	TheFunctionLexicon	complete	0	
+40	01dd5e20dd60c5ce	272765729510	25664	23504	TheModuleFactory	begin	0	
+41	01dd5e20dd60c5ce	272765730663	25664	23504	TheModuleFactory	complete	0	
+42	01dd5e20dd60c5ce	272765730715	25664	23504	TheMessageStream	begin	0	
+43	01dd5e20dd60c5ce	272765730759	25664	23504	TheMessageStream	complete	0	
+44	01dd5e20dd60ecbe	272765730860	25664	23504	TheSidesList	begin	0	
+45	01dd5e20dd60ecbe	272765730903	25664	23504	TheSidesList	complete	0	
+46	01dd5e20dd60ecbe	272765730954	25664	23504	TheCaveSystem	begin	0	
+47	01dd5e20dd60ecbe	272765730990	25664	23504	TheCaveSystem	complete	0	
+48	01dd5e20dd60ecbe	272765731014	25664	23504	TheRankInfoStore	begin	0	
+49	01dd5e20dd60ecbe	272765733576	25664	23504	TheRankInfoStore	complete	0	
+50	01dd5e20dd60ecbe	272765733651	25664	23504	ThePlayerTemplateStore	begin	0	
+51	01dd5e20dd60ecbe	272765738779	25664	23504	ThePlayerTemplateStore	complete	0	
+52	01dd5e20dd6113e5	272765745301	25664	23504	TheParticleSystemManager	begin	0	
+53	01dd5e20dd644e9c	272765958904	25664	23504	TheParticleSystemManager	complete	0	
+54	01dd5e20dd644e9c	272765959654	25664	23504	TheFXListStore	begin	0	
+55	01dd5e20dd649cb7	272765978650	25664	23504	TheFXListStore	complete	0	
+56	01dd5e20dd649cb7	272765978807	25664	23504	TheWeaponStore	begin	0	
+57	01dd5e20dd6538f1	272766015491	25664	23504	TheWeaponStore	complete	0	
+58	01dd5e20dd6538f1	272766015681	25664	23504	TheObjectCreationListStore	begin	0	
+59	01dd5e20dd659b1b	272766046458	25664	23504	TheObjectCreationListStore	complete	0	
+60	01dd5e20dd659b1b	272766046629	25664	23504	TheLocomotorStore	begin	0	
+61	01dd5e20dd65e92a	272766061495	25664	23504	TheLocomotorStore	complete	0	
+62	01dd5e20dd65e92a	272766061547	25664	23504	TheSpecialPowerStore	begin	0	
+63	01dd5e20dd661021	272766068205	25664	23504	TheSpecialPowerStore	complete	0	
+64	01dd5e20dd661021	272766068318	25664	23504	TheDamageFXStore	begin	0	
+65	01dd5e20dd661021	272766070417	25664	23504	TheDamageFXStore	complete	0	
+66	01dd5e20dd661021	272766070453	25664	23504	TheArmorStore	begin	0	
+67	01dd5e20dd661021	272766074757	25664	23504	TheArmorStore	complete	0	
+68	01dd5e20dd661021	272766074809	25664	23504	TheBuildAssistant	begin	0	
+69	01dd5e20dd661021	272766074853	25664	23504	TheBuildAssistant	complete	0	
+70	01dd5e20dd661021	272766075801	25664	23504	TheThingFactory	begin	0	
+71	01dd5e20dd90c6a5	272768876287	25664	23504	TheThingFactory	complete	0	
+72	01dd5e20dd90c6a5	272768876451	25664	23504	TheUpgradeCenter	begin	0	
+73	01dd5e20dd90edd7	272768881655	25664	23504	TheUpgradeCenter	complete	0	
+74	01dd5e20dd90edd7	272768881823	25664	23504	TheGameClient	begin	0	
+75	01dd5e20dd90edd7	272768882804	25664	23504	TheDisplayStringManager.init	begin	0	
+76	01dd5e20dd90edd7	272768882834	25664	23504	TheDisplayStringManager.init	complete	0	
+77	01dd5e20dd90edd7	272768882971	25664	23504	TheKeyboard.init	begin	0	
+78	01dd5e20dd96953e	272769251265	25664	23504	TheKeyboard.init	complete	0	
+79	01dd5e20dd96953e	272769251787	25664	23504	TheMappedImageCollection.load	begin	0	
+80	01dd5e20dd973522	272769293065	25664	23504	TheMappedImageCollection.load	complete	0	
+81	01dd5e20dd973522	272769293184	25664	23504	TheAnim2DCollection.init	begin	0	
+82	01dd5e20dd973522	272769294941	25664	23504	TheAnim2DCollection.init	complete	0	
+83	01dd5e20dd973522	272769296696	25664	23504	TheFontLibrary.init	begin	0	
+84	01dd5e20dd973522	272769296736	25664	23504	TheFontLibrary.init	complete	0	
+85	01dd5e20dd973522	272769296867	25664	23504	TheMouse.parseIni	begin	0	
+86	01dd5e20dd975c30	272769298449	25664	23504	TheMouse.parseIni	complete	0	
+87	01dd5e20dd975c30	272769298479	25664	23504	TheMouse.initCursorResources	begin	0	
+88	01dd5e20dd9b68ed	272769565906	25664	23504	TheMouse.initCursorResources	complete	0	
+89	01dd5e20dd9b68ed	272769566120	25664	23504	TheDisplay.init	begin	0	
+90	01dd5e20dd9b8ffd	272769578236	25664	23504	display_ordinary_init	begin	0	
+91	01dd5e20dd9c0531	272769615825	25664	23504	display_modern	complete	0	client=1680x1050 mode=Windowed monitor=0/1 desktop_refresh=60Hz vsync=0 ui_scale=175% (auto) aspect=16:10 settings=migrated-defaults
+92	01dd5e20dd9c0531	272769616017	25664	23504	display_config	complete	0	windowed=1 1680x1050x32 ApplicationHWnd
+93	01dd5e20dd9c0531	272769616047	25664	23504	display_bypass	complete	0	legacy_ww3d_init: WW3D::Init/DX8Backend/DX8Wrapper::Init (D3D8.DLL) not entered
+94	01dd5e20dd9c0531	272769616069	25664	23504	display_bypass	complete	0	legacy_render_device: Set_Render_Device, enumeration, MSAA, filter, anisotropy not entered
+95	01dd5e20dd9c0531	272769616089	25664	23504	display_bypass	complete	0	legacy_scenes: 2D/3D/interface scenes and lights not created (no world)
+96	01dd5e20dd9c0531	272769616109	25664	23504	display_bypass	complete	0	legacy_shader_manager: W3DShaderManager not initialized (legacy shaders)
+97	01dd5e20dd9c0531	272769616129	25664	23504	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+98	01dd5e20dd9c0531	272769616149	25664	23504	display_bypass	complete	0	legacy_gamma_lod: gamma and texture LOD reduction not applied
+99	01dd5e20dd9c0531	272769616682	25664	23504	terrain_optin	complete	0	cpu_backed_geometry=1 depth_buffer=1 (terrain-only world pass; meshes/water/shadows/particles absent)
+100	01dd5e20dd9c0531	272769616895	25664	23504	graphics_device	begin	0	driver=hardware
+101	01dd5e20dda9d7a2	272770514338	25664	23504	graphics_device	complete	0	driver=hardware feature=0xB000 vendor=0x8086 device=0x7D45 adapter=Intel(R) Graphics size=1680x1050
+102	01dd5e20dda9d7a2	272770514550	25664	23504	graphics_window_association	begin	0	
+103	01dd5e20dda9d7a2	272770514670	25664	23504	graphics_window_association	complete	0	
+104	01dd5e20dda9d7a2	272770514696	25664	23504	graphics_target	begin	0	
+105	01dd5e20dda9d7a2	272770518673	25664	23504	graphics_target	complete	0	RGBA8 single-sample backbuffer/RTV
+106	01dd5e20dda9d7a2	272770518755	25664	23504	graphics_setup	begin	0	
+107	01dd5e20ddac0f2d	272770656112	25664	23504	graphics_setup	complete	0	VS/PS/layout/states/resources
+108	01dd5e20ddac0f2d	272770656362	25664	23504	graphics_viewport	begin	0	
+109	01dd5e20ddac0f2d	272770656457	25664	23504	graphics_viewport	complete	0	
+110	01dd5e20ddac0f2d	272770657691	25664	23504	display_module_audit	complete	0	d3d8=0 d3dx8=0 d3d11=1 dxgi=1
+111	01dd5e20ddac0f2d	272770657727	25664	23504	display_size	complete	0	device=1680x1050 target=1680x1050 bits=32 windowed=1
+112	01dd5e20ddac0f2d	272770657904	25664	23504	display_ordinary_init	complete	0	
+113	01dd5e20ddac0f2d	272770657937	25664	23504	TheDisplay.init	complete	0	
+114	01dd5e20ddac0f2d	272770658007	25664	23504	TheHeaderTemplateManager.init	begin	0	
+115	01dd5e20ddac3645	272770672335	25664	23504	TheHeaderTemplateManager.init	complete	0	
+116	01dd5e20ddac3645	272770672757	25664	23504	TheWindowManager.init	begin	0	
+117	01dd5e20ddac8468	272770685943	25664	23504	TheWindowManager.init	complete	0	
+118	01dd5e20ddac8468	272770686168	25664	23504	TheIMEManager.init	begin	0	
+119	01dd5e20ddaf92d9	272770890445	25664	23504	TheIMEManager.init	complete	0	
+120	01dd5e20ddaf92d9	272770890903	25664	23504	TheShell.init	begin	0	
+121	01dd5e20ddafba08	272770897101	25664	23504	TheShell.init	complete	0	
+122	01dd5e20ddafba08	272770897349	25664	23504	TheInGameUI.init	begin	0	
+123	01dd5e20ddb7c09a	272771421209	25664	23504	TheInGameUI.init	complete	0	
+124	01dd5e20ddb7c09a	272771421398	25664	23504	TheChallengeGenerals.init	begin	0	
+125	01dd5e20ddb7c09a	272771424441	25664	23504	TheChallengeGenerals.init	complete	0	
+126	01dd5e20ddb7c09a	272771424479	25664	23504	TheHotKeyManager.init	begin	0	
+127	01dd5e20ddb7c09a	272771424511	25664	23504	TheHotKeyManager.init	complete	0	
+128	01dd5e20ddb7c09a	272771424588	25664	23504	TheTerrainVisual.init	begin	0	
+129	01dd5e20ddb7c09a	272771424718	25664	23504	terrain_bridge_buffer_init	begin	0	
+130	01dd5e20ddb7c09a	272771426698	25664	23504	terrain_bridge_buffer_init	complete	0	
+131	01dd5e20ddb7c09a	272771426728	25664	23504	terrain_road_buffer_init	begin	0	
+132	01dd5e20ddb83623	272771452446	25664	23504	terrain_road_buffer_init	complete	0	
+133	01dd5e20ddb83623	272771455227	25664	23504	TheTerrainVisual.init	complete	0	
+134	01dd5e20ddb83623	272771455293	25664	23504	TheRayEffects.init	begin	0	
+135	01dd5e20ddb83623	272771455317	25664	23504	TheRayEffects.init	complete	0	
+136	01dd5e20ddb83623	272771455341	25664	23504	TheMouse.init	begin	0	
+137	01dd5e20ddb83623	272771455477	25664	23504	TheMouse.init	complete	0	
+138	01dd5e20ddb83623	272771457045	25664	23504	TheVideoPlayer.init	begin	0	
+139	01dd5e20ddb85d19	272771461688	25664	23504	TheVideoPlayer.init	complete	0	
+140	01dd5e20ddb85d19	272771461794	25664	23504	TheLanguageFilter.init	begin	0	
+141	01dd5e20ddb85d19	272771462079	25664	23504	TheLanguageFilter.init	complete	0	
+142	01dd5e20ddb85d19	272771462143	25664	23504	TheCampaignManager.init	begin	0	
+143	01dd5e20ddb85d19	272771465313	25664	23504	TheCampaignManager.init	complete	0	
+144	01dd5e20ddb85d19	272771465388	25664	23504	TheEva.init	begin	0	
+145	01dd5e20ddb88424	272771473436	25664	23504	TheEva.init	complete	0	
+146	01dd5e20ddb88424	272771473469	25664	23504	TheDisplayStringManager.postProcessLoad	begin	0	
+147	01dd5e20ddb88424	272771477778	25664	23504	TheDisplayStringManager.postProcessLoad	complete	0	
+148	01dd5e20ddb88424	272771477902	25664	23504	TheSnowManager.init	begin	0	
+149	01dd5e20ddb88424	272771478281	25664	23504	TheSnowManager.init	complete	0	
+150	01dd5e20ddb88424	272771478334	25664	23504	TheGameClient	complete	0	
+151	01dd5e20ddb8ab37	272771487478	25664	23504	TheAI	begin	0	
+152	01dd5e20ddb8d251	272771498210	25664	23504	TheAI	complete	0	
+153	01dd5e20ddb8d251	272771498393	25664	23504	TheGameLogic	begin	0	
+154	01dd5e20ddb8f97b	272771504256	25664	23504	TheGameLogic	complete	0	
+155	01dd5e20ddb8f97b	272771504335	25664	23504	TheTeamFactory	begin	0	
+156	01dd5e20ddb8f97b	272771504412	25664	23504	TheTeamFactory	complete	0	
+157	01dd5e20ddb8f97b	272771504441	25664	23504	TheCrateSystem	begin	0	
+158	01dd5e20ddb92071	272771511616	25664	23504	TheCrateSystem	complete	0	
+159	01dd5e20ddb92071	272771513643	25664	23504	ThePlayerList	begin	0	
+160	01dd5e20ddb92071	272771513971	25664	23504	ThePlayerList	complete	0	
+161	01dd5e20ddb92071	272771516785	25664	23504	TheRecorder	begin	0	
+162	01dd5e20ddb92071	272771519820	25664	23504	TheRecorder	complete	0	
+163	01dd5e20ddb92071	272771520061	25664	23504	TheRadar	begin	0	
+164	01dd5e20ddb94784	272771522685	25664	23504	TheRadar	complete	0	
+165	01dd5e20ddb94784	272771522768	25664	23504	TheVictoryConditions	begin	0	
+166	01dd5e20ddb94784	272771522825	25664	23504	TheVictoryConditions	complete	0	
+167	01dd5e20ddb94784	272771522893	25664	23504	TheMetaMap	begin	0	
+168	01dd5e20ddb95b61	272771530204	25664	23504	TheMetaMap	complete	0	
+169	01dd5e20ddb95b61	272771530417	25664	23504	TheActionManager	begin	0	
+170	01dd5e20ddb95b61	272771530452	25664	23504	TheActionManager	complete	0	
+171	01dd5e20ddb95b61	272771530543	25664	23504	TheGameStateMap	begin	0	
+172	01dd5e20ddb95b61	272771530571	25664	23504	TheGameStateMap	complete	0	
+173	01dd5e20ddb95b61	272771530601	25664	23504	TheGameState	begin	0	
+174	01dd5e20ddb95b61	272771530769	25664	23504	TheGameState	complete	0	
+175	01dd5e20ddb95b61	272771531479	25664	23504	TheGameResultsQueue	begin	0	
+176	01dd5e20ddb95b61	272771531508	25664	23504	TheGameResultsQueue	complete	0	
+177	01dd5e20ddb95b61	272771531530	25664	23504	postProcessLoadAll	begin	0	
+178	01dd5e20ddb98287	272771540777	25664	23504	postProcessLoadAll	complete	0	
+179	01dd5e20ddb98287	272771540851	25664	23504	map_cache	begin	0	
+180	01dd5e20ddc064b5	272771987800	25664	23504	map_cache	complete	0	
+181	01dd5e20ddc064b5	272771988010	25664	23504	initial_reset	begin	0	
+182	01dd5e20ddc28854	272772128571	25664	23504	initial_reset	complete	0	
+183	01dd5e20ddc28854	272772128734	25664	23504	HideControlBar	begin	0	
+184	01dd5e20ddc28854	272772128870	25664	23504	HideControlBar	complete	0	
+185	01dd5e20ddc28854	272772128903	25664	23504	engine_init	complete	0	C:\Users\buskr\Documents\Command and Conquer Generals Zero Hour Data\
+186	01dd5e20ddc28854	272772129211	25664	23504	audio_stats	sample	0	free2d=3 free3d=25 playing2d=0 playing3d=0 streams=0 voices_active=0 peak=0 alloc=30 released=0 completions=0 delivered=0 starved=0 underruns=0
+187	01dd5e20dddd3b0c	272773879486	25664	23504	terrain_roads_load	begin	0	
+188	01dd5e20dddd3b0c	272773885003	25664	23504	terrain_roads_load	complete	0	
+189	01dd5e20dddd3b0c	272773885049	25664	23504	terrain_bridges_load	begin	0	
+190	01dd5e20dddd3b0c	272773885194	25664	23504	terrain_bridges_load	complete	0	
+191	01dd5e20deaf3be0	272787648840	25664	23504	terrain_first_frame	complete	0	tiles=16 draws=22 atlas_uploads=1 use_cloud=1 use_noise=1 soft_edge=1 map_extra=88 map_shore=10189 map_roads=163 map_bridges=0 (terrain combined single pass + overlays; UI follows)
+192	01dd5e20deaf3be0	272787649020	25664	23504	world_objects_first_frame	complete	0	registered=457 objects_drawn=47 batches=176 triangles=51218 meshes_drawn=106 skinned=6 textures=35 texture_failures=0 team_colored=10 unsupported_states=0
+193	01dd5e20e0bf3a2d	272822248072	25664	23504	version	observed	0	Community Patch ~2086 By rmk062026 | exe:5139DBE9 ini:FEAAE3F3 Version 1.04
+194	01dd5e20e0c00449	272822300586	25664	23504	options_tabs	complete	0	tabs=6 scale=1.75 panel=1365x994 content=1239x665 strip=1239x53 captions_fit=0
+195	01dd5e20e93427f3	272964125768	25664	23504	terrain_roads_load	begin	0	
+196	01dd5e20e93427f3	272964127667	25664	23504	terrain_roads_load	complete	0	
+197	01dd5e20e93427f3	272964127709	25664	23504	terrain_bridges_load	begin	0	
+198	01dd5e20e9344f8c	272964135976	25664	23504	terrain_bridges_load	complete	0	
+199	01dd5e20efa3d7b9	273072118228	25664	23504	audio_stats	sample	0	free2d=3 free3d=19 playing2d=0 playing3d=6 streams=0 voices_active=7 peak=29 alloc=34 released=4 completions=189 delivered=189 starved=0 underruns=0
+200	01dd5e20fcf69c33	273295641520	25664	23504	version	observed	0	Community Patch ~2086 By rmk062026 | exe:5139DBE9 ini:FEAAE3F3 Version 1.04
+201	01dd5e20fcf6ea76	273295660166	25664	23504	options_tabs	complete	0	tabs=6 scale=1.75 panel=1365x994 content=1239x665 strip=1239x53 captions_fit=0
+202	01dd5e210185b5df	273372126396	25664	23504	audio_stats	sample	0	free2d=3 free3d=19 playing2d=0 playing3d=6 streams=1 voices_active=0 peak=29 alloc=35 released=4 completions=246 delivered=246 starved=0 underruns=0
+203	01dd5e2102d08656	273393806835	25664	23504	terrain_roads_load	begin	0	
+204	01dd5e2102d0ad63	273393813162	25664	23504	terrain_roads_load	complete	0	
+205	01dd5e2102d0ad63	273393813229	25664	23504	terrain_bridges_load	begin	0	
+206	01dd5e2102d0ad63	273393813345	25664	23504	terrain_bridges_load	complete	0	
+207	01dd5e2104e0d2a5	273428427628	25664	23504	engine_cleanup	begin	0	
+208	01dd5e2104e3dddf	273428626661	25664	23504	display_detach	begin	0	ordinary destructor
+209	01dd5e2104e3f1f5	273428635283	25664	23504	ui_residency_release	complete	0	live_residencies=0 before backend release
+210	01dd5e2104eb117b	273429103161	25664	23504	display_detach	complete	0	backend/device released; HWND still owned by WinMain
+211	01dd5e2104f57b2d	273429784226	25664	23504	engine_cleanup	complete	0	
+212	01dd5e2104f57b2d	273429784538	25664	23504	app_window_release	begin	0	backend and display already destroyed
+213	01dd5e2104f6fc42	273429885205	25664	23504	app_window_release	complete	0	
+214	01dd5e2104f6fc42	273429885630	25664	23504	minidumper_shutdown	begin	0	
+215	01dd5e2104f72361	273429890770	25664	23504	minidumper_shutdown	complete	0	
+216	01dd5e2104f72361	273429890959	25664	23504	WinMain	complete	0	exit
