@@ -9,6 +9,7 @@ param([string]$Name = 'x64-45-zh-bringup-v1',
       [switch]$BackupUserData,            # verified full copy of the Zero Hour data folder first (about 525 MB); this is the default
       [switch]$AcknowledgeSharedUserData, # skip the full copy: the game may change shared preferences, saves, maps, replays and logs
       [switch]$Classic,
+      [switch]$PreflightOnly,             # verify the stage, dependencies and user-data path, print the plan, write nothing, start nothing
       [ValidateRange(1,4)][int]$MaxHours = 4)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
@@ -18,6 +19,14 @@ $repo = $script:ZHRepository
 $manifest = Read-NativeOrdinaryPlayStage 'ZeroHour' $Name $script:NativeNormalLaunchGenerated -AllowCrashDumps
 Write-Host "Candidate  : $Name (Zero Hour, AMD64, normal launch$(if ($Classic) { ', -classic: Modern Experience off' }))"
 Write-Host "Executable : $(Join-Path $manifest.GamePath ([IO.Path]::GetFileName($manifest.Build.Executable)))"
+
+if ($PreflightOnly) {
+    $dlls = @($manifest.Dependencies | ForEach-Object { $_.Name }) -join ', '
+    Write-Host "Dependencies: $dlls"
+    Write-Host "Zero Hour user data: $((Get-ZHUserData).Path)"
+    Write-Host 'PREFLIGHT PASS: the stage is an intact reviewed candidate. Nothing was written and no game was started.'
+    return
+}
 
 # The engine reads and writes the player's real Zero Hour data folder (Options.ini, Skirmish.ini, saves, replays). The three small
 # settings files are copied first so a bad first run can be undone by hand; saves, maps and replays are not copied (525 MB).
