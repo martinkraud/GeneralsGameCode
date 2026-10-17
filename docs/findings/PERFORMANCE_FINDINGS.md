@@ -273,7 +273,36 @@ derived missed deadlines 79 -> 48, max backlog 141 -> 91 ms. (One run in four ha
 | Snapshot of the enemy's objects in `AIPlayer::computeSuperweaponTarget` (221 evaluations of `getPlayerSuperweaponValue`, each re-walking all team members and recomputing `ThingTemplate::calcCostToBuild`) | Verified **exact** (10 191 evaluations compared, 0 differences, an injected difference caught) but it saved only ~4 ms per 72 000-tick run: computing the target was 6.5 ms of the 1 359 ms the action cost; the real cost was P-1. **Reverted, not recommended.** | `X64_42_SIMULATION_TAIL_OPTIMIZATION.md` section 3 |
 | Reusing planar shadow-volume geometry between frames (native renderer) | 98 % cache hits but the volume path was 0.14 of 1.02 ms: no benefit, reverted. (Decal-shadow *grid* reuse, in contrast, saved 0.59 ms/frame and was kept after visual acceptance.) | commits `4caebb9e2`, `f0c347b34`, `268506b49`; `X64_35_PERFORMANCE_OPTIMIZATION.md` |
 | Making `PATHFIND_CELLS_PER_FRAME` a CPU bound or caching failing path requests | Not done: the budget is cumulative and after-the-fact (P-3), and the repeats are AI timing | P-3 "Related audit" |
+| Failure memo / early rejection for exhausted A* searches (X64.43) | Not built: repeats are few (120 of 580), the pathfinder state mutates ~96 000 times between repeats, equivalence cannot be proven; ceiling 0.16-0.7 s per run. | `X64_43_FAILING_PATH_INVESTIGATION.md` |
 | Threading / worker pool for the simulation | Not built. X64.38 produced the thread-ownership audit, a worker-count policy and a serial reference; the serial algorithmic wins above removed the reason first. | `X64_38_CPU_SCALABILITY.md` |
+
+## P-7. Why the remaining A* searches fail and why they cannot be shortcut (X64.43)
+
+**Classification: POSSIBLE upstream relevance as an explanation (shared pathfinder code); no fix recommended.**
+
+### Problem / symptom
+After P-1..P-4 the rare 70-80 ms ticks of the heavy benchmark were A* searches that exhaust the open list and return no path (580 per 72 000 ticks; 6-7 above 20 ms).
+
+### Affected source
+`Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp`: `Pathfinder::findPath` -> `internalFindPath` (only reached from `AIUpdateInterface::doPathfind` -> `computePath`), the neighbour rule in `examineNeighboringCells`, and `Pathfinder::checkForMovement`
+(`RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING`: "can't path through not-idle units"; uncrushable enemy fixed units also block).
+
+### Root cause
+Not a defect: the retail movement rule rejects a cell whose footprint holds a *stationary* allied unit that is not idle, or an enemy that cannot be crushed. A stationary army in a chokepoint therefore disconnects the pocket behind it for
+every mover, but the static data (zones) still says "connected" and the terrain-only reachability confirms it (109 of 112 expensive failures). Every unit behind the army that is told to guard / move beyond it triggers an A* that expands the
+whole pocket (~22 000 cells, ~5 re-expansions per cell) before the open list runs dry. Measured on Twilight Flame: requesters GUARD state 92 of 112 under script commands from the AI skirmish teams; goals concentrate on 29 areas; the same pattern
+appears on 13 other maps with fewer and cheaper failures.
+
+### Why no exact shortcut was found
+Reusing a failure needs a proof that nothing relevant changed: the pathfinder cell state changes ~96 000 times between two asks of the same request (2 of 120 repeats saw no change), and the blocking depends on object state outside the
+map (a blocker's idleness, the mover's relationships and crush ability). An early rejection would need per-cell version stamps on every unit update and per-object state versions. Hierarchical-search failure is not a proof (80 % of the requests that fall back
+then succeed). Budgets or caps would change results. Benefit ceiling of exact reuse: ~0.16-0.7 s per 72 000-tick run.
+
+### Evidence, tooling, tests
+`GENERALS_SIM_PATHFAIL=1` (read-only, off by default; `PathFailureDiag.cpp`), contract `test_x64_43_pathfail_contract.py` (6 mutation tests), Stage4B.1 guard extended; fingerprint and three further maps' digests equal with the diagnostic on and off.
+Record: `docs/modernization/X64_43_FAILING_PATH_INVESTIGATION.md`.
+
+---
 
 ## P-6. Insufficient evidence (intentionally not claimed)
 

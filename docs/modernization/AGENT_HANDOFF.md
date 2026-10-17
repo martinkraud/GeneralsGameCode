@@ -461,6 +461,11 @@ Speed must drive `FramePacer::setLogicTimeScaleFps`, default 30, campaign Normal
 the staged `generalsv_r1diag.exe` is in the v4 candidate folder; the human step is 2 minutes (see the doc, section 12). `test_stage4b1_reference.py` is now a function-level contract with authorization tables and mutation tests.
 Tail after X64.41: periodic script tick (every 300 frames, 70-110 ms) and update-module spikes; path search is no longer the limiter.
 
+## X64.43 Exhaustive failing path searches (CP17, investigation)
+Read `X64_43_FAILING_PATH_INVESTIGATION.md`. Decision C: no production change. `GENERALS_SIM_PATHFAIL=1` (`Core/GameEngine/Source/GameLogic/AI/PathFailureDiag.cpp`, read-only, off by default, contract test + Stage4B.1 guard extension)
+characterises searches that exhaust the open list: ~22 000 cells explored, goal never reached because stationary non-idle allied or uncrushable enemy units seal a chokepoint (`checkForMovement`), while zones and terrain say connected; requested by AI skirmish
+scripts (GUARD). Failure reuse is unprovable (96 000 cell-state mutations between repeats; 2 of 120 repeats unchanged). The serial CPU phase is at diminishing returns; a real-game scalability benchmark (design in the document) is the proposed next step. Do not add a failure cache.
+
 ## X64.42 Simulation tail reduction (CP16, delivered)
 Read `X64_42_SIMULATION_TAIL_OPTIMIZATION.md` and `GAME_SPEED_DESIGN.md`. Root cause of the 300-frame script spike AND of the update-module spikes: `StartupDiagnostics::checkpoint` flushed the normal-launch log (`generals64.log`) to disk per record, and the simulation writes
 records on special-power activation, payload delivery and group dispatch (a real-game stall too, not only a benchmark artifact). Fix: no per-record `FlushFileBuffers` in a normal launch (evidence-harness modes still flush; `GENERALS_NORMAL_LOG_FLUSH=1` restores it). Guarded by

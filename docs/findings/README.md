@@ -22,6 +22,7 @@ How to read the tables:
 | P-4 | Repeated accepted-cell checks in the A* line walk | pathfinder (`examineCellsCallback`) | 80.8 % of callbacks re-examined settled cells | `path_search` -21 %, worst 167 -> 75 ms | small-medium (per-search generation memo) | strong (72 M hits re-verified, decision digest) | `94428fa89` | POSSIBLE |
 | P-5 | Negative results: superweapon-target snapshot, shadow-volume reuse | AI / renderer | - | ~4 ms per run; 0 ms | - | good | `4caebb9e2`, `f0c347b34` (+ X64.42 doc) | INSUFFICIENT value - not recommended |
 | P-6 | `PATHFIND_CELLS_PER_FRAME` is not a CPU bound | pathfinder queue | one request may expand the whole map | documentation of semantics | - | good (source reading + observed 107 143 expansions) | `bbcb68df1` | POSSIBLE (documentation) |
+| P-7 | Remaining exhausted A* searches are sealed pockets (stationary non-idle allied / uncrushable enemy units); no exact shortcut | pathfinder (`checkForMovement`, `internalFindPath`) | 6-7 searches above 20 ms per heavy run | explanation + decision not to optimise (ceiling 0.16-0.7 s per run) | - | strong (diagnostic on 14 maps, repeat and state-mutation measurement) | (diagnostic only; see the X64.43 document) | POSSIBLE (explanation only) |
 
 ## AMD64 porting - [`AMD64_PORTING_FINDINGS.md`](AMD64_PORTING_FINDINGS.md)
 

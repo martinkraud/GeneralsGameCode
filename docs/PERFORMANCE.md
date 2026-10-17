@@ -104,6 +104,12 @@ One run in four had a single 231.9 ms tick (a script-tick stall) that was report
 
 Fingerprint `74F2CB528BED42ED` in all runs. A 16-map check (digest and launch-log content, flush vs no flush) was identical on every map.
 
+### X64.43 - exhaustive failing path searches: characterised, not optimised
+
+No production change. The remaining tail (A* searches that exhaust the open list: 580 per heavy run, 6-7 above 20 ms) was explained by an off-by-default read-only diagnostic: the searches explore the whole connected
+pocket of the requester (~22 000 cells) because stationary non-idle allied units and uncrushable enemy units seal a chokepoint, while the terrain and the zone data say the goal is reachable. Repeats are too rare and the pathfinder
+cell state changes too much (2 of 120 repeats saw no change) for any exact failure reuse. Decision: no justified optimization. Record: [`modernization/X64_43_FAILING_PATH_INVESTIGATION.md`](modernization/X64_43_FAILING_PATH_INVESTIGATION.md).
+
 ## 5. End-to-end: all original code paths vs the current defaults (same executable)
 
 All four legacy switches together (original ZoneCalc, original open-list walk, original line walk, per-record log flush) against the defaults, **the same executable built from the current HEAD**, alternating, 4 rounds each,
@@ -142,7 +148,7 @@ improved by 31 %: the work removed was the rare expensive ticks, not the typical
 Cumulative CPU over the whole run: `ai_object_base_update` 37.7 % (many cheap calls, individual maximum under 5 ms - throughput, not tail), `object_update_loops` 17.6 %, `logic_scripts` 8.9 %, `logic_partition` 7.1 %,
 `path_search` 6.9 %.
 
-Known remaining areas: (1) rare exhaustive *failing* path searches (≈104 000 pops over ≈21 000 distinct cells and ≈6 M line-walk callbacks, 70-80 ms, a handful per 72 000 ticks); (2) ZoneCalc recalculations that
+Known remaining areas: (1) rare exhaustive *failing* path searches (≈104 000 pops over ≈21 000 distinct cells and ≈6 M line-walk callbacks, 70-80 ms, a handful per 72 000 ticks; characterised in X64.43: sealed by stationary units, no exact shortcut found); (2) ZoneCalc recalculations that
 coincide with other work (≈5.6 ms each, 386 per run); (3) `ai_object_base_update` throughput; (4) a one-time frame-0 AI supply-source setup of 15-120 ms depending on the map, which is a **map-load cost, not a recurring
 gameplay tick**. A few isolated 30-60 ms values in a 16-map table did not reproduce on re-run; they are treated as noise and are not claimed as engine problems.
 
@@ -166,3 +172,8 @@ generalsv.exe -headless -replay bench.rep
 
 Run from the game directory (the engine finds its data relative to the executable). Use `GENERALS_ZONE_LEGACY=1`, `GENERALS_PATH_LEGACY=1`, `GENERALS_LINE_LEGACY=1`, `GENERALS_NORMAL_LOG_FLUSH=1` for the original behaviour,
 and the `*_VERIFY` switches to compare an optimisation against the original on every call. A proprietary-asset-free benchmark requires the game's own data and an executable built from this repository.
+
+## 9. Has the serial CPU optimization phase reached diminishing returns?
+
+After X64.43: yes, for this workload. The heavy 8-player benchmark misses the 33.333 ms budget about 8 times in 72 000 ticks with a 0.7 ms median; the remaining tail is workload-specific (large armies sealing chokepoints) and has no cheap exact
+shortcut; `ai_object_base_update` is throughput, not tail; further gains would need parallelism or behaviour changes. The proposed next measurement is a real-game scalability benchmark (design in the X64.43 document), not another optimization.
