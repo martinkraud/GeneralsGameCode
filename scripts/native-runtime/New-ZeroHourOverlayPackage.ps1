@@ -83,8 +83,8 @@ Add-File 'Generals.exe' $ExePath 'z_generals (preset win64, Release) generalszh.
     'project-owned (GPL-3.0-or-later, see MKRaudstein\LICENSE.md)' 'required' `
     'REPLACES the original Electronic Arts launcher Generals.exe of the Steam installation (restore with Steam: Verify integrity of game files)' $null
 foreach ($imported in $runtimeNames) {
-    $n = (Get-Item -LiteralPath (Join-Path $RedistDirectory $imported)).Name     # the redistributable's own spelling
-    Add-File $n (Join-Path $RedistDirectory $n) 'Microsoft Visual C++ x64 redistributable (Visual Studio)' `
+    $n = $imported.ToLowerInvariant()     # the redistributable's own (lower-case) spelling
+    Add-File $n (Join-Path $RedistDirectory $imported) 'Microsoft Visual C++ x64 redistributable (Visual Studio)' `
         "Imported by Generals.exe ($n); shipped app-local so the player need not install the Visual C++ x64 redistributable." `
         'Microsoft redistributable (app-local deployment of the Visual C++ runtime)' 'required' 'new file (not part of the Steam installation)' $null
 }
