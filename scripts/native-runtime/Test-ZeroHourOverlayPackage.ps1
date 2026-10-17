@@ -64,7 +64,7 @@ Expand-Archive -LiteralPath $Zip -DestinationPath $game -Force      # what the p
 $exe = Join-Path $game 'Generals.exe'
 Check ((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash -eq ($manifest.files | Where-Object file -eq 'Generals.exe').sha256) 'extracting replaced the placeholder Generals.exe with the packaged runtime'
 $added = @(Get-ChildItem -LiteralPath $game -File | ForEach-Object Name | Where-Object { $_ -notin $beforeNames })
-Check (-not ($added | Where-Object { $_ -notmatch '^(?i)(vcruntime140|vcruntime140_1|msvcp140|msvcp140_atomic_wait)\.dll$|^MKRaudstein-$Title-README\.txt$' })) "the overlay added only runtime DLLs and the README to the installation root ($($added -join ', '))"
+Check (-not ($added | Where-Object { $_ -notmatch "^(?i)(vcruntime140|vcruntime140_1|msvcp140|msvcp140_atomic_wait)\.dll$|^MKRaudstein-$Title-README\.txt$" })) "the overlay added only runtime DLLs and the README to the installation root ($($added -join ', '))"
 
 # ---- 3. static import resolution ------------------------------------------------------------------------------------------------------
 function Get-Imports([string]$Path) {
