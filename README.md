@@ -50,6 +50,20 @@ The modernization deliberately separates:
 
 ---
 
+## Documentation
+
+| For | Start here |
+|---|---|
+| What changed, by area | [CHANGELOG.md](CHANGELOG.md) |
+| Performance methodology and results | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) |
+| Engineering findings (what was wrong, where, how it was verified) | [docs/findings/README.md](docs/findings/README.md) - [performance](docs/findings/PERFORMANCE_FINDINGS.md), [AMD64 porting](docs/findings/AMD64_PORTING_FINDINGS.md), [replay / determinism](docs/findings/REPLAY_DETERMINISM_FINDINGS.md) |
+| Roadmap, milestone records and handoff | [docs/modernization/](docs/modernization/) - [roadmap](docs/modernization/FIRST_PLAYABLE_ROADMAP.md), [handoff](docs/modernization/AGENT_HANDOFF.md) |
+| Original Game Speed facts and the (unimplemented) Game Speed design | [audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [design](docs/modernization/GAME_SPEED_DESIGN.md) |
+| Building | [Building](#building) below |
+| Known limitations | [Known Incomplete Areas](#known-incomplete-areas) below |
+
+---
+
 # Current Status
 
 ## Generals — Native AMD64 / DirectX 11
@@ -229,39 +243,30 @@ changing the underlying gameplay.
 
 # Performance
 
-Performance work is focused on **stable gameplay and frame pacing**, not simply
-maximizing an FPS counter.
+The performance work is **not** about maximising render FPS. The original game simulates **30 logic ticks per second** at Normal speed (a 33.333 ms budget per tick, proven for both
+Generals and Zero Hour in the [Game Speed audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md)); rendering is paced separately in this fork. The CPU work targets a **stable simulation in
+large battles**: the slowest ticks (p99 / worst), ticks that exceed the 33.333 ms budget, derived deadline misses and accumulated backlog - not the average, which is already small.
 
-The main priorities are:
+All optimizations are exact (bit-identical simulation): each keeps the original algorithm selectable, was checked against it, and left the deterministic benchmark fingerprint unchanged.
 
-- Maintaining the authoritative simulation rate
-- Avoiding large gameplay stalls
-- Improving frame pacing
-- Reducing expensive CPU rendering work
-- Improving large-battle headroom
-- Profiling before optimizing
-- Preserving deterministic gameplay behaviour
+**Benchmark:** 72 000 authoritative ticks (40 game minutes at 30 TPS), Twilight Flame, one idle human + 7 Brutal AI, headless and deterministic, one development machine
+(Intel Core Ultra 5 125U). Same executable, original code paths vs current defaults, alternating runs, 4 each:
 
-The project includes native performance instrumentation capable of measuring
-engine subsystems and frame-time behaviour.
+| whole simulation tick | original paths | current |
+|---|---|---|
+| p99 | 22.8 ms | 5.9 ms |
+| p99.9 | 49.7 ms | 10.4 ms |
+| ticks over the 33.3 ms budget (of 72 000) | 204 | 4.5 |
+| derived missed deadlines | 414 | 8 |
+| derived maximum backlog | 3.0 s | 52 ms |
+| median tick | 0.71 ms | 0.71 ms |
 
-Recent profiling has already identified and optimized expensive rendering
-paths, including terrain-conforming projected shadow decal generation.
+The median did not change: the work removed the rare expensive ticks (pathfinding zone recalculation, the A* open list and line walk, and a synchronous diagnostic disk flush on the logic thread), not the
+typical one. The deadline and backlog figures are derived from measured tick durations, not from a paced run. These numbers describe this workload on this machine and should not be generalised to other
+PCs, maps or match types. Remaining known tail: rare exhaustive failing path searches (~80 ms).
 
-Performance work will increasingly focus on demanding real gameplay scenarios
-with:
-
-- Multiple AI players
-- Large bases
-- Large unit counts
-- Heavy pathfinding
-- Aircraft
-- Artillery
-- Particles and effects
-- Continuous combat
-
-For an RTS, a stable experience under heavy load is considered more valuable
-than extremely high peak FPS in an empty scene.
+Methodology, the per-milestone A/B tables, the current profile and the limits of these results: **[docs/PERFORMANCE.md](docs/PERFORMANCE.md)**. Reusable root-cause write-ups for other engine developers:
+**[docs/findings/](docs/findings/README.md)**.
 
 ---
 
@@ -355,9 +360,10 @@ modernization.
 | UI scaling foundation | ✅ Working |
 | Smooth presentation | ✅ Working, optional |
 | Performance instrumentation | ✅ Working |
+| Simulation CPU optimization (exact, serial) | ✅ Delivered, see [Performance](docs/PERFORMANCE.md) |
 | Enhanced HUD (USA, China, GLA) | ✅ Working, optional |
 | Movies / cutscenes | 🚧 Incomplete |
-| Replay native validation | 🧪 Further validation needed |
+| Replay record / re-simulate (Generals Skirmish) | ✅ Verified for a recorded match; wider validation needed |
 | Multiplayer / determinism | ⏳ Further validation needed |
 | Full Zero Hour native validation | ⏳ Planned |
 
@@ -458,9 +464,10 @@ Further fidelity and correctness improvements remain ongoing.
 - [x] Frame-time attribution
 - [x] Renderer profiling
 - [x] Evidence-driven optimization foundation
-- [ ] Heavy real-combat profiling
-- [ ] Large-game simulation profiling
-- [ ] Further CPU optimization
+- [x] Large-game simulation profiling (deterministic AI-vs-AI benchmark)
+- [x] Exact serial CPU optimizations (ZoneCalc, A* open list and line walk, launch-log flush)
+- [ ] Heavy real-combat profiling with a human player
+- [ ] Further CPU optimization (exhaustive failing path searches, ZoneCalc coincidence)
 - [ ] Further frame-pacing improvements
 
 ## Phase 7 — Enhanced Experience
@@ -709,7 +716,7 @@ complete.
 Important remaining areas include:
 
 - Movie / cutscene playback
-- Full replay validation
+- Full replay validation (a recorded Generals Skirmish re-simulates; Zero Hour, campaign and cross-version replays are not validated)
 - Multiplayer validation
 - Determinism validation
 - Full Zero Hour native validation
