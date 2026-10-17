@@ -51,6 +51,7 @@
 #include "Common/GameMemory.h"
 #include "Common/GlobalData.h"
 #include "Common/Registry.h"
+#include "Common/StartupDiagnostics.h"
 #include "BinkLoader.h"
 
 //----------------------------------------------------------------------------
@@ -281,6 +282,13 @@ VideoStreamInterface*	BinkVideoPlayer::open( AsciiString movieTitle )
 
 		DEBUG_LOG(("BinkVideoPlayer::createStream() - About to create stream"));
 		stream = createStream( handle );
+	}
+
+	// Movie unavailable (no decoder or no file): callers skip the movie and continue the transition.
+	// Record it so a skipped movie is visible in generals64.log (bounded, never fatal).
+	if (stream == nullptr)
+	{
+		StartupDiagnostics::checkpoint("movie", "skipped", movieTitle.str());
 	}
 
 	return stream;

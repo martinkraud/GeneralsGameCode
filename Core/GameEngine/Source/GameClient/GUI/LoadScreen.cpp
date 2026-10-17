@@ -950,9 +950,17 @@ void ChallengeLoadScreen::init( GameInfo *game )
 	// create the new background video stream
 	m_videoStream = TheVideoPlayer->open( TheCampaignManager->getCurrentMission()->m_movieLabel );
 
+	// Movie playback unavailable (e.g. no video decoder on this build): skip the movie but keep the
+	// challenge presentation; the static portraits and biographies are shown below.
+	const Bool movieUnavailable = (m_videoStream == nullptr);
+	if (movieUnavailable)
+	{
+		DEBUG_LOG(("ChallengeLoadScreen: movie '%s' unavailable, skipped", TheCampaignManager->getCurrentMission()->m_movieLabel.str()));
+	}
+
 	// Create the new buffer
-	m_videoBuffer = TheDisplay->createVideoBuffer();
-	if (m_videoBuffer == nullptr || !m_videoBuffer->allocate(	m_videoStream->width(), m_videoStream->height() ))
+	m_videoBuffer = movieUnavailable ? nullptr : TheDisplay->createVideoBuffer();
+	if (!movieUnavailable && (m_videoBuffer == nullptr || !m_videoBuffer->allocate(	m_videoStream->width(), m_videoStream->height() )))
 	{
 		delete m_videoBuffer;
 		m_videoBuffer = nullptr;
@@ -1043,7 +1051,14 @@ void ChallengeLoadScreen::init( GameInfo *game )
 	m_wndVideoManager = NEW WindowVideoManager;
 	m_wndVideoManager->init();
 
-	if(TheGameLODManager && TheGameLODManager->didMemPass())
+	if (movieUnavailable)
+	{
+		activatePiecesMinSpec(generalPlayer, generalOpponent);
+		m_wndVideoManager->update();
+		TheWindowManager->update();
+		TheDisplay->draw();
+	}
+	else if(TheGameLODManager && TheGameLODManager->didMemPass())
 	{
 		// TheSuperHackers @bugfix Originally this movie render loop stopped rendering when the game window was inactive.
 		// This either skipped the movie or caused decompression artifacts. Now the video just keeps playing until it done.
