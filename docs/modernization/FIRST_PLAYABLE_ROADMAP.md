@@ -48,7 +48,12 @@ visual acceptance by the agent, no weakened gates, immutable failed-run evidence
 | CP17 = X64.43 | Exhaustive failing path searches (`X64_43_FAILING_PATH_INVESTIGATION.md`) | **DELIVERED (investigation; decision C: no justified optimization)**: off-by-default read-only diagnostic `GENERALS_SIM_PATHFAIL`; the remaining expensive A* failures are pockets sealed by stationary non-idle allied / uncrushable enemy units (terrain and zones say reachable, 109 of 112), requested by AI skirmish scripts (GUARD state); repeats are few and the pathfinder state changes ~96 000 times between repeats, so no exact reuse is provable. Serial CPU phase at diminishing returns; next: real-game scalability benchmark (measurement), not another optimization |
 | CP18 = X64.44 | Real-game scalability / chokepoint endurance benchmark (`X64_44_ENDURANCE_BENCHMARK.md`) | **DELIVERED AND CLOSED** (measurement only): native 51.5-minute Twilight Flame match (human + 5 Brutal AI): peak 1 227 objects / 469 units, tick mean 4.15 ms (12 % of budget), p99 10.97 ms, 6 ticks over 33.333 ms, 29.998 TPS, lag 0.35 s - no knee, no sustained degradation; the match re-simulates headless with zero CRC mismatches (first long real-game determinism validation). The historical huge-army chokepoint workload was NOT reproduced. Decision A: no multithreading before Zero Hour; serial CPU phase stays closed. Next: Zero Hour native validation |
 | CP19 = X64.45 | Zero Hour native audit and bring-up (`X64_45_ZERO_HOUR_NATIVE_BRINGUP.md`) | **CLOSED 2026-10-17, HUMAN NATIVE VALIDATED (candidate v3)**: Zero Hour is playable natively; the black terrain strips (stale native terrain atlas, fixed) are gone; clean exit, audio healthy; the v3 replay re-simulates deterministically on Win64 (0 mismatches, 8 741 frames) but not on Win32; brief minor lag observed, undiagnosed (no telemetry). Backlog in section 12.4; recommended next: X64.46 Zero Hour game-mode completeness (Campaign, General's Challenge, Save/Load, movie-skip policy) |
-| CP20 = X64.46 | Zero Hour game-mode completeness (`X64_46_ZERO_HOUR_GAME_MODE_COMPLETENESS.md`) | **OPEN, automated native validated, human validation pending** (candidate `x64-46-zh-modes-v1`): Campaign, General's Challenge and Save/Load reach the world through the real screens unattended; one blocker fixed (General's Challenge crashed on a null movie stream); movie-skip policy consistent and logged; Save/Load keeps all 470 objects bit-identical. Not closed until the human runs the three modes |
+| CP20 = X64.46 | Zero Hour game-mode completeness (`X64_46_ZERO_HOUR_GAME_MODE_COMPLETENESS.md`) | **CLOSED 2026-10-17, HUMAN NATIVE VALIDATED (candidate `x64-46-zh-modes-v1`)**: Campaign, General's Challenge and Save/Load work natively (human: no crash, black screen or stuck flow; loaded game correct). One blocker fixed (General's Challenge crashed on a null movie stream); movie-skip policy consistent and logged (`movie/skipped`); Save/Load keeps 470/470 objects bit-identical. NOT validated: mission victory/defeat progression (deferred), movies (absent: no Bink on AMD64). R-6 (cross-architecture replay) still open. |
+| CP21 = X64.47 | **NEXT (recommended, not started)**: Zero Hour visual and options parity | the 3 hidden ZH-only Options controls, animated UV mappers (Rotate, SineLinearOffset, StepLinearOffset, ZigZagLinearOffset), a decision on a still-image policy for the missing movies, mission victory/progression coverage as a human checklist |
+| CP22 = X64.48 | Enhanced HUD for Zero Hour | 12 sides, 14-slot command bar, General's powers, per-side theme review |
+| CP23 = X64.49 | Audio by ear, endurance, performance, replay follow-up | ZH endurance run (includes the unverified brief-lag input), audio review, R-3/R-5/R-6 cross-architecture replay question; performance work only here, after the above |
+| CP24 = X64.50 | **Release engineering design (FUTURE, not started)** | design only: layout of the ZIP, asset discovery/verification, launcher, update/uninstall story, licence/asset boundary; see section 8 |
+| CP25 = X64.51 | **First distributable ZIP and second-PC validation (FUTURE, not started)** | build the ZIP, validate ZIP -> extract -> Play on at least a second PC before any public release |
 | CP4 | Full skirmish acceptance (AI, clean end) | planned |
 
 ## 3. Dependency graph from accepted terrain to First Playable
@@ -182,3 +187,22 @@ map/shroud controls; instant build; unlimited resources; unit spawn; game-speed 
 diagnostics (draw/triangle/texture counters - `NativeWorldObjects::Stats` is the seed); stress scenarios.
 The existing Stage4B.1 interactive adapter (`DEVELOPER_MODE.md`, `-devMode`) is the legacy-renderer
 precedent and its safety rules (offline skirmish only, no networking/replay) carry over.
+
+## 8. FUTURE: user-facing MKRaudstein distribution (RECORD ONLY - not started, nothing of it is implemented)
+Recorded 2026-10-17 as the end goal after the remaining Zero Hour completeness and Modern Experience work (CP21-CP23). Do **not** start it before those are done and the developer asks.
+**Objective:** a user-facing "Modern Experience by MKRaudstein" Generals / Zero Hour distribution comparable in usability to established community releases:
+- one downloadable ZIP; target experience ZIP -> extract -> Play;
+- no Visual Studio, CMake or source checkout, and no developer staging scripts, required by the player;
+- works with a legitimate, existing Generals / Zero Hour installation; **no proprietary EA game assets are redistributed** (no BIGs, no Bink, no codecs bundled);
+- automatically locates a legitimate Steam / EA installation, or lets the player pick one; verifies the required original game data;
+- keeps the original installation unmodified where practical (the stage-by-reference approach of the developer tooling is the starting point; the Steam directory stays read-only);
+- launches the AMD64 modernized Generals or Zero Hour runtime directly; ideally one simple MKRaudstein launcher for both titles;
+- validated on at least a second PC (clean user, different GPU/driver, no developer tools) before any public release.
+**Known inputs for that milestone:** current staging copies assets into `build/dev-runtimes/...` (developer layout); the 64-bit registry view is empty for the game (defaults apply, WOW6432Node holds the keys; base-game assets for Zero Hour are found by a recursive `*.big` scan of the working directory); user data lives in the Documents data folders and is backed up by `Run-ZeroHourCandidate`; the missing Bink decoder is a product decision (still-image policy or a licensed decoder) for CP21 or CP24; the licence/asset boundary needs a written policy.
+
+## 9. Short ordered roadmap from here to the first distributable ZIP
+1. **X64.47** Zero Hour visual and options parity (3 Options controls, animated UV, movie still-image decision, victory/progression human checklist).
+2. **X64.48** Enhanced HUD for Zero Hour.
+3. **X64.49** Audio, endurance, performance (incl. the unverified brief-lag input) and the replay / R-6 follow-up.
+4. **X64.50** Release engineering design (ZIP layout, asset discovery and verification, launcher, licence boundary).
+5. **X64.51** Build the first distributable ZIP and validate it on a second PC; only then consider a public release.

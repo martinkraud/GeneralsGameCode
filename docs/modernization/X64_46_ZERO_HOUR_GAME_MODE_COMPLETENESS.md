@@ -1,6 +1,6 @@
 # X64.46 - Zero Hour game-mode completeness (Campaign, General's Challenge, Save/Load)
 
-Status: **OPEN - automated native validation done, human native validation pending.** Do not close until the human has run the three modes on the staged candidate (section 8).
+Status: **CLOSED 2026-10-17 - Campaign, General's Challenge and Save/Load are HUMAN NATIVE VALIDATED on candidate `x64-46-zh-modes-v1` (section 10), for the scope defined here. Mission victory/progression was not part of what the human reported (section 9).**
 Start point: HEAD `78f96405d` = `origin/dev/modern-engine`, working tree clean, X64.45 closed (candidate `x64-45-zh-bringup-v3` human validated).
 
 ## 0. What is validated how (read this first)
@@ -8,7 +8,7 @@ Start point: HEAD `78f96405d` = `origin/dev/modern-engine`, working tree clean, 
 | --- | --- | --- |
 | **Audited** | Code read, compared with Generals / Core / retail behaviour; not executed | section 2 |
 | **Automated native validated** | The real native `generalszh.exe` (Win64, normal launch, real window, real shell screens driven by `GENERALS_AUTOFLOW`) reached the state; evidence is the log / screenshot. **Not** human validation | sections 3-5 |
-| **Human validated** | A person played it | none yet (section 8) |
+| **Human validated** | A person played it | Campaign, General's Challenge and Save/Load on `x64-46-zh-modes-v1` (section 10) |
 | **Unavailable because movies are absent** | The mode works, the movie is skipped (no Bink decoder on AMD64) | section 6 |
 | **Deferred** | Not done, with the reason | section 9 |
 
@@ -108,3 +108,27 @@ Not run: `scripts/rendering` (8 known failures unrelated, unchanged), replay re-
 - Save/Load of a **campaign** mission (the first campaign mission starts with a cinematic during which the quit menu disables Save/Load by design) and save/load across different generals.
 - Win32 comparison of the save/load invariants; R-6 stays open and untouched.
 - Movie decoding (out of scope), Enhanced HUD, Options, animated UV, performance, endurance (out of scope).
+
+## 10. Human native validation (2026-10-17) and closeout
+**RESULT: PASS** on candidate `x64-46-zh-modes-v1` (SHA-256 `5862716d964aa1ff1513ebe9160b1d95ed9d340d2a2a0787d18f5592c2b902f1`), tested by the human:
+- Campaign worked as expected.
+- General's Challenge worked as expected.
+- Save/Load worked as expected; the loaded game appeared correct and continued normally.
+- No blocker, crash, black screen or stuck frontend flow was observed.
+- The absence of movies is expected and is **not** a validation failure.
+
+### 10.1 Exactly what this validates, and what it does not
+| Item | Status |
+| --- | --- |
+| Campaign, General's Challenge, Save/Load (frontend, load transition, world entry, play, return, save, reload, continue) | **HUMAN NATIVE VALIDATED** |
+| Movie playback (Bink) | **absent by design** on AMD64; skipped and logged (section 5, 6); not a defect, not validated, not implemented |
+| Mission **victory / defeat progression**, next-mission continuation, challenge unlock by winning, final-victory flow | **NOT validated**: the human did not report completing one, and the automated evidence does not cover it. Deferred (section 9). Do not infer it from this PASS |
+| Save/Load of a campaign mission after its opening cutscene; Win32 save/load comparison | not covered (section 9) |
+| R-6 (Win32 versus Win64 simulation, cross-architecture replay) | **still open**, untouched by this milestone |
+| Performance, endurance, the brief lag of the X64.45 run | **not investigated** (section 10.2) |
+
+### 10.2 Brief lag observation (carried over, unverified)
+The human saw one short, minor lag/stutter during the X64.45 `v3` run. It was never reproduced or measured (no telemetry was on). It is recorded **only as a future input to the endurance milestone** (`Run-ZeroHourCandidate.ps1 -Endurance`). The X64.46 validation reported none; nothing was investigated.
+
+### 10.3 Closeout
+X64.46 is closed: its aim (native functional completeness of the three modes, with the movie-skip policy they need) is met and human validated. The remaining Zero Hour work is in `FIRST_PLAYABLE_ROADMAP.md` (checkpoints CP21 onward) and `AGENT_HANDOFF.md`.
