@@ -1,6 +1,6 @@
 # X64.47A - Zero Hour Steam overlay ZIP feasibility (PREVIEW package)
 
-Status: **OPEN - package built and automatically validated on a disposable layout; the real Steam test on a second PC is NOT done.** The Steam distribution model is **not validated** until the human performs the checklist in section 9. This is not a public release and not the "X64.47 Zero Hour visual and options parity" feature milestone (that stays the next feature milestone, see `FIRST_PLAYABLE_ROADMAP.md`).
+Status: **Steam overlay model HUMAN VALIDATED on a second PC (2026-10-17: ZIP extracted over the Steam installation, launched through Steam Play, no missing-DLL / runtime / startup blocker). The package below is SUPERSEDED by the rebuild in `X64_48A_SECOND_PC_CORRECTNESS.md` (section 11), which fixes three correctness defects found on that PC; public release readiness is still blocked by them and by release hygiene (build path in the executable, unsigned executable).** This is not a public release and not the "X64.47 Zero Hour visual and options parity" feature milestone (that stays the next feature milestone, see `FIRST_PLAYABLE_ROADMAP.md`).
 Start point: HEAD `8d3db7b08` = `origin/dev/modern-engine` (X64.46 closed). Safety held throughout: the real Steam directory was only read (listing, hashing, the launch configuration in `appcache`), never written, and the candidate was never run on it.
 
 ## 1. The package

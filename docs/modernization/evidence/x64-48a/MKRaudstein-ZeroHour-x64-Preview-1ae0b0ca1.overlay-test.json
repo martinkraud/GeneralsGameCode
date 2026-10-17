@@ -1,0 +1,108 @@
+{
+  "zip": "MKRaudstein-ZeroHour-x64-Preview-1ae0b0ca1.zip",
+  "zipSha256": "E33DD85E8BF4C6A647316FCBCB4A4E7ABFDADF768C4C00302364D269C7AF9503",
+  "stage": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-47a-overlay-test",
+  "launch": {
+    "Output": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\diag\\overlay-test-20261017T203419Z",
+    "ExitCode": 0
+  },
+  "checks": [
+    {
+      "Pass": true,
+      "Check": "the ZIP contains exactly the files of its manifest (no more, no less)"
+    },
+    {
+      "Pass": true,
+      "Check": "every packaged file matches the SHA-256 in the manifest"
+    },
+    {
+      "Pass": true,
+      "Check": "no proprietary asset / developer file types in the ZIP"
+    },
+    {
+      "Pass": true,
+      "Check": "the only executable is Generals.exe"
+    },
+    {
+      "Pass": true,
+      "Check": "Generals.exe is an AMD64 (x64) PE image"
+    },
+    {
+      "Pass": true,
+      "Check": "the only DLLs are the four Visual C++ runtime DLLs"
+    },
+    {
+      "Pass": true,
+      "Check": "extracting replaced the placeholder Generals.exe with the packaged runtime"
+    },
+    {
+      "Pass": true,
+      "Check": "the overlay added only runtime DLLs and the README to the installation root (MKRaudstein-ZeroHour-README.txt, msvcp140_atomic_wait.dll, msvcp140.dll, vcruntime140_1.dll, vcruntime140.dll)"
+    },
+    {
+      "Pass": true,
+      "Check": "every imported DLL resolves (31 imports: 4 from the extracted folder, the rest Windows system DLLs)"
+    },
+    {
+      "Pass": true,
+      "Check": "the Visual C++ runtime comes from the extracted folder (app-local), not from the machine"
+    },
+    {
+      "Pass": true,
+      "Check": "the extracted Generals.exe ran and exited cleanly (exit code 0)"
+    },
+    {
+      "Pass": true,
+      "Check": "the log records a normal launch (the Generals.exe name selects the modern runtime)"
+    },
+    {
+      "Pass": true,
+      "Check": "the main menu / shell was reached and rendered"
+    },
+    {
+      "Pass": true,
+      "Check": "the General's Challenge screens were driven to the match"
+    },
+    {
+      "Pass": true,
+      "Check": "a match frame was rendered and captured"
+    },
+    {
+      "Pass": true,
+      "Check": "no failed phase in the log"
+    }
+  ],
+  "imports": [
+    "WS2_32.dll",
+    "d3d11.dll",
+    "D3DCOMPILER_47.dll",
+    "ole32.dll",
+    "DINPUT8.dll",
+    "KERNEL32.dll",
+    "USER32.dll",
+    "GDI32.dll",
+    "SHELL32.dll",
+    "OLEAUT32.dll",
+    "ADVAPI32.dll",
+    "MSVCP140.dll",
+    "MSVCP140_ATOMIC_WAIT.dll",
+    "VCRUNTIME140.dll",
+    "VCRUNTIME140_1.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-time-l1-1-0.dll",
+    "api-ms-win-crt-utility-l1-1-0.dll",
+    "api-ms-win-crt-multibyte-l1-1-0.dll",
+    "api-ms-win-crt-process-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "IMM32.dll",
+    "AVIFIL32.dll",
+    "WINMM.dll"
+  ]
+}
