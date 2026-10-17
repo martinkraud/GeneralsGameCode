@@ -1,11 +1,12 @@
 #Requires -Version 7.0
-# X64.47A: builds the PREVIEW Zero Hour player overlay ZIP from known build outputs. The ZIP is extracted over a legitimate Zero Hour
+# X64.47A / X64.47B: builds the PREVIEW Zero Hour (default) or Generals (-Title Generals) player overlay ZIP from known build outputs. The ZIP is extracted over a legitimate Zero Hour
 # installation (Steam: its Play button starts Generals.exe, which this package replaces with the AMD64 build). It contains only
 # project-built files and the Microsoft Visual C++ runtime DLLs the executable imports (app-local deployment); never EA assets.
 # Deterministic: the same inputs give the same ZIP bytes (sorted entries, fixed timestamps, no build-tree paths).
 # Nothing is installed anywhere; the Steam installation is never touched.
 [CmdletBinding()]
-param([string]$ExePath,                   # default: build\win64\GeneralsMD\Release\generalszh.exe
+param([ValidateSet('ZeroHour', 'Generals')][string]$Title = 'ZeroHour',
+      [string]$ExePath,                   # default: build\win64\GeneralsMD\Release\generalszh.exe (Generals: build\win64\Generals\Release\generalsv.exe)
       [string]$SymbolsPath,               # default: the .pdb next to the executable
       [string]$RedistDirectory,           # directory with the x64 Microsoft.VC14x.CRT DLLs; default: newest Visual Studio redistributable
       [string]$OutputDirectory,           # default: build\dist
@@ -17,10 +18,30 @@ $repo = $script:ZHRepository
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-if (-not $ExePath) { $ExePath = Join-Path $repo 'build\win64\GeneralsMD\Release\generalszh.exe' }
+# Title-specific facts (everything else is shared). Steam launches Generals.exe for both titles (appinfo launch configuration).
+$T = if ($Title -eq 'Generals') {
+    @{ Display = 'Generals'; Full = 'Command & Conquer Generals'; Release = 'Command & Conquer Generals'; File = 'Generals'; Exe = 'build\win64\Generals\Release\generalsv.exe'; Target = 'g_generals'; Built = 'generalsv.exe'
+       Folder = 'C:\Program Files (x86)\Steam\steamapps\common\Command and Conquer Generals'; Data = 'Documents\Command and Conquer Generals Data'
+       Launcher = 'the original Electronic Arts launcher Generals.exe'
+       Limits = @(' - Movie (Bink) playback does not exist in the 64-bit build: movies are skipped (intro, campaign briefing and cutscene movies).',
+                  ' - Mission victory / progression has not been validated by a human on the preview; LAN / online play is not supported.',
+                  ' - Only the Steam release of Generals (English) is targeted. It has not been tested in a real Steam installation yet.') }
+} else {
+    @{ Display = 'Zero Hour'; Full = 'Command & Conquer Generals: Zero Hour'; Release = 'Command & Conquer Generals Zero Hour'; File = 'ZeroHour'; Exe = 'build\win64\GeneralsMD\Release\generalszh.exe'; Target = 'z_generals'; Built = 'generalszh.exe'
+       Folder = 'C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour'; Data = 'Documents\Command and Conquer Generals Zero Hour Data'
+       Launcher = 'the original Electronic Arts launcher Generals.exe'
+       Limits = @(' - Movie (Bink) playback does not exist in the 64-bit build: movies are skipped. Campaign briefing movies, the General''s',
+                  '   Challenge video screens and the intro movies are therefore absent; the mission or the static screens follow immediately.',
+                  ' - The Enhanced Zero Hour HUD is not implemented yet (the classic Zero Hour control bar is used).',
+                  ' - Three Zero Hour-only options are hidden in the Modern options pages; animated texture effects (rotating/offset',
+                  '   textures) are static. These and more are planned for later milestones (X64.47 and later).',
+                  ' - Mission victory / progression has not been validated by a human yet; LAN / online play is not supported.',
+                  ' - Only the Steam release of Zero Hour (English) has been tested.') }
+}
+if (-not $ExePath) { $ExePath = Join-Path $repo $T.Exe }
 if (-not $SymbolsPath) { $SymbolsPath = [IO.Path]::ChangeExtension($ExePath, '.pdb') }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo 'build\dist' }
-if (-not (Test-Path -LiteralPath $ExePath -PathType Leaf)) { throw "Executable not found: $ExePath (build target z_generals, preset win64)" }
+if (-not (Test-Path -LiteralPath $ExePath -PathType Leaf)) { throw "Executable not found: $ExePath (build target $($T.Target), preset win64)" }
 
 Push-Location $repo
 try {
@@ -78,10 +99,10 @@ function Add-File([string]$Destination, [string]$Source, [string]$BuildTarget, [
     $files.Add([pscustomobject]@{ Destination = $Destination; Source = $Source; BuildTarget = $BuildTarget; Reason = $Reason; Ownership = $Ownership
                                   Requirement = $Requirement; Replaces = $Replaces; Content = $Content })
 }
-Add-File 'Generals.exe' $ExePath 'z_generals (preset win64, Release) generalszh.exe' `
-    'The AMD64 / Direct3D 11 Zero Hour runtime. Steam''s Play button starts Generals.exe, so the runtime is shipped under that name.' `
+Add-File 'Generals.exe' $ExePath "$($T.Target) (preset win64, Release) $($T.Built)" `
+    "The AMD64 / Direct3D 11 $($T.Display) runtime. Steam's Play button starts Generals.exe, so the runtime is shipped under that name." `
     'project-owned (GPL-3.0-or-later, see MKRaudstein\LICENSE.md)' 'required' `
-    'REPLACES the original Electronic Arts launcher Generals.exe of the Steam installation (restore with Steam: Verify integrity of game files)' $null
+    "REPLACES $($T.Launcher) of the Steam installation (restore with Steam: Verify integrity of game files)" $null
 foreach ($imported in $runtimeNames) {
     $n = $imported.ToLowerInvariant()     # the redistributable's own (lower-case) spelling
     Add-File $n (Join-Path $RedistDirectory $imported) 'Microsoft Visual C++ x64 redistributable (Visual Studio)' `
@@ -93,25 +114,25 @@ Add-File 'MKRaudstein\LICENSE.md' (Join-Path $repo 'LICENSE.md') 'repository LIC
 
 # README (generated; same text for the same inputs)
 $readme = @"
-MKRaudstein Zero Hour x64 - PREVIEW $Version
+MKRaudstein $($T.Display) x64 - PREVIEW $Version
 Modern Experience by MKRaudstein | 64-bit * DirectX 11
 ================================================================
 
 STATUS: PREVIEW / TESTING PACKAGE. NOT a public release. It is meant for testing on a second PC.
 
 WHAT THIS IS
-An overlay for an EXISTING, legitimate installation of Command & Conquer Generals: Zero Hour. It contains NO game data, no
+An overlay for an EXISTING, legitimate installation of $($T.Full). It contains NO game data, no
 music, no movies and no other Electronic Arts assets: you must own the game. It adds a 64-bit (AMD64) Direct3D 11 version of
-the Zero Hour engine, built from the open GeneralsGameCode sources (GPL-3.0, see MKRaudstein\LICENSE.md).
-Targeted at the current Steam release of Command & Conquer Generals Zero Hour (the folder usually is
-C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour).
+the $($T.Display) engine, built from the open GeneralsGameCode sources (GPL-3.0, see MKRaudstein\LICENSE.md).
+Targeted at the current Steam release of $($T.Release) (the folder usually is
+$($T.Folder)).
 
 HOW TO INSTALL
  1. Install the game in Steam and start it once normally (to prove the unmodified game works). Exit it.
  2. OPTIONAL BACKUP: copy Generals.exe in the game folder to Generals.exe.original (the next step overwrites it).
- 3. Extract this ZIP directly into the Zero Hour game folder. Choose "Replace the files in the destination" when asked.
+ 3. Extract this ZIP directly into the $($T.Display) game folder. Choose "Replace the files in the destination" when asked.
     The files are listed below and in MKRaudstein\manifest.json. Only Generals.exe replaces an existing file.
- 4. Start Zero Hour with the normal PLAY button in Steam. Steam starts Generals.exe, which is now the 64-bit runtime.
+ 4. Start $($T.Display) with the normal PLAY button in Steam. Steam starts Generals.exe, which is now the 64-bit runtime.
  No installer, no registry changes, no administrator rights beyond what Windows needs to write to the game folder.
 
 WHAT IS IN THE ZIP
@@ -122,22 +143,16 @@ HOW TO CHECK THAT THE 64-BIT RUNTIME IS RUNNING
  contains generals64.log, whose first lines say normal_launch.
 
 KNOWN LIMITATIONS OF THIS PREVIEW
- - Movie (Bink) playback does not exist in the 64-bit build: movies are skipped. Campaign briefing movies, the General's
-   Challenge video screens and the intro movies are therefore absent; the mission or the static screens follow immediately.
- - The Enhanced Zero Hour HUD is not implemented yet (the classic Zero Hour control bar is used).
- - Three Zero Hour-only options are hidden in the Modern options pages; animated texture effects (rotating/offset
-   textures) are static. These and more are planned for later milestones (X64.47 and later).
- - Mission victory / progression has not been validated by a human yet; LAN / online play is not supported.
- - Only the Steam release of Zero Hour (English) has been tested.
+$($T.Limits -join "`r`n")
 
 HOW TO GO BACK
- In Steam: right-click Zero Hour > Properties > Installed Files > "Verify integrity of game files". This restores the original
+ In Steam: right-click $($T.Display) > Properties > Installed Files > "Verify integrity of game files". This restores the original
  Generals.exe. The other files of this package are extra files that Steam leaves alone; they are harmless and can be deleted
  by hand (the list above): vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll, msvcp140_atomic_wait.dll, the MKRaudstein folder
  and this README.
 
 SAVES AND SETTINGS
- The game uses the same user-data folder as the original (Documents\Command and Conquer Generals Zero Hour Data). Back it up
+ The game uses the same user-data folder as the original ($($T.Data)). Back it up
  before testing if you care about your saves and settings.
 
 PROJECT
@@ -145,7 +160,7 @@ PROJECT
  Based on https://github.com/TheSuperHackers/GeneralsGameCode and the source code released by Electronic Arts under the GPL.
  "Command & Conquer", "Generals" and "Zero Hour" are trademarks of Electronic Arts Inc. This project is not affiliated with EA.
 "@ -replace "`r?`n", "`r`n"
-Add-File 'MKRaudstein-ZeroHour-README.txt' $null 'generated by New-ZeroHourOverlayPackage.ps1' 'Explains the preview, installation, limitations and restoration.' 'project-owned' 'required (documentation)' 'new file' ([Text.Encoding]::UTF8.GetBytes($readme))
+Add-File "MKRaudstein-$($T.File)-README.txt" $null 'generated by New-ZeroHourOverlayPackage.ps1' 'Explains the preview, installation, limitations and restoration.' 'project-owned' 'required (documentation)' 'new file' ([Text.Encoding]::UTF8.GetBytes($readme))
 
 # hashes + manifest (the manifest inside the ZIP lists every other file with its SHA-256)
 foreach ($f in $files) {
@@ -154,8 +169,8 @@ foreach ($f in $files) {
     $f | Add-Member -NotePropertyName Sha256 -NotePropertyValue ([BitConverter]::ToString([Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', ''))
 }
 $manifest = [ordered]@{
-    package = "MKRaudstein-ZeroHour-x64-Preview-$Version"; status = 'PREVIEW - not a public release'; sourceCommit = $commitFull
-    targetGame = 'Command & Conquer Generals Zero Hour (Steam, English); extract into the game folder; overwrite when asked'
+    package = "MKRaudstein-$($T.File)-x64-Preview-$Version"; status = 'PREVIEW - not a public release'; sourceCommit = $commitFull
+    targetGame = "$($T.Release) (Steam, English); extract into the game folder; overwrite when asked"
     imports = @($imports | Sort-Object -Unique)
     files = @($files | Sort-Object Destination | ForEach-Object {
         [ordered]@{ file = $_.Destination; sourceOrBuildTarget = $_.BuildTarget; reason = $_.Reason; ownership = $_.Ownership; requirement = $_.Requirement
@@ -168,7 +183,7 @@ $files[-1] | Add-Member -NotePropertyName Sha256 -NotePropertyValue ([BitConvert
 
 # ---- deterministic ZIP -----------------------------------------------------------------------------------------------------------------
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
-$zipName = "MKRaudstein-ZeroHour-x64-Preview-$Version.zip"
+$zipName = "MKRaudstein-$($T.File)-x64-Preview-$Version.zip"
 $zipPath = Join-Path $OutputDirectory $zipName
 function Write-Zip([string]$Path, $Entries) {
     $temp = "$Path.tmp"
@@ -192,12 +207,12 @@ Write-Zip $zipPath $files
 $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash
 "$zipHash  $zipName" | Set-Content -LiteralPath "$zipPath.sha256" -Encoding ascii
 ([ordered]@{ zip = $zipName; zipSha256 = $zipHash; zipSize = (Get-Item -LiteralPath $zipPath).Length; manifest = $manifest } | ConvertTo-Json -Depth 8) |
-    Set-Content -LiteralPath (Join-Path $OutputDirectory "MKRaudstein-ZeroHour-x64-Preview-$Version.manifest.json") -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $OutputDirectory "MKRaudstein-$($T.File)-x64-Preview-$Version.manifest.json") -Encoding utf8
 
 # optional symbols archive (separate, never part of the player ZIP)
 $symbolsZip = $null
 if (Test-Path -LiteralPath $SymbolsPath -PathType Leaf) {
-    $symbolsZip = Join-Path $OutputDirectory "MKRaudstein-ZeroHour-x64-Preview-$Version-Symbols.zip"
+    $symbolsZip = Join-Path $OutputDirectory "MKRaudstein-$($T.File)-x64-Preview-$Version-Symbols.zip"
     $sym = [pscustomobject]@{ Destination = [IO.Path]::GetFileName($SymbolsPath); Bytes = [IO.File]::ReadAllBytes($SymbolsPath) }
     Write-Zip $symbolsZip @($sym)
 }

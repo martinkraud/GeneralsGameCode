@@ -9,16 +9,22 @@
 #     checks the log (normal launch, a world, clean exit).
 # This is automated validation, NOT the human Steam test.
 [CmdletBinding()]
-param([string]$Zip,
-      [string]$Name = 'x64-47a-overlay-test',
-      [string]$AssetSource = 'C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour',
+param([ValidateSet('ZeroHour', 'Generals')][string]$Title = 'ZeroHour',
+      [string]$Zip,
+      [string]$Name,
+      [string]$AssetSource,               # default: the read-only Steam Zero Hour folder (Generals: its ZH_Generals base-game folder)
       [switch]$SkipLaunch,
       [ValidateRange(60,600)][int]$TimeoutSeconds = 240)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $repo = $script:ZHRepository
+$steamZh = 'C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour'
+if (-not $AssetSource) { $AssetSource = if ($Title -eq 'Generals') { Join-Path $steamZh 'ZH_Generals' } else { $steamZh } }
+if (-not $Name) { $Name = if ($Title -eq 'Generals') { 'x64-47b-overlay-test' } else { 'x64-47a-overlay-test' } }
+$builtExe = if ($Title -eq 'Generals') { 'generalsv' } else { 'generalszh' }
+$flow = if ($Title -eq 'Generals') { 'skirmish' } else { 'challenge' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-if (-not $Zip) { $Zip = Get-ChildItem (Join-Path $repo 'build\dist') -Filter 'MKRaudstein-ZeroHour-x64-Preview-*.zip' | Where-Object { $_.Name -notmatch 'Symbols' } | Sort-Object LastWriteTime | Select-Object -Last 1 -ExpandProperty FullName }
+if (-not $Zip) { $Zip = Get-ChildItem (Join-Path $repo 'build\dist') -Filter "MKRaudstein-$Title-x64-Preview-*.zip" | Where-Object { $_.Name -notmatch 'Symbols' } | Sort-Object LastWriteTime | Select-Object -Last 1 -ExpandProperty FullName }
 if (-not $Zip -or -not (Test-Path -LiteralPath $Zip)) { throw 'Package not found; run New-ZeroHourOverlayPackage.ps1 first.' }
 $results = [System.Collections.Generic.List[object]]::new()
 function Check([bool]$Condition, [string]$Message) { $results.Add([pscustomobject]@{ Pass = $Condition; Check = $Message }); if (-not $Condition) { Write-Host "FAIL: $Message" -ForegroundColor Red } else { Write-Host "ok  : $Message" } }
@@ -47,18 +53,18 @@ $dllNames = @($entries.Keys | Where-Object { $_ -match '\.dll$' })
 Check ($dllNames.Count -eq 4 -and -not ($dllNames | Where-Object { $_ -notmatch '^(?i)(vcruntime140|vcruntime140_1|msvcp140|msvcp140_atomic_wait)\.dll$' })) 'the only DLLs are the four Visual C++ runtime DLLs'
 
 # ---- 2. disposable installation + overlay ----------------------------------------------------------------------------------------------
-$stageRoot = Join-Path $repo "build\dev-runtimes\native\ZeroHour\$Name"
+$stageRoot = Join-Path $repo "build\dev-runtimes\native\$Title\$Name"
 if (Test-Path -LiteralPath $stageRoot) { throw "Disposable stage already exists: $stageRoot (remove it by hand: it is yours, by literal path)." }
-& (Join-Path $PSScriptRoot 'Stage-NativeOrdinaryPlay.ps1') -Title ZeroHour -Name $Name -AssetSource $AssetSource | Out-Null
+& (Join-Path $PSScriptRoot 'Stage-NativeOrdinaryPlay.ps1') -Title $Title -Name $Name -AssetSource $AssetSource | Out-Null
 $game = Join-Path $stageRoot 'game'
-foreach ($leftover in 'generalszh.exe', 'generalszh.pdb') { [IO.File]::Delete((Join-Path $game $leftover)) }   # the developer stage's own runtime: not part of an installation
+foreach ($leftover in "$builtExe.exe", "$builtExe.pdb") { [IO.File]::Delete((Join-Path $game $leftover)) }   # the developer stage's own runtime: not part of an installation
 [IO.File]::WriteAllText((Join-Path $game 'Generals.exe'), 'placeholder standing in for the Electronic Arts Generals.exe of the Steam installation')
 $beforeNames = @(Get-ChildItem -LiteralPath $game -File | ForEach-Object Name)
 Expand-Archive -LiteralPath $Zip -DestinationPath $game -Force      # what the player does: extract over the installation, overwrite
 $exe = Join-Path $game 'Generals.exe'
 Check ((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash -eq ($manifest.files | Where-Object file -eq 'Generals.exe').sha256) 'extracting replaced the placeholder Generals.exe with the packaged runtime'
 $added = @(Get-ChildItem -LiteralPath $game -File | ForEach-Object Name | Where-Object { $_ -notin $beforeNames })
-Check (-not ($added | Where-Object { $_ -notmatch '^(?i)(vcruntime140|vcruntime140_1|msvcp140|msvcp140_atomic_wait)\.dll$|^MKRaudstein-ZeroHour-README\.txt$' })) "the overlay added only runtime DLLs and the README to the installation root ($($added -join ', '))"
+Check (-not ($added | Where-Object { $_ -notmatch '^(?i)(vcruntime140|vcruntime140_1|msvcp140|msvcp140_atomic_wait)\.dll$|^MKRaudstein-$Title-README\.txt$' })) "the overlay added only runtime DLLs and the README to the installation root ($($added -join ', '))"
 
 # ---- 3. static import resolution ------------------------------------------------------------------------------------------------------
 function Get-Imports([string]$Path) {
@@ -94,7 +100,7 @@ if (-not $SkipLaunch) {
     $saved = @{ P = $env:PATH; S = $env:GENERALS_AUTOSHOT; F = $env:GENERALS_AUTOFLOW; N = $env:GENERALS_AUTOSHOT_FRAMES }
     # Windows only on the DLL search path: no Visual Studio, CMake or repository directory can satisfy a dependency.
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-    $env:GENERALS_AUTOSHOT = $out; $env:GENERALS_AUTOFLOW = 'challenge'; $env:GENERALS_AUTOSHOT_FRAMES = '400'
+    $env:GENERALS_AUTOSHOT = $out; $env:GENERALS_AUTOFLOW = $flow; $env:GENERALS_AUTOSHOT_FRAMES = '400'
     try {
         $p = Start-Process -FilePath $exe -WorkingDirectory $game -PassThru     # no arguments: exactly what Steam's Play does
         if (-not $p.WaitForExit($TimeoutSeconds * 1000)) { $p.Kill(); $timedOut = $true } else { $timedOut = $false }
@@ -105,7 +111,8 @@ if (-not $SkipLaunch) {
     if ($text) { Copy-Item -LiteralPath $log -Destination (Join-Path $out 'generals64.log') }
     Check ((-not $timedOut) -and $exit -eq 0) "the extracted Generals.exe ran and exited cleanly (exit code $exit)"
     Check ($text -match 'normal_launch') 'the log records a normal launch (the Generals.exe name selects the modern runtime)'
-    Check ($text -match 'autoflow\s+observed\s+0\s+flow complete' -or $text -match 'flow complete') 'the Challenge screens were driven to the match'
+    Check (Test-Path -LiteralPath (Join-Path $out 'autoshot-shell.bmp')) 'the main menu / shell was reached and rendered'
+    Check ($text -match 'flow complete') "the $(if ($flow -eq 'skirmish') { 'Skirmish setup' } else { 'General''s Challenge' }) screens were driven to the match"
     Check ($text -match 'autoshot\s+complete' -and (Test-Path -LiteralPath (Join-Path $out 'autoshot-game.bmp'))) 'a match frame was rendered and captured'
     Check ($text -notmatch '\sfail\s') 'no failed phase in the log'
     $launch = [pscustomobject]@{ Output = $out; ExitCode = $exit }
