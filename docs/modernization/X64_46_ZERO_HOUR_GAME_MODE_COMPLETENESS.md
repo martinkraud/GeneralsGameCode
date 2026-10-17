@@ -55,7 +55,7 @@ Steps recorded in the log: start Challenge; wait 300 logic frames and for input 
 | after_load_150_frames | 920 | same | 16000 | 470 | 122 | E68EA51F |
 | saved_again | 935 | same | 16000 | 470 | 122 | E462E951 |
 Per object: **470 of 470 objects have an identical full snapshot CRC before the save and after the load, none missing, none new**; the players component CRC is identical. The aggregate logic CRC differs because three components are not equal after a load: the **partition manager** (cell lists are rebuilt), the **AI** component (a counter-like difference, a few low bits) and the **logic RNG seed**. The RNG seed is not part of the save in this codebase (`GameState` is unchanged from upstream `adac468d7`), so a loaded game continues with a fresh random state: this is how the original save format behaves, not something introduced by the port; I have **not** verified it on the Win32 build (no equivalent unattended driver there), so treat it as "same code, expected the same". The save format was not touched. The simulation continues after the load (770 -> 920, 150 frames, object count stable) and the loaded game can be saved again.
-Side effect to know: the runs wrote nine save files into the real Zero Hour user-data `Save` folder (names `0000000n.sav`, description "Air Force General Challenge 1"); they are listed in the final report and are safe to delete.
+Side effect: the runs wrote 14 test saves into the real Zero Hour user-data `Save` folder; they were all created by these runs (no earlier saves existed) and were **moved** (not deleted) to `build/evidence-archive/zh-x64-46-test-saves/` (git-ignored), so the candidate starts with an empty save list.
 
 ## 4. Blockers found, root cause, fix
 ### 4.1 B-1: General's Challenge crashed on every start (access violation, Win64)
@@ -94,7 +94,7 @@ Not run: `scripts/rendering` (8 known failures unrelated, unchanged), replay re-
 - Launcher (default is this candidate): `scripts\native-runtime\Run-ZeroHourCandidate.cmd` (equivalent: `pwsh -File scripts\native-runtime\Run-ZeroHourCandidate.ps1 -Name x64-46-zh-modes-v1`; `-PreflightOnly` checks without starting). It takes a verified backup of your Zero Hour user data first.
 - The candidate carries the developer capture aid but it is inert unless `GENERALS_AUTOSHOT` / `GENERALS_AUTOFLOW` are set.
 - The previous candidate `x64-45-zh-bringup-v3` is untouched (use `-Name x64-45-zh-bringup-v3`).
-- The runs above left nine test saves (`Save\0000000n.sav`, "Air Force General Challenge 1") in your Zero Hour user-data folder; delete them or ignore them.
+- Your Zero Hour `Save` folder is empty of test saves (they were moved to `build/evidence-archive/zh-x64-46-test-saves/`).
 
 **Checklist (please note what you see; there are no movies, that is expected):**
 1. *Campaign*: main menu (move the mouse), Single Player, USA (or GLA / China), Easy. Expect: no briefing movie, a load screen with the default background, then the mission (a cutscene first). Play a minute, give an order, win or lose or quit (Esc, Exit Mission): the score screen appears and you return to the menu. Note anything that hangs, crashes or is black.
