@@ -24,6 +24,9 @@ class NormalLaunchContract(unittest.TestCase):
         self.assertIn("generals64.log", d)
         # Test hosts that include the header must never be classified as a normal launch.
         self.assertIn('_strnicmp(base, "generalsv", 9)', d)
+        # X64.47A: Steam's Play button starts Generals.exe, so exactly that name (and no other prefix) is also a game executable.
+        self.assertIn('_stricmp(base, "generals.exe")', d)
+        self.assertNotIn('_strnicmp(base, "generals", 8)', d)
 
     def test_every_ordinary_predicate_is_true_for_normal_launch(self):
         d = read(DIAG)

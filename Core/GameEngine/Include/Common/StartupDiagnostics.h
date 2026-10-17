@@ -196,7 +196,9 @@ inline bool configure(int argc, char **argv) {
             char *slash = std::strrchr(module, '\\');
             // Only the game executables are a normal launch; test hosts and tools include this header too.
             const char *base = slash ? slash + 1 : module;
-            const bool gameExe = !_strnicmp(base, "generalsv", 9) || !_strnicmp(base, "generalszh", 10);
+            // X64.47A: Steam's Play button starts "Generals.exe" in the Zero Hour directory (its launch configuration), so the AMD64
+            // build is also a game executable under exactly that name when it is extracted over the installation.
+            const bool gameExe = !_strnicmp(base, "generalsv", 9) || !_strnicmp(base, "generalszh", 10) || !_stricmp(base, "generals.exe");
             if (slash && gameExe) {
                 s.normal = true;
                 *slash = 0;
