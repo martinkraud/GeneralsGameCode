@@ -209,10 +209,10 @@ class ZeroHourNativeContract(unittest.TestCase):
         # The .cmd double-click passes no -Name: the default must be the candidate the handoff documents (a stale default once pointed at v1).
         ps1 = read("scripts/native-runtime/Run-ZeroHourCandidate.ps1")
         default = re.search(r"\[string\]\$Name = '([^']+)'", ps1).group(1)
-        doc = read("docs/modernization/X64_45_ZERO_HOUR_NATIVE_BRINGUP.md")
+        doc = read("docs/modernization/X64_46_ZERO_HOUR_GAME_MODE_COMPLETENESS.md")   # the milestone that stages the current candidate
         self.assertIn("ZeroHour\\" + default + "\game\generalszh.exe", doc)
         self.assertIn("-Name " + default, doc)
-        self.assertEqual(sorted(set(re.findall(r"x64-45-zh-bringup-v\d+", ps1))), [default])
+        self.assertEqual(sorted(set(re.findall(r"x64-\d+-zh-[a-z]+(?:-[a-z]+)*-v\d+", ps1))), [default])
 
     def test_the_candidate_launcher_can_start_classic_without_a_diagnostic_token(self):
         inv = read("scripts/native-runtime/Invoke-NativeNormalLaunch.ps1")
