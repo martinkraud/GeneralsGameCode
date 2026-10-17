@@ -46,6 +46,7 @@ How to read the tables:
 | R-2 | Deterministic benchmark + fingerprint + CRC-trace methodology | `ReplaySimulation.cpp`, `DeterminismFingerprint.h`, `scripts/diagnostics/` | - | strong (used to verify every optimization) | `4d1db422a`, `94428fa89` | POSSIBLE (tooling) |
 | R-3 | AMD64 floating-point policy characterised, cross-architecture equivalence **not** proven | `setFPMode` (`GameLogic.cpp`) | - | good | `4a36a0cd2` | POSSIBLE |
 | R-4 | 51-minute human-played match re-simulates headless with zero CRC mismatches | `ReplaySimulation.cpp`, replay CRC | - | strong for this match; not a general proof | - | (X64.44 closeout) | OBSERVATION |
+| R-5 | The available Zero Hour replay mismatches at frame 100 on every Zero Hour build incl. 2026-10-07 | `ReplaySimulation.cpp` (Zero Hour) | - | observation only; cause unknown | - | (X64.45) | INSUFFICIENT EVIDENCE |
 
 ## Related documents
 

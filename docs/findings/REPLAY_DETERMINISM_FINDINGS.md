@@ -111,3 +111,12 @@ compatibility is **not validated** in this fork. Details: `docs/modernization/X6
 
 The native build recorded a 92 656-frame match (human + 5 Brutal AI, Twilight Flame, Starting Cash fix present). Headless re-simulation of the preserved replay produced **zero CRC mismatches over 926 replay CRC checks and 3 088 fingerprint checkpoints**, and reproduced 26 of the 30 slowest native ticks on the same
 frames. This is the first long real-game determinism validation of this fork (one match, one build, one machine). It is **not** a proof of replay determinism in general, of cross-architecture determinism, or of network lockstep (R-3 is unchanged).
+
+---
+
+## R-5. The available Zero Hour replay does not re-simulate on any Zero Hour build (X64.45, observation)
+
+`Replays 00000.rep` (74 s, recorded 2026-10-09) reports `CRC Mismatch in Frame 100` under `generalszh.exe -headless -replay` with the current Win32 build **and** with the Win32 builds of the runtime stages
+`baseline` (2026-10-07, before every optimization), `stage3c3-ground-hardening` and `stage4a3-performance-harness-fix1`. The mismatch therefore does not come from the fork's serial optimizations or from X64.45. Cause unknown (the
+recording environment, options or content may differ from the headless re-simulation; the Generals R-1 lesson - a replay header that omits a setting - is a candidate but was not examined). Zero Hour replay determinism is **not established**;
+the first native Zero Hour candidate run produces a fresh replay for a proper check. Evidence: `docs/modernization/evidence/x64-45-zh-replay-check/`.

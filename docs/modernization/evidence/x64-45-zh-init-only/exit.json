@@ -1,0 +1,21 @@
+{
+  "FinishedUtc": "2026-10-17T09:42:39.2752583Z",
+  "ProcessId": 15312,
+  "Started": true,
+  "TimedOut": false,
+  "ExitCode": 0,
+  "Error": null,
+  "Success": true,
+  "HasStartupLog": true,
+  "ActualPaths": {
+    "module": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-scratch\\game\\generalszh.exe",
+    "base_assets": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-scratch\\game\\ZH_Generals\\",
+    "userdata": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-scratch\\runs\\20261017T0942364134293Z\\userdata\\",
+    "startup_parse": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-scratch\\game",
+    "dump_path": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-scratch\\runs\\20261017T0942364134293Z\\userdata\\CrashDumps\\"
+  },
+  "PathsMatch": true,
+  "ShutdownEvidencePath": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-scratch\\runs\\20261017T0942364134293Z\\shutdown-exception.bin",
+  "ShutdownEvidenceBytes": 0,
+  "Interpretation": "Inspect last completed/begun checkpoint"
+}
