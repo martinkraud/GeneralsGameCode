@@ -1,0 +1,15 @@
+{
+  "Executable": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-bringup-v3\\game\\generalszh.exe",
+  "ProcessId": 23448,
+  "Started": true,
+  "TimedOut": false,
+  "ExitCode": 0,
+  "Error": null,
+  "HasLog": true,
+  "PreservedLog": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-45-zh-bringup-v3\\normal-launch\\20261017T1511152236047Z.generals64.log",
+  "CrashDumps": "",
+  "CrashDumpCount": 0,
+  "StageRestored": true,
+  "CleanupError": null,
+  "FinishedUtc": "2026-10-17T15:16:47.3609451Z"
+}

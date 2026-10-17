@@ -48,6 +48,7 @@ How to read the tables:
 | R-3 | AMD64 floating-point policy characterised, cross-architecture equivalence **not** proven | `setFPMode` (`GameLogic.cpp`) | - | good | `4a36a0cd2` | POSSIBLE |
 | R-4 | 51-minute human-played match re-simulates headless with zero CRC mismatches | `ReplaySimulation.cpp`, replay CRC | - | strong for this match; not a general proof | - | (X64.44 closeout) | OBSERVATION |
 | R-5 | The available Zero Hour replay mismatches at frame 100 on every Zero Hour build incl. 2026-10-07 | `ReplaySimulation.cpp` (Zero Hour) | - | observation only; cause unknown | - | (X64.45) | INSUFFICIENT EVIDENCE |
+| R-6 | Native-recorded Zero Hour match re-simulates cleanly on Win64 (0 mismatches, 3 identical digests), not on Win32 | `ReplaySimulation.cpp`, replay CRC | - | good for one match; cross-architecture unproven | - | (X64.45) | OBSERVATION |
 
 ## Related documents
 

@@ -1,6 +1,6 @@
 # X64.45 - Zero Hour native audit and bring-up (CP19)
 
-Status: **first native run done (it reached gameplay, one major terrain defect found and fixed, section 11); second candidate `x64-45-zh-bringup-v3` prepared and preflighted, not executed.** The human performs the native runs. Nothing in this
+Status: **CLOSED 2026-10-17 - Zero Hour is playable natively; the terrain-strip defect is fixed and HUMAN NATIVE VALIDATED on candidate `x64-45-zh-bringup-v3` (sections 11 and 12).** The human performs the native runs. Nothing in this
 document is a claim that Zero Hour "works" natively: every rendering, audio, UI and gameplay row below is *implemented* or *unverified* until that
 run. Method labels used throughout: **Static** (source read / diff against Generals), **Built** (compiled and unit/contract tested),
 **Ran headless** (executed by the agent without a window), **Not run natively** (needs the human).
@@ -190,8 +190,8 @@ it throw "Game crashed: ... preserved" on purpose.
 | Z-4 | Zero Hour animated UV mappers have no native form | deferred, cosmetic |
 | Z-5 | Three Zero Hour-only Options controls are hidden on the Modern pages | deferred, low |
 | Z-6 | `scripts/rendering` reference tests fail (8) on the X64.44 tree already | pre-existing, not investigated |
-| Z-7 | Black terrain strips on the map after the shell map: the native terrain atlas version was a per-map counter (section 11; `AMD64_PORTING_FINDINGS.md` A-7) | defect, fixed (A/B proven unattended; human validation pending) |
-| Z-8 | The fresh Zero Hour replay does not re-simulate cleanly: first replay CRC (frame 0) mismatches on Win64, Win32 crashes at start (section 11) | open, backlog |
+| Z-7 | Black terrain strips on the map after the shell map: the native terrain atlas version was a per-map counter (section 11; `AMD64_PORTING_FINDINGS.md` A-7) | defect, fixed, **human native validated (v3)** |
+| Z-8 | The v2 replay did not re-simulate (frame-0 CRC mismatch Win64, Win32 crash); the v3 replay re-simulates cleanly on Win64 (0 mismatches over 8 741 frames) but not on Win32 (section 12.3) | open, backlog (x86/x64 equivalence; the v2 case unexplained) |
 | Z-9 | Enhanced HUD is inert for Zero Hour (known; required later completeness work, not a regression) | deferred |
 
 ## 10. Deferred, risks, decision gate
@@ -248,3 +248,47 @@ The replay is the 934-frame match of the first run (the file stays in the git-ig
 ### 11.8 Remaining native-completeness gaps (unchanged by this fix)
 Section 3 still applies: Enhanced HUD (required later work), the three Zero Hour-only Options controls hidden on the Modern pages, animated UV mappers, movies, campaign / General's Challenge unexercised, Save/Load unexercised, audio and performance never judged on Zero Hour, replay determinism (11.7). The first-run observations
 (AI active and building, radar, command bar) are positive but are one human run of one map.
+
+## 12. Candidate v3: human native validation (2026-10-17) and closeout
+
+### 12.1 Result: PASS
+The human ran `x64-45-zh-bringup-v3`: Zero Hour launched, Skirmish loaded and played, the terrain was correct, **the black strips are gone**, no other major visual defect was noticed and the game appeared normally playable. One short period of minor perceived lag or stutter was reported (brief, not severe).
+The terrain atlas fix is **HUMAN NATIVE VALIDATED**; the terrain-strip issue (Z-7, A-7) is closed. The brief lag is **not diagnosed**: that run did not use endurance telemetry, so its source (render, logic, audio, a load hitch, the machine) is unknown; it is a candidate input for the later endurance milestone, not an
+action item. The missing Enhanced HUD for Zero Hour was expected and is not a regression.
+
+### 12.2 Evidence (preserved before another game could overwrite it)
+`build/evidence-archive/zh-v3-native-validation-20261017/` (git-ignored): the v3 replay (`zh-v3-00000000.rep`, 2 766 997 bytes, hash `450573CA...4C0E`, copy hash-verified against the original), `Options.ini`, the normal-launch log and exit receipt, the re-simulation outputs.
+Small files are committed in `evidence/x64-45-zh-v3-validation/`. Exit check: exit code 0, no timeout, no crash dump moved by the launcher (`CrashDumpCount` 0), stage restored; the log ends with `display_detach` and `WinMain complete`, 225 records, no failed phase; the audio statistics every 30 s show `starved=0 underruns=0`, 27 peak voices.
+(The CrashDumps folder of the Zero Hour user data holds dumps from 13:50 of the same day: those are from the Win32 re-simulation crash of the *v2* replay during the previous analysis, not from v3.)
+
+### 12.3 The v3 replay (8 741 frames, about 4.9 minutes; existing replay tooling; no replay semantics touched)
+| Run | Result |
+| --- | --- |
+| Win64 `-headless -replay`, CRC enforced | **0 mismatches**, 8 741 ticks, fingerprint digest `777BC1913F7CC00A` (291 checkpoints) |
+| Win64, CRC ignored, two more runs | identical digest `777BC1913F7CC00A` each time (3 of 3 identical) |
+| Win32 `-headless -replay`, CRC enforced | "CRC Mismatch in Frame 0" (stops at the first comparison) |
+| Win32, CRC ignored | runs 8 741 ticks, digest `0E5E16207817C4AE` (different from Win64) |
+Reading: a Zero Hour match recorded by the native build **re-simulates deterministically on the native build** (first long Zero Hour determinism evidence, one match, one machine), and the 32-bit build does not reproduce the 64-bit simulation from frame 0. That is the known open cross-architecture question (`REPLAY_DETERMINISM_FINDINGS.md` R-3), now
+observed for Zero Hour; the Win32 build also does not reproduce its own older replay beyond frame 100 (R-5). The v2 replay (934 frames) mismatched at frame 0 even on Win64 and crashed Win32; why v2 differs from v3 is unexplained (the v2 match was quit after 22 seconds; not investigated). Replay semantics are unchanged.
+
+### 12.4 Remaining Zero Hour completeness backlog, by severity and dependency
+**Severity 1 - correctness risk, never exercised natively (could hide crashes or wrong behaviour):**
+1. *Campaign* (missions, briefings, scripted cutscene cameras; depends on how missing movies are skipped) and *General's Challenge* (frontend, generals' portraits and videos, `ChallengeMenu`, `TheChallengeGenerals`).
+2. *Save / Load* (xfer of the whole world on AMD64; the Generals side is "experimental" too).
+3. *Audio validation by ear* (the mixer statistics are healthy; speech, music transitions, EVA and Zero Hour-specific audio were not judged).
+**Severity 2 - visible Zero Hour incompleteness, bounded work, independent of each other:**
+4. Zero Hour-specific Modern Options controls (`CheckDoubleClickAttackMove`, `Retaliation`, `CheckHeatEffects`) hidden on the Modern pages (page tables + reparenting + tests).
+5. Animated UV / texture mappers (Rotate, SineLinearOffset, StepLinearOffset, ZigZagLinearOffset have no native form for Zero Hour; derive from Zero Hour's own `Update_Mapper`).
+6. Movies / cutscenes (no Bink decoder natively: needs an AMD64 decoder or an explicit still-image policy; touches campaign and challenge flows).
+**Severity 3 - large Modern Experience feature:**
+7. Enhanced HUD for Zero Hour (12 sides, a 14-slot command bar, General's powers, different command sets; a new theme review per side; currently an inert option).
+**Severity 4 - later, depends on 1-7:**
+8. Replay determinism follow-up (cross-architecture, the v2 anomaly), Zero Hour endurance / performance validation (reuse `GENERALS_ENDURANCE` through `Run-ZeroHourCandidate.ps1 -Endurance`; includes the brief lag), LAN / network (deferred for both titles).
+
+### 12.5 Recommendation (not started)
+**Next milestone X64.46 - Zero Hour game-mode completeness:** an offline audit first, then bounded fixes, for Campaign, General's Challenge and Save/Load, together with the movie-skip policy they depend on, using the new unattended capture aids (extend `GENERALS_AUTOFLOW` to those screens) so crashes are found without a human in the loop.
+Why first: these are the largest *unverified* areas (a crash or a dead end there is worse than a missing cosmetic), their fixes are bounded and do not change the renderer's architecture, and they need no new Modern feature. Then: X64.47 Zero Hour visual parity (items 4, 5, and 6 if a decoder policy is chosen), X64.48 Enhanced HUD for Zero Hour (item 7, a separate design and review cycle),
+X64.49 audio / endurance / performance and the replay follow-up (item 8). Performance work stays after all of them, as instructed.
+
+### 12.6 Is X64.45 closed?
+**Yes.** Its aims - audit, port the native normal launch to Zero Hour, first native run, fix what it showed, validate - are met and human-validated; everything left is a new, separately scoped milestone listed in 12.4. Nothing in X64.45 remains open except the backlog items above, which are tracked there, not here.

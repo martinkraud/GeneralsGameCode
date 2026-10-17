@@ -120,3 +120,11 @@ frames. This is the first long real-game determinism validation of this fork (on
 `baseline` (2026-10-07, before every optimization), `stage3c3-ground-hardening` and `stage4a3-performance-harness-fix1`. The mismatch therefore does not come from the fork's serial optimizations or from X64.45. Cause unknown (the
 recording environment, options or content may differ from the headless re-simulation; the Generals R-1 lesson - a replay header that omits a setting - is a candidate but was not examined). Zero Hour replay determinism is **not established**;
 the first native Zero Hour candidate run produces a fresh replay for a proper check. Evidence: `docs/modernization/evidence/x64-45-zh-replay-check/`.
+
+---
+
+## R-6. A native-recorded Zero Hour match re-simulates on the native build, not on the 32-bit build (X64.45, observation)
+
+The v3 candidate's 8 741-frame Skirmish replay: Win64 headless re-simulation, CRC enforced: **0 mismatches**; three runs give the identical fingerprint digest `777BC1913F7CC00A` (291 checkpoints). Win32 re-simulation of the same file: "CRC Mismatch in Frame 0" and, with CRC ignored, a different digest
+`0E5E16207817C4AE`. One match, one machine: this is the first long Zero Hour determinism evidence for the native build and a concrete instance of the open cross-architecture question (R-3). The earlier v2 replay (934 frames, quit after 22 seconds) did not verify even on Win64 and crashed Win32; unexplained.
+Replay semantics were not changed. Evidence: `docs/modernization/evidence/x64-45-zh-v3-validation/`.
