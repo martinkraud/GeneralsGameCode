@@ -1235,7 +1235,7 @@ void CollectShroud(D3D11Backend &backend, CameraClass &camera)
     lx1 = std::min(lx1, map->getXExtent() - 1 - border); ly1 = std::min(ly1, map->getYExtent() - 1 - border);
     if (lx1 <= lx0 || ly1 <= ly0) return;
     // A zoomed-out view can exceed one batch: split into horizontal bands.
-    const int bandRows = std::max(1, 59000 / (lx1 - lx0 + 1) - 1);
+    const int bandRows = Geometry::ShroudBandRows(lx1 - lx0);
     const float color[3] = {TheGlobalData->m_shroudColor.red, TheGlobalData->m_shroudColor.green,
                             TheGlobalData->m_shroudColor.blue};
     static Geometry::Mesh mesh;
@@ -1365,6 +1365,13 @@ void setShroudLevel(int x, int y, unsigned char level)
 void setBorderShroudLevel(unsigned char level)
 {
     g_shroud.border = level;
+}
+
+void shroudSummary(unsigned counts[4])
+{
+    counts[0] = counts[1] = counts[2] = counts[3] = 0;
+    if (!ShroudReady()) return;
+    for (unsigned char level : g_shroud.levels) { ++counts[level < 64 ? 0 : level < 192 ? 1 : 2]; ++counts[3]; }
 }
 
 float shroudCellWorldSize()
@@ -1625,6 +1632,15 @@ bool shroud(const unsigned char *levels, int cellsX, int cellsY, float cell, uns
         }
     }
     return true;
+}
+
+int ShroudBandRows(int cellsAcross)
+{
+    constexpr int kBatchVertices = 59000, kBatchIndices = 179994;   // the object pass chunk (60000 / 180000) with a little margin
+    const int across = std::max(1, cellsAcross);
+    const int byVertices = kBatchVertices / (across + 1) - 1;
+    const int byIndices = kBatchIndices / (6 * across);
+    return std::max(1, std::min(byVertices, byIndices));
 }
 
 unsigned ShroudTexel(float level, const float color[3])

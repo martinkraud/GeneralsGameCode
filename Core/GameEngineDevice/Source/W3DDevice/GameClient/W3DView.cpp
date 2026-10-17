@@ -180,6 +180,8 @@ W3DView::W3DView()
 	m_FXPitch = 1.0f;
 	m_freezeTimeForCameraMovement = false;
 	m_lastScreenToTerrainValid = false;
+	m_modernDrawWidth = 0;
+	m_modernDrawHeight = 0;
 
 	//Enhancements from CNC3 WST 4/15/2003. JSC Integrated 5/20/03.
 	m_scriptedState = 0;
@@ -958,6 +960,8 @@ void W3DView::reset()
 	setGuardBandBias( &gb );
 
 	m_recalcCameraConstraintsAfterScrolling = false;
+	m_modernDrawWidth = 0;
+	m_modernDrawHeight = 0;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -3822,7 +3826,7 @@ void W3DView::Add_Camera_Shake (const Coord3D & position,float radius,float dura
 	CameraShakerSystem.Add_Camera_Shake(vpos,radius,duration,power);
 }
 
-bool W3DView::getDesiredTerrainDrawSize(ICoord2D &dimensions) const
+bool W3DView::getDesiredTerrainDrawSize(ICoord2D &dimensions)
 {
 	if (TheGlobalData && TheGlobalData->m_drawEntireTerrain)
 	{
@@ -3846,13 +3850,49 @@ bool W3DView::getDesiredTerrainDrawSize(ICoord2D &dimensions) const
 		// and uses terrain oversize if it needs to enlarge.
 		dimensions.x = WorldHeightMap::NORMAL_DRAW_WIDTH;
 		dimensions.y = WorldHeightMap::NORMAL_DRAW_HEIGHT;
-		return true;
+	}
+	else
+	{
+		// TheSuperHackers @tweak xezon 31/12/2025 Increases visible terrain area when lowering the camera pitch.
+		// Note: The default camera pitch in Generals was 37.5, which we prefer to keep the normal draw size for.
+		dimensions.x = WorldHeightMap::LOW_ANGLE_DRAW_WIDTH;
+		dimensions.y = WorldHeightMap::LOW_ANGLE_DRAW_HEIGHT;
 	}
 
-	// TheSuperHackers @tweak xezon 31/12/2025 Increases visible terrain area when lowering the camera pitch.
-	// Note: The default camera pitch in Generals was 37.5, which we prefer to keep the normal draw size for.
-	dimensions.x = WorldHeightMap::LOW_ANGLE_DRAW_WIDTH;
-	dimensions.y = WorldHeightMap::LOW_ANGLE_DRAW_HEIGHT;
+	// X64.48A Modern Experience: both sizes above are the retail 4:3 window (129 cells = 1290 world units across). The Hor+ view of a 21:9 /
+	// 32:9 surface sees more than that sideways, and what lies outside the draw window is simply not drawn: black bands on both sides that
+	// look like a narrower viewport even in the middle of the map. Size the window to the ground the view really shows (the four screen
+	// corners at the pivot height, per world axis so a rotated camera is covered), in whole vertex-buffer tiles, and never shrink it (a resize
+	// rebuilds the terrain buffers). Never smaller than the retail size; Classic is untouched.
+	if (DisplayRuntime::modern() && m_3DCamera && getWidth() > 0 && getHeight() > 0)
+	{
+		Real reachX = 0.0f, reachY = 0.0f;
+		for (int corner = 0; corner < 4; ++corner)
+		{
+			ICoord2D screen;
+			screen.x = (corner & 1 ? (Int)getWidth() - 1 : 0) + m_originX;
+			screen.y = (corner & 2 ? (Int)getHeight() - 1 : 0) + m_originY;
+			Vector3 rayStart, rayEnd;
+			getPickRay(&screen, &rayStart, &rayEnd);
+			if (fabs(rayStart.Z - rayEnd.Z) < 1.0f)
+			{
+				reachX = reachY = 1e+6f;		// that corner looks at the horizon: bounded by the cap below
+				break;
+			}
+			reachX = std::max(reachX, (Real)fabs(Vector3::Find_X_At_Z(m_pos.z, rayStart, rayEnd) - m_pos.x));
+			reachY = std::max(reachY, (Real)fabs(Vector3::Find_Y_At_Z(m_pos.z, rayStart, rayEnd) - m_pos.y));
+		}
+		const Int maxCells = 1 + 16 * VERTEX_BUFFER_TILE_LENGTH;
+		auto cellsFor = [maxCells](Real reach) {
+			const Real cells = std::min<Real>(2.0f * reach / MAP_XY_FACTOR + 2.0f, (Real)maxCells);
+			const Int tiles = ((Int)ceil(cells) + VERTEX_BUFFER_TILE_LENGTH - 1) / VERTEX_BUFFER_TILE_LENGTH;
+			return 1 + tiles * VERTEX_BUFFER_TILE_LENGTH;
+		};
+		m_modernDrawWidth = std::max(m_modernDrawWidth, cellsFor(reachX));
+		m_modernDrawHeight = std::max(m_modernDrawHeight, cellsFor(reachY));
+		dimensions.x = std::max(dimensions.x, m_modernDrawWidth);
+		dimensions.y = std::max(dimensions.y, m_modernDrawHeight);
+	}
 	return true;
 }
 

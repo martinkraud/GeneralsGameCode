@@ -286,6 +286,8 @@ private:
 
 	// TheSuperHackers @performance Cache only the latest screen-to-terrain result.
 	Bool		m_lastScreenToTerrainValid;
+	Int			m_modernDrawWidth;		///< X64.48A: terrain draw window (cells) the wide Modern view needed so far; only grows (a resize rebuilds the terrain buffers)
+	Int			m_modernDrawHeight;
 	ICoord2D	m_lastScreenToTerrainScreen;
 	Coord3D		m_lastScreenToTerrainWorld;
 
@@ -335,7 +337,7 @@ private:
 	void pitchCameraOneFrame();							///< Do one frame of a pitch camera movement.
 	void getAxisAlignedViewRegion(Region3D &axisAlignedRegion);	///< Find 3D Region enclosing all possible drawables.
 	void calcDeltaScroll(Coord2D &screenDelta);
-	bool getDesiredTerrainDrawSize(ICoord2D &dimensions) const;
+	bool getDesiredTerrainDrawSize(ICoord2D &dimensions);
 	void updateTerrain();
 
 	// (gth) C&C3 animation controlled camera feature

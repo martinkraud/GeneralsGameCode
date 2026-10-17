@@ -43,6 +43,10 @@ bool river(const float *points, int pointCount, int riverStart, float scrollPhas
 bool shroud(const unsigned char *levels, int cellsX, int cellsY, float cell, unsigned char border, bool filter,
             int lx0, int ly0, int lx1, int ly1, float (*height)(int, int), bool (*flip)(int, int),
             const float color[3], Mesh &out);
+// How many lattice rows one shroud overlay batch may span for a rectangle `cellsAcross` lattice cells wide. A batch is one chunk of the
+// object pass (60000 vertices, 180000 indices): both limits count (X64.48A: the index limit was forgotten, so a wide Hor+ view or a zoomed-out
+// one produced a batch the pass refused and the whole shroud overlay silently disappeared).
+int ShroudBandRows(int cellsAcross);
 // Packed ARGB texel of a shroud level (level * shroud color, fully lit at 255).
 unsigned ShroudTexel(float level, const float color[3]);
 // One camera-facing particle quad (PointGroupClass QUADS layout).
@@ -124,6 +128,8 @@ void setShroudFilter(bool enable);
 // Multiplier (r,g,b in 0..1) the shroud applies at a world position (objects that are fogged or shrouded are
 // drawn through the shroud like the legacy shroud material pass). 1,1,1 when no shroud is active.
 void shroudMultiplierAt(float x, float y, float rgb[3]);
+// X64.48A diagnostic: how many CPU shroud cells are at the unexplored (<64), fogged (64..191) and clear (>=192) levels, and the total.
+void shroudSummary(unsigned counts[4]);
 // Sky box (WaterRenderObjClass::m_skyBox, GameData DrawSkyBox / SkyBoxPositionZ / SkyBoxScale): the legacy water
 // render object owns it and does not exist in the play profile. The same "new_skybox" model is created lazily,
 // centered on the camera each frame, and handed to the object pass as a frame object (visible beyond the map
@@ -154,6 +160,7 @@ inline void setShroudLevel(int, int, unsigned char) {}
 inline void setBorderShroudLevel(unsigned char) {}
 inline void setShroudFilter(bool) {}
 inline void shroudMultiplierAt(float, float, float rgb[3]) { rgb[0] = rgb[1] = rgb[2] = 1.0f; }
+inline void shroudSummary(unsigned counts[4]) { counts[0] = counts[1] = counts[2] = counts[3] = 0; }
 inline float shroudCellWorldSize() { return 0.0f; }
 inline void setShroudForTests(int, int, float, const unsigned char *, unsigned char) {}
 inline void setTerrainStampForTests(bool (*)(unsigned &, unsigned &)) {}

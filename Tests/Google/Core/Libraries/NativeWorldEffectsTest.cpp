@@ -100,6 +100,24 @@ bool WriteBmp(const std::string &path, const std::vector<unsigned char> &rgba, u
 }
 }
 
+// X64.48A: a shroud overlay band must fit one object-pass chunk (60000 vertices AND 180000 indices); the index limit used to be ignored, so a wide
+// Hor+ view (5120x1440) or a zoomed-out one made the pass refuse the batch and the fog of war vanished from the screen.
+TEST(NativeWorldEffects, ShroudBandsFitTheObjectPassChunkAtEveryWidth)
+{
+    for (int across : { 1, 20, 129, 200, 300, 400, 600, 1000, 2000, 4000 }) {
+        const int rows = NativeWorldEffects::Geometry::ShroudBandRows(across);
+        ASSERT_GE(rows, 1);
+        const long long vertices = static_cast<long long>(across + 1) * (rows + 1), indices = 6LL * across * rows;
+        if (rows > 1) {   // a single row is the unavoidable minimum; wider than a chunk never happens (the map is at most ~2048 cells)
+            EXPECT_LE(vertices, 60000) << "width " << across;
+            EXPECT_LE(indices, 180000) << "width " << across;
+        }
+    }
+    // the case the human hit: 5120x1440 at the default camera spans about 330 x 130 lattice cells in one band
+    EXPECT_LE(6LL * 330 * std::min(130, NativeWorldEffects::Geometry::ShroudBandRows(330)), 180000);
+    EXPECT_GE(NativeWorldEffects::Geometry::ShroudBandRows(330), 1);
+}
+
 TEST(NativeWorldEffectsTest, StandingWaterPatchMatchesTheLegacyTessellationAndScrolls)
 {
     const float corners[4][3] = {{100, 100, 7}, {0, 100, 7}, {0, 0, 7}, {100, 0, 7}};

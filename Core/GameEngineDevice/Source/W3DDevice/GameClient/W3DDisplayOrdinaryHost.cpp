@@ -374,8 +374,20 @@ void W3DDisplay::initOrdinaryHostPresentation()
         // but are never written back unless the player changes that field in Options and keeps the change
         DisplayConfig::Settings settings = DisplayConfig::applyOverrides(stored, DisplayRuntime::state().overrides);
         const DisplayConfig::Environment env = enumerateEnvironment();
-        const DisplayConfig::Resolved resolved = DisplayConfig::resolve(settings, env,
+        DisplayConfig::Resolved resolved = DisplayConfig::resolve(settings, env,
             { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) });
+        // X64.48A developer aid (normal launch only, off unless GENERALS_FORCE_CLIENT_SIZE=<width>x<height> is set): present at a client
+        // size the attached monitors cannot show (e.g. 5120x1440 on a smaller screen) so the whole dimension chain can be captured and
+        // tested. It only replaces the resolved client size; every other setting and all layout maths run unchanged.
+        if (StartupDiagnostics::normalLaunch()) {
+            int forcedW = 0, forcedH = 0;
+            const char *forced = std::getenv("GENERALS_FORCE_CLIENT_SIZE");
+            if (forced && std::sscanf(forced, "%dx%d", &forcedW, &forcedH) == 2 && forcedW >= 640 && forcedW <= 16384 && forcedH >= 480 && forcedH <= 16384) {
+                resolved.client = { forcedW, forcedH };
+                resolved.layout = DisplayGeometry::computeLayout(resolved.client, settings.uiScalePercent);
+                resolved.notes.push_back("GENERALS_FORCE_CLIENT_SIZE developer override applied");
+            }
+        }
         DisplayRuntime::State &state = DisplayRuntime::state();
         state.modern = true;
         DisplayRuntime::applyModeHook() = &NativeApplyDisplayMode;
@@ -1459,6 +1471,29 @@ void NativeAutoShot()
     static unsigned shellFrames = 0, gameFrames = 0;
     static bool shellDone = false, gameDone = false;
     auto shoot = [&](const char *tag) {
+        if (!strcmp(tag, "game") && TheTacticalView && TheTerrainLogic) {
+            // where the view lands on the ground compared with the map: separates "the map is narrower than the view" from a render fault
+            Region3D map; TheTerrainLogic->getExtent(&map);
+            int ox = 0, oy = 0; TheTacticalView->getOrigin(&ox, &oy);
+            const int w = TheTacticalView->getWidth(), h = TheTacticalView->getHeight();
+            char detail[700];
+            const Coord3D &cam = TheTacticalView->getPosition();
+            int used = sprintf_s(detail, "map x=%.0f..%.0f y=%.0f..%.0f camera=%.0f,%.0f view=%dx%d at %d,%d ground", map.lo.x, map.hi.x, map.lo.y, map.hi.y, cam.x, cam.y, w, h, ox, oy);
+            const int xs[] = { 0, w / 2, w - 1 }, ys[] = { 0, h / 2, h - 1 };
+            for (int yi = 0; yi < 3; ++yi) for (int xi = 0; xi < 3; ++xi) {
+                ICoord2D sp = { ox + xs[xi], oy + ys[yi] }; Coord3D g;
+                if (TheTacticalView->screenToTerrain(&sp, &g)) {
+                    float rgb[3] = { 1.0f, 1.0f, 1.0f };
+                    NativeWorldEffects::shroudMultiplierAt(g.x, g.y, rgb);
+                    used += sprintf_s(detail + used, sizeof(detail) - used, " [%d,%d]=%.0f,%.0f/shroud%.2f", xi, yi, g.x, g.y, rgb[0]);
+                }
+            }
+            unsigned shroudCounts[4]; NativeWorldEffects::shroudSummary(shroudCounts);
+            used += sprintf_s(detail + used, sizeof(detail) - used, " shroud_cells[unexplored=%u fogged=%u clear=%u total=%u]", shroudCounts[0], shroudCounts[1], shroudCounts[2], shroudCounts[3]);
+            const NativeWorldEffects::Stats fxs = NativeWorldEffects::stats();
+            used += sprintf_s(detail + used, sizeof(detail) - used, " shroud_cells_drawn=%u effects_dropped=%u shroud_on=%d", fxs.shroudCells, fxs.dropped, TheGlobalData->m_shroudOn ? 1 : 0);
+            StartupDiagnostics::checkpoint("view_footprint", "observed", detail);
+        }
         char path[MAX_PATH];
         sprintf_s(path, "%s\\autoshot-%s.bmp", directory, tag);
         const bool ok = WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
@@ -1668,6 +1703,14 @@ void NativeAutoShot()
     }
     if (TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap() && !TheGameLogic->isClearingGameData() &&
         TheGameLogic->getFrame() > 0) {
+        // GENERALS_AUTOSHOT_LOOKAT=center (developer aid): move the camera over the middle of the map shortly before the match capture, so the
+        // frame shows the view on open ground and separates "the view reaches past the map edge" from a render fault.
+        static const bool lookAtCenter = [] { const char *t = std::getenv("GENERALS_AUTOSHOT_LOOKAT"); return t && !_stricmp(t, "center"); }();
+        if (lookAtCenter && !gameDone && gameFrames + 40 == gameFramesWanted && TheTacticalView && TheTerrainLogic) {
+            Region3D map; TheTerrainLogic->getExtent(&map);
+            Coord3D middle = { 0.5f * (map.lo.x + map.hi.x), 0.5f * (map.lo.y + map.hi.y), 0.0f };
+            TheTacticalView->lookAt(&middle);
+        }
         if (!gameDone && ++gameFrames >= gameFramesWanted) {
             shoot("game");
             gameDone = true;
