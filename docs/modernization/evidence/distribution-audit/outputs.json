@@ -1,0 +1,462 @@
+{
+ "build/win32": [
+  {
+   "output": "Core/Release/DebugWindow.dll Core/Tools/DebugWindow/Release/DebugWindow.lib",
+   "kind": "shared library (DLL)",
+   "directory": "Core/Release/DebugWindow.dll Core/Tools/DebugWindow/Release",
+   "rule": "CXX_SHARED_LIBRARY_LINKER__core_debugwindow_Release"
+  },
+  {
+   "output": "Core/Release/ParticleEditor.dll Core/Tools/ParticleEditor/Release/ParticleEditor.lib",
+   "kind": "shared library (DLL)",
+   "directory": "Core/Release/ParticleEditor.dll Core/Tools/ParticleEditor/Release",
+   "rule": "CXX_SHARED_LIBRARY_LINKER__core_particleeditor_Release"
+  },
+  {
+   "output": "Generals/Release/W3DViewV.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_w3dview_Release"
+  },
+  {
+   "output": "Generals/Release/WorldBuilderV.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_worldbuilder_Release"
+  },
+  {
+   "output": "Generals/Release/generalsv.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_generals_Release"
+  },
+  {
+   "output": "Generals/Release/guiedit.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_guiedit_Release"
+  },
+  {
+   "output": "Generals/Release/imagepacker.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_imagepacker_Release"
+  },
+  {
+   "output": "Generals/Release/mapcachebuilder.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_mapcachebuilder_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/W3DViewZH.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_w3dview_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/WorldBuilderZH.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_worldbuilder_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/generalszh.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_generals_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/guiedit.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_guiedit_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/imagepacker.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_imagepacker_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/mapcachebuilder.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_mapcachebuilder_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/wdump.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_wdump_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/d3d11_sentence_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__d3d11_sentence_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/d3d11_ui_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__d3d11_ui_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_d3dx_math_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_d3dx_math_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_d3dx_math_reference.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_d3dx_math_reference_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_d3dx_math_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_d3dx_math_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_error_string_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_error_string_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_error_string_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_error_string_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fixed_shader_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fixed_shader_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fixed_shader_device_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fixed_shader_device_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fixed_shader_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fixed_shader_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fvf_stride_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fvf_stride_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fvf_stride_reference.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fvf_stride_reference_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fvf_stride_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fvf_stride_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_resource_characterization.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_resource_characterization_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_resource_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_resource_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_texture_creation_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_texture_creation_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_texture_creation_device_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_texture_creation_device_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_texture_creation_reference.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_texture_creation_reference_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_texture_creation_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_texture_creation_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_graphics_smoke_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_graphics_smoke_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_startup_fp_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_startup_fp_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_startup_gate_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_startup_gate_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/object_pool_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__object_pool_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/render2d_submission_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__render2d_submission_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/sentence_content_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__sentence_content_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/windows_diagnostics_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__windows_diagnostics_test_Release"
+  },
+  {
+   "output": "Tests/Google/Release/g_googletest.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_googletest_Release"
+  },
+  {
+   "output": "Tests/Google/Release/z_googletest.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_googletest_Release"
+  }
+ ],
+ "build/win64": [
+  {
+   "output": "Core/Release/DebugWindow.dll Core/Tools/DebugWindow/Release/DebugWindow.lib",
+   "kind": "shared library (DLL)",
+   "directory": "Core/Release/DebugWindow.dll Core/Tools/DebugWindow/Release",
+   "rule": "CXX_SHARED_LIBRARY_LINKER__core_debugwindow_Release"
+  },
+  {
+   "output": "Core/Release/ParticleEditor.dll Core/Tools/ParticleEditor/Release/ParticleEditor.lib",
+   "kind": "shared library (DLL)",
+   "directory": "Core/Release/ParticleEditor.dll Core/Tools/ParticleEditor/Release",
+   "rule": "CXX_SHARED_LIBRARY_LINKER__core_particleeditor_Release"
+  },
+  {
+   "output": "Generals/Release/W3DViewV.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_w3dview_Release"
+  },
+  {
+   "output": "Generals/Release/WorldBuilderV.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_worldbuilder_Release"
+  },
+  {
+   "output": "Generals/Release/generalsv.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_generals_Release"
+  },
+  {
+   "output": "Generals/Release/guiedit.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_guiedit_Release"
+  },
+  {
+   "output": "Generals/Release/imagepacker.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_imagepacker_Release"
+  },
+  {
+   "output": "Generals/Release/mapcachebuilder.exe",
+   "kind": "executable",
+   "directory": "Generals/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_mapcachebuilder_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/W3DViewZH.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_w3dview_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/WorldBuilderZH.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_worldbuilder_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/generalszh.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_generals_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/guiedit.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_guiedit_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/imagepacker.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_imagepacker_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/mapcachebuilder.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_mapcachebuilder_Release"
+  },
+  {
+   "output": "GeneralsMD/Release/wdump.exe",
+   "kind": "executable",
+   "directory": "GeneralsMD/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_wdump_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/d3d11_sentence_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__d3d11_sentence_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/d3d11_ui_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__d3d11_ui_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_d3dx_math_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_d3dx_math_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_error_string_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_error_string_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fixed_shader_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fixed_shader_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_fvf_stride_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_fvf_stride_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_resource_comparison.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_resource_comparison_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/legacy_texture_creation_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__legacy_texture_creation_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_graphics_smoke_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_graphics_smoke_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_miles_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_miles_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_startup_fp_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_startup_fp_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/native_startup_gate_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__native_startup_gate_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/object_pool_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__object_pool_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/render2d_submission_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__render2d_submission_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/sentence_content_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__sentence_content_test_Release"
+  },
+  {
+   "output": "Tests/Google/Dependencies/Release/windows_diagnostics_test.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Dependencies/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__windows_diagnostics_test_Release"
+  },
+  {
+   "output": "Tests/Google/Release/g_googletest.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__g_googletest_Release"
+  },
+  {
+   "output": "Tests/Google/Release/z_googletest.exe",
+   "kind": "executable",
+   "directory": "Tests/Google/Release",
+   "rule": "CXX_EXECUTABLE_LINKER__z_googletest_Release"
+  }
+ ]
+}

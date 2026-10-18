@@ -1,0 +1,56 @@
+{
+ "base": "adac468d7",
+ "commits": 221,
+ "files": 705,
+ "categories": [
+  {
+   "category": 1,
+   "meaning": "compiled into the player executable",
+   "files": 314,
+   "generals": 267,
+   "zerohour": 261
+  },
+  {
+   "category": 4,
+   "meaning": "generator of runtime data (Generals modern-extension INI/WND overrides; run by the stager)",
+   "files": 1,
+   "generals": 0,
+   "zerohour": 0
+  },
+  {
+   "category": 8,
+   "meaning": "build configuration",
+   "files": 14,
+   "generals": 0,
+   "zerohour": 0
+  },
+  {
+   "category": 8,
+   "meaning": "development / staging / validation / packaging script",
+   "files": 109,
+   "generals": 0,
+   "zerohour": 0
+  },
+  {
+   "category": 8,
+   "meaning": "documentation / evidence",
+   "files": 184,
+   "generals": 0,
+   "zerohour": 0
+  },
+  {
+   "category": 8,
+   "meaning": "test code",
+   "files": 81,
+   "generals": 0,
+   "zerohour": 0
+  },
+  {
+   "category": 9,
+   "meaning": "source not linked into either Win64 player executable (Win32-only, header-only user absent, or dead)",
+   "files": 2,
+   "generals": 0,
+   "zerohour": 0
+  }
+ ]
+}

@@ -1,0 +1,247 @@
+[
+ {
+  "output": "Core/Release/DebugWindow.dll",
+  "kind": "DLL",
+  "objects": 4,
+  "linked_files": 19,
+  "changed_files_linked": 1,
+  "changed_sample": [
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h"
+  ]
+ },
+ {
+  "output": "Core/Release/ParticleEditor.dll",
+  "kind": "DLL",
+  "objects": 34,
+  "linked_files": 142,
+  "changed_files_linked": 14,
+  "changed_sample": [
+   "Core/GameEngine/Include/GameClient/ParticleSys.h",
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h",
+   "Core/Libraries/Source/debug/debug_debug.cpp",
+   "Core/Libraries/Source/debug/debug_debug.h",
+   "Core/Libraries/Source/debug/debug_except.cpp",
+   "Core/Libraries/Source/debug/debug_stack.cpp"
+  ]
+ },
+ {
+  "output": "Core/Tools/DebugWindow/Release/DebugWindow.lib",
+  "kind": "DLL",
+  "objects": 4,
+  "linked_files": 19,
+  "changed_files_linked": 1,
+  "changed_sample": [
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h"
+  ]
+ },
+ {
+  "output": "Core/Tools/ParticleEditor/Release/ParticleEditor.lib",
+  "kind": "DLL",
+  "objects": 34,
+  "linked_files": 142,
+  "changed_files_linked": 14,
+  "changed_sample": [
+   "Core/GameEngine/Include/GameClient/ParticleSys.h",
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h",
+   "Core/Libraries/Source/debug/debug_debug.cpp",
+   "Core/Libraries/Source/debug/debug_debug.h",
+   "Core/Libraries/Source/debug/debug_except.cpp",
+   "Core/Libraries/Source/debug/debug_stack.cpp"
+  ]
+ },
+ {
+  "output": "Generals/Release/W3DViewV.exe",
+  "kind": "executable",
+  "objects": 332,
+  "linked_files": 778,
+  "changed_files_linked": 66,
+  "changed_sample": [
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Render2D.cpp"
+  ]
+ },
+ {
+  "output": "Generals/Release/WorldBuilderV.exe",
+  "kind": "executable",
+  "objects": 1157,
+  "linked_files": 2447,
+  "changed_files_linked": 265,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "Generals/Release/generalsv.exe",
+  "kind": "executable",
+  "objects": 1061,
+  "linked_files": 2257,
+  "changed_files_linked": 267,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "Generals/Release/guiedit.exe",
+  "kind": "executable",
+  "objects": 1084,
+  "linked_files": 2287,
+  "changed_files_linked": 265,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "Generals/Release/imagepacker.exe",
+  "kind": "executable",
+  "objects": 1069,
+  "linked_files": 2268,
+  "changed_files_linked": 265,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "Generals/Release/mapcachebuilder.exe",
+  "kind": "executable",
+  "objects": 1061,
+  "linked_files": 2254,
+  "changed_files_linked": 265,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/W3DViewZH.exe",
+  "kind": "executable",
+  "objects": 333,
+  "linked_files": 779,
+  "changed_files_linked": 66,
+  "changed_sample": [
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Render2D.cpp"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/WorldBuilderZH.exe",
+  "kind": "executable",
+  "objects": 1194,
+  "linked_files": 2517,
+  "changed_files_linked": 259,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/generalszh.exe",
+  "kind": "executable",
+  "objects": 1095,
+  "linked_files": 2321,
+  "changed_files_linked": 261,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/guiedit.exe",
+  "kind": "executable",
+  "objects": 1118,
+  "linked_files": 2351,
+  "changed_files_linked": 259,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/imagepacker.exe",
+  "kind": "executable",
+  "objects": 1103,
+  "linked_files": 2332,
+  "changed_files_linked": 259,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/mapcachebuilder.exe",
+  "kind": "executable",
+  "objects": 1095,
+  "linked_files": 2318,
+  "changed_files_linked": 259,
+  "changed_sample": [
+   "Core/GameEngine/Include/Common/DeterminismFingerprint.h",
+   "Core/GameEngine/Include/Common/DeveloperHarness.h",
+   "Core/GameEngine/Include/Common/DisplayGeometry.h",
+   "Core/GameEngine/Include/Common/DisplayModes.h",
+   "Core/GameEngine/Include/Common/DisplayRuntime.h",
+   "Core/GameEngine/Include/Common/DisplaySettings.h"
+  ]
+ },
+ {
+  "output": "GeneralsMD/Release/wdump.exe",
+  "kind": "executable",
+  "objects": 246,
+  "linked_files": 606,
+  "changed_files_linked": 66,
+  "changed_sample": [
+   "Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.h",
+   "Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Render2D.cpp"
+  ]
+ }
+]

@@ -1,0 +1,54 @@
+{
+ "Generals": {
+  "files": [
+   "DebugWindow.dll",
+   "DebugWindow.pdb",
+   "ParticleEditor.dll",
+   "ParticleEditor.pdb",
+   "W3DViewV.exe",
+   "W3DViewV.pdb",
+   "WorldBuilderV.exe",
+   "WorldBuilderV.pdb",
+   "generalsv.exe",
+   "generalsv.pdb",
+   "guiedit.exe",
+   "guiedit.pdb",
+   "imagepacker.exe",
+   "imagepacker.pdb",
+   "mapcachebuilder.exe",
+   "mapcachebuilder.pdb"
+  ],
+  "file_count": 16,
+  "raw_bytes": 270571520,
+  "estimated_zip_bytes": 87926897,
+  "published_zip_bytes": 31987764,
+  "ratio_estimate_to_published": 2.75
+ },
+ "GeneralsMD": {
+  "files": [
+   "DebugWindow.dll",
+   "DebugWindow.pdb",
+   "ParticleEditor.dll",
+   "ParticleEditor.pdb",
+   "W3DViewZH.exe",
+   "W3DViewZH.pdb",
+   "WorldBuilderZH.exe",
+   "WorldBuilderZH.pdb",
+   "generalszh.exe",
+   "generalszh.pdb",
+   "guiedit.exe",
+   "guiedit.pdb",
+   "imagepacker.exe",
+   "imagepacker.pdb",
+   "mapcachebuilder.exe",
+   "mapcachebuilder.pdb",
+   "wdump.exe",
+   "wdump.pdb"
+  ],
+  "file_count": 18,
+  "raw_bytes": 283622400,
+  "estimated_zip_bytes": 92103026,
+  "published_zip_bytes": 33838193,
+  "ratio_estimate_to_published": 2.72
+ }
+}

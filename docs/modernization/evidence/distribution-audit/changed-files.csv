@@ -1,0 +1,706 @@
+path,state,commits,category,meaning,in_generals_exe,in_zerohour_exe
+.gitignore,M,1,8,build configuration,0,0
+CHANGELOG.md,A,1,8,documentation / evidence,0,0
+CMakeLists.txt,M,2,8,build configuration,0,0
+CMakePresets.json,M,1,8,build configuration,0,0
+Core/GameEngine/CMakeLists.txt,M,18,8,build configuration,0,0
+Core/GameEngine/Include/Common/DeterminismFingerprint.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/DeveloperHarness.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/DisplayGeometry.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/DisplayModes.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/DisplayRuntime.h,A,5,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/DisplaySettings.h,A,6,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/DisplayTransaction.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnduranceTelemetry.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnhancedHud.h,A,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnhancedHudImageFit.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnhancedHudLayout.h,A,10,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnhancedHudPanels.h,A,7,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnhancedHudTheme.h,A,7,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/EnhancedHudWindows.h,A,5,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/FramePacer.h,M,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/FrameRateLimit.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/GameAudio.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/GroundTranslation.h,A,4,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/GroundTranslationPolicy.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/HudComposition.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/MatchOptionsLayout.h,A,2,1,compiled into the player executable,1,0
+Core/GameEngine/Include/Common/ModernBranding.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/ModernExperience.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/NativeFloatingPoint.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/NativeOrdinaryHost.h,A,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/NativeShutdownDiagnostics.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/OptionPreferences.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/OptionsPageLayout.h,A,8,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/PerformanceProfile.h,A,13,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/PresentationClock.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/Radar.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/ScriptProfile.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/SimulationTickStats.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/Common/SimulationWorkerPlan.h,A,1,9,"source not linked into either Win64 player executable (Win32-only, header-only user absent, or dead)",0,0
+Core/GameEngine/Include/Common/StartupDiagnostics.h,A,17,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/ControlBar.h,M,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/ControlBarScheme.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/Display.h,M,4,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/EnhancedHudImage.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/EnhancedHudOverview.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/FrameRateOptions.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/GadgetLayering.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/GameWindow.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/LookAtXlat.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/ModernDisplayOptions.h,A,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/OptionsTabs.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/ParticleSys.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameClient/Shell.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/AIPathfind.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/OpenListIndex.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/PathFailureDiag.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCell.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCellInfo.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCellList.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/PathfindZoneManager.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/ZoneBlock.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Include/GameLogic/Pathfinder/ZoneEquivalence.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/Bezier/BezFwdIterator.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/Bezier/BezierSegment.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/CommandLine.cpp,M,10,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/DeveloperHarness.cpp,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/DeveloperInteractive.cpp,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/DeveloperToolsRuntime.cpp,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/EnduranceTelemetry.cpp,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/FramePacer.cpp,M,3,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/FrameRateLimit.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/GroundTranslation.cpp,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/OptionPreferences.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/PerformanceProfile.cpp,A,13,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/PerformanceProfileRuntime.cpp,A,4,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/ReplaySimulation.cpp,M,7,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/ScriptProfile.cpp,A,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/Common/System/GameMemoryInitPools_Generals.inl,M,1,1,compiled into the player executable,1,0
+Core/GameEngine/Source/Common/System/GameMemoryInitPools_GeneralsMD.inl,M,1,1,compiled into the player executable,0,1
+Core/GameEngine/Source/Common/System/MiniDumper.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/Display.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBar.cpp,M,7,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarEnhanced.cpp,A,17,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarResizer.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp,M,5,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/FrameRateOptions.cpp,A,3,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/GUICallbacks/ControlBarPopupDescription.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/GUICallbacks/Diplomacy.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/GameWindowManagerScript.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/LoadScreen.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp,A,7,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp,A,4,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/ProcessAnimateWindow.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GUI/Shell/Shell.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/GlobalLanguage.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/Input/Keyboard.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/RadiusDecal.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameClient/System/ParticleSys.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp,M,9,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameLogic/AI/PathFailureDiag.cpp,A,2,1,compiled into the player executable,1,1
+Core/GameEngine/Source/GameLogic/System/GameLogicDispatch.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/CMakeLists.txt,M,4,8,build configuration,0,0
+Core/GameEngineDevice/Include/MilesAudioDevice/MilesAudioManager.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/Common/W3DRadarRaster.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/BaseHeightMap.h,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/HeightMap.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/Module/W3DModelDraw.h,M,3,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/Module/W3DTruckDraw.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeDecalGridCache.h,A,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeMenuComposition.h,A,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeWorldEffects.h,A,8,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/NativeWorldObjects.h,A,5,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/W3DDisplay.h,M,4,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/W3DTerrainTracks.h,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/W3DView.h,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/W3DDevice/GameClient/WorldHeightMap.h,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Include/Win32Device/Common/Win32GameEngine.h,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/MilesAudioDevice/MilesAudioManager.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/VideoDevice/Bink/BinkVideoPlayer.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/Common/System/W3DRadar.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/BaseHeightMap.cpp,M,6,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DDebrisDraw.cpp,M,3,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DLaserDraw.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DModelDraw.cpp,M,6,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DPoliceCarDraw.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DProjectileStreamDraw.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DRopeDraw.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DTracerDraw.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DTruckDraw.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/GUICallbacks/W3DControlBar.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DHorizontalSlider.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DPushButton.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/GUI/Gadget/W3DStaticText.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp,M,9,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldEffects.cpp,A,11,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/NativeWorldObjects.cpp,A,7,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/TerrainTex.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp,M,14,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp,A,32,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayPresentation.cpp,A,6,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DProfilerFrameCapture.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DShaderManager.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DTerrainTracks.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DTerrainVisual.cpp,M,3,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DTreeBuffer.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DView.cpp,M,7,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/Water/W3DWater.cpp,M,2,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/W3DDevice/GameClient/WorldHeightMap.cpp,M,3,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/Win32Device/Common/Win32BIGFileSystem.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/Win32Device/GameClient/Win32DIKeyboard.cpp,M,1,1,compiled into the player executable,1,1
+Core/GameEngineDevice/Source/Win32Device/GameClient/Win32Mouse.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Include/Precompiled/Precompiled/BaseTypes.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/CMakeLists.txt,M,1,8,build configuration,0,0
+Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp,A,24,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h,A,17,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11TextureBridge.cpp,A,7,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Backend.h,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Render2D.cpp,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/DX8Texture2D.cpp,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/NativeGraphicsSmoke.cpp,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/NativeGraphicsSmoke.h,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Backend/WorldRenderScale.h,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/CMakeLists.txt,M,8,8,build configuration,0,0
+Core/Libraries/Source/WWVegas/WW3D2/FontChars.cpp,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/FontChars.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/IRenderBackend.h,M,4,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyErrorString.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyFVFStride.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyFixedPixelShader.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyResource.cpp,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyResource.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyResourceEncoding.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyTextureCreation.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/LegacyTextureFormatPolicy.inc,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.cpp,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/PresentationLifecycle.h,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.cpp,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Render2DSubmission.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/TerrainAtlas.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Texture2D.cpp,A,3,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Texture2D.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.cpp,A,3,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/Texture2DCPUContent.h,A,3,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/UITextureContent.cpp,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/UITextureContent.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/WorldSubmission.h,A,7,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/WorldTextureLoad.h,A,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/dx8fvf.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/dx8indexbuffer.cpp,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/dx8indexbuffer.h,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/dx8vertexbuffer.cpp,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/dx8vertexbuffer.h,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/dx8wrapper.cpp,M,3,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/indexbuffer.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/line3d.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/line3d.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/missingtexture.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/pointgr.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/render2dsentence.cpp,M,3,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/render2dsentence.h,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/sortingrenderer.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/surfaceclass.cpp,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/surfaceclass.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/texture.cpp,M,5,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/texture.h,M,5,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/vertexbuffer.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp,M,2,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WW3D2/ww3d.h,M,3,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WWLib/Except.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WWLib/Except.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WWLib/mempool.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WWMath/CMakeLists.txt,M,1,8,build configuration,0,0
+Core/Libraries/Source/WWVegas/WWMath/LegacyD3DXMath.cpp,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/WWVegas/WWMath/LegacyD3DXMath.h,A,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/debug/debug_debug.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/debug/debug_debug.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/debug/debug_dlg/debug_dlg.cpp,M,1,9,"source not linked into either Win64 player executable (Win32-only, header-only user absent, or dead)",0,0
+Core/Libraries/Source/debug/debug_except.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/debug/debug_stack.cpp,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/debug/debug_stack.h,M,1,1,compiled into the player executable,1,1
+Core/Libraries/Source/debug/debug_stack.inl,M,1,1,compiled into the player executable,1,1
+Core/Tools/WW3D/max2w3d/CMakeLists.txt,M,1,8,build configuration,0,0
+Dependencies/DbgHelp/DbgHelpLoader.cpp,M,1,1,compiled into the player executable,1,1
+Dependencies/DbgHelp/DbgHelpLoader.h,M,1,1,compiled into the player executable,1,1
+Dependencies/Miles/CMakeLists.txt,M,2,8,build configuration,0,0
+Dependencies/Miles/MilesLoader.cpp,M,1,1,compiled into the player executable,1,1
+Dependencies/Miles/NativeMiles.cpp,A,5,1,compiled into the player executable,1,1
+Dependencies/Miles/NativeMiles.h,A,2,1,compiled into the player executable,1,1
+Dependencies/Utility/CMakeLists.txt,M,1,8,build configuration,0,0
+Dependencies/Utility/Utility/windows_diagnostics.h,A,1,1,compiled into the player executable,1,1
+Generals/Code/GameEngine/Include/Common/DrawModule.h,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Include/Common/Science.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Include/Common/StackDump.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Include/GameClient/Drawable.h,M,3,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Include/GameClient/GameClient.h,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Include/GameLogic/GameLogic.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/GameEngine.cpp,M,8,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/GameLOD.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/GameMain.cpp,M,8,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/GlobalData.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/RTS/Player.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/RTS/Science.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/Recorder.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/Common/System/StackDump.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/Drawable.cpp,M,4,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp,M,7,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/PopupSaveLoad.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp,M,8,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/GameClient.cpp,M,4,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameClient/InGameUI.cpp,M,4,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/AI/AI.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/AI/AIGroup.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/AI/AIPlayer.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/AI/AIStates.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Locomotor.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Object.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/ObjectCreationList.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/SpecialPower/OCLSpecialPower.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/DeliverPayloadAIUpdate.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/MissileAIUpdate.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/RailroadGuideAIUpdate.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/Object/Weapon.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/ScriptEngine/ScriptEngine.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp,M,10,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DBibBuffer.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DBridgeBuffer.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DInGameUI.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DRoadBuffer.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DWaypointBuffer.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DBibBuffer.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DBridgeBuffer.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DInGameUI.cpp,M,3,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DRoadBuffer.cpp,M,2,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3dWaypointBuffer.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/GameEngineDevice/Source/W3DDevice/GameLogic/W3DGhostObject.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/Libraries/Source/WWVegas/WW3D2/mapper.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/Libraries/Source/WWVegas/WW3D2/mapper.h,M,1,1,compiled into the player executable,1,0
+Generals/Code/Libraries/Source/WWVegas/WW3D2/render2d.cpp,M,1,1,compiled into the player executable,1,0
+Generals/Code/Main/WinMain.cpp,M,16,1,compiled into the player executable,1,0
+Generals/Code/Tools/W3DView/CMakeLists.txt,M,1,8,build configuration,0,0
+GeneralsMD/Code/GameEngine/Include/Common/DrawModule.h,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Include/Common/Science.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Include/Common/StackDump.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Include/GameClient/Drawable.h,M,3,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Include/GameClient/GameClient.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Include/GameLogic/GameLogic.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/GameEngine.cpp,M,7,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/GameLOD.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/GameMain.cpp,M,3,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/GlobalData.cpp,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/RTS/Science.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/Recorder.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/Common/System/StackDump.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/Drawable.cpp,M,4,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/ChallengeMenu.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/GameClient.cpp,M,4,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameClient/InGameUI.cpp,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/AI/AI.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/AI/AIPlayer.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/AI/AIStates.cpp,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/Object/Locomotor.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/Object/Object.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate.cpp,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/MissileAIUpdate.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/Object/Update/AIUpdate/RailroadGuideAIUpdate.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/Object/Weapon.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/ScriptEngine/ScriptEngine.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngine/Source/GameLogic/System/GameLogic.cpp,M,8,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DBibBuffer.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DBridgeBuffer.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DInGameUI.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DRoadBuffer.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Include/W3DDevice/GameClient/W3DWaypointBuffer.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DBibBuffer.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DBridgeBuffer.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DInGameUI.cpp,M,3,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DRoadBuffer.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3dWaypointBuffer.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameLogic/W3DGhostObject.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/Libraries/Source/WWVegas/WW3D2/mapper.cpp,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/Libraries/Source/WWVegas/WW3D2/mapper.h,M,1,1,compiled into the player executable,0,1
+GeneralsMD/Code/Libraries/Source/WWVegas/WW3D2/render2d.cpp,M,2,1,compiled into the player executable,0,1
+GeneralsMD/Code/Main/WinMain.cpp,M,9,1,compiled into the player executable,0,1
+GeneralsMD/Code/Tools/W3DView/CMakeLists.txt,M,1,8,build configuration,0,0
+README.md,M,5,8,documentation / evidence,0,0
+Tests/Google/Core/CMakeLists.txt,M,34,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/BezierCompatibilityTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/DeterminismFingerprintTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/DeveloperHarnessTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/DisplayGeometryTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/DisplaySettingsTest.cpp,A,10,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/DisplayTransactionTest.cpp,A,4,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/EnhancedHudInteractiveTest.cpp,A,11,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/EnhancedHudLayoutTest.cpp,A,15,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/FramePacerTest.cpp,A,3,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/GroundOrientationTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/GroundTranslationBenchmark.cpp,A,2,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/GroundTranslationPolicyTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/GroundTranslationTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/OpenListIndexTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/OptionPreferencesTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PathPhaseTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PathProfileTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PerformanceProfileBenchmark.cpp,A,3,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PerformanceProfileTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PlayWorldLifecycleTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PresentationClockTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/PresentationSmoothnessTest.cpp,A,5,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/RenderScaleTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/RetailOpenListReference.inc,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/RetailOpenListTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/RetailOpenListUnrolledCandidate.inc,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/ScriptProfileTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/SimulationTickStatsTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/SimulationWorkerPlanTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/GameEngine/Common/ZoneEquivalenceTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/BigArchiveTestSupport.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/D3D11SentenceTest.cpp,A,4,8,test code,0,0
+Tests/Google/Core/Libraries/D3D11UITextureTest.cpp,A,13,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyD3DXMathCases.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyD3DXMathReference.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyD3DXMathReference.inc,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyD3DXMathTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyErrorStringReference.inc,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyErrorStringTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFVFStrideCases.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFVFStrideReference.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFVFStrideReference.inc,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFVFStrideTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFixedPixelShaderDeviceTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFixedPixelShaderReference.inc,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyFixedPixelShaderTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyResourceCharacterization.h,A,2,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyResourceCharacterizationTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyResourceEncoderModel.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyResourceEncoderReference.jsonl,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyResourceReference.jsonl,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyResourceSamplingReference.jsonl,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationCases.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationDeviceTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationExamples.inc,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationRecording.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationReference.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationReference.inc,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationReferenceAPI.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationStubs.h,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/LegacyTextureCreationTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/NativeDecalGridCacheTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/NativeGraphicsSmokeTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/Libraries/NativeParticlePipelineTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/NativeRadarTest.cpp,A,3,8,test code,0,0
+Tests/Google/Core/Libraries/NativeTerrainTest.cpp,A,5,8,test code,0,0
+Tests/Google/Core/Libraries/NativeWorldEffectsTest.cpp,A,7,8,test code,0,0
+Tests/Google/Core/Libraries/NativeWorldObjectsTest.cpp,A,4,8,test code,0,0
+Tests/Google/Core/Libraries/NativeWorldOverlaysTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/ObjectPoolTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/PresentationLifecycleTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/Render2DSubmissionTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/SentenceContentTest.cpp,A,1,8,test code,0,0
+Tests/Google/Core/Libraries/Texture2DTest.cpp,A,2,8,test code,0,0
+Tests/Google/Core/Libraries/UIProducerTest.cpp,A,6,8,test code,0,0
+Tests/Google/Dependencies/CMakeLists.txt,M,20,8,test code,0,0
+Tests/Google/Dependencies/Utility/NativeMilesTest.cpp,A,5,8,test code,0,0
+Tests/Google/Dependencies/Utility/NativeStartupFPTest.cpp,A,2,8,test code,0,0
+Tests/Google/Dependencies/Utility/NativeStartupGateTest.cpp,A,16,8,test code,0,0
+Tests/Google/Dependencies/Utility/windows_diagnostics_test.cpp,A,1,8,test code,0,0
+cmake/dx8.cmake,M,1,8,build configuration,0,0
+docs/PERFORMANCE.md,A,4,8,documentation / evidence,0,0
+docs/findings/AMD64_PORTING_FINDINGS.md,A,2,8,documentation / evidence,0,0
+docs/findings/PERFORMANCE_FINDINGS.md,A,3,8,documentation / evidence,0,0
+docs/findings/README.md,A,6,8,documentation / evidence,0,0
+docs/findings/REPLAY_DETERMINISM_FINDINGS.md,A,5,8,documentation / evidence,0,0
+docs/modernization/AGENT_HANDOFF.md,A,98,8,documentation / evidence,0,0
+docs/modernization/ARCHITECTURE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/BASELINE.md,A,2,8,documentation / evidence,0,0
+docs/modernization/COMPATIBILITY.md,A,1,8,documentation / evidence,0,0
+docs/modernization/D3D11_1_FOUNDATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/D3D11_2_FILE_UI_TEXTURES.md,A,1,8,documentation / evidence,0,0
+docs/modernization/DEVELOPER_MODE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/ENHANCED_HUD_FRAMEWORK_V1.md,A,3,8,documentation / evidence,0,0
+docs/modernization/ENHANCED_HUD_POLISH_BACKLOG.md,A,2,8,documentation / evidence,0,0
+docs/modernization/FIRST_PLAYABLE_ROADMAP.md,A,52,8,documentation / evidence,0,0
+docs/modernization/GAMEPLAY_RENDERING_COMPLETENESS.md,A,3,8,documentation / evidence,0,0
+docs/modernization/GAME_SPEED_DESIGN.md,A,1,8,documentation / evidence,0,0
+docs/modernization/NATIVE_CANDIDATE_RETENTION.md,A,2,8,documentation / evidence,0,0
+docs/modernization/NORMAL_LAUNCH.md,A,6,8,documentation / evidence,0,0
+docs/modernization/PERFORMANCE_CYCLE_CLOSEOUT.md,A,1,8,documentation / evidence,0,0
+docs/modernization/REFERENCE_TOKEN_GUARD_BASELINE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/RENDERER.md,A,21,8,documentation / evidence,0,0
+docs/modernization/RENDERER_BOUNDARY_1_RENDER2D.md,A,1,8,documentation / evidence,0,0
+docs/modernization/RENDERER_BOUNDARY_2_TEXTURE2D.md,A,1,8,documentation / evidence,0,0
+docs/modernization/RENDERER_BOUNDARY_3_CONTENT_BACKING.md,A,1,8,documentation / evidence,0,0
+docs/modernization/RETAIL_GAME_SPEED_AUDIT.md,A,2,8,documentation / evidence,0,0
+docs/modernization/ROADMAP.md,A,46,8,documentation / evidence,0,0
+docs/modernization/SETTINGS_COMPLETION_AUDIT.md,A,5,8,documentation / evidence,0,0
+docs/modernization/STAGE1_WORKFLOW.md,A,3,8,documentation / evidence,0,0
+docs/modernization/STAGE2_TIMING.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE3A_FPS_OPTIONS.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE3B_INTERPOLATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE3C1_PRESENTATION_CLOCK.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE3C2_GROUND_INTERPOLATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE3C3_GROUND_HARDENING.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE3C4_GROUND_ORIENTATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4A1_PATHFINDING_DEEP_PROFILE.md,A,2,8,documentation / evidence,0,0
+docs/modernization/STAGE4A2_PATH_PHASE_SAMPLING.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4A3_PERFORMANCE_HARNESS.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4A_PERFORMANCE_BASELINE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4B1_INTERACTIVE_CAPTURE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4B1_PATH_POLICY_HOIST.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4B2_PATH_MOVEMENT_CACHE_AUDIT.md,A,1,8,documentation / evidence,0,0
+docs/modernization/STAGE4B3_RETAIL_OPEN_LIST_INVESTIGATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/TIMING.md,A,7,8,documentation / evidence,0,0
+docs/modernization/WORLD_UI_COMPLETENESS.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64.md,A,35,8,documentation / evidence,0,0
+docs/modernization/X64_10_RESOURCE_COMPATIBILITY.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_11_NATIVE_STARTUP_READINESS.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_12_NATIVE_INIT_ONLY_GATE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_13_NATIVE_SHUTDOWN_DIAGNOSTICS.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_14_OBJECT_POOL_LAYOUT.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_15_GRAPHICAL_ROUTE_FEASIBILITY.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_16_NATIVE_GRAPHICS_SMOKE_GATE.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_17_DISPLAY_PRESENTATION_LIFECYCLE.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_18_UI_IMAGE_GATE.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_19_UI_SENTENCE_GATE.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_1_BUILD_FOUNDATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_20_UI_PANEL_GATE.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_21_STATIC_MENU_COMPOSITION.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_22_ORDINARY_STARTUP_AUDIT.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_23_ORDINARY_MENU.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_24_SKIRMISH_WORLD_AUDIT.md,A,5,8,documentation / evidence,0,0
+docs/modernization/X64_25_TERRAIN_FRAME.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_26_TERRAIN_FIDELITY.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_27_TERRAIN_COMPLETION.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_28_PLAY_WORLD.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_2_WINDOWS_DIAGNOSTICS.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_32_ORIGINAL_EXPERIENCE_AUDIT.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_33_MODERN_DISPLAY.md,A,15,8,documentation / evidence,0,0
+docs/modernization/X64_34_SMOOTH_PRESENTATION_PERFORMANCE.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_35_BASELINE_ANALYSIS_AND_DISK_AUDIT.md,A,6,8,documentation / evidence,0,0
+docs/modernization/X64_35_PERFORMANCE_OPTIMIZATION.md,A,18,8,documentation / evidence,0,0
+docs/modernization/X64_36_CP10_CLOSEOUT.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_36_ENHANCED_HUD_CHINA.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_36_ENHANCED_HUD_GLA.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_36_ENHANCED_HUD_USA_PROTOTYPE.md,A,16,8,documentation / evidence,0,0
+docs/modernization/X64_37_MODERN_SETTINGS.md,A,5,8,documentation / evidence,0,0
+docs/modernization/X64_38_CPU_SCALABILITY.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_39_ZONECALC_OPTIMIZATION.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_3_DX8_RENDERER_BOUNDARY.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_40_PATH_SEARCH_INVESTIGATION.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_41_PATH_LINE_PHASE_AND_R1.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_42_SIMULATION_TAIL_OPTIMIZATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_43_FAILING_PATH_INVESTIGATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_44_ENDURANCE_BENCHMARK.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_45_ZERO_HOUR_NATIVE_BRINGUP.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_46_ZERO_HOUR_GAME_MODE_COMPLETENESS.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_47A_ZERO_HOUR_STEAM_OVERLAY_ZIP.md,A,4,8,documentation / evidence,0,0
+docs/modernization/X64_47B_GENERALS_STEAM_OVERLAY_ZIP.md,A,3,8,documentation / evidence,0,0
+docs/modernization/X64_48A_SECOND_PC_CORRECTNESS.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_48B_COMPLETE_RUNTIME_PARITY.md,A,2,8,documentation / evidence,0,0
+docs/modernization/X64_4_D3DX_MATH.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_5_FVF_STRIDE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_6_TEXTURE_CREATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_7_FIXED_SHADER_BYTECODE.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_8_ERROR_STRING.md,A,1,8,documentation / evidence,0,0
+docs/modernization/X64_9_RESOURCE_CHARACTERIZATION.md,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-28-first-playable/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-28-first-playable/launch.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-28-first-playable/startup.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/README.md,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/launch.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/play_frame_2.png,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/play_frame_3.png,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/startup.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-29-gameplay-render-completeness-fix2/terrain_world_frame.png,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-30-world-ui-completeness/README.md,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-30-world-ui-completeness/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-30-world-ui-completeness/launch.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-30-world-ui-completeness/play_frame_3.png,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-30-world-ui-completeness/startup.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-30-world-ui-completeness/terrain_world_frame.png,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-accepted/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-accepted/generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-first-normal-launch/README.md,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-first-normal-launch/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-first-normal-launch/generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix1-crash/CrashMG-20261014-091403-bb98b8c01-pid24800.dmp,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix1-crash/README.md,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix1-crash/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix1-crash/generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix1-crash/mg-analysis.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix4-review/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-31-fix4-review/generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-32-first-run-ini-parse/CrashMG-20261014-135048-2dcdc6ed7-pid12904.dmp,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-32-first-run-ini-parse/README.md,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-32-first-run-ini-parse/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-32-first-run-ini-parse/generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-init-only/exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-init-only/launch.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-init-only/startup.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-replay-check/current-win32-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-replay-check/current-win32-summary.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-replay-check/old-baseline-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-replay-check/old-stage3c3-ground-hardening-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-replay-check/old-stage4a3-performance-harness-fix1-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/first-native-run.exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/first-native-run.generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/fresh-replay-win32-resim-stdout-CRASH-empty.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/fresh-replay-win64-resim-ignorecrc-run1.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/fresh-replay-win64-resim-ignorecrc-run2.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/fresh-replay-win64-resim-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/human-first-native-run-1.jpg,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/human-first-native-run-2.jpg,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/unattended-quickgame-no-shell-map.jpg,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/unattended-shell-then-skirmish-AFTER-fix.jpg,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-terrain-strips/unattended-shell-then-skirmish-BEFORE-fix.jpg,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/resim-w32-crc-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/resim-w32-ign-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/resim-w64-crc-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/resim-w64-ign1-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/resim-w64-ign2-stdout.txt,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/v3-native-run.exit.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-45-zh-v3-validation/v3-native-run.generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-46-zh-modes/campaign-generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-46-zh-modes/challenge-general0-generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-46-zh-modes/challenge-prefix-crash-generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-46-zh-modes/saveload-generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47a-overlay/MKRaudstein-ZeroHour-x64-Preview-951547ec0.manifest.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47a-overlay/MKRaudstein-ZeroHour-x64-Preview-951547ec0.overlay-test.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47a-overlay/MKRaudstein-ZeroHour-x64-Preview-951547ec0.zip.sha256,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47a-overlay/overlay-launch-generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47b-generals-overlay/MKRaudstein-Generals-x64-Preview-afe92caa2.manifest.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47b-generals-overlay/MKRaudstein-Generals-x64-Preview-afe92caa2.overlay-test.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47b-generals-overlay/MKRaudstein-Generals-x64-Preview-afe92caa2.zip.sha256,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-47b-generals-overlay/overlay-launch-generals64.log,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48a/MKRaudstein-Generals-x64-Preview-1ae0b0ca1.manifest.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48a/MKRaudstein-Generals-x64-Preview-1ae0b0ca1.overlay-test.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48a/MKRaudstein-Generals-x64-Preview-1ae0b0ca1.zip.sha256,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48a/MKRaudstein-ZeroHour-x64-Preview-1ae0b0ca1.manifest.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48a/MKRaudstein-ZeroHour-x64-Preview-1ae0b0ca1.overlay-test.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48a/MKRaudstein-ZeroHour-x64-Preview-1ae0b0ca1.zip.sha256,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-Generals-x64-Preview-08d74caaa.manifest.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-Generals-x64-Preview-08d74caaa.overlay-test.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-Generals-x64-Preview-08d74caaa.stage-parity.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-Generals-x64-Preview-08d74caaa.zip.sha256,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-ZeroHour-x64-Preview-08d74caaa.manifest.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-ZeroHour-x64-Preview-08d74caaa.overlay-test.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-ZeroHour-x64-Preview-08d74caaa.stage-parity.json,A,1,8,documentation / evidence,0,0
+docs/modernization/evidence/x64-48b/MKRaudstein-ZeroHour-x64-Preview-08d74caaa.zip.sha256,A,1,8,documentation / evidence,0,0
+scripts/Clean-DevelopmentArtifacts.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/Test-CleanDevelopmentArtifacts.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/diagnostics/Analyze-EnduranceTelemetry.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/diagnostics/Analyze-ReplayDiagnostic.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/diagnostics/Compare-CrcTraces.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/diagnostics/Run-R1-Diagnostic.cmd,A,1,8,development / staging / validation / packaging script,0,0
+scripts/diagnostics/test_analyze_endurance.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Cleanup-NativeCandidates.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Common.ps1,A,3,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/GraphicsCommon.ps1,A,6,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeAutoCapture.ps1,A,4,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeCandidateCapture.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeGraphicsSmoke.ps1,A,7,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeInitOnly.ps1,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeNormalLaunch.ps1,A,4,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeOrdinaryGame.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeOrdinaryHost.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeOrdinaryMenu.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeOrdinaryPlay.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Invoke-NativeOrdinaryTerrain.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Measure-NativeWideDisplay.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/New-ZeroHourOverlayPackage.ps1,A,5,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/OrdinaryHostCommon.ps1,A,12,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/OverlayPackageCommon.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Run-EnduranceTest.cmd,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Run-EnduranceTest.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Run-ZeroHourCandidate.cmd,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Run-ZeroHourCandidate.ps1,A,7,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeGraphicsSmoke.ps1,A,6,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeInitOnly.ps1,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeOrdinaryGame.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeOrdinaryHost.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeOrdinaryMenu.ps1,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeOrdinaryPlay.ps1,A,3,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Stage-NativeOrdinaryTerrain.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeCleanupWorkflow.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeGraphicsSmoke.ps1,A,6,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeGraphicsWorkflow.ps1,A,7,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeInitOnly.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeNormalLaunchWorkflow.ps1,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryGame.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryGameWorkflow.ps1,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryHost.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryHostWorkflow.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryMenu.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryMenuWorkflow.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryPlay.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryPlayWorkflow.ps1,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryTerrain.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeOrdinaryTerrainWorkflow.ps1,A,4,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeSkirmishSlots.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-NativeWorkflow.ps1,A,3,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-OverlayValidatorDetectsOmissions.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/Test-ZeroHourOverlayPackage.ps1,A,5,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/menu_texture_census.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/modern_extensions.py,A,2,4,generator of runtime data (Generals modern-extension INI/WND overrides; run by the stager),0,0
+scripts/native-runtime/native-retention.json,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_display_contract.py,A,7,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_enhanced_hud_contract.py,A,18,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_modern_display_contract.py,A,11,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_modern_extensions.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_modern_extensions_vocabulary.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_modern_settings_contract.py,A,4,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_normal_launch_contract.py,A,10,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_ordinary_game_contract.py,A,8,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_ordinary_host_contract.py,A,4,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_ordinary_menu_contract.py,A,5,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_ordinary_play_contract.py,A,9,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_ordinary_terrain_contract.py,A,7,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_overlay_package_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_skirmish_layout_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_skirmish_match_options_contract.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_skirmish_slots_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_smooth_presentation_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_special_power_sources_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_startup_contract.py,A,3,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_ultrawide_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_x64_35_instrumentation_contract.py,A,6,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/test_zero_hour_native_contract.py,A,8,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/x64_33_deltas.py,A,5,8,development / staging / validation / packaging script,0,0
+scripts/native-runtime/x64_44_deltas.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/Invoke-SimulationBenchmark.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/Invoke-ZHDeveloperGame.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/Invoke-ZHPerformanceScenario.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/Invoke-ZHPerformanceTrial.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/New-SimulationBenchmarkReplay.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/compare.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/pathfinder_function_guard.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/performance/test_compare.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/performance/test_stage4b1_reference.py,A,3,8,development / staging / validation / packaging script,0,0
+scripts/performance/test_stage4b3_reference.py,A,3,8,development / staging / validation / packaging script,0,0
+scripts/performance/test_x64_42_startup_log_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/test_x64_43_pathfail_contract.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/performance/test_x64_44_endurance_contract.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_d3d11_reference.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_fixed_shader_reference.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_render2d_reference.py,A,6,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_sentence_content_reference.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_texture2d_reference.py,A,4,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_ui_pool_reference.py,A,1,8,development / staging / validation / packaging script,0,0
+scripts/rendering/test_ui_texture_reference.py,A,2,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Backup-ZHUserData.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Cleanup-ZHStages.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Common.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Launch-ZHRuntime.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Stage-ZHRuntime.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Test-ZHCleanupWorkflow.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Test-ZHRuntime.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/Test-ZHWorkflow.ps1,A,1,8,development / staging / validation / packaging script,0,0
+scripts/zh-runtime/zh-retention.json,A,1,8,development / staging / validation / packaging script,0,0
