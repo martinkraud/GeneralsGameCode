@@ -50,6 +50,15 @@ class OverlayPackageContract(unittest.TestCase):
         for name in ("Data/INI/CommandButton.ini", "Data/INI/CommandSet.ini", "Data/INI/PlayerTemplate.ini", "GenPowersShortcutBar"):
             self.assertIn(name, ext)
 
+    def test_one_distribution_command_covers_both_titles(self):
+        d = read("scripts/native-runtime/New-MKRaudsteinDistribution.ps1")
+        for needle in ("'Generals'", "'ZeroHour'", "New-ZeroHourOverlayPackage.ps1", "Test-ZeroHourOverlayPackage.ps1", "SHA256SUMS", ".distribution.json",
+                       "DISTRIBUTION READY for BOTH titles", "A title was not validated"):
+            self.assertIn(needle, d)
+        # one invocation, no required per-title parameter: the candidates are optional and staged from the current build when omitted
+        self.assertNotIn("[Parameter(Mandatory)]", d)
+        self.assertIn("Stage-NativeOrdinaryPlay.ps1", d)
+
 
 if __name__ == "__main__":
     unittest.main()
