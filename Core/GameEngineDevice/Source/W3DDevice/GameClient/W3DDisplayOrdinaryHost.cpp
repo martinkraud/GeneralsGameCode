@@ -1496,6 +1496,22 @@ void NativeAutoShot()
             used += sprintf_s(footprint + used, sizeof(footprint) - used, " shroud_cells_drawn=%u effects_dropped=%u shroud_on=%d", fxs.shroudCells, fxs.dropped, TheGlobalData->m_shroudOn ? 1 : 0);
             StartupDiagnostics::checkpoint("view_footprint", "observed", footprint);
         }
+        if (!strcmp(tag, "game") && ThePlayerTemplateStore && TheControlBar) {
+            // Feature parity probe (distribution rule: the overlay-installed runtime == the validated staged candidate): what the DATA of this runtime
+            // says about the completed modern features - the special-power shortcut bar slot counts and the command buttons each side's shortcut set
+            // really holds (the Generals "modern extensions" are loose INI overrides). The overlay install must print exactly the staged candidate's lines.
+            for (int i = 0; i < ThePlayerTemplateStore->getPlayerTemplateCount(); ++i) {
+                const PlayerTemplate *t = ThePlayerTemplateStore->getNthPlayerTemplate(i);
+                if (!t || !t->isPlayableSide()) continue;
+                const CommandSet *set = TheControlBar->findCommandSet(t->getSpecialPowerShortcutCommandSet());
+                int buttons = 0;
+                for (int b = 0; set && b < MAX_COMMANDS_PER_SET; ++b) if (set->getCommandButton(b)) ++buttons;
+                char probe[300];
+                sprintf_s(probe, "side=%s shortcut_slots=%d shortcut_set=%s shortcut_set_buttons=%d shortcut_window=%s", t->getName().str(),
+                          t->getSpecialPowerShortcutButtonCount(), t->getSpecialPowerShortcutCommandSet().str(), buttons, t->getSpecialPowerShortcutWinName().str());
+                StartupDiagnostics::checkpoint("feature_probe", "observed", probe);
+            }
+        }
         char path[MAX_PATH];
         sprintf_s(path, "%s\\autoshot-%s.bmp", directory, tag);
         const bool ok = WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
