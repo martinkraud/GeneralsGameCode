@@ -21,6 +21,7 @@ param([ValidateSet('ZeroHour', 'Generals')][string]$Title = 'ZeroHour',
       [string]$Name,
       [string]$AssetSource,               # default: the read-only Steam Zero Hour folder (Generals: its ZH_Generals base-game folder)
       [switch]$SkipLaunch,
+      [switch]$AuditOnly,                 # only the package audit against the canonical staged candidate (section 1): no staging, no launch
       [ValidateRange(60,600)][int]$TimeoutSeconds = 240)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
@@ -87,6 +88,14 @@ $exes = @($entries.Keys | Where-Object { $_ -match '\.exe$' })
 Check ($exes.Count -eq 1 -and $exes[0] -eq 'Generals.exe') 'the only executable is Generals.exe'
 Check ((Get-PeMachine $entries['Generals.exe']) -eq 0x8664) 'Generals.exe is an AMD64 (x64) PE image'
 Check (-not (@($entries.Keys | Where-Object { $_ -match '\.dll$' -and $_ -notmatch $runtimeDll }))) 'the only DLLs are the Visual C++ runtime DLLs the executable imports'
+
+if ($AuditOnly) {
+    $failed = @($results | Where-Object { -not $_.Pass })
+    Write-Host "$($results.Count - $failed.Count) of $($results.Count) audit checks passed"
+    if ($failed.Count) { throw "$($failed.Count) check(s) failed." }
+    Write-Host 'PACKAGE AUDIT PASS (no staging, no launch).'
+    return
+}
 
 # ---- 2. disposable staged copy of the candidate ----------------------------------------------------------------------------------------------------
 $stageRoot = Join-Path $repo "build\dev-runtimes\native\$Title\$Name"
@@ -183,7 +192,7 @@ if (-not $SkipLaunch) {
     Check ($overlay.Text -notmatch '\sfail\s') 'OVERLAY: no failed phase in the log'
     $refProbe = Get-Probe $reference.Text; $ovProbe = Get-Probe $overlay.Text
     Check ($refProbe.Count -gt 0 -and ($refProbe -join "`n") -eq ($ovProbe -join "`n")) "FEATURE PARITY: the feature probe of the overlay install equals the staged candidate's ($($ovProbe.Count) lines)$(if (($refProbe -join '|') -ne ($ovProbe -join '|')) { '; reference: ' + ($refProbe -join ' / ') + '; overlay: ' + ($ovProbe -join ' / ') })"
-    Check ((Get-FlowSteps $reference.Text) -join '|' -eq (Get-FlowSteps $overlay.Text) -join '|') 'FEATURE PARITY: the real screens were driven through the same steps in both runs'
+    Check (((Get-FlowSteps $reference.Text) -join '|') -eq ((Get-FlowSteps $overlay.Text) -join '|')) 'FEATURE PARITY: the real screens were driven through the same steps in both runs'
     $launch = [pscustomobject]@{ Reference = $reference.Out; Overlay = $overlay.Out; OverlayExit = $overlay.Exit; Probe = $ovProbe }
 }
 
