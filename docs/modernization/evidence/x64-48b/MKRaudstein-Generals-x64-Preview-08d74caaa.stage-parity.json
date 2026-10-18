@@ -1,0 +1,45 @@
+{
+  "title": "Generals",
+  "candidate": "x64-48b-gen-v2",
+  "stageManifestSha256": "7CF169444497B9876E0388C06F7F7DC54A92DA37092194A8765BFE75D61E5028",
+  "stagedExecutable": "generalsv.exe",
+  "stagedSymbols": "generalsv.pdb",
+  "legitimateGameFilesNotRedistributed": 130,
+  "projectFiles": [
+    {
+      "stagePath": "Data/INI/CommandButton.ini",
+      "zipPath": "Data/INI/CommandButton.ini",
+      "sha256": "2B26900A11B3AA31035F954FD9F836A3F433DD66A0D20C89C95DD08E2366A5BF"
+    },
+    {
+      "stagePath": "Data/INI/CommandSet.ini",
+      "zipPath": "Data/INI/CommandSet.ini",
+      "sha256": "BF42C23FE248B4AEB846672F9FC7F14FE221104B5E2B70F4BF185FCA0FD17F27"
+    },
+    {
+      "stagePath": "Data/INI/PlayerTemplate.ini",
+      "zipPath": "Data/INI/PlayerTemplate.ini",
+      "sha256": "92A13ED5EF307D13C57DF0486F3CF409BC04BD2814661361CA1E756F394E8298"
+    },
+    {
+      "stagePath": "generalsv.exe",
+      "zipPath": "Generals.exe",
+      "sha256": "69EC77A2F8D1C3756CDF43F25E88C6C59499638A7A2B590F02E5CEA4033B15E9"
+    },
+    {
+      "stagePath": "Window/GenPowersShortcutBarChina.wnd",
+      "zipPath": "Window/GenPowersShortcutBarChina.wnd",
+      "sha256": "EF872384CF1B7273918F852F1F541A9E2B083F0F322B813134F1AE7CAAFAEEBA"
+    },
+    {
+      "stagePath": "Window/GenPowersShortcutBarGLA.wnd",
+      "zipPath": "Window/GenPowersShortcutBarGLA.wnd",
+      "sha256": "0A33264DA163421D89AC829C54E662077A178FA42D8A6BC563C5C5E9361C68E0"
+    },
+    {
+      "stagePath": "Window/GenPowersShortcutBarUS.wnd",
+      "zipPath": "Window/GenPowersShortcutBarUS.wnd",
+      "sha256": "C15351468F449D81CC882CDEE891B8F650BA6934B653E26C8518468941285BF9"
+    }
+  ]
+}

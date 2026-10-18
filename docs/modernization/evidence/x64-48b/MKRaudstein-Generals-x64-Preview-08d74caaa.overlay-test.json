@@ -1,0 +1,164 @@
+{
+  "zip": "MKRaudstein-Generals-x64-Preview-08d74caaa.zip",
+  "zipSha256": "02B3A18669AEEAD7FC330175FB76CAC23B298A1FF09FB9EB29862D62E1C2FC64",
+  "candidate": "x64-48b-gen-v2",
+  "stage": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\Generals\\x64-48b-overlay-test-gen",
+  "projectFiles": [
+    "Data/INI/CommandButton.ini",
+    "Data/INI/CommandSet.ini",
+    "Data/INI/PlayerTemplate.ini",
+    "generalsv.exe",
+    "Window/GenPowersShortcutBarChina.wnd",
+    "Window/GenPowersShortcutBarGLA.wnd",
+    "Window/GenPowersShortcutBarUS.wnd"
+  ],
+  "launch": {
+    "Reference": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\diag\\overlay-test-reference-20261018T082632Z",
+    "Overlay": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\diag\\overlay-test-overlay-20261018T082657Z",
+    "OverlayExit": 0,
+    "Probe": [
+      "side=FactionAmerica shortcut_slots=8 shortcut_set=SpecialPowerShortcutUSA shortcut_set_buttons=8 shortcut_window=GenPowersShortcutBarUS.wnd",
+      "side=FactionChina shortcut_slots=6 shortcut_set=SpecialPowerShortcutChina shortcut_set_buttons=6 shortcut_window=GenPowersShortcutBarChina.wnd",
+      "side=FactionGLA shortcut_slots=5 shortcut_set=SpecialPowerShortcutGLA shortcut_set_buttons=5 shortcut_window=GenPowersShortcutBarGLA.wnd"
+    ]
+  },
+  "checks": [
+    {
+      "Pass": true,
+      "Check": "the ZIP contains exactly the files of its manifest (no more, no less)"
+    },
+    {
+      "Pass": true,
+      "Check": "every packaged file matches the SHA-256 in the manifest"
+    },
+    {
+      "Pass": true,
+      "Check": "the ZIP was built from this canonical staged candidate (stage manifest hash matches)"
+    },
+    {
+      "Pass": true,
+      "Check": "no project runtime file of the staged candidate is missing from the ZIP"
+    },
+    {
+      "Pass": true,
+      "Check": "every project runtime file in the ZIP is byte-identical to the staged candidate's"
+    },
+    {
+      "Pass": true,
+      "Check": "the ZIP carries nothing the staged candidate does not have, except the runtime DLLs, README, licence and manifest"
+    },
+    {
+      "Pass": true,
+      "Check": "no unchanged legitimate game file is redistributed"
+    },
+    {
+      "Pass": true,
+      "Check": "no media / developer file types in the ZIP"
+    },
+    {
+      "Pass": true,
+      "Check": "the only executable is Generals.exe"
+    },
+    {
+      "Pass": true,
+      "Check": "Generals.exe is an AMD64 (x64) PE image"
+    },
+    {
+      "Pass": true,
+      "Check": "the only DLLs are the Visual C++ runtime DLLs the executable imports"
+    },
+    {
+      "Pass": true,
+      "Check": "a fresh staging of the same build is file-for-file identical to the canonical staged candidate (so the reference run IS the validated runtime)"
+    },
+    {
+      "Pass": true,
+      "Check": "REFERENCE: the staged candidate ran and exited cleanly (exit code 0)"
+    },
+    {
+      "Pass": true,
+      "Check": "REFERENCE: the feature probe reported the data of 3 playable sides"
+    },
+    {
+      "Pass": true,
+      "Check": "the disposable installation is clean: only unchanged legitimate game files remain (like a fresh Steam install)"
+    },
+    {
+      "Pass": true,
+      "Check": "FILE-FOR-FILE: clean installation + ZIP == the staged candidate (144 files installed; additions: runtime DLLs, README, licence, manifest)"
+    },
+    {
+      "Pass": true,
+      "Check": "every imported DLL resolves (31 imports: 4 from the extracted folder, the rest Windows system DLLs)"
+    },
+    {
+      "Pass": true,
+      "Check": "the Visual C++ runtime comes from the extracted folder (app-local), not from the machine"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the extracted Generals.exe ran and exited cleanly (exit code 0)"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the log records a normal launch (the Generals.exe name selects the modern runtime)"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the main menu / shell was reached and rendered"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the Skirmish setup screens were driven to the match"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: a match frame was rendered and captured"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: no failed phase in the log"
+    },
+    {
+      "Pass": true,
+      "Check": "FEATURE PARITY: the feature probe of the overlay install equals the staged candidate's (3 lines)"
+    },
+    {
+      "Pass": true,
+      "Check": "FEATURE PARITY: the real screens were driven through the same steps in both runs"
+    }
+  ],
+  "imports": [
+    "WINMM.dll",
+    "WS2_32.dll",
+    "d3d11.dll",
+    "D3DCOMPILER_47.dll",
+    "ole32.dll",
+    "DINPUT8.dll",
+    "KERNEL32.dll",
+    "USER32.dll",
+    "GDI32.dll",
+    "SHELL32.dll",
+    "OLEAUT32.dll",
+    "ADVAPI32.dll",
+    "MSVCP140.dll",
+    "MSVCP140_ATOMIC_WAIT.dll",
+    "VCRUNTIME140.dll",
+    "VCRUNTIME140_1.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-time-l1-1-0.dll",
+    "api-ms-win-crt-utility-l1-1-0.dll",
+    "api-ms-win-crt-multibyte-l1-1-0.dll",
+    "api-ms-win-crt-process-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "IMM32.dll",
+    "AVIFIL32.dll"
+  ]
+}

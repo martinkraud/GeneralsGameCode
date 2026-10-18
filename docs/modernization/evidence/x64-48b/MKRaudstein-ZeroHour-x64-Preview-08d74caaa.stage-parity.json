@@ -1,0 +1,15 @@
+{
+  "title": "ZeroHour",
+  "candidate": "x64-48b-zh-v2",
+  "stageManifestSha256": "1221E458224F5A54D64BDBB119BF35FBCA0D9449261F5D58BA2FBDF95832DD8F",
+  "stagedExecutable": "generalszh.exe",
+  "stagedSymbols": "generalszh.pdb",
+  "legitimateGameFilesNotRedistributed": 278,
+  "projectFiles": [
+    {
+      "stagePath": "generalszh.exe",
+      "zipPath": "Generals.exe",
+      "sha256": "B5960DE5B53C306244AAC7BCE34622DCD413AB6F0D46C8E99225DFCDFDAE28AF"
+    }
+  ]
+}

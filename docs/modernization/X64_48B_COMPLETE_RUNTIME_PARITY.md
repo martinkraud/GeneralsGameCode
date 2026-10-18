@@ -36,18 +36,18 @@ Flow: (1) package audit against the canonical staged candidate (computed live); 
 `Test-OverlayValidatorDetectsOmissions.ps1` proves the validator rejects a tampered package: an omitted project file, a redistributed legitimate game file, a modified project file (both titles: PASS; the good package passes the same audit).
 Contract tests (`test_overlay_package_contract.py`, 4 tests): the builder takes a canonical candidate and classifies the stage (no hand-written project-file list, no size goal), the validator contains the missing-file / file-for-file / feature-parity failures, the runtime emits the probe, and the Generals extension files are part of the stage.
 
-## 4. The packages (source commit `e06642e8c`; later commits: validator and documentation only)
+## 4. The packages (source commit `08d74caaa`; later commits: documentation and evidence only)
 | | Zero Hour | Generals |
 | --- | --- | --- |
 | Canonical staged candidate | `x64-48b-zh-v2` (preflight PASS) | `x64-48b-gen-v2` (preflight PASS) |
-| ZIP (`build\dist\`) | `MKRaudstein-ZeroHour-x64-Preview-e06642e8c.zip` | `MKRaudstein-Generals-x64-Preview-e06642e8c.zip` |
-| Size | 4,116,355 bytes | 4,010,850 bytes |
-| SHA-256 | `506D24F0A0C71DBA3231CD9FEEE55CCC2F3D9CECB98A65227A8424D28F45EF9A` | `78AE92FF6B574641E8A3EF0D5736732BCDF2D4BD721E5F4DB6E26AA33F9913B7` |
+| ZIP (`build\dist\`) | `MKRaudstein-ZeroHour-x64-Preview-08d74caaa.zip` | `MKRaudstein-Generals-x64-Preview-08d74caaa.zip` |
+| Size | 4,116,364 bytes | 4,010,848 bytes |
+| SHA-256 | `D169D90B3407FF057809CA3784C4F95FDC7DC15936560E5AC3434DE7F9764E76` | `02B3A18669AEEAD7FC330175FB76CAC23B298A1FF09FB9EB29862D62E1C2FC64` |
 | Files | 8 (see below) | 14 (see below) |
 | Optional symbols | `...-Symbols.zip` | `...-Symbols.zip` |
 Native candidate on the developer PC: `build\dev-runtimes\native\ZeroHour\x64-48b-zh-v2\game\generalszh.exe` (launcher default: `Run-ZeroHourCandidate.cmd`, equivalent `-Name x64-48b-zh-v2`); Generals: `build\dev-runtimes\native\Generals\x64-48b-gen-v2\game\generalsv.exe`.
-**Zero Hour (8):** `Generals.exe` (8,634,880 B, replaces the EA launcher), `vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`, `msvcp140_atomic_wait.dll`, `MKRaudstein-ZeroHour-README.txt`, `MKRaudstein\LICENSE.md`, `MKRaudstein\manifest.json`. 278 legitimate game files not redistributed.
-**Generals (14):** the same eight kinds for Generals (`Generals.exe` 8,281,600 B replaces the EA launcher; README `MKRaudstein-Generals-README.txt`) **plus the six project data files** `Data\INI\CommandButton.ini` (114,167 B), `Data\INI\CommandSet.ini` (25,277), `Data\INI\PlayerTemplate.ini` (4,959), `Window\GenPowersShortcutBarUS.wnd` (55,433), `Window\GenPowersShortcutBarChina.wnd` (42,410), `Window\GenPowersShortcutBarGLA.wnd` (35,851). 130 legitimate game files not redistributed.
+**Zero Hour (8):** `Generals.exe` (8,634,880 B, SHA-256 B5960DE5...28AF, replaces the EA launcher), `vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`, `msvcp140_atomic_wait.dll`, `MKRaudstein-ZeroHour-README.txt`, `MKRaudstein\LICENSE.md`, `MKRaudstein\manifest.json`. 278 legitimate game files not redistributed.
+**Generals (14):** the same eight kinds for Generals (`Generals.exe` 8,281,600 B, SHA-256 69EC77A2...15E9, replaces the EA launcher; README `MKRaudstein-Generals-README.txt`) **plus the six project data files** `Data\INI\CommandButton.ini` (114,167 B), `Data\INI\CommandSet.ini` (25,277), `Data\INI\PlayerTemplate.ini` (4,959), `Window\GenPowersShortcutBarUS.wnd` (55,433), `Window\GenPowersShortcutBarChina.wnd` (42,410), `Window\GenPowersShortcutBarGLA.wnd` (35,851). 130 legitimate game files not redistributed.
 **Replaced in an installation:** `Generals.exe` only (both titles); the six Generals data files are new loose files that override same-named content inside the game archives (`Verify integrity` does not remove them; deleting them restores retail behaviour of the sidebar). A game file that a future stage modifies would also be listed as REPLACES.
 
 ## 5. Automated validation (disposable layout; this is NOT the human retest)
