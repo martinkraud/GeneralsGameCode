@@ -1,5 +1,7 @@
 # X64.47B - Generals Steam overlay ZIP feasibility (PREVIEW package)
 
+**SUPERSEDED 2026-10-18 by `X64_48B_COMPLETE_RUNTIME_PARITY.md`:** the "minimal player ZIP" objective is cancelled; the distribution rule is *validated staged runtime == clean installation + ZIP overlay*, and the package is derived from the staged candidate. The Generals ZIP described here **omitted six project data files** (the modern-extension shortcut-sidebar INI/WND overrides); its second-PC human PASS covers the launch / overlay mechanics only, not Generals feature parity.
+
 Status: **Steam overlay model HUMAN VALIDATED on a second PC (2026-10-17, a real Generals Steam installation: ZIP extracted over it, launched through Steam Play, no blocker) - this also confirms the assumed Generals launch chain (`Generals.exe`). The package below is SUPERSEDED by the rebuild in `X64_48A_SECOND_PC_CORRECTNESS.md` (section 11); public release readiness is still blocked by the three correctness defects fixed there (pending human retest) and by release hygiene.** Companion of `X64_47A_ZERO_HOUR_STEAM_OVERLAY_ZIP.md` (same builder, manifest, validator, safety rules). Not a feature milestone; no performance or visual/options work was started.
 Start point: HEAD `5d2144522` = `origin/dev/modern-engine`. The real Steam directory was only read (the launch configuration in `appcache`, a listing); nothing was written or executed there.
 

@@ -1,5 +1,7 @@
 # X64.47A - Zero Hour Steam overlay ZIP feasibility (PREVIEW package)
 
+**SUPERSEDED 2026-10-18 by `X64_48B_COMPLETE_RUNTIME_PARITY.md`:** the "minimal player ZIP" objective is cancelled; the distribution rule is *validated staged runtime == clean installation + ZIP overlay*, and the package is derived from the staged candidate. This Zero Hour package was complete for what its stage contains (the stage holds no project data files) but its builder and manifest are replaced.
+
 Status: **Steam overlay model HUMAN VALIDATED on a second PC (2026-10-17: ZIP extracted over the Steam installation, launched through Steam Play, no missing-DLL / runtime / startup blocker). The package below is SUPERSEDED by the rebuild in `X64_48A_SECOND_PC_CORRECTNESS.md` (section 11), which fixes three correctness defects found on that PC; public release readiness is still blocked by them and by release hygiene (build path in the executable, unsigned executable).** This is not a public release and not the "X64.47 Zero Hour visual and options parity" feature milestone (that stays the next feature milestone, see `FIRST_PLAYABLE_ROADMAP.md`).
 Start point: HEAD `8d3db7b08` = `origin/dev/modern-engine` (X64.46 closed). Safety held throughout: the real Steam directory was only read (listing, hashing, the launch configuration in `appcache`), never written, and the candidate was never run on it.
 

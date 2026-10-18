@@ -1,5 +1,7 @@
 # X64.48A - second-PC correctness pass (fog of war, ultrawide world, Skirmish slots 7/8)
 
+**SUPERSEDED 2026-10-18 by `X64_48B_COMPLETE_RUNTIME_PARITY.md`:** the "minimal player ZIP" objective is cancelled; the distribution rule is *validated staged runtime == clean installation + ZIP overlay*, and the package is derived from the staged candidate. The rebuilt ZIPs in section 11 (`...-1ae0b0ca1`) are superseded: the Generals one still lacked the six project data files; the executables inside are the ones of the X64.48A fixes and are unchanged.
+
 Status: **OPEN - three correctness defects fixed and validated automatically on a disposable layout; human retest on the second PC pending (section 9).** Not closed until the human confirms. No performance work, no Enhanced HUD, no UI redesign, no gameplay/AI/RNG/replay change.
 Start point: HEAD `4fa91cbdd` = `origin/dev/modern-engine`.
 
