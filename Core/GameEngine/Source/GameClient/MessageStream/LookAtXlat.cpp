@@ -29,6 +29,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/FramePacer.h"
+#include "Common/CameraProbe.h"
 #include "Common/GameType.h"
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
@@ -50,6 +51,7 @@
 #include "GameClient/LookAtXlat.h"
 #include "GameLogic/Module/UpdateModule.h"
 #include "GameLogic/GameLogic.h"
+#include "GameLogic/TerrainLogic.h"
 
 #include "Common/GlobalData.h"			// for camera pitch angle only
 
@@ -82,6 +84,52 @@ static const Int edgeScrollSize = 3;
 static Mouse::MouseCursor prevCursor = Mouse::ARROW;
 
 //-----------------------------------------------------------------------------
+// X64.49: developer measurement aid (GENERALS_CAMERA_PROBE): advances the scripted hold phases and returns the current one. Inert unless the variable is set.
+static CameraProbe::Phase probeAdvance()
+{
+	using namespace CameraProbe;
+	State &s = state();
+	if (s.fps > 0)   // re-applied every step: starting a map resets the cap
+	{
+		TheFramePacer->setFramesPerSecondLimit(s.fps);
+		TheFramePacer->enableFramesPerSecondLimit(TRUE);
+		TheWritableGlobalData->m_useFpsLimit = TRUE;
+	}
+	const Bool live = TheGameLogic && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap()
+		&& !TheGameLogic->isClearingGameData() && TheGameLogic->getFrame() > s.delayFrames;
+	if (!live || s.phase == Finished)
+		return s.phase;
+	const double t = nowMs();
+	auto enter = [&](Phase p) { s.phase = p; s.phaseStartMs = t; };
+	const double hold = s.holdSeconds * 1000.0;
+	switch (s.phase)
+	{
+	case Idle:
+		if (TheTacticalView && TheTerrainLogic)
+		{
+			Region3D map; TheTerrainLogic->getExtent(&map);
+			Coord3D middle = { 0.5f * (map.lo.x + map.hi.x), 0.5f * (map.lo.y + map.hi.y), 0.0f };
+			TheTacticalView->lookAt(&middle);
+		}
+		enter(Settle);
+		break;
+	case Settle:       if (t - s.phaseStartMs > 1500.0) enter(KeyHold); break;
+	case KeyHold:      if (t - s.phaseStartMs > hold) enter(RestAfterKey); break;
+	case RestAfterKey: if (t - s.phaseStartMs > 1500.0) enter(EdgeHold); break;
+	case EdgeHold:     if (t - s.phaseStartMs > hold) enter(RestAfterEdge); break;
+	case RestAfterEdge:
+		if (t - s.phaseStartMs > 1500.0)
+		{
+			enter(Finished);
+			writeOutput();
+			if (TheGameEngine) TheGameEngine->setQuitting(TRUE);
+		}
+		break;
+	default: break;
+	}
+	return s.phase;
+}
+
 void LookAtTranslator::setScrolling(ScrollType scrollType)
 {
 	if (!TheInGameUI->getInputEnabled())
@@ -439,10 +487,36 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 		{
 			Coord2D offset = {0, 0};
 
+			CameraProbe::Phase probePhase = CameraProbe::Idle;
+			if (CameraProbe::enabled())
+			{
+				probePhase = probeAdvance();
+				if (probePhase == CameraProbe::KeyHold)
+				{
+					scrollDir[DIR_RIGHT] = true;
+					if (!m_isScrolling)
+						setScrolling(SCROLL_KEY);
+				}
+				else if (probePhase == CameraProbe::EdgeHold)
+				{
+					m_currentPos.x = 0;
+					m_currentPos.y = TheDisplay->getHeight() / 2;
+					if (!m_isScrolling)
+						setScrolling(SCROLL_SCREENEDGE);
+				}
+				else if (m_isScrolling && (probePhase == CameraProbe::RestAfterKey || probePhase == CameraProbe::RestAfterEdge))
+				{
+					scrollDir[DIR_RIGHT] = false;
+					m_currentPos.x = TheDisplay->getWidth() / 2;
+					stopScrolling();
+				}
+			}
+
 			if (m_isScrolling && !TheInGameUI->isScrolling())
 			{
 				// If we've been forced to stop scrolling (script action?)
 				TheInGameUI->setScrollAmount(offset);
+				TheTacticalView->clearPendingUserScroll();
 				TheTacticalView->scrollBy(&offset);
 				stopScrolling();
 			}
@@ -528,12 +602,24 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 				}
 
 				TheInGameUI->setScrollAmount(offset);
-				TheTacticalView->userScrollBy( &offset );
+				// X64.49: the velocity is handed to the view, which moves the camera in presentation time (View::applyPendingUserScroll)
+				if (CameraProbe::enabled() && CameraProbe::state().legacyScroll)
+					TheTacticalView->userScrollBy( &offset );   // measurement of the former behaviour only
+				else
+					TheTacticalView->userScrollByPresented( &offset, fpsRatio );
+
+				if (CameraProbe::enabled())
+				{
+					CameraProbe::State &ps = CameraProbe::state();
+					ps.rows.push_back({ 'S', (int)probePhase, CameraProbe::nowMs(), TheGameLogic->getFrame(), TheFramePacer->getUpdateTime() * 1000.0,
+						offset.x, offset.y, fpsRatio, 0.0 });
+				}
 			}
 			else
 			{
 				//not scrolling so reset amount
 				TheInGameUI->setScrollAmount(offset);
+				TheTacticalView->clearPendingUserScroll();
 				TheTacticalView->scrollBy(&offset);
 			}
 

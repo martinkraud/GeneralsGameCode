@@ -1461,6 +1461,10 @@ void W3DView::update()
 {
 	//USE_PERF_TIMER(W3DView_updateView)
 	Bool didScriptedMovement = false;
+
+	// X64.49: the held key / screen edge / RMB scroll moves the camera for the time that really passed since the previous update,
+	// right before this frame's camera transform is built (see View::userScrollByPresented).
+	applyPendingUserScroll();
 #ifdef LOG_FRAME_TIMES
 	__int64 curTime64,freq64;
 	static __int64 prevTime64=0;

@@ -1,0 +1,15 @@
+target_fps=120 hold_seconds=3.00 rows=5932
+[key] drawn=361 scroll_steps=361 logic_ticks=91 elapsed_s=3.000 distance=2250.11 speed_units_per_s=750.02
+  frame_ms: n=360 mean=8.334 p50=8.336 p95=8.608 p99=8.914 worst=13.005 stddev=0.447 var=0.2000
+  present_interval_ms: n=360 mean=8.332 p50=8.325 p95=8.871 p99=9.393 worst=13.329 stddev=0.542 var=0.2933
+  seen_world_speed_units_per_s (camera step / present interval): mean=755.82 p95=1147.02 p99=1241.81 stddev=508.61 cv=0.6729
+  camera_step_per_frame: mean=6.2503 p50=8.9766 p95=8.9766 p99=8.9974 max=9.0251 stddev=4.1222 stale_frames=109
+  camera_speed_units_per_s (per draw interval): mean=754.06 p95=1111.04 p99=1162.46 stddev=504.70 cv=0.6693
+  camera_move_per_logic_tick: n=90 mean=25.0013 p95=35.9144 max=35.9783 stddev=16.3456
+[edge] drawn=359 scroll_steps=359 logic_ticks=91 elapsed_s=2.992 distance=3223.03 speed_units_per_s=1077.18
+  frame_ms: n=358 mean=8.358 p50=8.332 p95=8.707 p99=8.784 worst=23.220 stddev=0.869 var=0.7557
+  present_interval_ms: n=358 mean=8.358 p50=8.346 p95=8.972 p99=9.255 worst=23.334 stddev=0.928 var=0.8619
+  seen_world_speed_units_per_s (camera step / present interval): mean=1091.00 p95=1164.30 p99=1206.82 stddev=223.07 cv=0.2045
+  camera_step_per_frame: mean=9.0029 p50=8.9766 p95=8.9766 p99=8.9840 max=18.2795 stddev=0.4910 stale_frames=0
+  camera_speed_units_per_s (per draw interval): mean=1087.90 p95=1122.89 p99=1139.06 stddev=187.08 cv=0.1720
+  camera_move_per_logic_tick: n=90 mean=35.6119 p95=35.9100 max=36.2327 stddev=2.8236

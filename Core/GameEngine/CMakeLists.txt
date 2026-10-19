@@ -46,6 +46,8 @@ set(GAMEENGINE_SRC
     Include/Common/FrameRateLimit.h
     Include/Common/PerformanceProfile.h
     Include/Common/ScriptProfile.h
+    Include/Common/CameraProbe.h
+    Include/Common/PresentationScroll.h
     Include/Common/EnduranceTelemetry.h
     Include/Common/PresentationClock.h
     Include/Common/GroundTranslation.h

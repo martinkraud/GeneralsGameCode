@@ -225,6 +225,15 @@ public:
 	Bool userLookAt(const Coord3D *o)                    { return doUserAction(&View::lookAt, o); }
 	Bool userResetPivotToGround()                        { return doUserAction(&View::resetPivotToGround); }
 	Bool userScrollBy(const Coord2D *delta)              { return doUserAction(&View::scrollBy, delta); }
+
+	// X64.49: user scrolling in PRESENTATION TIME. The key / screen-edge / RMB scroll is a velocity, not a distance per frame: userScrollByPresented()
+	// records it (per base frame, i.e. at fpsRatio 1) with the same user-control checks as userScrollBy(), and the view applies it once per client update,
+	// right before the camera transform of the drawn frame is built, for the wall-clock time that really passed since the previous update
+	// (applyPendingUserScroll). The former code applied a step sized by the PREVIOUS frame interval after the frame had been drawn, so irregular
+	// frame intervals made the camera speed visibly oscillate at high refresh rates. Position per second is unchanged (no gameplay effect).
+	Bool userScrollByPresented(const Coord2D *delta, Real fpsRatio);
+	void clearPendingUserScroll()                        { m_hasPendingUserScroll = FALSE; }
+	void applyPendingUserScroll();
 	Bool userSetLocation(const ViewLocation *location)   { return doUserAction(&View::setLocation, location); }
 	Bool userSetCameraLock(ObjectID id)                  { return doUserAction(&View::setCameraLock, id); }
 	Bool userSetCameraLockDrawable(Drawable *drawable)   { return doUserAction(&View::setCameraLockDrawable, drawable); }
@@ -321,6 +330,9 @@ protected:
 
 	UnsignedInt m_userControlLockedUntilFrame;									///< Locks the user control over camera until the given frame is reached
 	Bool m_isUserControlled;																		///< True if the user moved the camera last, false if the scripted camera moved the camera last
+	Bool m_hasPendingUserScroll;																///< X64.49: a user scroll velocity waits to be applied in presentation time
+	Coord2D m_pendingUserScrollPerBaseFrame;										///< X64.49: that velocity as a scroll delta per base (30 Hz) frame
+	Int64 m_lastUserScrollTicks;																///< X64.49: performance counter value of the previous applyPendingUserScroll()
 
 	Coord3D m_pos;																							///< Pivot of the camera, in world coordinates
 	Int m_width, m_height;																			///< Dimensions of the view

@@ -29,6 +29,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/GameEngine.h"
+#include "Common/PresentationScroll.h"
 #include "Common/Xfer.h"
 #include "GameClient/Drawable.h"
 #include "GameClient/GameClient.h"
@@ -40,8 +41,46 @@ UnsignedInt View::m_idNext = 1;
 View *TheTacticalView = nullptr;
 
 
+Bool View::userScrollByPresented(const Coord2D *delta, Real fpsRatio)
+{
+	if (isUserControlLocked())
+		return false;
+	stopDoingScriptedCamera();
+	setUserControlled(true);
+	if (delta != nullptr && fpsRatio > 0.0f)
+	{
+		m_pendingUserScrollPerBaseFrame.x = delta->x / fpsRatio;
+		m_pendingUserScrollPerBaseFrame.y = delta->y / fpsRatio;
+		m_hasPendingUserScroll = TRUE;
+	}
+	return true;
+}
+
+void View::applyPendingUserScroll()
+{
+	LARGE_INTEGER now, frequency;
+	QueryPerformanceCounter(&now);
+	QueryPerformanceFrequency(&frequency);
+	// Wall-clock time since the previous update of this view (never a jump: see PresentationScroll::stepSeconds).
+	const Real seconds = PresentationScroll::stepSeconds(now.QuadPart, m_lastUserScrollTicks, frequency.QuadPart);
+	m_lastUserScrollTicks = now.QuadPart;
+
+	if (!m_hasPendingUserScroll)
+		return;
+	m_hasPendingUserScroll = FALSE;
+
+	Coord2D offset;
+	offset.x = PresentationScroll::deltaForInterval(m_pendingUserScrollPerBaseFrame.x, seconds);
+	offset.y = PresentationScroll::deltaForInterval(m_pendingUserScrollPerBaseFrame.y, seconds);
+	scrollBy(&offset);
+}
+
 View::View()
 {
+	m_hasPendingUserScroll = FALSE;
+	m_pendingUserScrollPerBaseFrame.x = 0.0f;
+	m_pendingUserScrollPerBaseFrame.y = 0.0f;
+	m_lastUserScrollTicks = 0;
 	m_userControlLockedUntilFrame = 0u;
 	m_isUserControlled = true;
 	m_currentHeightAboveGround = 0.0f;
@@ -113,6 +152,7 @@ void View::reset()
 
 	m_userControlLockedUntilFrame = 0u;
 	m_isUserControlled = true;
+	m_hasPendingUserScroll = FALSE;
 }
 
 /**

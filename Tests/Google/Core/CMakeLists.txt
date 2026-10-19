@@ -10,6 +10,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/DeveloperHarnessTest.cpp
     GameEngine/Common/PerformanceProfileBenchmark.cpp
     GameEngine/Common/PresentationClockTest.cpp
+    GameEngine/Common/PresentationScrollTest.cpp
     GameEngine/Common/DisplayGeometryTest.cpp
     GameEngine/Common/PresentationSmoothnessTest.cpp
     GameEngine/Common/DisplaySettingsTest.cpp

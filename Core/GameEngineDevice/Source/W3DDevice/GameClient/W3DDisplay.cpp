@@ -37,6 +37,7 @@ static void drawFramerateBar();
 #include "Common/PerformanceProfile.h"
 #if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
+#include "Common/CameraProbe.h"
 #include "Common/DisplayRuntime.h"
 #include <vector>
 #if defined(_WIN64)
@@ -1955,6 +1956,27 @@ void W3DDisplay::draw()
 #if defined(_WIN64)
 	NativeSampleRenderCounters();   // X64.34: no-op unless a profiler capture is running
 	NativeAutoShot();               // developer capture aid: inert unless GENERALS_AUTOSHOT is set
+#endif
+#if defined(_WIN64)
+	struct ProbePresented
+	{
+		~ProbePresented()
+		{
+			if (CameraProbe::enabled())
+				CameraProbe::state().rows.push_back({ 'P', (int)CameraProbe::state().phase, CameraProbe::nowMs(), TheGameLogic ? TheGameLogic->getFrame() : 0, 0.0, 0.0, 0.0, 0.0, 0.0 });   // X64.49: frame handed to the swap chain
+		}
+	} probePresented;
+	if (CameraProbe::enabled())
+	{
+		// X64.49: the position the camera matrices of THIS drawn frame are built from (inert unless GENERALS_CAMERA_PROBE is set)
+		CameraProbe::State &ps = CameraProbe::state();
+		if (W3DView *view = dynamic_cast<W3DView *>(TheTacticalView))
+		{
+			const Vector3 cam = view->get3DCamera()->Get_Position();
+			const Coord3D &pivot = view->getPosition();
+			ps.rows.push_back({ 'D', (int)ps.phase, CameraProbe::nowMs(), TheGameLogic ? TheGameLogic->getFrame() : 0, (double)pivot.x, (double)pivot.y, (double)cam.Z, (double)cam.X, (double)cam.Y });
+		}
+	}
 #endif
 	//USE_PERF_TIMER(W3DDisplay_draw)
 
