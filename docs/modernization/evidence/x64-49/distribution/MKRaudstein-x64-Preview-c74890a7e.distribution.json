@@ -1,0 +1,27 @@
+{
+  "distribution": "MKRaudstein x64 Preview",
+  "version": "c74890a7e",
+  "commit": "c74890a7e",
+  "titles": [
+    {
+      "title": "Generals",
+      "candidate": "dist-c74890a7e-gen",
+      "zip": "MKRaudstein-Generals-x64-Preview-c74890a7e.zip",
+      "bytes": 4019966,
+      "files": 14,
+      "sha256": "75EAD59F9A6407E07A568E4079D44C383397F0945E32B40A07E812F2616F569C",
+      "symbols": "MKRaudstein-Generals-x64-Preview-c74890a7e-Symbols.zip",
+      "validated": true
+    },
+    {
+      "title": "ZeroHour",
+      "candidate": "dist-c74890a7e-zh",
+      "zip": "MKRaudstein-ZeroHour-x64-Preview-c74890a7e.zip",
+      "bytes": 4124631,
+      "files": 8,
+      "sha256": "26F0550938BDDAE3D314C10CF33F1B20CE1897A40D581132E4D98401D656C8A7",
+      "symbols": "MKRaudstein-ZeroHour-x64-Preview-c74890a7e-Symbols.zip",
+      "validated": true
+    }
+  ]
+}

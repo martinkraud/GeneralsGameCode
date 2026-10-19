@@ -1,0 +1,168 @@
+{
+  "zip": "MKRaudstein-ZeroHour-x64-Preview-c74890a7e.zip",
+  "zipSha256": "26F0550938BDDAE3D314C10CF33F1B20CE1897A40D581132E4D98401D656C8A7",
+  "candidate": "dist-c74890a7e-zh",
+  "stage": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\dev-runtimes\\native\\ZeroHour\\x64-48b-overlay-test-zh",
+  "projectFiles": [
+    "generalszh.exe"
+  ],
+  "launch": {
+    "Reference": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\diag\\overlay-test-reference-20261019T102348Z",
+    "Overlay": "C:\\Users\\buskr\\Documents\\ProjectsX\\GeneralsGameCode\\build\\diag\\overlay-test-overlay-20261019T102425Z",
+    "OverlayExit": 0,
+    "Probe": [
+      "side=FactionAmerica shortcut_slots=10 shortcut_set=SpecialPowerShortcutUSA shortcut_set_buttons=10 shortcut_window=GenPowersShortcutBarUS.wnd",
+      "side=FactionAmericaAirForceGeneral shortcut_slots=11 shortcut_set=AirF_SpecialPowerShortcutUSA shortcut_set_buttons=11 shortcut_window=GenPowersShortcutBarUS.wnd",
+      "side=FactionAmericaLaserGeneral shortcut_slots=10 shortcut_set=Lazr_SpecialPowerShortcutUSA shortcut_set_buttons=11 shortcut_window=GenPowersShortcutBarUS.wnd",
+      "side=FactionAmericaSuperWeaponGeneral shortcut_slots=11 shortcut_set=SupW_SpecialPowerShortcutUSA shortcut_set_buttons=10 shortcut_window=GenPowersShortcutBarUS.wnd",
+      "side=FactionBossGeneral shortcut_slots=9 shortcut_set=SpecialPowerShortcutBoss shortcut_set_buttons=9 shortcut_window=GenPowersShortcutBarChina.wnd",
+      "side=FactionChina shortcut_slots=10 shortcut_set=SpecialPowerShortcutChina shortcut_set_buttons=8 shortcut_window=GenPowersShortcutBarChina.wnd",
+      "side=FactionChinaInfantryGeneral shortcut_slots=10 shortcut_set=Infa_SpecialPowerShortcutChina shortcut_set_buttons=8 shortcut_window=GenPowersShortcutBarChina.wnd",
+      "side=FactionChinaNukeGeneral shortcut_slots=10 shortcut_set=Nuke_SpecialPowerShortcutChina shortcut_set_buttons=8 shortcut_window=GenPowersShortcutBarChina.wnd",
+      "side=FactionChinaTankGeneral shortcut_slots=10 shortcut_set=Tank_SpecialPowerShortcutChina shortcut_set_buttons=8 shortcut_window=GenPowersShortcutBarChina.wnd",
+      "side=FactionGLA shortcut_slots=10 shortcut_set=SpecialPowerShortcutGLA shortcut_set_buttons=7 shortcut_window=GenPowersShortcutBarGLA.wnd",
+      "side=FactionGLADemolitionGeneral shortcut_slots=10 shortcut_set=Demo_SpecialPowerShortcutGLA shortcut_set_buttons=7 shortcut_window=GenPowersShortcutBarGLA.wnd",
+      "side=FactionGLAStealthGeneral shortcut_slots=10 shortcut_set=Slth_SpecialPowerShortcutGLA shortcut_set_buttons=7 shortcut_window=GenPowersShortcutBarGLA.wnd",
+      "side=FactionGLAToxinGeneral shortcut_slots=10 shortcut_set=Chem_SpecialPowerShortcutGLA shortcut_set_buttons=6 shortcut_window=GenPowersShortcutBarGLA.wnd"
+    ]
+  },
+  "checks": [
+    {
+      "Pass": true,
+      "Check": "the ZIP contains exactly the files of its manifest (no more, no less)"
+    },
+    {
+      "Pass": true,
+      "Check": "every packaged file matches the SHA-256 in the manifest"
+    },
+    {
+      "Pass": true,
+      "Check": "the ZIP was built from this canonical staged candidate (stage manifest hash matches)"
+    },
+    {
+      "Pass": true,
+      "Check": "no project runtime file of the staged candidate is missing from the ZIP"
+    },
+    {
+      "Pass": true,
+      "Check": "every project runtime file in the ZIP is byte-identical to the staged candidate's"
+    },
+    {
+      "Pass": true,
+      "Check": "the ZIP carries nothing the staged candidate does not have, except the runtime DLLs, README, licence and manifest"
+    },
+    {
+      "Pass": true,
+      "Check": "no unchanged legitimate game file is redistributed"
+    },
+    {
+      "Pass": true,
+      "Check": "no media / developer file types in the ZIP"
+    },
+    {
+      "Pass": true,
+      "Check": "the only executable is Generals.exe"
+    },
+    {
+      "Pass": true,
+      "Check": "Generals.exe is an AMD64 (x64) PE image"
+    },
+    {
+      "Pass": true,
+      "Check": "the only DLLs are the Visual C++ runtime DLLs the executable imports"
+    },
+    {
+      "Pass": true,
+      "Check": "a fresh staging of the same build is file-for-file identical to the canonical staged candidate (so the reference run IS the validated runtime)"
+    },
+    {
+      "Pass": true,
+      "Check": "REFERENCE: the staged candidate ran and exited cleanly (exit code 0)"
+    },
+    {
+      "Pass": true,
+      "Check": "REFERENCE: the feature probe reported the data of 13 playable sides"
+    },
+    {
+      "Pass": true,
+      "Check": "the disposable installation is clean: only unchanged legitimate game files remain (like a fresh Steam install)"
+    },
+    {
+      "Pass": true,
+      "Check": "FILE-FOR-FILE: clean installation + ZIP == the staged candidate (286 files installed; additions: runtime DLLs, README, licence, manifest)"
+    },
+    {
+      "Pass": true,
+      "Check": "every imported DLL resolves (31 imports: 4 from the extracted folder, the rest Windows system DLLs)"
+    },
+    {
+      "Pass": true,
+      "Check": "the Visual C++ runtime comes from the extracted folder (app-local), not from the machine"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the extracted Generals.exe ran and exited cleanly (exit code 0)"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the log records a normal launch (the Generals.exe name selects the modern runtime)"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the main menu / shell was reached and rendered"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: the General's Challenge screens were driven to the match"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: a match frame was rendered and captured"
+    },
+    {
+      "Pass": true,
+      "Check": "OVERLAY: no failed phase in the log"
+    },
+    {
+      "Pass": true,
+      "Check": "FEATURE PARITY: the feature probe of the overlay install equals the staged candidate's (13 lines)"
+    },
+    {
+      "Pass": true,
+      "Check": "FEATURE PARITY: the real screens were driven through the same steps in both runs"
+    }
+  ],
+  "imports": [
+    "WS2_32.dll",
+    "d3d11.dll",
+    "D3DCOMPILER_47.dll",
+    "ole32.dll",
+    "DINPUT8.dll",
+    "KERNEL32.dll",
+    "USER32.dll",
+    "GDI32.dll",
+    "SHELL32.dll",
+    "OLEAUT32.dll",
+    "ADVAPI32.dll",
+    "MSVCP140.dll",
+    "MSVCP140_ATOMIC_WAIT.dll",
+    "VCRUNTIME140.dll",
+    "VCRUNTIME140_1.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-time-l1-1-0.dll",
+    "api-ms-win-crt-utility-l1-1-0.dll",
+    "api-ms-win-crt-multibyte-l1-1-0.dll",
+    "api-ms-win-crt-process-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "IMM32.dll",
+    "AVIFIL32.dll",
+    "WINMM.dll"
+  ]
+}

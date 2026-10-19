@@ -75,6 +75,19 @@ Not changed: the 30 TPS logic accumulator, GameLogic, RNG, replay, pathfinding, 
 * Real game, both titles, 5 caps: the logic tick count is 90 - 91 per 3 s hold at every cap (30 TPS unchanged); distance covered by the same hold: Generals key 2020 - 2041 units at every cap (2093 - 2098 edge), Zero Hour 2223 - 2254 (3196 - 3230 edge): independent of the render rate. Win32 reference build and Win64 build compile.
 * Before/after cadence above: at 240 FPS the camera speed ripple falls from cv 0.39 / 0.36 to 0.031 / 0.040 and the mean speed bias (+9% / +8%) disappears; 144: 0.089 -> 0.021 (Generals).
 
+## Packages for the human retest (one `New-MKRaudsteinDistribution.ps1` invocation, source commit `c74890a7e`, 26/26 validator checks per title)
+
+| Package | Files | Bytes | SHA-256 |
+|---|---:|---:|---|
+| `MKRaudstein-Generals-x64-Preview-c74890a7e.zip` | 14 | 4,019,966 | `75EAD59F9A6407E07A568E4079D44C383397F0945E32B40A07E812F2616F569C` |
+| `MKRaudstein-ZeroHour-x64-Preview-c74890a7e.zip` | 8 | 4,124,631 | `26F0550938BDDAE3D314C10CF33F1B20CE1897A40D581132E4D98401D656C8A7` |
+| Generals Symbols ZIP | 1 PDB | - | `2525F36DAFDD56ADFF58345C365015953933B3093599458D25959395EF79A0D0` |
+| Zero Hour Symbols ZIP | 1 PDB | - | `E442473AC4E96CBAEA4C48F8FF2D07D7B4D56471CBF57ADBBF1E839FBE167E8D` |
+
+Staged candidates for a developer-side run: Generals `build\dev-runtimes
+ative\Generals\dist-c74890a7e-gen\game\generalsv.exe`, Zero Hour `build\dev-runtimes
+ative\ZeroHour\dist-c74890a7e-zh\game\generalszh.exe` (launcher default: `Run-ZeroHourCandidate.cmd`, equivalent `-Name dist-c74890a7e-zh`). Evidence: `evidence/x64-49/distribution/`.
+
 ## Remaining (not fixed here, not claimed fixed)
 
 * Render/Present pacing at the top rates (B): frames are handed over irregularly (p95 11 - 12.5 ms against a 4.17 ms budget) so the eye still sees uneven frame spacing even though the camera now moves exactly by the time between frames. The seen speed measured by *present* intervals is still uneven at 240 FPS. A pacing / frame-latency milestone (swap-chain model, waitable swap chain, GPU-bound cap) is the next lever; it is a renderer change and out of this milestone's scope.
