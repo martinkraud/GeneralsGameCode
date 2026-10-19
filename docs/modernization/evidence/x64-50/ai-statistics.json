@@ -1,0 +1,1339 @@
+{
+ "note": "Aggregates only. Source: the installation given by --zh (read-only).",
+ "Generals": {
+  "aidata_constants": {
+   "StructureSeconds": "0.0",
+   "TeamSeconds": "10",
+   "Wealthy": "7000",
+   "Poor": "2000",
+   "StructuresWealthyRate": "2.0",
+   "StructuresPoorRate": "0.6",
+   "TeamsWealthyRate": "2.0",
+   "TeamsPoorRate": "0.6",
+   "TeamResourcesToStart": "0.1",
+   "GuardInnerModifierAI": "1.1",
+   "GuardOuterModifierAI": "1.333",
+   "GuardInnerModifierHuman": "1.8",
+   "GuardOuterModifierHuman": "2.2",
+   "MaxRecruitRadius": "500.0",
+   "ForceSkirmishAI": "No",
+   "RotateSkirmishBases": "Yes",
+   "AttackUsesLineOfSight": "Yes",
+   "AttackIgnoreInsignificantBuildings": "Yes",
+   "MinInfantryForGroup": "3",
+   "MinVehiclesForGroup": "3",
+   "MinDistanceForGroup": "100.0",
+   "DistanceRequiresGroup": "500.0",
+   "SupplyCenterSafeRadius": "300.0",
+   "RebuildDelayTimeSeconds": "30",
+   "AIDozerBoredRadiusModifier": "2.0",
+   "ResourceGatherers": {
+    "America": {
+     "Easy": 1,
+     "Normal": 1,
+     "Hard": 1
+    },
+    "China": {
+     "Easy": 1,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "GLA": {
+     "Easy": 1,
+     "Normal": 3,
+     "Hard": 6
+    }
+   }
+  },
+  "skirmish_build_lists": {
+   "America": {
+    "entries": 13,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 12
+    },
+    "rebuilds": {
+     "3": 1,
+     "0": 12
+    },
+    "automatic_templates": {
+     "AmericaCommandCenter": 1
+    }
+   },
+   "China": {
+    "entries": 14,
+    "distinct_templates": 10,
+    "automatic": {
+     "yes": 1,
+     "no": 13
+    },
+    "rebuilds": {
+     "3": 1,
+     "0": 13
+    },
+    "automatic_templates": {
+     "ChinaCommandCenter": 1
+    }
+   },
+   "GLA": {
+    "entries": 11,
+    "distinct_templates": 8,
+    "automatic": {
+     "yes": 1,
+     "no": 10
+    },
+    "rebuilds": {
+     "3": 1,
+     "0": 10
+    },
+    "automatic_templates": {
+     "GLACommandCenter": 1
+    }
+   }
+  },
+  "scripts": {
+   "script_lists": 5,
+   "players": [
+    "PlyrCivilian",
+    "SkirmishAmerica",
+    "SkirmishChina",
+    "SkirmishGLA"
+   ],
+   "lists": [
+    {
+     "index": 0,
+     "player": null,
+     "groups": 0,
+     "scripts": 0,
+     "by_difficulty": {},
+     "give_money_total_by_difficulty": {},
+     "give_money_actions_by_difficulty": {},
+     "escalation_increments": {},
+     "placement_and_build_actions": {}
+    },
+    {
+     "index": 1,
+     "player": "PlyrCivilian",
+     "groups": 7,
+     "scripts": 68,
+     "by_difficulty": {
+      "ENH": 68
+     },
+     "give_money_total_by_difficulty": {},
+     "give_money_actions_by_difficulty": {},
+     "escalation_increments": {},
+     "placement_and_build_actions": {}
+    },
+    {
+     "index": 2,
+     "player": "SkirmishAmerica",
+     "groups": 28,
+     "scripts": 253,
+     "by_difficulty": {
+      "ENH": 94,
+      "--H": 37,
+      "-NH": 100,
+      "EN-": 2,
+      "-N-": 12,
+      "E--": 8
+     },
+     "give_money_total_by_difficulty": {
+      "ENH": 1000,
+      "--H": 25000
+     },
+     "give_money_actions_by_difficulty": {
+      "ENH": 1,
+      "--H": 3
+     },
+     "escalation_increments": {},
+     "placement_and_build_actions": {
+      "SKIRMISH_BUILD_BUILDING": 12,
+      "AI_PLAYER_BUILD_UPGRADE": 7,
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 6,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 3
+     }
+    },
+    {
+     "index": 3,
+     "player": "SkirmishChina",
+     "groups": 28,
+     "scripts": 269,
+     "by_difficulty": {
+      "ENH": 103,
+      "--H": 35,
+      "-NH": 103,
+      "E--": 11,
+      "-N-": 17
+     },
+     "give_money_total_by_difficulty": {
+      "ENH": 1300,
+      "--H": 20000
+     },
+     "give_money_actions_by_difficulty": {
+      "ENH": 1,
+      "--H": 4
+     },
+     "escalation_increments": {},
+     "placement_and_build_actions": {
+      "SKIRMISH_BUILD_BUILDING": 12,
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 6,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 6,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "AI_PLAYER_BUILD_UPGRADE": 6
+     }
+    },
+    {
+     "index": 4,
+     "player": "SkirmishGLA",
+     "groups": 30,
+     "scripts": 244,
+     "by_difficulty": {
+      "ENH": 94,
+      "--H": 34,
+      "-NH": 87,
+      "-N-": 19,
+      "E--": 10
+     },
+     "give_money_total_by_difficulty": {
+      "ENH": 200,
+      "--H": 20000
+     },
+     "give_money_actions_by_difficulty": {
+      "ENH": 1,
+      "--H": 4
+     },
+     "escalation_increments": {},
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 8,
+      "SKIRMISH_BUILD_BUILDING": 5,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 2,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 3,
+      "AI_PLAYER_BUILD_UPGRADE": 9
+     }
+    }
+   ],
+   "actions": {
+    "SET_FLAG": 393,
+    "TEAM_GUARD_AREA": 279,
+    "OBJECTLIST_ADDOBJECTTYPE": 270,
+    "SET_ATTACK_PRIORITY_THING": 147,
+    "SET_COUNTER": 125,
+    "TEAM_ENTER_NAMED": 72,
+    "SET_MILLISECOND_TIMER": 67,
+    "MUSIC_SET_TRACK": 64,
+    "ENABLE_SCRIPT": 38,
+    "TEAM_APPLY_ATTACK_PRIORITY_SET": 33,
+    "TEAM_HUNT": 31,
+    "TEAM_EXECUTE_SEQUENTIAL_SCRIPT": 30,
+    "SKIRMISH_BUILD_BUILDING": 29,
+    "DISABLE_SCRIPT": 29,
+    "INCREMENT_COUNTER": 25,
+    "TEAM_LOAD_TRANSPORTS": 22,
+    "AI_PLAYER_BUILD_UPGRADE": 22,
+    "AI_PLAYER_BUILD_SUPPLY_CENTER": 20,
+    "TEAM_PARTIAL_USE_COMMANDBUTTON": 17,
+    "TEAM_DECREASE_PRIORITY": 17,
+    "SKIRMISH_BUILD_STRUCTURE_FLANK": 16,
+    "TEAM_AVAILABLE_FOR_RECRUITMENT": 15,
+    "PLAYER_GIVE_MONEY": 14,
+    "SKIRMISH_MOVE_TO_APPROACH_PATH": 14,
+    "SKIRMISH_FOLLOW_APPROACH_PATH": 12,
+    "TEAM_SET_ATTITUDE": 12,
+    "TEAM_GUARD_SUPPLY_CENTER": 12,
+    "SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST": 12,
+    "TEAM_USE_COMMANDBUTTON_ABILITY": 10,
+    "TEAM_ATTACK_AREA": 9,
+    "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 9,
+    "NAMED_USE_COMMANDBUTTON_ABILITY": 9,
+    "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 8,
+    "TEAM_CAPTURE_NEAREST_UNOWNED_FACTION_UNIT": 7,
+    "TEAM_HUNT_WITH_COMMAND_BUTTON": 6,
+    "SKIRMISH_BUILD_STRUCTURE_FRONT": 6,
+    "TEAM_EXECUTE_SEQUENTIAL_SCRIPT_LOOPING": 5,
+    "TEAM_EXIT_ALL": 5,
+    "BUILD_TEAM": 5,
+    "TEAM_MOVE_TOWARDS_NEAREST_OBJECT_TYPE": 5,
+    "TEAM_STOP": 4,
+    "TEAM_ALL_USE_COMMANDBUTTON_ON_NEAREST_OBJECTTYPE": 4,
+    "PLAYER_ENABLE_UNIT_CONSTRUCTION": 3,
+    "PLAYER_ENABLE_BASE_CONSTRUCTION": 3,
+    "TEAM_GUARD": 3,
+    "SKIRMISH_WAIT_FOR_COMMANDBUTTON_AVAILABLE_ALL": 3,
+    "PLAYER_HUNT": 3,
+    "TEAM_GARRISON_NEAREST_BUILDING": 2,
+    "TEAM_STOP_SEQUENTIAL_SCRIPT": 1,
+    "TEAM_GUARD_IN_TUNNEL_NETWORK": 1
+   },
+   "conditions": {
+    "COUNTER": 519,
+    "FLAG": 235,
+    "CONDITION_TRUE": 184,
+    "PLAYER_HAS_OBJECT_COMPARISON": 152,
+    "NAMED_NOT_DESTROYED": 144,
+    "START_POSITION_IS": 80,
+    "TIMER_EXPIRED": 59,
+    "PLAYER_HAS_CREDITS": 45,
+    "TEAM_HAS_UNITS": 33,
+    "MUSIC_TRACK_HAS_COMPLETED": 32,
+    "BUILT_BY_PLAYER": 31,
+    "SKIRMISH_PLAYER_FACTION": 26,
+    "SKIRMISH_VALUE_IN_AREA": 26,
+    "PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA": 25,
+    "SUPPLY_SOURCE_SAFE": 24,
+    "SKIRMISH_SPECIAL_POWER_READY": 24,
+    "TEAM_CREATED": 13,
+    "PLAYER_LOST_OBJECT_TYPE": 12,
+    "TEAM_INSIDE_AREA_PARTIALLY": 10,
+    "PLAYER_POWER_COMPARE_PERCENT": 8,
+    "PLAYER_BUILT_UPGRADE": 4,
+    "TEAM_ATTACKED_BY_PLAYER": 3,
+    "SKIRMISH_UNOWNED_FACTION_UNIT_EXISTS": 3,
+    "SKIRMISH_TECH_BUILDING_WITHIN_DISTANCE": 3,
+    "TEAM_DESTROYED": 1
+   },
+   "scripts_total": 834
+  },
+  "teams": {
+   "templates": 368,
+   "per_owner": {
+    "": 1,
+    "PlyrCivilian": 1,
+    "SkirmishAmerica": 110,
+    "SkirmishChina": 123,
+    "SkirmishGLA": 133
+   },
+   "production_priority_histogram": {
+    "0": 4,
+    "20": 5,
+    "40": 154,
+    "50": 65,
+    "60": 22,
+    "80": 11,
+    "100": 3,
+    "120": 2,
+    "500": 54,
+    "750": 1,
+    "1000": 42
+   },
+   "max_instances_histogram": {
+    "0": 1,
+    "1": 346,
+    "2": 13,
+    "3": 1,
+    "5": 2
+   },
+   "team_size_by_max_counts": {
+    "mean": 5.88,
+    "median": 4,
+    "max": 26
+   },
+   "priority_success_increase_nonzero": 224,
+   "priority_failure_decrease_nonzero": 316,
+   "auto_reinforce": 9,
+   "attack_common_target": 311,
+   "ai_recruitable": 14,
+   "with_production_condition": 354
+  }
+ },
+ "ZeroHour": {
+  "aidata_constants": {
+   "StructureSeconds": "0.0",
+   "TeamSeconds": "10",
+   "Wealthy": "7000",
+   "Poor": "2000",
+   "StructuresWealthyRate": "2.0",
+   "StructuresPoorRate": "0.6",
+   "TeamsWealthyRate": "2.0",
+   "TeamsPoorRate": "0.6",
+   "TeamResourcesToStart": "0.1",
+   "GuardInnerModifierAI": "1.1",
+   "GuardOuterModifierAI": "1.333",
+   "GuardInnerModifierHuman": "1.8",
+   "GuardOuterModifierHuman": "2.2",
+   "MaxRecruitRadius": "500.0",
+   "SkirmishBaseDefenseExtraDistance": "150.0",
+   "ForceSkirmishAI": "No",
+   "RotateSkirmishBases": "No",
+   "AttackUsesLineOfSight": "Yes",
+   "AttackIgnoreInsignificantBuildings": "Yes",
+   "MinInfantryForGroup": "3",
+   "MinVehiclesForGroup": "3",
+   "MinDistanceForGroup": "100.0",
+   "DistanceRequiresGroup": "500.0",
+   "SupplyCenterSafeRadius": "300.0",
+   "RebuildDelayTimeSeconds": "30",
+   "AIDozerBoredRadiusModifier": "2.0",
+   "ResourceGatherers": {
+    "America": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "China": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "GLA": {
+     "Easy": 5,
+     "Normal": 5,
+     "Hard": 5
+    },
+    "AmericaAirForceGeneral": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "AmericaLaserGeneral": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "AmericaSuperWeaponGeneral": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "ChinaTankGeneral": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "ChinaInfantryGeneral": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "ChinaNukeGeneral": {
+     "Easy": 2,
+     "Normal": 2,
+     "Hard": 2
+    },
+    "GLADemolitionGeneral": {
+     "Easy": 5,
+     "Normal": 5,
+     "Hard": 5
+    },
+    "GLAStealthGeneral": {
+     "Easy": 5,
+     "Normal": 5,
+     "Hard": 5
+    },
+    "GLAToxinGeneral": {
+     "Easy": 5,
+     "Normal": 5,
+     "Hard": 5
+    }
+   }
+  },
+  "skirmish_build_lists": {
+   "America": {
+    "entries": 18,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 17
+    },
+    "rebuilds": {
+     "0": 18
+    },
+    "automatic_templates": {
+     "AmericaCommandCenter": 1
+    }
+   },
+   "China": {
+    "entries": 18,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 17
+    },
+    "rebuilds": {
+     "-1": 2,
+     "0": 16
+    },
+    "automatic_templates": {
+     "ChinaCommandCenter": 1
+    }
+   },
+   "GLA": {
+    "entries": 14,
+    "distinct_templates": 7,
+    "automatic": {
+     "yes": 1,
+     "no": 13
+    },
+    "rebuilds": {
+     "0": 14
+    },
+    "automatic_templates": {
+     "GLACommandCenter": 1
+    }
+   },
+   "AmericaAirForceGeneral": {
+    "entries": 19,
+    "distinct_templates": 8,
+    "automatic": {
+     "yes": 1,
+     "no": 18
+    },
+    "rebuilds": {
+     "0": 19
+    },
+    "automatic_templates": {
+     "AirF_AmericaCommandCenter": 1
+    }
+   },
+   "AmericaSuperWeaponGeneral": {
+    "entries": 26,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 25
+    },
+    "rebuilds": {
+     "0": 26
+    },
+    "automatic_templates": {
+     "SupW_AmericaCommandCenter": 1
+    }
+   },
+   "AmericaLaserGeneral": {
+    "entries": 17,
+    "distinct_templates": 8,
+    "automatic": {
+     "yes": 1,
+     "no": 16
+    },
+    "rebuilds": {
+     "0": 17
+    },
+    "automatic_templates": {
+     "Lazr_AmericaCommandCenter": 1
+    }
+   },
+   "ChinaInfantryGeneral": {
+    "entries": 20,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 19
+    },
+    "rebuilds": {
+     "0": 20
+    },
+    "automatic_templates": {
+     "Infa_ChinaCommandCenter": 1
+    }
+   },
+   "ChinaTankGeneral": {
+    "entries": 20,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 19
+    },
+    "rebuilds": {
+     "0": 20
+    },
+    "automatic_templates": {
+     "Tank_ChinaCommandCenter": 1
+    }
+   },
+   "ChinaNukeGeneral": {
+    "entries": 20,
+    "distinct_templates": 9,
+    "automatic": {
+     "yes": 1,
+     "no": 19
+    },
+    "rebuilds": {
+     "0": 20
+    },
+    "automatic_templates": {
+     "Nuke_ChinaCommandCenter": 1
+    }
+   },
+   "GLADemolitionGeneral": {
+    "entries": 14,
+    "distinct_templates": 7,
+    "automatic": {
+     "yes": 1,
+     "no": 13
+    },
+    "rebuilds": {
+     "0": 14
+    },
+    "automatic_templates": {
+     "Demo_GLACommandCenter": 1
+    }
+   },
+   "GLAStealthGeneral": {
+    "entries": 14,
+    "distinct_templates": 7,
+    "automatic": {
+     "yes": 1,
+     "no": 13
+    },
+    "rebuilds": {
+     "0": 14
+    },
+    "automatic_templates": {
+     "Slth_GLACommandCenter": 1
+    }
+   },
+   "GLAToxinGeneral": {
+    "entries": 14,
+    "distinct_templates": 7,
+    "automatic": {
+     "yes": 1,
+     "no": 13
+    },
+    "rebuilds": {
+     "0": 14
+    },
+    "automatic_templates": {
+     "Chem_GLACommandCenter": 1
+    }
+   }
+  },
+  "scripts": {
+   "script_lists": 14,
+   "players": [
+    "SkirmishAmerica",
+    "SkirmishChina",
+    "SkirmishGLA",
+    "SkirmishAmericaAirForceGeneral",
+    "SkirmishAmericaLaserGeneral",
+    "SkirmishAmericaSuperWeaponGeneral",
+    "SkirmishChinaTankGeneral",
+    "SkirmishChinaNukeGeneral",
+    "SkirmishChinaInfantryGeneral",
+    "SkirmishGLADemolitionGeneral",
+    "SkirmishGLAToxinGeneral",
+    "SkirmishGLAStealthGeneral",
+    "PlyrCivilian"
+   ],
+   "lists": [
+    {
+     "index": 0,
+     "player": null,
+     "groups": 0,
+     "scripts": 0,
+     "by_difficulty": {},
+     "give_money_total_by_difficulty": {},
+     "give_money_actions_by_difficulty": {},
+     "escalation_increments": {},
+     "placement_and_build_actions": {}
+    },
+    {
+     "index": 1,
+     "player": "SkirmishAmerica",
+     "groups": 32,
+     "scripts": 323,
+     "by_difficulty": {
+      "-NH": 117,
+      "-N-": 40,
+      "--H": 75,
+      "ENH": 66,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 74000,
+      "ENH": 2200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 10,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "-N-:+1": 1,
+      "--H:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 13,
+      "AI_PLAYER_BUILD_UPGRADE": 14,
+      "SKIRMISH_BUILD_BUILDING": 35,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 4,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 3,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 6
+     }
+    },
+    {
+     "index": 2,
+     "player": "SkirmishChina",
+     "groups": 31,
+     "scripts": 316,
+     "by_difficulty": {
+      "-NH": 115,
+      "-N-": 38,
+      "--H": 73,
+      "ENH": 65,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 77000,
+      "ENH": 2350
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 9,
+      "ENH": 2
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 12,
+      "SKIRMISH_BUILD_BUILDING": 33,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 9
+     }
+    },
+    {
+     "index": 3,
+     "player": "SkirmishGLA",
+     "groups": 30,
+     "scripts": 320,
+     "by_difficulty": {
+      "ENH": 90,
+      "-NH": 120,
+      "-N-": 31,
+      "--H": 57,
+      "E--": 20,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 3500,
+      "--H": 76500,
+      "ENH": 200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 13,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 17,
+      "AI_PLAYER_BUILD_TYPE_NEAREST_TEAM": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 5,
+      "SKIRMISH_BUILD_BUILDING": 24,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 8
+     }
+    },
+    {
+     "index": 4,
+     "player": "SkirmishAmericaAirForceGeneral",
+     "groups": 32,
+     "scripts": 330,
+     "by_difficulty": {
+      "-NH": 117,
+      "-N-": 41,
+      "--H": 75,
+      "ENH": 72,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 78000,
+      "ENH": 2200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 11,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 13,
+      "AI_PLAYER_BUILD_UPGRADE": 10,
+      "SKIRMISH_BUILD_BUILDING": 37,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 6
+     }
+    },
+    {
+     "index": 5,
+     "player": "SkirmishAmericaLaserGeneral",
+     "groups": 32,
+     "scripts": 328,
+     "by_difficulty": {
+      "-NH": 120,
+      "-N-": 40,
+      "--H": 70,
+      "ENH": 73,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 73000,
+      "ENH": 2200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 11,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 13,
+      "AI_PLAYER_BUILD_UPGRADE": 14,
+      "SKIRMISH_BUILD_BUILDING": 34,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 8
+     }
+    },
+    {
+     "index": 6,
+     "player": "SkirmishAmericaSuperWeaponGeneral",
+     "groups": 31,
+     "scripts": 326,
+     "by_difficulty": {
+      "-NH": 121,
+      "-N-": 39,
+      "--H": 75,
+      "ENH": 66,
+      "E--": 25
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 99000,
+      "ENH": 2200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 15,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "E--:+20": 1,
+      "E--:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 13,
+      "AI_PLAYER_BUILD_UPGRADE": 14,
+      "SKIRMISH_BUILD_BUILDING": 43,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 6
+     }
+    },
+    {
+     "index": 7,
+     "player": "SkirmishChinaTankGeneral",
+     "groups": 31,
+     "scripts": 321,
+     "by_difficulty": {
+      "-NH": 115,
+      "-N-": 40,
+      "--H": 75,
+      "ENH": 66,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 74200,
+      "ENH": 1600
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 10,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 11,
+      "SKIRMISH_BUILD_BUILDING": 35,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 9
+     }
+    },
+    {
+     "index": 8,
+     "player": "SkirmishChinaNukeGeneral",
+     "groups": 31,
+     "scripts": 323,
+     "by_difficulty": {
+      "-NH": 119,
+      "-N-": 38,
+      "--H": 76,
+      "ENH": 65,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 78200,
+      "ENH": 1600
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 10,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 14,
+      "SKIRMISH_BUILD_BUILDING": 36,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 4,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 9
+     }
+    },
+    {
+     "index": 9,
+     "player": "SkirmishChinaInfantryGeneral",
+     "groups": 31,
+     "scripts": 326,
+     "by_difficulty": {
+      "-NH": 115,
+      "-N-": 38,
+      "--H": 79,
+      "ENH": 69,
+      "E--": 23,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 4000,
+      "--H": 71000,
+      "ENH": 2350
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 8,
+      "ENH": 2
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 10,
+      "SKIRMISH_BUILD_BUILDING": 36,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 3,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 5,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 9
+     }
+    },
+    {
+     "index": 10,
+     "player": "SkirmishGLADemolitionGeneral",
+     "groups": 30,
+     "scripts": 317,
+     "by_difficulty": {
+      "ENH": 89,
+      "-NH": 119,
+      "-N-": 31,
+      "--H": 56,
+      "E--": 20,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 3500,
+      "--H": 74500,
+      "ENH": 200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 11,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 16,
+      "AI_PLAYER_BUILD_TYPE_NEAREST_TEAM": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 5,
+      "SKIRMISH_BUILD_BUILDING": 21,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 11
+     }
+    },
+    {
+     "index": 11,
+     "player": "SkirmishGLAToxinGeneral",
+     "groups": 30,
+     "scripts": 322,
+     "by_difficulty": {
+      "ENH": 90,
+      "-NH": 121,
+      "-N-": 31,
+      "--H": 58,
+      "E--": 20,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 3500,
+      "--H": 71500,
+      "ENH": 200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 10,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 17,
+      "AI_PLAYER_BUILD_TYPE_NEAREST_TEAM": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 5,
+      "SKIRMISH_BUILD_BUILDING": 24,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 8
+     }
+    },
+    {
+     "index": 12,
+     "player": "SkirmishGLAStealthGeneral",
+     "groups": 30,
+     "scripts": 321,
+     "by_difficulty": {
+      "ENH": 91,
+      "-NH": 120,
+      "-N-": 31,
+      "--H": 57,
+      "E--": 20,
+      "EN-": 2
+     },
+     "give_money_total_by_difficulty": {
+      "-N-": 3500,
+      "--H": 74500,
+      "ENH": 200
+     },
+     "give_money_actions_by_difficulty": {
+      "-N-": 1,
+      "--H": 11,
+      "ENH": 1
+     },
+     "escalation_increments": {
+      "E--:+1": 1,
+      "--H:+1": 1,
+      "-N-:+1": 1,
+      "E--:+10": 1,
+      "-N-:+20": 1,
+      "--H:+30": 1,
+      "-N-:+30": 1,
+      "--H:+50": 1
+     },
+     "placement_and_build_actions": {
+      "AI_PLAYER_BUILD_SUPPLY_CENTER": 14,
+      "AI_PLAYER_BUILD_UPGRADE": 17,
+      "AI_PLAYER_BUILD_TYPE_NEAREST_TEAM": 5,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 5,
+      "SKIRMISH_BUILD_BUILDING": 24,
+      "SKIRMISH_BUILD_STRUCTURE_FRONT": 4,
+      "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 2,
+      "SKIRMISH_BUILD_STRUCTURE_FLANK": 8
+     }
+    },
+    {
+     "index": 13,
+     "player": "PlyrCivilian",
+     "groups": 7,
+     "scripts": 84,
+     "by_difficulty": {
+      "ENH": 84
+     },
+     "give_money_total_by_difficulty": {},
+     "give_money_actions_by_difficulty": {},
+     "escalation_increments": {},
+     "placement_and_build_actions": {}
+    }
+   ],
+   "actions": {
+    "OBJECTLIST_ADDOBJECTTYPE": 4436,
+    "SET_ATTACK_PRIORITY_THING": 1008,
+    "ENABLE_SCRIPT": 704,
+    "TEAM_GUARD_AREA": 671,
+    "SET_FLAG": 633,
+    "SKIRMISH_BUILD_BUILDING": 382,
+    "DISABLE_SCRIPT": 323,
+    "TEAM_ENTER_NAMED": 288,
+    "SET_COUNTER": 263,
+    "TEAM_APPLY_ATTACK_PRIORITY_SET": 230,
+    "SET_TIMER": 184,
+    "AI_PLAYER_BUILD_UPGRADE": 166,
+    "AI_PLAYER_BUILD_SUPPLY_CENTER": 164,
+    "SET_MILLISECOND_TIMER": 162,
+    "PLAYER_GIVE_MONEY": 155,
+    "TEAM_HUNT": 150,
+    "TEAM_USE_COMMANDBUTTON_ABILITY": 131,
+    "TEAM_EXECUTE_SEQUENTIAL_SCRIPT": 119,
+    "CALL_SUBROUTINE": 117,
+    "NO_OP": 114,
+    "INCREMENT_COUNTER": 111,
+    "SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST": 107,
+    "SKIRMISH_BUILD_STRUCTURE_FLANK": 97,
+    "MUSIC_SET_TRACK": 76,
+    "SKIRMISH_MOVE_TO_APPROACH_PATH": 69,
+    "BUILD_TEAM": 65,
+    "SKIRMISH_BUILD_STRUCTURE_FRONT": 55,
+    "SKIRMISH_FOLLOW_APPROACH_PATH": 54,
+    "TEAM_HUNT_WITH_COMMAND_BUTTON": 53,
+    "SKIRMISH_BUILD_BASE_DEFENSE_FRONT": 46,
+    "TEAM_STOP": 42,
+    "TEAM_STOP_AND_DISBAND": 33,
+    "TEAM_LOAD_TRANSPORTS": 33,
+    "TEAM_MOVE_TOWARDS_NEAREST_OBJECT_TYPE": 33,
+    "TEAM_CAPTURE_NEAREST_UNOWNED_FACTION_UNIT": 28,
+    "TEAM_AVAILABLE_FOR_RECRUITMENT": 28,
+    "SKIRMISH_BUILD_BASE_DEFENSE_FLANK": 25,
+    "TEAM_MERGE_INTO_TEAM": 24,
+    "TEAM_PARTIAL_USE_COMMANDBUTTON": 24,
+    "TEAM_DECREASE_PRIORITY": 24,
+    "TEAM_ALL_USE_COMMANDBUTTON_ON_NEAREST_OBJECTTYPE": 23,
+    "AI_PLAYER_BUILD_TYPE_NEAREST_TEAM": 19,
+    "TEAM_EXIT_ALL": 18,
+    "TEAM_GARRISON_NEAREST_BUILDING": 18,
+    "PLAYER_SELL_EVERYTHING": 12,
+    "PLAYER_ENABLE_UNIT_CONSTRUCTION": 12,
+    "PLAYER_ENABLE_BASE_CONSTRUCTION": 12,
+    "TEAM_ATTACK_AREA": 12,
+    "TEAM_SET_ATTITUDE": 12,
+    "SET_RANDOM_MSEC_TIMER": 11,
+    "SKIRMISH_WAIT_FOR_COMMANDBUTTON_AVAILABLE_ALL": 6,
+    "TEAM_INCREASE_PRIORITY": 4,
+    "SET_RANDOM_TIMER": 4,
+    "TEAM_GUARD_IN_TUNNEL_NETWORK": 4,
+    "TEAM_STOP_SEQUENTIAL_SCRIPT": 2,
+    "RECRUIT_TEAM": 1
+   },
+   "conditions": {
+    "FLAG": 1327,
+    "COUNTER": 1111,
+    "PLAYER_HAS_OBJECT_COMPARISON": 844,
+    "CONDITION_TRUE": 603,
+    "NAMED_NOT_DESTROYED": 576,
+    "BUILT_BY_PLAYER": 481,
+    "PLAYER_HAS_CREDITS": 470,
+    "TIMER_EXPIRED": 327,
+    "START_POSITION_IS": 288,
+    "SKIRMISH_SPECIAL_POWER_READY": 239,
+    "TEAM_HAS_UNITS": 137,
+    "PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA": 86,
+    "PLAYER_POWER_COMPARE_PERCENT": 77,
+    "SKIRMISH_VALUE_IN_AREA": 60,
+    "TEAM_INSIDE_AREA_PARTIALLY": 57,
+    "PLAYER_HAS_POWER": 39,
+    "MUSIC_TRACK_HAS_COMPLETED": 38,
+    "SKIRMISH_PLAYER_FACTION": 31,
+    "PLAYER_HAS_NO_POWER": 27,
+    "SUPPLY_SOURCE_SAFE": 24,
+    "PLAYER_BUILT_UPGRADE": 18,
+    "SKIRMISH_UNOWNED_FACTION_UNIT_EXISTS": 12,
+    "TEAM_DESTROYED": 12,
+    "PLAYER_ALL_DESTROYED": 12,
+    "SKIRMISH_TECH_BUILDING_WITHIN_DISTANCE": 12,
+    "PLAYER_LOST_OBJECT_TYPE": 12,
+    "UNIT_HEALTH": 8,
+    "PLAYER_ACQUIRED_SCIENCE": 8,
+    "TEAM_ENTERED_AREA_ENTIRELY": 7,
+    "PLAYER_TRIGGERED_SPECIAL_POWER": 4,
+    "PLAYER_COMPLETED_SPECIAL_POWER": 4,
+    "TEAM_SOME_HAVE_OBJECT_STATUS": 4,
+    "TEAM_OUTSIDE_AREA_ENTIRELY": 1
+   },
+   "scripts_total": 3957
+  },
+  "teams": {
+   "templates": 1340,
+   "per_owner": {
+    "": 1,
+    "SkirmishAmerica": 103,
+    "SkirmishChina": 116,
+    "SkirmishGLA": 110,
+    "SkirmishAmericaAirForceGeneral": 104,
+    "SkirmishAmericaLaserGeneral": 104,
+    "SkirmishAmericaSuperWeaponGeneral": 94,
+    "SkirmishChinaTankGeneral": 114,
+    "SkirmishChinaNukeGeneral": 114,
+    "SkirmishChinaInfantryGeneral": 110,
+    "SkirmishGLADemolitionGeneral": 126,
+    "SkirmishGLAToxinGeneral": 125,
+    "SkirmishGLAStealthGeneral": 118,
+    "PlyrCivilian": 1
+   },
+   "production_priority_histogram": {
+    "0": 29,
+    "50": 205,
+    "80": 4,
+    "90": 12,
+    "100": 92,
+    "101": 4,
+    "105": 23,
+    "110": 94,
+    "115": 21,
+    "120": 128,
+    "125": 32,
+    "130": 127,
+    "131": 1,
+    "135": 3,
+    "140": 101,
+    "145": 14,
+    "150": 20,
+    "170": 11,
+    "175": 11,
+    "180": 12,
+    "185": 12,
+    "190": 12,
+    "195": 25,
+    "200": 23,
+    "205": 4,
+    "210": 11,
+    "215": 8,
+    "290": 1,
+    "300": 20,
+    "310": 22,
+    "500": 188,
+    "1000": 56
+   },
+   "max_instances_histogram": {
+    "0": 1,
+    "1": 1221,
+    "2": 51,
+    "3": 29,
+    "4": 10,
+    "5": 9,
+    "10": 1,
+    "12": 4
+   },
+   "team_size_by_max_counts": {
+    "mean": 3.19,
+    "median": 2.0,
+    "max": 18
+   },
+   "priority_success_increase_nonzero": 88,
+   "priority_failure_decrease_nonzero": 439,
+   "auto_reinforce": 26,
+   "attack_common_target": 596,
+   "ai_recruitable": 469,
+   "with_production_condition": 1285
+  }
+ }
+}
