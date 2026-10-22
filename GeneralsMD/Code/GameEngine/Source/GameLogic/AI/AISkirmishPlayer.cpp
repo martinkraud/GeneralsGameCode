@@ -51,6 +51,9 @@
 #include "GameLogic/Module/DozerAIUpdate.h"
 #include "GameLogic/Module/RebuildHoleBehavior.h"
 #include "GameLogic/Module/UpdateModule.h"
+#include "GameNetwork/GameInfo.h"
+#include "Common/AIBehavior.h"
+#include "Common/AIDiagnostics.h"
 #include "GameLogic/PartitionManager.h"
 #include "GameLogic/ScriptEngine.h"
 #include "GameLogic/Module/ProductionUpdate.h"
@@ -107,8 +110,10 @@ void AISkirmishPlayer::processBaseBuilding()
 		BuildListInfo	*powerInfo = nullptr;
 		Bool isUnderPowered = !m_player->getEnergy()->hasSufficientPower();
 		Bool powerUnderConstruction = false;
+		BuildListInfo *holeLinkedInfo = nullptr;	// X64.51 diagnostic: the entry whose slot was linked to a GLA rebuild hole in this pass
 		for( BuildListInfo *info = m_player->getBuildList(); info; info = info->getNext() )
 		{
+			Object *linkedHole = nullptr;	// X64.51 AI-02: the rebuild hole this slot was linked to in this pass
 			AsciiString name = info->getTemplateName();
 			if (name.isEmpty()) continue;
 			const ThingTemplate *curPlan = TheThingFactory->findTemplate( name );
@@ -137,6 +142,10 @@ void AISkirmishPlayer::processBaseBuilding()
 							if (priorID == spawnerID) {
 								DEBUG_LOG(("AI Found hole to rebuild %s", curPlan->getName().str()));
 								info->setObjectID(obj->getID());
+								linkedHole = obj;
+								holeLinkedInfo = info;
+								// X64.51 AI-02 (Enhanced): the first match is the slot's hole; retail keeps scanning (harmless) and, below, leaves the building pointer stale.
+								if (AIBehavior::stopHoleScanAtFirstMatch(m_enhanced)) break;
 							}
 						}
  					}
@@ -179,6 +188,12 @@ void AISkirmishPlayer::processBaseBuilding()
 						info->setObjectTimestamp(TheGameLogic->getFrame()+1);
 					}
 				}
+			}
+			if (linkedHole) {
+				// X64.51 AI-02: retail goes on with the stale (null) building pointer: the slot passes the "already built" test below, the rebuild delay is skipped
+				// and a second structure is placed beside the hole. Enhanced refreshes the pointer, so the slot counts as built until the hole acts.
+				AIDiagnostics::count(m_enhanced ? "ai02.hole_linked.slot_kept_as_built" : "ai02.hole_linked.stale_pointer");
+				if (AIBehavior::refreshBuildingAfterHoleLink(m_enhanced)) bldg = linkedHole;
 			}
 			if (info->getObjectID()==INVALID_ID && info->getObjectTimestamp()>0) {
 				// this object was built at some time, and got destroyed at or near objectTimestamp.
@@ -223,7 +238,22 @@ void AISkirmishPlayer::processBaseBuilding()
 				}
 				continue;
 			}
-			if (TheBuildAssistant->canMakeUnit(dozer, bldgPlan)!=CANMAKE_OK) {
+			// X64.51 AI-01: retail checks the plan accumulated so far (null for every non-priority entry => the automatic branch below is unreachable); Enhanced
+			// checks the entry being examined. The Original path passes the same pointer as before.
+			const ThingTemplate *dozerCheckPlan = AIBehavior::dozerCheckTemplate(m_enhanced, bldgPlan, curPlan);
+			if (AIDiagnostics::enabled() && info->isBuildable())
+			{
+				// read-only probe (canMakeUnit has no side effects): would the entry's OWN plan pass the dozer check?
+				const CanMakeType own = TheBuildAssistant->canMakeUnit(dozer, curPlan);
+				const CanMakeType used = TheBuildAssistant->canMakeUnit(dozer, dozerCheckPlan);
+				AIDiagnostics::count("ai01.automatic_entries_examined");
+				if (!info->isPriorityBuild()) AIDiagnostics::count("ai01.nonpriority_automatic_entries_examined");
+				if (own == CANMAKE_OK) AIDiagnostics::count("ai01.entry_plan_would_pass");
+				if (used != CANMAKE_OK) AIDiagnostics::count("ai01.check_rejected");
+				if (own == CANMAKE_OK && used != CANMAKE_OK)
+					AIDiagnostics::event(TheGameLogic->getFrame(), "ai01.blocked_by_wrong_template", "player=%d entry=%s used_plan=%s used_result=%d", m_player->getPlayerIndex(), curPlan->getName().str(), dozerCheckPlan ? dozerCheckPlan->getName().str() : "(null)", (int)used);
+			}
+			if (TheBuildAssistant->canMakeUnit(dozer, dozerCheckPlan)!=CANMAKE_OK) {
 				if (info->isBuildable()) {
 					AsciiString bldgName = info->getTemplateName();
 					bldgName.concat(" - Dozer unable to build - money or technology missing.");
@@ -237,6 +267,8 @@ void AISkirmishPlayer::processBaseBuilding()
 				if (bldgPlan == nullptr) {
 					bldgPlan = curPlan;
 					bldgInfo = info;
+					AIDiagnostics::count("ai01.automatic_entry_selected");
+					AIDiagnostics::event(TheGameLogic->getFrame(), "ai01.automatic_entry_selected", "player=%d entry=%s", m_player->getPlayerIndex(), curPlan->getName().str());
 				}
 			}
 		}
@@ -256,6 +288,14 @@ void AISkirmishPlayer::processBaseBuilding()
 			{
 				bldgInfo->setObjectID( bldg->getID() );
 				bldgInfo->decrementNumRebuilds();
+				if (AIDiagnostics::enabled())
+				{
+					AIDiagnostics::count((std::string("build.started.") + bldgPlan->getName().str()).c_str());
+					if (bldgInfo == holeLinkedInfo)
+						AIDiagnostics::event(TheGameLogic->getFrame(), "ai02.structure_started_in_hole_pass", "player=%d entry=%s", m_player->getPlayerIndex(), bldgPlan->getName().str());
+					if (bldgPlan->isKindOf(KINDOF_COMMANDCENTER))
+						AIDiagnostics::event(TheGameLogic->getFrame(), "cc.rebuild_started", "player=%d entry=%s rebuildsLeft=%d automatic=%d priority=%d", m_player->getPlayerIndex(), bldgPlan->getName().str(), bldgInfo->getNumRebuilds(), (int)bldgInfo->isAutomaticBuild(), (int)bldgInfo->isPriorityBuild());
+				}
 
 				m_readyToBuildStructure = false;
 				m_structureTimer = TheAI->getAiData()->m_structureSeconds*LOGICFRAMES_PER_SECOND;
@@ -511,6 +551,10 @@ void AISkirmishPlayer::acquireEnemy()
 			// See if other ai's are attacking this target.
 			// We don't want the ai's to gang up on one enemy.
 			Int k;
+			Bool candidateTargetsMe = FALSE;	// X64.51 AI-08: only evaluated in Enhanced / diagnostics, so Original makes exactly the former calls
+			if (m_enhanced || AIDiagnostics::enabled()) {
+				candidateTargetsMe = curPlayer->isSkirmishAIPlayer() && (curPlayer->getCurrentEnemy()==m_player);
+			}
 			for (k=0; k<ThePlayerList->getPlayerCount(); k++) {
 				if (k==i) continue;  // don't count self.
 				Player *somePlayer = ThePlayerList->getNthPlayer(k);
@@ -518,11 +562,21 @@ void AISkirmishPlayer::acquireEnemy()
 					// Some ai is already targeting this guy.  Add a distance penalty.
 					curDistSqr += (500*500);
 				}
-				if (somePlayer->isSkirmishAIPlayer() && (somePlayer->getCurrentEnemy()==m_player)) {
-					// he is attacking me.  So I will (gently) prefer to attack him.
-					curDistSqr -= (25*25);
-					if (curDistSqr<0) curDistSqr = 0;
+				if (!AIBehavior::retaliationBonusOncePerCandidate(m_enhanced)) {
+					// Original: for every OTHER ai that targets me (not necessarily the candidate), favour the candidate.
+					if (somePlayer->isSkirmishAIPlayer() && (somePlayer->getCurrentEnemy()==m_player)) {
+						// he is attacking me.  So I will (gently) prefer to attack him.
+						curDistSqr -= (25*25);
+						if (curDistSqr<0) curDistSqr = 0;
+						if (AIDiagnostics::enabled() && !candidateTargetsMe) AIDiagnostics::count("ai08.retail_bonus_to_unrelated_candidate");
+					}
 				}
+			}
+			if (AIBehavior::retaliationBonusOncePerCandidate(m_enhanced) && AIBehavior::retaliationBonusApplies(m_enhanced, FALSE, candidateTargetsMe)) {
+				// Enhanced: the candidate really targets me - prefer him (gently), once.
+				curDistSqr -= (25*25);
+				if (curDistSqr<0) curDistSqr = 0;
+				AIDiagnostics::count("ai08.enhanced_bonus_to_attacker");
 			}
 
 			// Ai enemy - will take if we don't get a better offer.
@@ -603,6 +657,8 @@ void AISkirmishPlayer::buildAIBaseDefenseStructure(const AsciiString &thingName,
 		DEBUG_CRASH(("Couldn't find base defense structure '%s' for side %s", thingName.str(), m_player->getSide().str()));
 		return;
 	}
+	Int arcsExhaustedInARow = 0;	// X64.51 AI-11 (Enhanced only)
+	AIDiagnostics::count(flank ? "ai11.defense_calls_flank" : "ai11.defense_calls_front");
 	do {
 		AsciiString pathLabel;
 		if (flank) {
@@ -620,7 +676,7 @@ void AISkirmishPlayer::buildAIBaseDefenseStructure(const AsciiString &thingName,
 		if (way) {
 			goalPos = *way->getLocation();
 		} else {
-			if (flank) return;
+			if (flank) { AIDiagnostics::count("ai11.flank_without_waypoint_path"); return; }
 			Region2D bounds;
 			getPlayerStructureBounds(&bounds, getMyEnemyPlayerIndex());
 			goalPos.x = bounds.lo.x + bounds.width()/2;
@@ -672,7 +728,16 @@ void AISkirmishPlayer::buildAIBaseDefenseStructure(const AsciiString &thingName,
 			}
 		}
 
-		if (angle > PI/3) break;
+		if (AIBehavior::defenseArcExhausted(m_enhanced, angle, PI/3)) {
+			// X64.51 AI-11: retail gives up here without advancing the left/right alternation (so later calls never build again) and never bounds the
+			// negative (right) side. Enhanced: this arc is used up - advance the alternation, try the others, give up when every arc is used up.
+			AIDiagnostics::count(m_enhanced ? "ai11.arc_exhausted_continue" : "ai11.arc_exhausted_break");
+			if (!AIBehavior::advanceDefenseCounterWhenExhausted(m_enhanced)) break;
+			if (flank) { m_curFlankBaseDefense++; } else { m_curFrontBaseDefense++; }
+			if (++arcsExhaustedInARow >= AIBehavior::defenseArcsPerCall(flank)) break;
+			continue;
+		}
+		arcsExhaustedInARow = 0;
 		Real s = sin(angle);
 		Real c = cos(angle);
 
@@ -700,8 +765,11 @@ void AISkirmishPlayer::buildAIBaseDefenseStructure(const AsciiString &thingName,
 		} else {
 			m_curFrontBaseDefense++;
 		}
+		if (!canBuild) AIDiagnostics::count("ai11.position_not_buildable");
 		if (canBuild) {
 			m_player->addToPriorityBuildList(thingName, &buildPos, placeAngle);
+			AIDiagnostics::count("ai11.defense_placed");
+			if (AIDiagnostics::enabled() && fabs(angle) > PI/3) AIDiagnostics::count("ai11.placed_outside_intended_sector");
 			break;
 		}
 	}	while (true);

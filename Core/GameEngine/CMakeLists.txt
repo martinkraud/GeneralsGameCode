@@ -46,6 +46,8 @@ set(GAMEENGINE_SRC
     Include/Common/FrameRateLimit.h
     Include/Common/PerformanceProfile.h
     Include/Common/ScriptProfile.h
+    Include/Common/AIBehavior.h
+    Include/Common/AIDiagnostics.h
     Include/Common/CameraProbe.h
     Include/Common/PresentationScroll.h
     Include/Common/EnduranceTelemetry.h
@@ -617,6 +619,7 @@ set(GAMEENGINE_SRC
     Source/Common/GroundTranslation.cpp
     Source/Common/FrameRateLimit.cpp
     Source/GameClient/GUI/FrameRateOptions.cpp
+    Source/GameClient/GUI/AIBehaviorOptions.cpp
     Source/GameClient/GUI/ModernDisplayOptions.cpp
     Source/GameClient/GUI/OptionsTabs.cpp
 #    Source/Common/GameEngine.cpp

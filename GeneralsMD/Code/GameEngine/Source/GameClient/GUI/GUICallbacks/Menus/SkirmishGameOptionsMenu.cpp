@@ -32,6 +32,8 @@
 
 
 #include "Common/BattleHonors.h"
+#include "Common/ModernExperience.h"
+#include "GameClient/AIBehaviorOptions.h"
 #include "Common/FileSystem.h"
 #include "Common/GameEngine.h"
 #include "Common/PlayerTemplate.h"
@@ -112,6 +114,10 @@ static NameKeyType buttonSelectMapID = NAMEKEY_INVALID;
 static NameKeyType buttonResetID = NAMEKEY_INVALID;
 static NameKeyType windowMapID = NAMEKEY_INVALID;
 static NameKeyType sliderGameSpeedID = NAMEKEY_INVALID;
+// X64.51: AI Behaviour (Original / Enhanced) selector, placed where the retired Game Speed slider was. A match rule, never a difficulty.
+static NameKeyType comboBoxAIBehaviorID = NAMEKEY_INVALID;
+static GameWindow *comboBoxAIBehavior = nullptr;
+static const char aiBehaviorKey[] = "AIBehavior";
 static NameKeyType staticTextGameSpeedID = NAMEKEY_INVALID;
 static NameKeyType checkBoxLimitSuperweaponsID = NAMEKEY_INVALID;
 static NameKeyType comboBoxStartingCashID = NAMEKEY_INVALID;
@@ -295,6 +301,15 @@ AsciiString SkirmishPreferences::getPreferredMap()
 	return ret;
 }
 
+static AIBehaviorMode storedAIBehavior(const SkirmishPreferences &prefs)
+{
+  AIBehaviorMode mode = AI_BEHAVIOR_ORIGINAL;
+  SkirmishPreferences::const_iterator it = prefs.find(aiBehaviorKey);
+  if (it == prefs.end() || !AIBehaviorOptions::parsePreference(it->second.str(), mode))
+    return AI_BEHAVIOR_ORIGINAL;
+  return mode;
+}
+
 static const char superweaponRestrictionKey[] = "SuperweaponRestrict";
 
 Bool SkirmishPreferences::getSuperweaponRestricted() const
@@ -358,6 +373,8 @@ Bool SkirmishPreferences::write()
 
   setStartingCash( TheSkirmishGameInfo->getStartingCash() );
   setSuperweaponRestricted( TheSkirmishGameInfo->getSuperweaponRestriction() != 0 );
+	if (ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
+		(*this)[aiBehaviorKey] = AIBehaviorOptions::preferenceValue(TheSkirmishGameInfo->getAIBehavior());
 
 	setSlotList();
 
@@ -1309,6 +1326,8 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 
   TheSkirmishGameInfo->setStartingCash( prefs.getStartingCash() );
   TheSkirmishGameInfo->setSuperweaponRestriction( prefs.getSuperweaponRestricted() ? 1 : 0 );
+	// AI Behaviour: Original unless the player chose Enhanced (Classic never offers it).
+	TheSkirmishGameInfo->setAIBehavior(ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR) ? storedAIBehavior(prefs) : AI_BEHAVIOR_ORIGINAL);
 
   TheSkirmishGameInfo->setMap(prefs.getPreferredMap());
 	const MapMetaData *md = TheMapCache->findMap(TheSkirmishGameInfo->getMap());
@@ -1347,6 +1366,20 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 		NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1"));
 	if (speedLabel && speedLabel->winGetText() == TheGameText->fetch("GUI:GameSpeed"))
 		speedLabel->winHide(TRUE);
+	// X64.51: the retired Game Speed slider's place hosts "AI Behaviour".
+	comboBoxAIBehavior = nullptr;
+	if (ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR) && sliderGameSpeed && staticTextGameSpeed && comboBoxStartingCash)
+	{
+		Int lx, ly, lw, lh, cx, cy, cw, ch;
+		staticTextGameSpeed->winGetPosition(&lx, &ly);
+		staticTextGameSpeed->winGetSize(&lw, &lh);
+		sliderGameSpeed->winGetPosition(&cx, &cy);
+		sliderGameSpeed->winGetSize(&cw, &ch);
+		comboBoxAIBehaviorID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior");
+		comboBoxAIBehavior = AIBehaviorOptions::create(sliderGameSpeed->winGetParent(), { lx, ly, lw, lh }, { cx, cy, cw, ch > 0 ? ch : lh },
+			comboBoxStartingCash, staticTextGameSpeed, NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior"), comboBoxAIBehaviorID);
+		AIBehaviorOptions::select(comboBoxAIBehavior, TheSkirmishGameInfo->getAIBehavior());
+	}
 	setFPSTextBox(sliderPos);
 	buttonStart->winSetText(TheGameText->fetch("GUI:Start"));
 	/* hey, for now we're also going to disable the map select button until it doesn't crash */
@@ -1545,7 +1578,11 @@ WindowMsgHandledType SkirmishGameOptionsMenuSystem( GameWindow *window, Unsigned
 			{
 				GameWindow *control = (GameWindow *)mData1;
 				Int controlID = control->winGetWindowId();
-        if ( controlID == comboBoxStartingCashID )
+        if ( comboBoxAIBehavior && controlID == comboBoxAIBehaviorID )
+        {
+          TheSkirmishGameInfo->setAIBehavior( AIBehaviorOptions::selected( comboBoxAIBehavior ) );
+        }
+        else if ( controlID == comboBoxStartingCashID )
         {
           handleStartingCashSelection();
         }

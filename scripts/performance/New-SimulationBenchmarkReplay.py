@@ -56,12 +56,16 @@ def build_setup(args):
     # slot 0: an idle human (never issues a command) so the replay has a local player; the rest are AI
     slots.append("HBenchmark,0,0,TT,0,2,0,-1,1:")
     level = {"E": "E", "M": "M", "H": "H"}[args.level]
+    factions = [int(f) for f in args.factions.split(",")] if args.factions else None
     for i in range(1, args.ai + 1):
-        slots.append("C%s,%d,%d,%d,-1:" % (level, i, 2 + (i % 3), i))
+        template = factions[(i - 1) % len(factions)] if factions else 2 + (i % 3)   # X64.51: --factions picks PlayerTemplate indices (Zero Hour generals)
+        slots.append("C%s,%d,%d,%d,-1:" % (level, i, template, i))
     while len(slots) < 8:
         slots.append("X:")
-    return "M=03maps/%s;MC=%X;MS=%d;SD=%d;C=%d;S=%s;" % (
-        args.map.lower(), args.map_crc, args.map_size, args.seed, args.crc_interval, "".join(slots))
+    # X64.51: --ai-mode E writes the AI Behaviour rule (AI=E) into the setup; Original (the default) writes nothing, so Original setups stay byte-identical.
+    behavior = "AI=E;" if args.ai_mode == "E" else ""
+    return "M=03maps/%s;MC=%X;MS=%d;SD=%d;C=%d;%sS=%s;" % (
+        args.map.lower(), args.map_crc, args.map_size, args.seed, args.crc_interval, behavior, "".join(slots))
 
 
 def main():
@@ -75,6 +79,8 @@ def main():
     p.add_argument("--level", choices="EMH", default="H", help="AI level: E easy, M medium, H brutal")
     p.add_argument("--minutes", type=float, default=10.0, help="length of the simulated game")
     p.add_argument("--seed", type=int, default=12345)
+    p.add_argument("--factions", default="", help="comma separated PlayerTemplate indices for the AI slots (default cycles America, China, GLA = 2,3,4)")
+    p.add_argument("--ai-mode", choices="OE", default="O", help="AI Behaviour rule: O original (default, nothing written), E enhanced (AI=E)")
     p.add_argument("--crc-interval", type=int, default=100)
     args = p.parse_args()
     if not 1 <= args.ai <= 7:

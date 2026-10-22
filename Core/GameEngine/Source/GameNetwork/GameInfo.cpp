@@ -312,6 +312,7 @@ void GameInfo::reset()
 	m_useStats = TRUE;
 	m_surrendered = FALSE;
   m_oldFactionsOnly = FALSE;
+	m_aiBehavior = AI_BEHAVIOR_ORIGINAL;
 //	m_localIP = 0; // BGC - actually we don't want this to be reset since the m_localIP is
 										// set properly in the constructor of LANGameInfo which uses this as a base class.
 	m_mapCRC = 0;
@@ -995,6 +996,15 @@ static AsciiString buildGameInfoAsciiString(const GameInfo& game, const AsciiStr
 		game.getStartingCash().countMoney(), game.oldFactionsOnly() ? 'Y' : 'N' );
 #endif
 
+	// X64.51: the AI Behaviour rule is written ONLY when Enhanced, so every Original options string (lobby, replay header) is byte-identical to before.
+	if (game.getAIBehavior() == AI_BEHAVIOR_ENHANCED)
+	{
+		optionsString.concat(AIBehavior::optionKey());
+		optionsString.concat('=');
+		optionsString.concat(AIBehavior::optionValue(AI_BEHAVIOR_ENHANCED));
+		optionsString.concat(';');
+	}
+
 	//add player info for each slot
 	optionsString.concat(slotListID);
 	optionsString.concat('=');
@@ -1119,6 +1129,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
 	Int useStats = TRUE;
   Money startingCash = TheGlobalData->m_defaultStartingCash;
   UnsignedShort restriction = 0; // Always the default
+  AIBehaviorMode aiBehavior = AI_BEHAVIOR_ORIGINAL; // X64.51: absent key = Original
 
 	Bool sawMap = FALSE;
 	Bool sawMapCRC = FALSE;
@@ -1237,6 +1248,16 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
     {
       oldFactionsOnly = ( val.compareNoCase( "Y" ) == 0 );
       sawOldFactions = TRUE;
+    }
+    else if (key.compare(AIBehavior::optionKey()) == 0 )
+    {
+      // X64.51: an unrecognised value rejects the options (never silently plays a different AI rule)
+      if (!AIBehavior::parseOptionValue(val.str(), aiBehavior))
+      {
+        optionsOk = FALSE;
+        DEBUG_LOG(("ParseAsciiStringToGameInfo - unknown AI behaviour value, quitting"));
+        break;
+      }
     }
 		else if (key.getLength() == 1 && *key.str() == slotListID)
 		{
@@ -1606,6 +1627,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
 		game->setSuperweaponRestriction(restriction);
 		game->setStartingCash(startingCash);
 		game->setOldFactionsOnly(oldFactionsOnly);
+		game->setAIBehavior(aiBehavior);
 
 		return true;
 	}
@@ -1633,11 +1655,14 @@ void SkirmishGameInfo::crc( Xfer *xfer )
 void SkirmishGameInfo::xfer( Xfer *xfer )
 {
 #if RTS_GENERALS
-	const XferVersion currentVersion = 2;
+	const XferVersion retailVersion = 2;
 #else
-	const XferVersion currentVersion = 4;
+	const XferVersion retailVersion = 4;
 #endif
-	XferVersion version = currentVersion;
+	// X64.51: version 5 adds the AI Behaviour rule. It is written ONLY for an Enhanced game; an Original game still saves the retail version, so its saves
+	// keep the retail layout. A save of an Enhanced game cannot be read by an older executable (its version check rejects it), never played as Original.
+	const XferVersion currentVersion = 5;
+	XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_aiBehavior == AI_BEHAVIOR_ENHANCED) ? currentVersion : retailVersion;
 	xfer->xferVersion( &version, currentVersion );
 
 
@@ -1732,6 +1757,17 @@ void SkirmishGameInfo::xfer( Xfer *xfer )
   {
     m_superweaponRestriction = 0;
     m_startingCash = TheGlobalData->m_defaultStartingCash;
+  }
+
+  if ( version >= 5 )
+  {
+    Int aiBehavior = m_aiBehavior;
+    xfer->xferInt( &aiBehavior );
+    m_aiBehavior = ( aiBehavior == AI_BEHAVIOR_ENHANCED ) ? AI_BEHAVIOR_ENHANCED : AI_BEHAVIOR_ORIGINAL;
+  }
+  else if ( xfer->getXferMode() == XFER_LOAD )
+  {
+    m_aiBehavior = AI_BEHAVIOR_ORIGINAL;
   }
 
 }

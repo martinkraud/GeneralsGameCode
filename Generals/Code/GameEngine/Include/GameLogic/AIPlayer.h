@@ -190,6 +190,8 @@ public:
 	/// Difficulty level for this player.
 	GameDifficulty getAIDifficulty() const;
 	void setAIDifficulty(GameDifficulty difficulty) {m_difficulty = difficulty;}
+	Bool isEnhancedBehavior() const {return m_enhanced;}	///< X64.51: this AI follows the Enhanced AI Behaviour rule (false = Original, retail compatible)
+	void diagnosticTick();	///< X64.51: GENERALS_AI_DIAG scenario aids (kills, build list dumps); inert unless the diagnostics are enabled
 	void buildBySupplies(Int minimumCash, const AsciiString &thingName ); ///< Builds a building by supplies.
 	void buildUpgrade(const AsciiString &upgrade ); ///< Builds an upgrade.
 	/// A team is about to be destroyed.
@@ -265,6 +267,7 @@ protected:
 	Int			m_frameLastBuildingBuilt;	///< When we built the last building.
 
 	GameDifficulty m_difficulty;
+	Bool m_enhanced;	///< X64.51: AI Behaviour rule of this match (Original unless the game rule says Enhanced); saved per AI player only when Enhanced
 
 	Int			m_skillsetSelector;
 

@@ -30,6 +30,7 @@
 
 #include "Common/Snapshot.h"
 #include "Common/Money.h"
+#include "Common/AIBehavior.h"
 #include "GameNetwork/NetworkDefs.h"
 #include "GameNetwork/FirewallHelper.h"
 
@@ -232,6 +233,10 @@ public:
   inline Bool oldFactionsOnly() const;
   inline void setOldFactionsOnly( Bool oldFactionsOnly );
 
+  // X64.51: the AI Behaviour game rule (Original / Enhanced). Written to the options string / replay header only when Enhanced.
+  inline AIBehaviorMode getAIBehavior() const { return m_aiBehavior; }
+  inline void setAIBehavior( AIBehaviorMode mode ) { m_aiBehavior = mode; }
+
 protected:
 	Int m_preorderMask;
 	Int m_crcInterval;
@@ -253,6 +258,7 @@ protected:
   Money         m_startingCash;
   UnsignedShort m_superweaponRestriction;
   Bool m_oldFactionsOnly; // Only USA, China, GLA -- not USA Air Force General, GLA Toxic General, et al
+  AIBehaviorMode m_aiBehavior; // X64.51: Original (default, retail compatible) or Enhanced AI
 };
 
 extern GameInfo *TheGameInfo;

@@ -61,6 +61,9 @@
 #include "GameLogic/Module/SupplyTruckAIUpdate.h"
 #include "GameLogic/Module/SupplyWarehouseDockUpdate.h"
 #include "GameLogic/PartitionManager.h"
+#include "GameNetwork/GameInfo.h"
+#include "Common/AIBehavior.h"
+#include "Common/AIDiagnostics.h"
 
 
 #define SUPPLY_CENTER_CLOSE_DIST (20*PATHFIND_CELL_SIZE_F)
@@ -98,6 +101,8 @@ m_curWarehouseID(INVALID_ID)
 	m_baseCenterSet = false;
 	m_difficulty = TheScriptEngine->getGlobalDifficulty();
 	m_teamSeconds = TheAI->getAiData()->m_teamSeconds;
+	// X64.51: the AI Behaviour rule is a game rule (GameInfo: skirmish setup, replay header, save). Campaign / challenge games have none: Original.
+	m_enhanced = TheGameInfo && TheGameInfo->getAIBehavior() == AI_BEHAVIOR_ENHANCED;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -360,6 +365,10 @@ void AIPlayer::queueSupplyTruck()
 							{
 								// This thinks he is a gatherer, but doesn't have a preferred dock id.
 								Object *center = TheGameLogic->findObjectByID(info->getObjectID());
+								// X64.51 AI-14: the sibling branch skips rebuild holes; retail forgot it here (a harvester could be sent to dock at a hole)
+								if (center && m_enhanced && center->isKindOf(KINDOF_REBUILD_HOLE)) {
+									center = nullptr;
+								}
 								if (center) {
 									info->setCurrentGatherers(info->getCurrentGatherers()+1);
 									// Note - although this is the ai, we are sending in CMD_FROM_PLAYER.
@@ -490,7 +499,7 @@ Object *AIPlayer::buildStructureNow(const ThingTemplate *bldgPlan, BuildListInfo
 			Coord3D rallyPoint;
 			Bool gotOffset = false;
 			if (fabs(info->getRallyOffset()->x) > 1.0f || fabs(info->getRallyOffset()->y)>1.0f) {
-				gotOffset;
+				gotOffset = AIBehavior::applyRallyOffset(m_enhanced, true);	// X64.51 AI-05: retail evaluated `gotOffset;` (no effect)
 			}
 			if (!exitInterface->getNaturalRallyPoint(rallyPoint)) {
 				rallyPoint = *info->getLocation();
@@ -670,7 +679,7 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 			Coord3D rallyPoint;
 			Bool gotOffset = false;
 			if (fabs(info->getRallyOffset()->x) > 1.0f || fabs(info->getRallyOffset()->y)>1.0f) {
-				gotOffset;
+				gotOffset = AIBehavior::applyRallyOffset(m_enhanced, true);	// X64.51 AI-05: retail evaluated `gotOffset;` (no effect)
 			}
 			if (!exitInterface->getNaturalRallyPoint(rallyPoint)) {
 				rallyPoint = *info->getLocation();
@@ -933,7 +942,8 @@ Bool AIPlayer::isSupplySourceAttacked()
 	// A prior EA comment indicated that the intent was to look for 10 seconds into the attack history.
 	const Int RefreshRate = 10;
 #if RETAIL_COMPATIBLE_CRC
-	const Int ScanWindow = 10;
+	// X64.51 AI-13: Original keeps the retail 10 FRAMES; Enhanced selects the intended 10 SECONDS at run time (upstream's repair, gated by the macro at compile time)
+	const Int ScanWindow = AIBehavior::supplyAttackScanWindowFrames(m_enhanced, LOGICFRAMES_PER_SECOND);
 #else
 	const Int ScanWindow = 10 * LOGICFRAMES_PER_SECOND;
 #endif
@@ -2725,6 +2735,8 @@ void AIPlayer::update()
 	PERFORMANCE_PROFILE_SCOPE(AIPlayer);
 	//USE_PERF_TIMER(AIPlayer_update)
 
+	if (AIDiagnostics::enabled()) diagnosticTick();	// X64.51: inert unless GENERALS_AI_DIAG is set
+
 	doBaseBuilding();		// See if it's time to build another building.
 
 	checkReadyTeams(); // See if any teams are ready to start.
@@ -2737,6 +2749,52 @@ void AIPlayer::update()
 
 	updateBridgeRepair(); // Handle any bridge repairs.
 
+}
+
+//----------------------------------------------------------------------------------------------------------
+/** X64.51: scenario aids of the GENERALS_AI_DIAG diagnostics (see Common/AIDiagnostics.h). Only called when they are enabled. */
+void AIPlayer::diagnosticTick()
+{
+	if (!isSkirmishAI()) return;	// the idle human slot of the benchmark replays also owns a (solo) AIPlayer object; the aids concern the skirmish AIs only
+	const UnsignedInt frame = TheGameLogic->getFrame();
+	const Int playerIndex = m_player->getPlayerIndex();
+	if (AIDiagnostics::State::Kill *kill = AIDiagnostics::dueKill(frame, playerIndex))
+	{
+		for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject())
+		{
+			if (obj->getControllingPlayer() == m_player && obj->getTemplate()->getName() == kill->templateName.c_str())
+			{
+				AIDiagnostics::event(frame, "scenario.kill", "player=%d template=%s object=%u", playerIndex, kill->templateName.c_str(), (unsigned)obj->getID());
+				obj->kill();
+				kill->done = true;
+				break;
+			}
+		}
+		if (!kill->done && frame > kill->frame + 30 * 60) kill->done = true;	// nothing of that kind exists any more: stop looking after a minute
+	}
+	if (AIDiagnostics::State::Defense *defense = AIDiagnostics::dueDefense(frame, playerIndex))
+	{
+		// stress of AI-11: ask for many base defences (front and flank); the same order is given in Original and Enhanced runs
+		defense->done = true;
+		for (Int i = 0; i < defense->count; ++i)
+		{
+			AIDiagnostics::event(frame, "scenario.defense_call", "i=%d front", i);
+			buildAIBaseDefense(false);
+			AIDiagnostics::event(frame, "scenario.defense_call", "i=%d flank", i);
+			buildAIBaseDefense(true);
+		}
+		AIDiagnostics::event(frame, "scenario.defense", "player=%d requested=%d each", playerIndex, defense->count);
+	}
+	if (AIDiagnostics::dumpDue(frame))
+	{
+		for (BuildListInfo *info = m_player->getBuildList(); info; info = info->getNext())
+		{
+			Object *obj = TheGameLogic->findObjectByID(info->getObjectID());
+			AIDiagnostics::event(frame, "buildlist", "player=%d entry=%s automatic=%d priority=%d rebuilds=%d state=%s", playerIndex, info->getTemplateName().str(),
+				(int)info->isAutomaticBuild(), (int)info->isPriorityBuild(), info->getNumRebuilds(),
+				obj ? (obj->isKindOf(KINDOF_REBUILD_HOLE) ? "hole" : "built") : "none");
+		}
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -3016,9 +3074,9 @@ void AIPlayer::crc( Xfer *xfer )
 void AIPlayer::xfer( Xfer *xfer )
 {
 
-	// version
-	XferVersion currentVersion = 1;
-	XferVersion version = currentVersion;
+	// version. X64.51: 2 appends the AI Behaviour rule and is written ONLY by an Enhanced AI player; an Original AI saves the retail version 1 layout.
+	XferVersion currentVersion = 2;
+	XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_enhanced) ? 2 : 1;
 	xfer->xferVersion( &version, currentVersion );
 
 	// team build queue count
@@ -3177,6 +3235,15 @@ void AIPlayer::xfer( Xfer *xfer )
 	xfer->xferBool( &m_dozerQueuedForRepair );
 	xfer->xferBool( &m_dozerIsRepairing );
 	xfer->xferInt( &m_bridgeTimer );
+
+	if (version >= 2)
+	{
+		xfer->xferBool( &m_enhanced );
+	}
+	else if (xfer->getXferMode() == XFER_LOAD)
+	{
+		m_enhanced = false;
+	}
 
 }
 

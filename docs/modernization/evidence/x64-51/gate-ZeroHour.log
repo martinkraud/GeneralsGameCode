@@ -1,0 +1,13 @@
+Z-desert3H-gla       base  O digest 49491F01A022DD00 repeatable=True mean 0,138 ms p99 0,532 p99.9 1,606 over33 0
+Z-desert3H-gla       new   O digest 49491F01A022DD00 repeatable=True mean 0,153 ms p99 0,555 p99.9 2 over33 0
+Z-desert3H-gla       new   E digest 49491F01A022DD00 repeatable=True mean 0,14 ms p99 0,52 p99.9 1,557 over33 0
+Z-city5H-mix         base  O digest 4C0928A48678A5DA repeatable=True mean 2,314 ms p99 7,96 p99.9 16,229 over33 1
+Z-city5H-mix         new   O digest 4C0928A48678A5DA repeatable=True mean 2,404 ms p99 8,008 p99.9 17,228 over33 0
+Z-city5H-mix         new   E digest E978FE7FDD6A3AB7 repeatable=True mean 2,632 ms p99 9,016 p99.9 18,548 over33 11
+Z-alpine3M-generals  base  O digest 6EE51D5F24BDFA45 repeatable=True mean 0,147 ms p99 0,478 p99.9 2,01 over33 0
+Z-alpine3M-generals  new   O digest 6EE51D5F24BDFA45 repeatable=True mean 0,134 ms p99 0,451 p99.9 1,76 over33 0
+Z-alpine3M-generals  new   E digest B3106A15E1CED7D3 repeatable=True mean 0,148 ms p99 0,521 p99.9 1,793 over33 0
+Z-desert3H-china     base  O digest 6A37BA1F5BBF97AC repeatable=True mean 0,089 ms p99 0,471 p99.9 2,288 over33 0
+Z-desert3H-china     new   O digest 6A37BA1F5BBF97AC repeatable=True mean 0,088 ms p99 0,447 p99.9 2,508 over33 0
+Z-desert3H-china     new   E digest 6A37BA1F5BBF97AC repeatable=True mean 0,093 ms p99 0,464 p99.9 2,602 over33 0
+GATE PASS (ZeroHour): Original digests equal the reference for every scenario; every run is repeatable. Results: C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\x64-51\gate-final-zh\gate-ZeroHour.json

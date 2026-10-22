@@ -884,8 +884,12 @@ StateReturnType AIStateMachine::updateStateMachine()
 
 			return status;
 		}
-		m_temporaryState->onExit(EXIT_NORMAL);
-		m_temporaryState = nullptr;
+		// X64.51 AI-16 (shared, no behaviour change when the pointer is set): update() may have cleared the machine, which already exited and reset the
+		// temporary state (upstream #3438: a null dereference here crashed in skirmish). Exit it only if it is still set.
+		if (m_temporaryState) {
+			m_temporaryState->onExit(EXIT_NORMAL);
+			m_temporaryState = nullptr;
+		}
 	}
 	StateReturnType retType = StateMachine::updateStateMachine();
 
