@@ -1,0 +1,6 @@
+X64.51 distribution (New-MKRaudsteinDistribution.ps1, built from commit a01703845, both titles validated 26/26)
+MKRaudstein-Generals-x64-Preview-a01703845.zip              4,027,468 B  SHA-256 633B3F16C7F5D8CADFC7B0D5FB638C2A74926E9A9A030F5934DB5144DE7AE2C2
+MKRaudstein-ZeroHour-x64-Preview-a01703845.zip              4,132,982 B  SHA-256 F8DCC48C94456E7816B548B4B3294127BAA2D574B0492B775F5FFDFA7C38BA8C
+MKRaudstein-Generals-x64-Preview-a01703845-Symbols.zip     22,005,908 B
+MKRaudstein-ZeroHour-x64-Preview-a01703845-Symbols.zip     22,508,261 B
+Location: build/dist/ (manifests, SHA256SUMS, distribution.json alongside). Staged candidates: dist-a01703845-gen, dist-a01703845-zh.

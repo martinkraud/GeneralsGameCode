@@ -177,7 +177,15 @@ Built with `scripts/native-runtime/New-MKRaudsteinDistribution.ps1` after the co
 
 ## 13. Package names and hashes
 
-(filled in after the build - see `evidence/x64-51/packages.txt`)
+Built from commit `a01703845` with `New-MKRaudsteinDistribution.ps1` (both titles validated, 26/26 checks each; `build/dist/`, not committed):
+
+| File | Size | SHA-256 |
+|---|---|---|
+| `MKRaudstein-Generals-x64-Preview-a01703845.zip` | 4 027 468 B | `633B3F16C7F5D8CADFC7B0D5FB638C2A74926E9A9A030F5934DB5144DE7AE2C2` |
+| `MKRaudstein-ZeroHour-x64-Preview-a01703845.zip` | 4 132 982 B | `F8DCC48C94456E7816B548B4B3294127BAA2D574B0492B775F5FFDFA7C38BA8C` |
+| `...-Generals-...-Symbols.zip` / `...-ZeroHour-...-Symbols.zip` | 22 005 908 B / 22 508 261 B | (separate, in the manifests) |
+
+Staged candidates `dist-a01703845-gen` / `dist-a01703845-zh`; the launcher default is `dist-a01703845-zh`. The packages contain every runtime change through X64.49 plus X64.51 (built from the HEAD tree, no allowlist).
 
 ## 14. Deferred (Phase 2 and beyond, not started)
 
