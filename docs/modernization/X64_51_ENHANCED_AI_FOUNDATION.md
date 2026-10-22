@@ -191,3 +191,8 @@ Staged candidates `dist-a01703845-gen` / `dist-a01703845-zh`; the launcher defau
 
 Random / dynamic base layout, planners, adaptive build orders, threat-responsive defence, personalities, smarter composition, congestion-aware attacks, fog-aware AI, difficulty redesign,
 opting more slots into `AutomaticallyBuild`, a LAN lobby control, and the remaining X64.50 findings. Human review is required before any of it starts.
+
+### Launching the Zero Hour candidate (default of `Run-ZeroHourCandidate.cmd`)
+
+`build\dev-runtimes\native\ZeroHour\dist-a01703845-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-a01703845-zh`
+(Generals: `build\dev-runtimes\native\Generals\dist-a01703845-gen`).
