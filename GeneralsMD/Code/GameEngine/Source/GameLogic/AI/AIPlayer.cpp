@@ -529,11 +529,13 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 	// Find a dozer.
 	Object *dozer = findDozer(info->getLocation());
 	if (dozer==nullptr) {
+		AIDiagnostics::count("start_fail.no_dozer");
 		return nullptr;
 	}
 	// Check available funds.
 	Money *money = m_player->getMoney();
 	if (money->countMoney()<bldgPlan->calcCostToBuild(m_player)) {
+		AIDiagnostics::count("start_fail.money");
 		return nullptr;
 	}
 	// construct the building
@@ -549,6 +551,7 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 																								 dozer, m_player ) != LBC_OK ) {
 		// If there's enemy units or structures, don't build/rebuild.
 		TheTerrainVisual->removeAllBibs();	// isLocationLegalToBuild adds bib feedback, turn it off.  jba.
+		AIDiagnostics::count("start_fail.enemy_overlap");
 		return nullptr;
 	}
 
@@ -578,10 +581,10 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 				limit = 120*PATHFIND_CELL_SIZE_F;
 				// X64.52 Enhanced: the retail search radius (a 2400 unit wide square) costs 100-350 ms when it comes up empty; a slot that cannot be placed within
 				// 500 units of its position is not a slot of this base, and a slot that just failed is not searched again for three minutes.
-				if (m_enhanced) limit = 50*PATHFIND_CELL_SIZE_F;
+				if (m_enhanced && !AIDiagnostics::featureOff("placebound")) limit = 50*PATHFIND_CELL_SIZE_F;
 			}
 			Coord3D newPos = pos;
-			if (m_enhanced) {
+			if (m_enhanced && !AIDiagnostics::featureOff("nearprobe")) {
 				// X64.52: a cheap near probe first (at most 1 + 8 * 8 legality checks); only when it finds nothing does the retail search run, and then bounded (see limit)
 				Coord3D nearPos;
 				if (enhancedFindPlaceable(&pos, bldgPlan, angle, dozer, &nearPos, 8)) {

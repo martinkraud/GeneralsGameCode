@@ -19,14 +19,31 @@ enum AIBehaviorMode
 
 namespace AIBehavior
 {
-// Options-string key / values ("AI=E"). Original is never written; "AI=O" is accepted when read.
+// Options-string key / values ("AI=E2"). Original is never written; "AI=O" is accepted when read.
+//
+// Enhanced is a behaviour REVISION, written into every Enhanced replay header and options string: the Enhanced AI evolves from milestone to milestone, so a replay or
+// a match recorded with another revision must be refused instead of silently playing with different decisions (a retail / Original replay is unaffected).
+//   revision 1: X64.51 (written as "E")      revision 2: X64.52 Dynamic Base & Defence (written as "E2")
+constexpr int kEnhancedRevision = 2;
 inline const char *optionKey() { return "AI"; }
-inline char optionValue(AIBehaviorMode mode) { return mode == AI_BEHAVIOR_ENHANCED ? 'E' : 'O'; }
+inline const char *optionValue(AIBehaviorMode mode) { return mode == AI_BEHAVIOR_ENHANCED ? "E2" : "O"; }
 inline bool parseOptionValue(const char *text, AIBehaviorMode &mode)
 {
-	if (!text || !text[0] || text[1]) return false;
-	if (text[0] == 'E' || text[0] == 'e') { mode = AI_BEHAVIOR_ENHANCED; return true; }
-	if (text[0] == 'O' || text[0] == 'o') { mode = AI_BEHAVIOR_ORIGINAL; return true; }
+	if (!text || !text[0]) return false;
+	if ((text[0] == 'O' || text[0] == 'o') && !text[1]) { mode = AI_BEHAVIOR_ORIGINAL; return true; }
+	if (text[0] == 'E' || text[0] == 'e')
+	{
+		int revision = 0, digits = 0;
+		for (const char *c = text + 1; *c; ++c, ++digits)
+		{
+			if (*c < '0' || *c > '9' || digits > 3) return false;
+			revision = revision * 10 + (*c - '0');
+		}
+		if (digits == 0) revision = 1;   // the X64.51 spelling: a different revision of the Enhanced AI
+		if (revision != kEnhancedRevision) return false;
+		mode = AI_BEHAVIOR_ENHANCED;
+		return true;
+	}
 	return false;
 }
 

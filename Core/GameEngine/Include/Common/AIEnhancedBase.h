@@ -117,10 +117,13 @@ struct State
 	uint32_t failKey[kFailSlots] = {};
 	uint32_t failFrame[kFailSlots] = {};
 	int32_t  failNext = 0;
+	uint32_t stuckKey = 0;            // the priority order that could not be started at its last attempt
+	uint32_t stuckSince = 0;          // ... and since when
 	ThreatMap threat;
 };
 
 constexpr unsigned kPlacementFailureWindow = 30 * 60 * 3;   // 3 simulated minutes
+constexpr unsigned kStuckOrderFrames = 30 * 45;              // a priority order that cannot be started for 45 s steps aside (the retail loop only ever looks at the FIRST priority order)
 inline uint32_t fnv1a(const char *text) { uint32_t h = 2166136261u; while (text && *text) { h ^= (uint8_t)*text++; h *= 16777619u; } return h; }
 inline uint32_t placementKey(const char *templateName, float x, float y)
 {

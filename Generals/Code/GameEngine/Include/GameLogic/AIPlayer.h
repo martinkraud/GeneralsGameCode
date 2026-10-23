@@ -202,6 +202,8 @@ public:
 	void enhancedXferState(Xfer *xfer);
 	Bool enhancedPlacementRecentlyFailed(const Coord3D *at, const ThingTemplate *tmpl);	///< X64.52: this slot's fallback search found nothing recently
 	void enhancedNotePlacementFailure(const Coord3D *at, const ThingTemplate *tmpl);
+	void enhancedNoteStartFailure(const BuildListInfo *info, const ThingTemplate *tmpl);	///< X64.52: the first priority order could not be started
+	void enhancedNoteStartSuccess();
 	Bool enhancedFindPlaceable(const Coord3D *at, const ThingTemplate *tmpl, Real angle, Object *builder, Coord3D *out, Int rings);	///< X64.52: cheap exact-or-near legality probe
 	void diagnosticAttackAid();	///< X64.52: GENERALS_AI_DIAG_ATTACK scenario aid (diagnostics runs only)
 	AIEnhancedBase::State &enhancedState() {return m_eb;}

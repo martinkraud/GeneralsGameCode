@@ -76,6 +76,26 @@ class OriginalIsNotTouched(unittest.TestCase):
         self.assertIn("m_eb.expansions >= kExpansionCap || m_eb.expansionFailures >= kExpansionFailureCap", impl)
         self.assertIn("recoveryAllowed(", impl)
         self.assertIn("if (frame < kFillInStart", impl)
+        self.assertIn("frame >= m_eb.stuckSince + kStuckOrderFrames", impl)           # a stuck first order steps aside
+        for tree in TREES:
+            skirmish = ai(tree, "AISkirmishPlayer.cpp")
+            self.assertIn("if (m_enhanced) { if (bldg) enhancedNoteStartSuccess(); else enhancedNoteStartFailure(bldgInfo, bldgPlan); }", skirmish)
+            self.assertIn("if (m_enhanced && enhancedPlacementRecentlyFailed(info->getLocation(), curPlan)) {", skirmish)
+            player = ai(tree, "AIPlayer.cpp")
+            self.assertIn("if (m_enhanced && !AIDiagnostics::featureOff(\"placebound\")) limit = 50*PATHFIND_CELL_SIZE_F;", player)
+
+
+class ReplayRevision(unittest.TestCase):
+    def test_enhanced_is_a_revision_in_the_options_string(self):
+        behavior = read("Core/GameEngine/Include/Common/AIBehavior.h")
+        self.assertIn("constexpr int kEnhancedRevision = 2;", behavior)
+        self.assertIn('? "E2" : "O"', behavior)
+        self.assertIn("if (revision != kEnhancedRevision) return false;", behavior)
+        self.assertIn('"AI=E2;"', read("scripts/performance/New-SimulationBenchmarkReplay.py"))
+
+    def test_original_strings_are_not_touched(self):
+        info = read("Core/GameEngine/Source/GameNetwork/GameInfo.cpp")
+        self.assertIn("if (game.getAIBehavior() == AI_BEHAVIOR_ENHANCED)", info)   # Original writes nothing
 
 
 class Wiring(unittest.TestCase):

@@ -1,0 +1,4 @@
+Z-city5H-mix         base  O digest 4C0928A48678A5DA repeatable=True mean 2,105 ms p99 7,057 p99.9 15,646 over33 0
+Z-city5H-mix         new   O digest 4C0928A48678A5DA repeatable=True mean 2,142 ms p99 7,215 p99.9 16,147 over33 0
+Z-city5H-mix         new   E digest 627FC0735895E862 repeatable=True mean 2,283 ms p99 8,205 p99.9 16,768 over33 3
+GATE PASS (ZeroHour): Original digests equal the reference for every scenario; every run is repeatable. Results: C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\x64-52\perf4-zh\gate-ZeroHour.json

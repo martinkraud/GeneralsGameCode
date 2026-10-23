@@ -23,6 +23,8 @@ inline void xferState(Xfer *xfer, State &s)
 	xfer->xferUnsignedInt(&s.lastRecovery);
 	for (int i = 0; i < State::kFailSlots; ++i) { xfer->xferUnsignedInt(&s.failKey[i]); xfer->xferUnsignedInt(&s.failFrame[i]); }
 	xfer->xferInt(&s.failNext);
+	xfer->xferUnsignedInt(&s.stuckKey);
+	xfer->xferUnsignedInt(&s.stuckSince);
 	for (int i = 0; i < ThreatMap::kSectors; ++i) xfer->xferInt(&s.threat.weight[i]);
 }
 }

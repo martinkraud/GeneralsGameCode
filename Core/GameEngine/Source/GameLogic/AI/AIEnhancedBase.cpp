@@ -276,6 +276,12 @@ void AIPlayer::enhancedExpansion(UnsignedInt frame)
 		AIDiagnostics::count("x52.expand.no_site");
 		return;
 	}
+	if (!isLocationSafe(&where, tmpl))
+	{
+		++m_eb.expansionFailures;
+		AIDiagnostics::count("x52.expand.unsafe_site");
+		return;
+	}
 	where.z = 0;   // all build list locations are ground relative
 	m_player->addToPriorityBuildList(centerName, &where, angle);
 	m_curWarehouseID = warehouse->getID();
@@ -288,6 +294,7 @@ void AIPlayer::enhancedExpansion(UnsignedInt frame)
 // ------------------------------------------------------------------------------------------------
 Bool AIPlayer::enhancedPlacementRecentlyFailed(const Coord3D *at, const ThingTemplate *tmpl)
 {
+	if (AIDiagnostics::featureOff("placememo")) return FALSE;
 	return placementRecentlyFailed(m_eb, placementKey(tmpl->getName().str(), at->x, at->y), TheGameLogic->getFrame());
 }
 
@@ -295,6 +302,32 @@ void AIPlayer::enhancedNotePlacementFailure(const Coord3D *at, const ThingTempla
 {
 	notePlacementFailure(m_eb, placementKey(tmpl->getName().str(), at->x, at->y), TheGameLogic->getFrame());
 	AIDiagnostics::count("x52.place.failure_remembered");
+}
+
+// The retail loop starts only the FIRST priority order of the build list; an order that cannot start (enemy units on the site, no free dozer, unreachable) blocks every
+// order behind it for as long as it stays first. Enhanced lets such an order step aside for three minutes once it has been stuck for 45 seconds.
+void AIPlayer::enhancedNoteStartFailure(const BuildListInfo *info, const ThingTemplate *tmpl)
+{
+	const UnsignedInt frame = TheGameLogic->getFrame();
+	const uint32_t key = placementKey(tmpl->getName().str(), info->getLocation()->x, info->getLocation()->y);
+	if (m_eb.stuckKey != key)
+	{
+		m_eb.stuckKey = key;
+		m_eb.stuckSince = frame ? frame : 1u;
+		return;
+	}
+	if (frame >= m_eb.stuckSince + kStuckOrderFrames)
+	{
+		notePlacementFailure(m_eb, key, frame);
+		m_eb.stuckKey = 0;
+		AIDiagnostics::count("x52.order.stuck_stepped_aside");
+		AIDiagnostics::event(frame, "x52.order.stuck_stepped_aside", "player=%d entry=%s at=%.0f,%.0f", m_player->getPlayerIndex(), tmpl->getName().str(), info->getLocation()->x, info->getLocation()->y);
+	}
+}
+
+void AIPlayer::enhancedNoteStartSuccess()
+{
+	m_eb.stuckKey = 0;
 }
 
 // Exact-or-near placement probe: the retail legality test (path, terrain, overlap) at the position and at up to `rings` rings of 8 neighbours 2 cells apart.

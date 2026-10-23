@@ -32,6 +32,9 @@ Why this is safe for determinism: the mode is the same on every machine (options
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+> **Update X64.52:** the Enhanced value is now a *revision*: the options string carries `AI=E2` (X64.51 wrote `AI=E`, revision 1). A build accepts only its own revision, so an X64.51 Enhanced replay is
+> refused by X64.52 (and vice versa) instead of silently playing with different Enhanced decisions. Original (`AI=O` / absent) is unaffected. See `X64_52_ENHANCED_AI_DYNAMIC_BASE.md` section 10.
+
 ## 2. Original is unchanged - the proof
 
 1. **Golden gate** (`scripts/native-runtime/Invoke-AiBehaviorGate.ps1`): deterministic self-playing AI-vs-AI headless simulations (an idle human slot + computer slots, `-headless -replay`),

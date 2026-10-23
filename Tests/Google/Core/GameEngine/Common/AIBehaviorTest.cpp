@@ -26,13 +26,16 @@ TEST(AIBehavior, OptionValueRoundTripAndStrictParsing)
 {
 	AIBehaviorMode mode = AI_BEHAVIOR_ORIGINAL;
 	EXPECT_STREQ(AIBehavior::optionKey(), "AI");
-	EXPECT_EQ(AIBehavior::optionValue(AI_BEHAVIOR_ENHANCED), 'E');
-	EXPECT_EQ(AIBehavior::optionValue(AI_BEHAVIOR_ORIGINAL), 'O');
-	EXPECT_TRUE(AIBehavior::parseOptionValue("E", mode)); EXPECT_EQ(mode, AI_BEHAVIOR_ENHANCED);
+	EXPECT_STREQ(AIBehavior::optionValue(AI_BEHAVIOR_ENHANCED), "E2");
+	EXPECT_STREQ(AIBehavior::optionValue(AI_BEHAVIOR_ORIGINAL), "O");
+	EXPECT_EQ(AIBehavior::kEnhancedRevision, 2);
+	EXPECT_TRUE(AIBehavior::parseOptionValue("E2", mode)); EXPECT_EQ(mode, AI_BEHAVIOR_ENHANCED);
 	EXPECT_TRUE(AIBehavior::parseOptionValue("O", mode)); EXPECT_EQ(mode, AI_BEHAVIOR_ORIGINAL);
-	EXPECT_TRUE(AIBehavior::parseOptionValue("e", mode)); EXPECT_EQ(mode, AI_BEHAVIOR_ENHANCED);
-	// anything else is rejected, never silently read as Original
-	for (const char *bad : { "", "X", "EE", "Enhanced", "1", "0" })
+	EXPECT_TRUE(AIBehavior::parseOptionValue("e2", mode)); EXPECT_EQ(mode, AI_BEHAVIOR_ENHANCED);
+	// the round trip of what is written is accepted
+	EXPECT_TRUE(AIBehavior::parseOptionValue(AIBehavior::optionValue(AI_BEHAVIOR_ENHANCED), mode)); EXPECT_EQ(mode, AI_BEHAVIOR_ENHANCED);
+	// another revision of the Enhanced AI (the X64.51 spelling "E" is revision 1) is refused, as is anything else - never silently read as Original or as the current Enhanced
+	for (const char *bad : { "", "X", "E", "E1", "E3", "E02x", "EE", "E22", "Enhanced", "1", "0", "O2", "OO" })
 	{
 		mode = AI_BEHAVIOR_ENHANCED;
 		EXPECT_FALSE(AIBehavior::parseOptionValue(bad, mode)) << bad;

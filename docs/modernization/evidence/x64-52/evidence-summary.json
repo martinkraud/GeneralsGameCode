@@ -1,0 +1,504 @@
+{
+ "layout": {
+  "G-desert3H": [
+   {
+    "seed": "51002",
+    "variant": 0,
+    "offset_deg": 0,
+    "slots": 14,
+    "mean_shift": 3.2,
+    "max_shift": 8.0,
+    "digest": "5956BE9E70646885"
+   },
+   {
+    "seed": "51003",
+    "variant": 1,
+    "offset_deg": -11,
+    "slots": 14,
+    "mean_shift": 40.9,
+    "max_shift": 83.7,
+    "digest": "F8CF63B54876A576"
+   },
+   {
+    "seed": "51004",
+    "variant": 0,
+    "offset_deg": 0,
+    "slots": 14,
+    "mean_shift": 2.9,
+    "max_shift": 8.1,
+    "digest": "3F3F69F5BF401006"
+   },
+   {
+    "seed": "51005",
+    "variant": 1,
+    "offset_deg": -11,
+    "slots": 14,
+    "mean_shift": 40.7,
+    "max_shift": 83.7,
+    "digest": "F3E4EC7CF018660C"
+   },
+   {
+    "seed": "51006",
+    "variant": 3,
+    "offset_deg": -22,
+    "slots": 14,
+    "mean_shift": 82.4,
+    "max_shift": 166.1,
+    "digest": "6FFA82DD1D136000"
+   }
+  ],
+  "Z-desert3H-china": [
+   {
+    "seed": "51102",
+    "variant": 4,
+    "offset_deg": 22,
+    "slots": 18,
+    "mean_shift": 92.8,
+    "max_shift": 158.8,
+    "digest": "BF9BBC29F3ABC380"
+   },
+   {
+    "seed": "51103",
+    "variant": 2,
+    "offset_deg": 11,
+    "slots": 18,
+    "mean_shift": 48.3,
+    "max_shift": 82.0,
+    "digest": "F99D0BF81D4F92B3"
+   },
+   {
+    "seed": "51104",
+    "variant": 3,
+    "offset_deg": -22,
+    "slots": 18,
+    "mean_shift": 94.1,
+    "max_shift": 161.0,
+    "digest": "8918E3A7FE833817"
+   },
+   {
+    "seed": "51105",
+    "variant": 4,
+    "offset_deg": 22,
+    "slots": 18,
+    "mean_shift": 93.8,
+    "max_shift": 163.2,
+    "digest": "9F78677C0384700C"
+   },
+   {
+    "seed": "51106",
+    "variant": 2,
+    "offset_deg": 11,
+    "slots": 18,
+    "mean_shift": 46.3,
+    "max_shift": 78.2,
+    "digest": "085738625EC1811D"
+   }
+  ]
+ },
+ "threat": {
+  "Generals": [
+   {
+    "attack_deg": 0,
+    "O": {
+     "defences": 14,
+     "within_60_deg": 4
+    },
+    "E": {
+     "defences": 13,
+     "within_60_deg": 10
+    }
+   },
+   {
+    "attack_deg": 90,
+    "O": {
+     "defences": 14,
+     "within_60_deg": 0
+    },
+    "E": {
+     "defences": 11,
+     "within_60_deg": 4
+    }
+   },
+   {
+    "attack_deg": 180,
+    "O": {
+     "defences": 13,
+     "within_60_deg": 3
+    },
+    "E": {
+     "defences": 15,
+     "within_60_deg": 10
+    }
+   },
+   {
+    "attack_deg": 270,
+    "O": {
+     "defences": 12,
+     "within_60_deg": 7
+    },
+    "E": {
+     "defences": 13,
+     "within_60_deg": 8
+    }
+   }
+  ],
+  "ZeroHour": [
+   {
+    "attack_deg": 0,
+    "O": {
+     "defences": 19,
+     "within_60_deg": 6
+    },
+    "E": {
+     "defences": 20,
+     "within_60_deg": 12
+    }
+   },
+   {
+    "attack_deg": 90,
+    "O": {
+     "defences": 19,
+     "within_60_deg": 3
+    },
+    "E": {
+     "defences": 20,
+     "within_60_deg": 8
+    }
+   },
+   {
+    "attack_deg": 180,
+    "O": {
+     "defences": 18,
+     "within_60_deg": 4
+    },
+    "E": {
+     "defences": 20,
+     "within_60_deg": 12
+    }
+   },
+   {
+    "attack_deg": 270,
+    "O": {
+     "defences": 18,
+     "within_60_deg": 8
+    },
+    "E": {
+     "defences": 19,
+     "within_60_deg": 9
+    }
+   }
+  ]
+ },
+ "rebuild": {
+  "Generals": {
+   "O": {
+    "build.started.ChinaBarracks": 6,
+    "build.started.ChinaSupplyCenter": 6,
+    "build.started.ChinaWarFactory": 4,
+    "kills_landed": 14,
+    "recovery_grants": 0
+   },
+   "E": {
+    "build.started.ChinaBarracks": 6,
+    "build.started.ChinaCommandCenter": 4,
+    "build.started.ChinaSupplyCenter": 6,
+    "build.started.ChinaWarFactory": 4,
+    "kills_landed": 17,
+    "recovery_grants": 1
+   }
+  },
+  "ZeroHour": {
+   "O": {
+    "build.started.ChinaAirfield": 2,
+    "build.started.ChinaBarracks": 3,
+    "build.started.ChinaSupplyCenter": 3,
+    "build.started.ChinaWarFactory": 3,
+    "kills_landed": 12,
+    "recovery_grants": 0
+   },
+   "E": {
+    "build.started.ChinaAirfield": 3,
+    "build.started.ChinaBarracks": 6,
+    "build.started.ChinaCommandCenter": 6,
+    "build.started.ChinaSupplyCenter": 9,
+    "build.started.ChinaWarFactory": 5,
+    "kills_landed": 21,
+    "recovery_grants": 0
+   }
+  }
+ },
+ "long": {
+  "G-twilight7H": [
+   {
+    "seed": "51002",
+    "mode": "E",
+    "digest": "7CB3C4A94266AACB",
+    "structures_last_census": 83,
+    "largest_single_type": 5,
+    "supply_centers_last_census": 7,
+    "x52": {
+     "x52.expand.ordered": 5,
+     "x52.expand.unsafe_site": 5,
+     "x52.fill.blocked_by_pending_order": 1037,
+     "x52.fill.evaluated": 1571,
+     "x52.fill.no_candidate": 178,
+     "x52.fill.slot_activated": 5,
+     "x52.fill.slot_relocated": 4,
+     "x52.order.stuck_stepped_aside": 54,
+     "x52.place.near_probe_hit": 52,
+     "x52.threat.arc_recentered": 2,
+     "x52.threat.observations": 820,
+     "x52.threat.steered_defense": 3
+    }
+   },
+   {
+    "seed": "51002",
+    "mode": "O",
+    "digest": "4215BF3745E5B9D8",
+    "structures_last_census": 63,
+    "largest_single_type": 7,
+    "supply_centers_last_census": 6,
+    "x52": {}
+   },
+   {
+    "seed": "51003",
+    "mode": "E",
+    "digest": "4337B87961ACD0DF",
+    "structures_last_census": 79,
+    "largest_single_type": 5,
+    "supply_centers_last_census": 6,
+    "x52": {
+     "x52.expand.ordered": 5,
+     "x52.expand.unsafe_site": 5,
+     "x52.fill.blocked_by_pending_order": 783,
+     "x52.fill.evaluated": 1385,
+     "x52.fill.no_candidate": 157,
+     "x52.fill.slot_activated": 5,
+     "x52.fill.slot_relocated": 2,
+     "x52.order.stuck_stepped_aside": 50,
+     "x52.place.near_probe_hit": 144,
+     "x52.threat.arc_recentered": 2,
+     "x52.threat.defense_ordered": 2,
+     "x52.threat.observations": 646,
+     "x52.threat.steered_defense": 7
+    }
+   },
+   {
+    "seed": "51003",
+    "mode": "O",
+    "digest": "C55B51E533373773",
+    "structures_last_census": 92,
+    "largest_single_type": 7,
+    "supply_centers_last_census": 6,
+    "x52": {}
+   },
+   {
+    "seed": "51004",
+    "mode": "E",
+    "digest": "2178C9FAB50688B1",
+    "structures_last_census": 68,
+    "largest_single_type": 6,
+    "supply_centers_last_census": 6,
+    "x52": {
+     "x52.expand.ordered": 7,
+     "x52.fill.blocked_by_pending_order": 915,
+     "x52.fill.evaluated": 1385,
+     "x52.fill.no_candidate": 72,
+     "x52.fill.skipped_unplaceable": 1,
+     "x52.fill.slot_activated": 3,
+     "x52.fill.slot_relocated": 1,
+     "x52.order.stuck_stepped_aside": 58,
+     "x52.place.failure_remembered": 1,
+     "x52.place.near_probe_hit": 113,
+     "x52.threat.arc_recentered": 5,
+     "x52.threat.defense_ordered": 4,
+     "x52.threat.observations": 1457,
+     "x52.threat.steered_defense": 9
+    }
+   },
+   {
+    "seed": "51004",
+    "mode": "O",
+    "digest": "004849710734D35A",
+    "structures_last_census": 94,
+    "largest_single_type": 7,
+    "supply_centers_last_census": 10,
+    "x52": {}
+   },
+   {
+    "seed": "51005",
+    "mode": "E",
+    "digest": "78E426998C2D082E",
+    "structures_last_census": 81,
+    "largest_single_type": 6,
+    "supply_centers_last_census": 6,
+    "x52": {
+     "x52.expand.ordered": 6,
+     "x52.expand.unsafe_site": 3,
+     "x52.fill.blocked_by_pending_order": 815,
+     "x52.fill.evaluated": 1387,
+     "x52.fill.no_candidate": 211,
+     "x52.fill.skipped_unplaceable": 1,
+     "x52.fill.slot_activated": 5,
+     "x52.fill.slot_relocated": 3,
+     "x52.order.stuck_stepped_aside": 55,
+     "x52.place.failure_remembered": 1,
+     "x52.place.near_probe_hit": 145,
+     "x52.recovery.rebuild_granted": 1,
+     "x52.threat.arc_recentered": 1,
+     "x52.threat.defense_ordered": 1,
+     "x52.threat.observations": 460,
+     "x52.threat.steered_defense": 1
+    }
+   },
+   {
+    "seed": "51005",
+    "mode": "O",
+    "digest": "96550134D876755A",
+    "structures_last_census": 99,
+    "largest_single_type": 7,
+    "supply_centers_last_census": 7,
+    "x52": {}
+   }
+  ],
+  "Z-city5H": [
+   {
+    "seed": "51102",
+    "mode": "E",
+    "digest": "627FC0735895E862",
+    "structures_last_census": 130,
+    "largest_single_type": 20,
+    "supply_centers_last_census": 8,
+    "x52": {
+     "x52.expand.ordered": 5,
+     "x52.expand.unsafe_site": 2,
+     "x52.fill.blocked_by_pending_order": 508,
+     "x52.fill.evaluated": 853,
+     "x52.fill.no_candidate": 211,
+     "x52.fill.skipped_unplaceable": 1,
+     "x52.fill.slot_activated": 4,
+     "x52.fill.slot_relocated": 3,
+     "x52.order.stuck_stepped_aside": 12,
+     "x52.place.failure_remembered": 1,
+     "x52.place.near_probe_hit": 101,
+     "x52.recovery.rebuild_granted": 1,
+     "x52.threat.arc_recentered": 2,
+     "x52.threat.defense_ordered": 8,
+     "x52.threat.observations": 1621,
+     "x52.threat.steered_defense": 22
+    }
+   },
+   {
+    "seed": "51102",
+    "mode": "O",
+    "digest": "4C0928A48678A5DA",
+    "structures_last_census": 109,
+    "largest_single_type": 16,
+    "supply_centers_last_census": 6,
+    "x52": {}
+   },
+   {
+    "seed": "51103",
+    "mode": "E",
+    "digest": "A32962C66DA47919",
+    "structures_last_census": 122,
+    "largest_single_type": 16,
+    "supply_centers_last_census": 12,
+    "x52": {
+     "x52.expand.ordered": 6,
+     "x52.expand.unsafe_site": 1,
+     "x52.fill.blocked_by_pending_order": 599,
+     "x52.fill.evaluated": 947,
+     "x52.fill.no_candidate": 263,
+     "x52.fill.skipped_unplaceable": 1,
+     "x52.fill.slot_activated": 4,
+     "x52.fill.slot_relocated": 4,
+     "x52.order.stuck_stepped_aside": 16,
+     "x52.place.failure_remembered": 1,
+     "x52.place.near_probe_hit": 106,
+     "x52.recovery.rebuild_granted": 2,
+     "x52.threat.arc_recentered": 5,
+     "x52.threat.defense_ordered": 3,
+     "x52.threat.observations": 1136,
+     "x52.threat.steered_defense": 16
+    }
+   },
+   {
+    "seed": "51103",
+    "mode": "O",
+    "digest": "8D6C1D5CB54D879E",
+    "structures_last_census": 101,
+    "largest_single_type": 10,
+    "supply_centers_last_census": 7,
+    "x52": {}
+   },
+   {
+    "seed": "51104",
+    "mode": "E",
+    "digest": "AC275D4E1F1BA6E7",
+    "structures_last_census": 98,
+    "largest_single_type": 13,
+    "supply_centers_last_census": 9,
+    "x52": {
+     "x52.expand.ordered": 6,
+     "x52.fill.blocked_by_pending_order": 644,
+     "x52.fill.evaluated": 1165,
+     "x52.fill.no_candidate": 368,
+     "x52.fill.skipped_unplaceable": 1,
+     "x52.fill.slot_activated": 4,
+     "x52.fill.slot_relocated": 3,
+     "x52.order.stuck_stepped_aside": 21,
+     "x52.place.failure_remembered": 1,
+     "x52.place.near_probe_hit": 83,
+     "x52.threat.arc_recentered": 2,
+     "x52.threat.defense_ordered": 6,
+     "x52.threat.observations": 1760,
+     "x52.threat.steered_defense": 19
+    }
+   },
+   {
+    "seed": "51104",
+    "mode": "O",
+    "digest": "C5EAC18C57912DE7",
+    "structures_last_census": 91,
+    "largest_single_type": 14,
+    "supply_centers_last_census": 4,
+    "x52": {}
+   },
+   {
+    "seed": "51105",
+    "mode": "E",
+    "digest": "37DFE5DC709DE212",
+    "structures_last_census": 108,
+    "largest_single_type": 14,
+    "supply_centers_last_census": 6,
+    "x52": {
+     "x52.expand.ordered": 3,
+     "x52.expand.unsafe_site": 6,
+     "x52.fill.blocked_by_pending_order": 453,
+     "x52.fill.evaluated": 1060,
+     "x52.fill.no_candidate": 475,
+     "x52.fill.skipped_unplaceable": 1,
+     "x52.fill.slot_activated": 5,
+     "x52.fill.slot_relocated": 4,
+     "x52.order.stuck_stepped_aside": 8,
+     "x52.place.failure_remembered": 1,
+     "x52.place.near_probe_hit": 60,
+     "x52.threat.arc_recentered": 3,
+     "x52.threat.defense_ordered": 5,
+     "x52.threat.observations": 1435,
+     "x52.threat.steered_defense": 8
+    }
+   },
+   {
+    "seed": "51105",
+    "mode": "O",
+    "digest": "13752F650ACD52CF",
+    "structures_last_census": 101,
+    "largest_single_type": 13,
+    "supply_centers_last_census": 5,
+    "x52": {}
+   }
+  ]
+ }
+}

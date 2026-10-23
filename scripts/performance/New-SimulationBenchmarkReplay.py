@@ -62,8 +62,8 @@ def build_setup(args):
         slots.append("C%s,%d,%d,%d,-1:" % (level, i, template, i))
     while len(slots) < 8:
         slots.append("X:")
-    # X64.51: --ai-mode E writes the AI Behaviour rule (AI=E) into the setup; Original (the default) writes nothing, so Original setups stay byte-identical.
-    behavior = "AI=E;" if args.ai_mode == "E" else ""
+    # X64.51: --ai-mode E writes the AI Behaviour rule (AI=E2: Enhanced revision 2) into the setup; Original (the default) writes nothing, so Original setups stay byte-identical.
+    behavior = "AI=E2;" if args.ai_mode == "E" else ""
     return "M=03maps/%s;MC=%X;MS=%d;SD=%d;C=%d;%sS=%s;" % (
         args.map.lower(), args.map_crc, args.map_size, args.seed, args.crc_interval, behavior, "".join(slots))
 
@@ -80,7 +80,7 @@ def main():
     p.add_argument("--minutes", type=float, default=10.0, help="length of the simulated game")
     p.add_argument("--seed", type=int, default=12345)
     p.add_argument("--factions", default="", help="comma separated PlayerTemplate indices for the AI slots (default cycles America, China, GLA = 2,3,4)")
-    p.add_argument("--ai-mode", choices="OE", default="O", help="AI Behaviour rule: O original (default, nothing written), E enhanced (AI=E)")
+    p.add_argument("--ai-mode", choices="OE", default="O", help="AI Behaviour rule: O original (default, nothing written), E enhanced (AI=E2)")
     p.add_argument("--crc-interval", type=int, default=100)
     args = p.parse_args()
     if not 1 <= args.ai <= 7:

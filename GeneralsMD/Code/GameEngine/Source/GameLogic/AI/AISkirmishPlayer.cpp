@@ -287,6 +287,7 @@ void AISkirmishPlayer::processBaseBuilding()
 #ifdef USE_DOZER
 			// dozer-construct the building
 			bldg = buildStructureWithDozer(bldgPlan, bldgInfo);
+			if (m_enhanced) { if (bldg) enhancedNoteStartSuccess(); else enhancedNoteStartFailure(bldgInfo, bldgPlan); }	// X64.52: a stuck first order must not block the rest
 			// store the object with the build order
 			if (bldg)
 			{

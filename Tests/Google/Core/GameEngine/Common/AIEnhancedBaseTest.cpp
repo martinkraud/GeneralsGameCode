@@ -218,3 +218,40 @@ TEST(AIEnhancedBase, StateRoundTripsThroughSaveAndLoad)
 	// the decisions after a load equal the decisions without one
 	EXPECT_EQ(loaded.threat.dominant(kThreatMinEvents), saved.threat.dominant(kThreatMinEvents));
 }
+
+TEST(AIEnhancedBase, PlacementFailuresAreRememberedForThreeMinutes)
+{
+	State s;
+	const uint32_t airfield = placementKey("AmericaAirfield", 1200.0f, 3400.0f);
+	const uint32_t power = placementKey("AmericaPowerPlant", 1200.0f, 3400.0f);
+	EXPECT_NE(airfield, power);
+	EXPECT_NE(airfield, placementKey("AmericaAirfield", 1240.0f, 3400.0f));
+	EXPECT_EQ(airfield, placementKey("AmericaAirfield", 1200.0f, 3400.0f));
+	EXPECT_EQ(airfield, placementKey("AmericaAirfield", 1200.4f, 3400.4f)) << "the key tolerates sub-cell noise";
+	EXPECT_EQ(fnv1a("a"), 0xE40C292Cu);   // pinned: the key must not change between builds (it is saved)
+	EXPECT_FALSE(placementRecentlyFailed(s, airfield, 5000));
+	notePlacementFailure(s, airfield, 5000);
+	EXPECT_TRUE(placementRecentlyFailed(s, airfield, 5000));
+	EXPECT_TRUE(placementRecentlyFailed(s, airfield, 5000 + kPlacementFailureWindow - 1));
+	EXPECT_FALSE(placementRecentlyFailed(s, airfield, 5000 + kPlacementFailureWindow));
+	EXPECT_FALSE(placementRecentlyFailed(s, power, 5001));
+	// a second failure of the same slot refreshes it instead of using another entry
+	notePlacementFailure(s, airfield, 9000);
+	EXPECT_TRUE(placementRecentlyFailed(s, airfield, 9000 + kPlacementFailureWindow - 1));
+	// the memory has room for State::kFailSlots slots; the oldest is overwritten first
+	State t;
+	for (int i = 0; i < State::kFailSlots + 2; ++i) notePlacementFailure(t, placementKey("X", 10.0f * i, 0.0f), 100 + i);
+	EXPECT_FALSE(placementRecentlyFailed(t, placementKey("X", 0.0f, 0.0f), 200));
+	EXPECT_TRUE(placementRecentlyFailed(t, placementKey("X", 10.0f * (State::kFailSlots + 1), 0.0f), 200));
+	// frame 0 is stored as 1 so that an entry never looks empty
+	State z;
+	notePlacementFailure(z, airfield, 0);
+	EXPECT_TRUE(placementRecentlyFailed(z, airfield, 1));
+}
+
+TEST(AIEnhancedBase, StuckOrderWindowIsShorterThanTheFailureWindow)
+{
+	EXPECT_EQ(kStuckOrderFrames, 30u * 45u);
+	EXPECT_LT(kStuckOrderFrames, kPlacementFailureWindow);
+	EXPECT_LE(State::kFailSlots, 16);
+}

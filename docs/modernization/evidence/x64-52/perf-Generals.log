@@ -1,0 +1,4 @@
+G-twilight7H         base  O digest 4215BF3745E5B9D8 repeatable=True mean 1,37 ms p99 7,482 p99.9 12,308 over33 11
+G-twilight7H         new   O digest 4215BF3745E5B9D8 repeatable=True mean 1,424 ms p99 7,691 p99.9 11,973 over33 13
+G-twilight7H         new   E digest 7CB3C4A94266AACB repeatable=True mean 1,43 ms p99 8,411 p99.9 11,787 over33 8
+GATE PASS (Generals): Original digests equal the reference for every scenario; every run is repeatable. Results: C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\x64-52\perf4-gen\gate-Generals.json
