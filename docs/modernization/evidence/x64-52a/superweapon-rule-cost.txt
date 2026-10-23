@@ -1,0 +1,42 @@
+build/x64-52a/swcost/G-twilight7H-s51002-E-sw1--sw1-diag_ai.txt
+counter sw.peak_owned.p1 = 0
+counter sw.peak_owned.p3 = 0
+counter sw.peak_owned.p4 = 0
+counter sw.peak_owned.p5 = 0
+counter sw.peak_owned.p6 = 1
+counter sw.peak_owned.p7 = 0
+counter sw.peak_owned.p8 = 0
+counter sw.peak_owned.p9 = 1
+counter sw.rule.counted_calls = 3540
+counter sw.rule.counted_nanoseconds = 6947200
+build/x64-52a/swcost/G-twilight7H-s51002-O-sw1-diag_ai.txt
+counter sw.peak_owned.p1 = 0
+counter sw.peak_owned.p3 = 0
+counter sw.peak_owned.p4 = 0
+counter sw.peak_owned.p5 = 0
+counter sw.peak_owned.p6 = 1
+counter sw.peak_owned.p7 = 0
+counter sw.peak_owned.p8 = 0
+counter sw.peak_owned.p9 = 0
+counter sw.rule.counted_calls = 3991
+counter sw.rule.counted_nanoseconds = 6077100
+build/x64-52a/swcost/Z-city5H-s51102-E-sw1--sw1-diag_ai.txt
+counter sw.order_skipped_at_limit = 2104
+counter sw.peak_owned.p1 = 0
+counter sw.peak_owned.p3 = 1
+counter sw.peak_owned.p4 = 0
+counter sw.peak_owned.p5 = 1
+counter sw.peak_owned.p6 = 1
+counter sw.peak_owned.p7 = 1
+counter sw.rule.counted_calls = 4252
+counter sw.rule.counted_nanoseconds = 6171100
+build/x64-52a/swcost/Z-city5H-s51102-O-sw1-diag_ai.txt
+counter sw.order_skipped_at_limit = 1873
+counter sw.peak_owned.p1 = 0
+counter sw.peak_owned.p3 = 1
+counter sw.peak_owned.p4 = 0
+counter sw.peak_owned.p5 = 1
+counter sw.peak_owned.p6 = 1
+counter sw.peak_owned.p7 = 0
+counter sw.rule.counted_calls = 4080
+counter sw.rule.counted_nanoseconds = 5869600

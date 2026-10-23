@@ -1,0 +1,39 @@
+195	01dd62c0a9c985a3	1598523953394	13108	7816	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073200Z-Generals-x64-52a-ui-gen\autoshot-matchopts-closed.bmp
+196	01dd62c0a9c985a3	1598523954015	13108	7816	matchopts	display	0	matchopts display=1920x1080
+197	01dd62c0a9c985a3	1598523954190	13108	7816	matchopts	window	0	(unnamed) [539,692 228x42] style=0x8400
+198	01dd62c0a9c985a3	1598523954282	13108	7816	matchopts	window	0	(unnamed) [360,692 175x42] style=0x80
+199	01dd62c0a9c985a3	1598523954368	13108	7816	matchopts	window	0	(unnamed) [539,650 228x42] style=0x8400
+200	01dd62c0a9c985a3	1598523954444	13108	7816	matchopts	window	0	(unnamed) [360,650 175x42] style=0x80
+201	01dd62c0a9c985a3	1598523954529	13108	7816	matchopts	window	0	(unnamed) [539,608 228x42] style=0x8400
+202	01dd62c0a9c985a3	1598523954602	13108	7816	matchopts	window	0	(unnamed) [360,608 175x42] style=0x80
+203	01dd62c0a9c985a3	1598523954812	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [362,745 407x145] style=0x200
+204	01dd62c0a9c985a3	1598523954903	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ListboxInfo [790,619 774x259] style=0x420
+205	01dd62c0a9c985a3	1598523954984	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [1188,906 299x63] style=0x401
+206	01dd62c0a9c985a3	1598523955064	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [425,906 304x63] style=0x401
+207	01dd62c0a9c985a3	1598523955140	13108	7816	matchopts	window	0	(unnamed) [539,692 207x42] style=0x440
+208	01dd62c0a9c985a3	1598523955211	13108	7816	matchopts	window	0	(unnamed) [746,692 21x42] style=0x401
+209	01dd62c0a9c985a3	1598523955285	13108	7816	matchopts	window	0	(unnamed) [539,650 207x42] style=0x440
+210	01dd62c0a9c985a3	1598523955358	13108	7816	matchopts	window	0	(unnamed) [746,650 21x42] style=0x401
+211	01dd62c0a9c985a3	1598523955434	13108	7816	matchopts	window	0	(unnamed) [539,608 207x42] style=0x440
+212	01dd62c0a9c985a3	1598523955508	13108	7816	matchopts	window	0	(unnamed) [746,608 21x42] style=0x401
+213	01dd62c0a9c985a3	1598523955778	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [647,750 115x34] style=0x480
+214	01dd62c0a9c985a3	1598523955863	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [372,750 277x34] style=0x480
+215	01dd62c0a9c985a3	1598523955945	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [647,785 115x34] style=0x480
+216	01dd62c0a9c985a3	1598523956032	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [372,785 278x34] style=0x480
+217	01dd62c0a9c985a3	1598523956115	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWinsValue [647,820 115x33] style=0x480
+218	01dd62c0a9c985a3	1598523956197	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWins [372,820 277x33] style=0x480
+219	01dd62c0a9c985a3	1598523956276	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [647,854 115x33] style=0x480
+220	01dd62c0a9c985a3	1598523956356	13108	7816	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [372,854 277x33] style=0x480
+221	01dd62c0a9c985a3	1598523956468	13108	7816	matchopts	geometry	0	(unnamed) at 539,608 228x42
+222	01dd62c0a9c985a3	1598523956664	13108	7816	matchopts	geometry	0	(unnamed) at 539,650 228x42
+223	01dd62c0a9c985a3	1598523956829	13108	7816	matchopts	geometry	0	(unnamed) at 539,692 228x42
+224	01dd62c0a9c985a3	1598523956987	13108	7816	matchopts	geometry	0	(unnamed) at 360,608 175x42
+225	01dd62c0a9c985a3	1598523957135	13108	7816	matchopts	geometry	0	(unnamed) at 360,650 175x42
+226	01dd62c0a9c985a3	1598523957280	13108	7816	matchopts	geometry	0	(unnamed) at 360,692 175x42
+227	01dd62c0a9c985a3	1598523957417	13108	7816	matchopts	ok	0	closed layout overlaps=0
+228	01dd62c0aaa13518	1598538093831	13108	7816	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073200Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-0.bmp
+229	01dd62c0aaa13518	1598538099825	13108	7816	matchopts	ok	0	(unnamed) combo=539,608 228x158 list_open=1 list=539,650 228x116 rows=4 reachable=4 first_unreachable=-1 by=-
+230	01dd62c0ab6ef811	1598551578170	13108	7816	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073200Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-1.bmp
+231	01dd62c0ab6ef811	1598551578805	13108	7816	matchopts	ok	0	(unnamed) combo=539,650 228x102 list_open=1 list=539,692 228x60 rows=2 reachable=2 first_unreachable=-1 by=-
+233	01dd62c0ac9be753	1598571297789	13108	7816	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073200Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-2.bmp
+234	01dd62c0ac9be753	1598571298314	13108	7816	matchopts	ok	0	(unnamed) combo=539,692 228x186 list_open=1 list=539,734 228x144 rows=5 reachable=5 first_unreachable=-1 by=-

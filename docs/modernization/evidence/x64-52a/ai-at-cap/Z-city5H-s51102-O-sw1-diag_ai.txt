@@ -1,0 +1,225 @@
+counter ai01.automatic_entries_examined = 355
+counter ai01.check_rejected = 202
+counter ai01.entry_plan_would_pass = 150
+counter ai04.fine_searches = 70
+counter ai04.fine_searches_with_better_cell_off_diagonal = 64
+counter ai04.fine_value_gap_total = 59359
+counter ai08.retail_bonus_to_unrelated_candidate = 23
+counter ai11.defense_calls_flank = 30
+counter ai11.defense_calls_front = 19
+counter ai11.defense_placed = 49
+counter ai11.position_not_buildable = 12
+counter build.started.AmericaAirfield = 1
+counter build.started.AmericaBarracks = 1
+counter build.started.AmericaFireBase = 2
+counter build.started.AmericaParticleCannonUplink = 1
+counter build.started.AmericaPatriotBattery = 22
+counter build.started.AmericaPowerPlant = 10
+counter build.started.AmericaStrategyCenter = 1
+counter build.started.AmericaSupplyCenter = 3
+counter build.started.AmericaSupplyDropZone = 5
+counter build.started.AmericaWarFactory = 2
+counter build.started.ChinaAirfield = 1
+counter build.started.ChinaBarracks = 1
+counter build.started.ChinaBunker = 9
+counter build.started.ChinaGattlingCannon = 5
+counter build.started.ChinaPowerPlant = 6
+counter build.started.ChinaPropagandaCenter = 1
+counter build.started.ChinaSpeakerTower = 1
+counter build.started.ChinaSupplyCenter = 1
+counter build.started.ChinaWarFactory = 2
+counter build.started.GLAArmsDealer = 3
+counter build.started.GLABarracks = 1
+counter build.started.GLABlackMarket = 4
+counter build.started.GLADemoTrap = 4
+counter build.started.GLAPalace = 1
+counter build.started.GLAScudStorm = 1
+counter build.started.GLAStingerSite = 10
+counter build.started.GLASupplyStash = 2
+counter build.started.GLATunnelNetwork = 7
+counter build.started.SupW_AmericaAirfield = 3
+counter build.started.SupW_AmericaBarracks = 1
+counter build.started.SupW_AmericaFireBase = 5
+counter build.started.SupW_AmericaParticleCannonUplink = 3
+counter build.started.SupW_AmericaPatriotBattery = 18
+counter build.started.SupW_AmericaPowerPlant = 8
+counter build.started.SupW_AmericaStrategyCenter = 1
+counter build.started.SupW_AmericaSupplyCenter = 2
+counter build.started.SupW_AmericaSupplyDropZone = 5
+counter build.started.SupW_AmericaWarFactory = 2
+counter build.started.Tank_ChinaBarracks = 2
+counter build.started.Tank_ChinaBunker = 5
+counter build.started.Tank_ChinaGattlingCannon = 7
+counter build.started.Tank_ChinaInternetCenter = 1
+counter build.started.Tank_ChinaPowerPlant = 6
+counter build.started.Tank_ChinaPropagandaCenter = 1
+counter build.started.Tank_ChinaSupplyCenter = 1
+counter build.started.Tank_ChinaWarFactory = 4
+counter events.ai01.blocked_by_wrong_template = 2
+counter events.ai04.fine_search = 70
+counter events.place.fallback_search = 72
+counter events.scenario.kill = 2
+counter events.start.money = 6
+counter place.fallback_search = 72
+counter start_fail.enemy_overlap = 2
+counter start_fail.money = 527
+counter start_fail.no_dozer = 1062
+counter sw.order_skipped_at_limit = 1817
+counter sw.peak_owned.p1 = 0
+counter sw.peak_owned.p3 = 1
+counter sw.peak_owned.p4 = 0
+counter sw.peak_owned.p5 = 1
+counter sw.peak_owned.p6 = 1
+counter sw.peak_owned.p7 = 0
+event frame=0 start.money player=1 side=Civilian human=0 money=10000
+event frame=0 start.money player=3 side=America human=0 money=12200
+event frame=0 start.money player=4 side=China human=0 money=11600
+event frame=0 start.money player=5 side=GLA human=0 money=10200
+event frame=0 start.money player=6 side=AmericaSuperWeaponGeneral human=0 money=12200
+event frame=0 start.money player=7 side=ChinaTankGeneral human=0 money=11600
+event frame=1 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1119@(1415,4091) full_best=1148@(1385,4121)
+event frame=1 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1111@(3547,424) full_best=1140@(3547,394)
+event frame=1 place.fallback_search player=7 template=Tank_ChinaBarracks original
+event frame=347 place.fallback_search player=6 template=SupW_AmericaPowerPlant original
+event frame=392 place.fallback_search player=7 template=Tank_ChinaPowerPlant original
+event frame=863 place.fallback_search player=5 template=GLATunnelNetwork original
+event frame=1801 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1816@(1540,4175) full_best=2963@(1510,4355)
+event frame=1802 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2009@(3499,369) full_best=3072@(3679,279)
+event frame=3260 place.fallback_search player=6 template=SupW_AmericaWarFactory original
+event frame=3323 place.fallback_search player=7 template=Tank_ChinaPowerPlant original
+event frame=3586 place.fallback_search player=4 template=ChinaAirfield original
+event frame=3601 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=3762@(1546,4240) full_best=4675@(1456,4420)
+event frame=3603 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=4659@(3527,365) full_best=6625@(3677,275)
+event frame=3927 place.fallback_search player=6 template=SupW_AmericaStrategyCenter original
+event frame=3993 place.fallback_search player=3 template=AmericaWarFactory original
+event frame=5105 place.fallback_search player=6 template=SupW_AmericaPowerPlant original
+event frame=5182 place.fallback_search player=3 template=AmericaPowerPlant original
+event frame=5401 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=7686@(1512,4171) full_best=8168@(1542,4141)
+event frame=5404 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=9261@(3567,497) full_best=9746@(3657,467)
+event frame=5760 place.fallback_search player=5 template=GLAArmsDealer original
+event frame=5761 place.fallback_search player=5 template=GLATunnelNetwork original
+event frame=6153 place.fallback_search player=6 template=SupW_AmericaParticleCannonUplink original
+event frame=6234 place.fallback_search player=6 template=SupW_AmericaSupplyDropZone original
+event frame=6301 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1445@(3849,218) full_best=1652@(3844,203)
+event frame=6578 place.fallback_search player=4 template=ChinaGattlingCannon original
+event frame=7201 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=5441@(1537,4161) full_best=6709@(1417,4341)
+event frame=7205 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=8335@(3478,550) full_best=9706@(3568,490)
+event frame=8681 place.fallback_search player=6 template=SupW_AmericaSupplyDropZone original
+event frame=8722 place.fallback_search player=5 template=GLAPalace original
+event frame=8732 place.fallback_search player=3 template=AmericaStrategyCenter original
+event frame=8859 place.fallback_search player=4 template=ChinaPropagandaCenter original
+event frame=9001 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=8818@(1600,4102) full_best=10236@(1510,4162)
+event frame=9006 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=6826@(3473,557) full_best=10258@(3653,467)
+event frame=10157 place.fallback_search player=3 template=AmericaPowerPlant original
+event frame=10727 place.fallback_search player=7 template=Tank_ChinaWarFactory original
+event frame=10735 place.fallback_search player=6 template=SupW_AmericaSupplyDropZone original
+event frame=10801 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=10692@(1540,4210) full_best=11702@(1540,4150)
+event frame=10807 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=11140@(3422,611) full_best=12257@(3422,671)
+event frame=11752 place.fallback_search player=4 template=ChinaBunker original
+event frame=11755 place.fallback_search player=7 template=Tank_ChinaBunker original
+event frame=11994 place.fallback_search player=5 template=GLABlackMarket original
+event frame=12008 place.fallback_search player=7 template=Tank_ChinaBunker original
+event frame=12065 place.fallback_search player=6 template=SupW_AmericaPowerPlant original
+event frame=12601 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=8747@(1510,4157) full_best=8747@(1510,4157)
+event frame=12608 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=14116@(3613,500) full_best=14337@(3613,620)
+event frame=13016 place.fallback_search player=7 template=Tank_ChinaPropagandaCenter original
+event frame=13102 place.fallback_search player=4 template=ChinaGattlingCannon original
+event frame=13286 ai04.fine_search player=4 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=8472@(475,2538) full_best=8791@(500,2525)
+event frame=13505 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=15236@(3523,632) full_best=15437@(3543,632)
+event frame=13505 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2968@(3538,676) full_best=3296@(3538,691)
+event frame=13917 place.fallback_search player=5 template=GLABlackMarket original
+event frame=14401 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=12764@(1510,4157) full_best=12764@(1510,4157)
+event frame=14409 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=17887@(3613,500) full_best=18250@(3583,500)
+event frame=14855 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=9260@(3523,689) full_best=10119@(3557,621)
+event frame=15302 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2219@(3235,797) full_best=3507@(3240,827)
+event frame=15619 place.fallback_search player=6 template=SupW_AmericaPowerPlant original
+event frame=15765 place.fallback_search player=7 template=Tank_ChinaInternetCenter original
+event frame=16000 scenario.kill player=6 template=SupW_AmericaParticleCannonUplink object=819
+event frame=16068 place.fallback_search player=5 template=GLABlackMarket original
+event frame=16201 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=12788@(1540,4210) full_best=13441@(1540,4150)
+event frame=16210 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=7127@(3523,410) full_best=10770@(3643,350)
+event frame=16311 place.fallback_search player=6 template=SupW_AmericaParticleCannonUplink original
+event frame=17029 place.fallback_search player=7 template=Tank_ChinaNuclearMissileLauncher original
+event frame=17139 ai04.fine_search player=7 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1475@(4318,2212) full_best=1543@(4318,2232)
+event frame=17400 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=3913@(1257,4262) full_best=3950@(1257,4257)
+event frame=17978 place.fallback_search player=7 template=Tank_ChinaNuclearMissileLauncher original
+event frame=18001 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=11346@(1657,4222) full_best=13770@(1537,4192)
+event frame=18011 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=8730@(3523,410) full_best=11769@(3643,350)
+event frame=18123 place.fallback_search player=5 template=GLABlackMarket original
+event frame=18641 place.fallback_search player=3 template=AmericaSupplyDropZone original
+event frame=18900 ai04.fine_search player=5 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=3808@(1265,4252) full_best=3839@(1270,4252)
+event frame=19241 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=6739@(3563,672) full_best=6997@(3523,772)
+event frame=19565 place.fallback_search player=4 template=ChinaBunker original
+event frame=19801 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=12212@(1571,4102) full_best=15254@(1511,4162)
+event frame=19812 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=13493@(3613,500) full_best=14294@(3703,470)
+event frame=20720 ai04.fine_search player=4 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=9686@(331,2567) full_best=10354@(291,2607)
+event frame=21613 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=10341@(3572,761) full_best=14394@(3392,851)
+event frame=21641 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1121@(3467,887) full_best=2520@(3462,927)
+event frame=22222 place.fallback_search player=5 template=GLAScudStorm original
+event frame=22233 place.fallback_search player=6 template=SupW_AmericaWarFactory original
+event frame=22234 place.fallback_search player=6 template=SupW_AmericaSupplyDropZone original
+event frame=22501 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=11314@(1534,4142) full_best=12318@(1444,4232)
+event frame=23414 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=11311@(3613,471) full_best=13536@(3703,441)
+event frame=23420 ai04.fine_search player=4 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=4112@(1075,2905) full_best=4581@(1088,2943)
+event frame=23440 place.fallback_search player=4 template=ChinaBunker original
+event frame=24301 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=16237@(1444,4078) full_best=17146@(1354,4198)
+event frame=24303 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2655@(3230,835) full_best=2659@(3230,840)
+event frame=24303 place.fallback_search player=6 template=SupW_AmericaSupplyDropZone original
+event frame=24498 place.fallback_search player=3 template=AmericaParticleCannonUplink original
+event frame=24600 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=4047@(1252,4278) full_best=4768@(1257,4258)
+event frame=24665 place.fallback_search player=6 template=SupW_AmericaPatriotBattery original
+event frame=25215 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=11658@(3613,471) full_best=13370@(3613,381)
+event frame=25239 ai04.fine_search player=7 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2469@(4283,2236) full_best=2469@(4283,2236)
+event frame=25241 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=5675@(3583,272) full_best=6398@(3563,192)
+event frame=25953 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2655@(3230,835) full_best=2659@(3230,840)
+event frame=26000 scenario.kill player=6 template=SupW_AmericaParticleCannonUplink object=6850
+event frame=26100 ai04.fine_search player=5 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1585@(1335,4238) full_best=2330@(1330,4283)
+event frame=26101 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=14501@(1537,4138) full_best=14865@(1417,4288)
+event frame=26441 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=5525@(3704,449) full_best=5525@(3704,449)
+event frame=26501 place.fallback_search player=3 template=AmericaSupplyDropZone original
+event frame=26982 place.fallback_search player=6 template=SupW_AmericaParticleCannonUplink original
+event frame=27016 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=8638@(3553,411) full_best=8898@(3583,381)
+event frame=27313 place.fallback_search player=3 template=AmericaPowerPlant original
+event frame=27601 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=7040@(1282,4238) full_best=7297@(1299,4289)
+event frame=27901 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=10390@(1324,4246) full_best=11048@(1324,4276)
+event frame=27917 place.fallback_search player=4 template=ChinaBunker original
+event frame=27977 place.fallback_search player=4 template=ChinaBunker original
+event frame=28037 place.fallback_search player=4 template=ChinaBunker original
+event frame=28097 place.fallback_search player=4 template=ChinaBunker original
+event frame=28157 place.fallback_search player=4 template=ChinaBunker original
+event frame=28217 place.fallback_search player=4 template=ChinaBunker original
+event frame=28277 place.fallback_search player=4 template=ChinaBunker original
+event frame=28337 place.fallback_search player=4 template=ChinaBunker original
+event frame=28397 place.fallback_search player=4 template=ChinaBunker original
+event frame=28457 place.fallback_search player=4 template=ChinaBunker original
+event frame=28517 ai01.blocked_by_wrong_template player=4 entry=ChinaGattlingCannon used_plan=ChinaBunker used_result=1
+event frame=28517 place.fallback_search player=4 template=ChinaBunker original
+event frame=28577 place.fallback_search player=4 template=ChinaBunker original
+event frame=28600 place.fallback_search player=3 template=AmericaPatriotBattery original
+event frame=28637 place.fallback_search player=4 template=ChinaBunker original
+event frame=28697 place.fallback_search player=4 template=ChinaBunker original
+event frame=28757 place.fallback_search player=4 template=ChinaBunker original
+event frame=28817 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=5759@(3493,402) full_best=6500@(3643,372)
+event frame=28817 place.fallback_search player=4 template=ChinaBunker original
+event frame=28820 ai04.fine_search player=5 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=3133@(1411,4285) full_best=3699@(1371,4305)
+event frame=28841 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=2606@(3225,848) full_best=2659@(3230,838)
+event frame=28877 place.fallback_search player=4 template=ChinaBunker original
+event frame=29127 ai01.blocked_by_wrong_template player=4 entry=ChinaGattlingCannon used_plan=ChinaBunker used_result=1
+event frame=29691 place.fallback_search player=3 template=AmericaSupplyDropZone original
+event frame=29701 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=7637@(1521,4166) full_best=7637@(1521,4166)
+event frame=30618 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=6101@(3383,334) full_best=6101@(3383,334)
+event frame=31241 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=3831@(3409,206) full_best=3979@(3429,186)
+event frame=31501 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=3739@(1461,4257) full_best=4026@(1521,4227)
+event frame=31800 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=0@(1115,4373) full_best=704@(1115,4423)
+event frame=32419 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=5797@(3679,286) full_best=5909@(3679,256)
+event frame=32420 ai04.fine_search player=4 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=6698@(540,2627) full_best=8202@(580,2507)
+event frame=32421 ai04.fine_search player=4 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=4745@(338,2670) full_best=5157@(276,2670)
+event frame=32490 place.fallback_search player=6 template=SupW_AmericaPowerPlant original
+event frame=33300 ai04.fine_search player=5 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1396@(1488,4459) full_best=1648@(1493,4439)
+event frame=33304 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1144@(3917,279) full_best=1749@(3927,269)
+event frame=33339 ai04.fine_search player=7 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1333@(4187,1887) full_best=2705@(4212,1872)
+event frame=33601 ai04.fine_search player=7 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=9318@(4371,2252) full_best=11765@(4263,2252)
+event frame=34201 ai04.fine_search player=3 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=1652@(1293,4360) full_best=1934@(1413,4360)
+event frame=34220 ai04.fine_search player=6 mode=original examined_by_retail=11 examined_intended=121 diagonal_best=5533@(3679,286) full_best=5720@(3679,226)
+event frame=34554 place.fallback_search player=3 template=AmericaSupplyDropZone original
+event frame=35503 place.fallback_search player=6 template=SupW_AmericaPowerPlant original

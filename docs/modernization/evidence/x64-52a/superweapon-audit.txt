@@ -1,0 +1,26 @@
+===== ZeroHour 1868 objects
+tagged FS_SUPERWEAPON: 20
+  AirF_AmericaParticleCannonUplink   AmericaAirForceGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  CINE_AmericaParticleCannonUplink   America   structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Boss_ParticleCannonUplink          Boss      structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Boss_ScudStorm                     Boss      structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Boss_NuclearMissileLauncher        Boss      structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Chem_GLAScudStorm                  GLAToxinGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Demo_GLAScudStorm                  GLADemolitionGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  AmericaParticleCannonUplink        America   structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  GLAScudStorm                       GLA       structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  ChinaNuclearMissileLauncher        China     structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  GC_Chem_GLAScudStorm               GLAToxinGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  GC_Slth_GLAScudStorm               GLAStealthGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Infa_ChinaNuclearMissileLauncher   ChinaInfantryGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Lazr_AmericaParticleCannonUplink   AmericaLaserGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Lazr_AmericaLaserCannonUplink      AmericaLaserGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Lazr_AmericaLaserCannon            AmericaLaserGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Nuke_ChinaNuclearMissileLauncher   ChinaNukeGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Slth_GLAScudStorm                  GLAStealthGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  SupW_AmericaParticleCannonUplink   AmericaSuperWeaponGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+  Tank_ChinaNuclearMissileLauncher   ChinaTankGeneral structure=True  determined=True  max=DeterminedBySuperweaponRestriction link=Superweapon            buildable=None
+DeterminedBySuperweaponRestriction without the tag: ['SupW_AmericaNuclearMissileLauncher', 'SupW_AmericaCruiseMissileLauncher']
+===== Generals 1129 objects
+tagged FS_SUPERWEAPON: 0
+DeterminedBySuperweaponRestriction without the tag: []

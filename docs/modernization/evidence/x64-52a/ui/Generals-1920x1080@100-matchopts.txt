@@ -1,0 +1,34 @@
+195	01dd62c130f69484	1600791831879	38084	32856	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073602Z-Generals-x64-52a-ui-gen\autoshot-matchopts-closed.bmp
+196	01dd62c130f69484	1600791833584	38084	32856	matchopts	display	0	matchopts display=1920x1080
+197	01dd62c130f69484	1600791833821	38084	32856	matchopts	window	0	(unnamed) [719,627 130x24] style=0x8400
+198	01dd62c130f69484	1600791833917	38084	32856	matchopts	window	0	(unnamed) [617,627 100x24] style=0x80
+199	01dd62c130f69484	1600791833996	38084	32856	matchopts	window	0	(unnamed) [719,603 130x24] style=0x8400
+200	01dd62c130f69484	1600791834068	38084	32856	matchopts	window	0	(unnamed) [617,603 100x24] style=0x80
+201	01dd62c130f69484	1600791834260	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [618,657 233x83] style=0x200
+202	01dd62c130f69484	1600791834343	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [1090,749 171x36] style=0x401
+203	01dd62c130f69484	1600791834420	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [654,749 174x36] style=0x401
+204	01dd62c130f69484	1600791834489	38084	32856	matchopts	window	0	(unnamed) [719,627 109x24] style=0x440
+205	01dd62c130f69484	1600791834557	38084	32856	matchopts	window	0	(unnamed) [828,627 21x24] style=0x401
+206	01dd62c130f69484	1600791834627	38084	32856	matchopts	window	0	(unnamed) [719,603 109x24] style=0x440
+207	01dd62c130f69484	1600791834694	38084	32856	matchopts	window	0	(unnamed) [828,603 21x24] style=0x401
+208	01dd62c130f69484	1600791834938	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [781,660 66x19] style=0x480
+209	01dd62c130f69484	1600791835014	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [624,660 158x19] style=0x480
+210	01dd62c130f69484	1600791835085	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [781,680 66x19] style=0x480
+211	01dd62c130f69484	1600791835157	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [624,680 159x19] style=0x480
+212	01dd62c130f69484	1600791835229	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWinsValue [781,700 66x19] style=0x480
+213	01dd62c130f69484	1600791835302	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWins [624,700 158x19] style=0x480
+214	01dd62c130f69484	1600791835372	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [781,719 66x19] style=0x480
+215	01dd62c130f69484	1600791835453	38084	32856	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [624,719 158x19] style=0x480
+216	01dd62c130f69484	1600791835549	38084	32856	matchopts	geometry	0	(unnamed) at 719,579 130x24
+217	01dd62c130f69484	1600791835702	38084	32856	matchopts	geometry	0	(unnamed) at 719,603 130x24
+218	01dd62c130f69484	1600791835843	38084	32856	matchopts	geometry	0	(unnamed) at 719,627 130x24
+219	01dd62c130f69484	1600791835976	38084	32856	matchopts	geometry	0	(unnamed) at 617,579 100x24
+220	01dd62c130f69484	1600791836111	38084	32856	matchopts	geometry	0	(unnamed) at 617,603 100x24
+221	01dd62c130f69484	1600791836238	38084	32856	matchopts	geometry	0	(unnamed) at 617,627 100x24
+222	01dd62c130f69484	1600791836369	38084	32856	matchopts	ok	0	closed layout overlaps=0
+223	01dd62c131864b2f	1600801247522	38084	32856	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073602Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-0.bmp
+224	01dd62c131864b2f	1600801247975	38084	32856	matchopts	ok	0	(unnamed) combo=719,579 130x100 list_open=1 list=719,603 130x76 rows=4 reachable=4 first_unreachable=-1 by=-
+225	01dd62c132040877	1600809495225	38084	32856	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073602Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-1.bmp
+226	01dd62c132040877	1600809495615	38084	32856	matchopts	ok	0	(unnamed) combo=719,603 130x64 list_open=1 list=719,627 130x40 rows=2 reachable=2 first_unreachable=-1 by=-
+227	01dd62c1327f6aa0	1600817575815	38084	32856	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073602Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-2.bmp
+228	01dd62c1327f6aa0	1600817576213	38084	32856	matchopts	ok	0	(unnamed) combo=719,627 130x118 list_open=1 list=719,651 130x94 rows=5 reachable=5 first_unreachable=-1 by=-

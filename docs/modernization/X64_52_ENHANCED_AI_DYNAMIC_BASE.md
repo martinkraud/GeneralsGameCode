@@ -1,5 +1,7 @@
 # X64.52 - Enhanced AI Dynamic Base & Defence (Generals + Zero Hour)
 
+> **Superseded for native testing by X64.52A** (`X64_52A_MATCH_OPTIONS_AND_SUPERWEAPONS.md`): the X64.52 packages had an AI Behaviour drop-down that overlapped other Match Options. The X64.52A packages contain the same X64.52 Enhanced AI (`AI=E2`) plus the corrected panel and the Superweapons rule. Do not use the X64.52 packages as the human candidate.
+
 Status: **IMPLEMENTED + AUTOMATICALLY VALIDATED. Native human validation pending (checklist in section 14).** Start point: HEAD `60dd27844` = `origin/dev/modern-engine`
 (repository, handoff and X64.51 report agreed; no other agent had pushed). Read with `X64_50_AI_ARCHAEOLOGY.md`, `X64_51_ENHANCED_AI_FOUNDATION.md` and `AGENT_HANDOFF.md`.
 

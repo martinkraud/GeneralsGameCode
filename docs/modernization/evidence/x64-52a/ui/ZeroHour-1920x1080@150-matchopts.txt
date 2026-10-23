@@ -1,0 +1,28 @@
+196	01dd62c1f48da515	1604073293518	28168	26152	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T074137Z-ZeroHour-x64-52a-ui-zh\autoshot-matchopts-closed.bmp
+197	01dd62c1f48da515	1604073293830	28168	26152	matchopts	display	0	matchopts display=1920x1080
+198	01dd62c1f48dcc23	1604073294780	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [447,671 350x168] style=0x200
+199	01dd62c1f48dcc23	1604073294841	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ListboxInfo [815,660 663x179] style=0x420
+200	01dd62c1f48dcc23	1604073294882	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [810,671 669x168] style=0x200
+201	01dd62c1f48dcc23	1604073294919	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [1155,860 257x54] style=0x401
+202	01dd62c1f48dcc23	1604073294955	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [501,860 261x54] style=0x401
+203	01dd62c1f48dcc23	1604073295088	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [692,677 99x39] style=0x480
+204	01dd62c1f48dcc23	1604073295124	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [456,677 237x39] style=0x480
+205	01dd62c1f48dcc23	1604073295160	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [692,717 99x39] style=0x480
+206	01dd62c1f48dcc23	1604073295195	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [456,717 239x39] style=0x480
+207	01dd62c1f48dcc23	1604073295231	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWinsValue [692,758 99x39] style=0x480
+208	01dd62c1f48dcc23	1604073295630	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWins [456,758 237x39] style=0x480
+209	01dd62c1f48dcc23	1604073295744	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [692,798 99x39] style=0x480
+210	01dd62c1f48dcc23	1604073295813	28168	26152	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [456,798 237x39] style=0x480
+211	01dd62c1f48dcc23	1604073296036	28168	26152	matchopts	geometry	0	SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash at 590,591 169x36
+212	01dd62c1f48dcc23	1604073296206	28168	26152	matchopts	geometry	0	(unnamed) at 951,591 169x36
+213	01dd62c1f48dcc23	1604073296333	28168	26152	matchopts	geometry	0	(unnamed) at 1312,591 169x36
+214	01dd62c1f48dcc23	1604073296661	28168	26152	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextStartingCash not present (a retail caption may carry no name)
+215	01dd62c1f48dcc23	1604073296735	28168	26152	matchopts	geometry	0	(unnamed) at 795,591 150x36
+216	01dd62c1f48dcc23	1604073296846	28168	26152	matchopts	geometry	0	(unnamed) at 1156,591 150x36
+217	01dd62c1f48dcc23	1604073296951	28168	26152	matchopts	ok	0	closed layout overlaps=0
+218	01dd62c1f4da52ca	1604078310128	28168	26152	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T074137Z-ZeroHour-x64-52a-ui-zh\autoshot-matchopts-open-0.bmp
+219	01dd62c1f4da52ca	1604078310479	28168	26152	matchopts	ok	0	SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash combo=590,591 169x140 list_open=1 list=590,627 169x104 rows=4 reachable=4 first_unreachable=-1 by=-
+220	01dd62c1f52319d7	1604083085863	28168	26152	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T074137Z-ZeroHour-x64-52a-ui-zh\autoshot-matchopts-open-1.bmp
+221	01dd62c1f52319d7	1604083086191	28168	26152	matchopts	ok	0	(unnamed) combo=951,591 169x90 list_open=1 list=951,627 169x54 rows=2 reachable=2 first_unreachable=-1 by=-
+222	01dd62c1f56b23da	1604087803203	28168	26152	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T074137Z-ZeroHour-x64-52a-ui-zh\autoshot-matchopts-open-2.bmp
+223	01dd62c1f56b23da	1604087803630	28168	26152	matchopts	ok	0	(unnamed) combo=1312,591 169x165 list_open=1 list=1312,627 169x129 rows=5 reachable=5 first_unreachable=-1 by=-

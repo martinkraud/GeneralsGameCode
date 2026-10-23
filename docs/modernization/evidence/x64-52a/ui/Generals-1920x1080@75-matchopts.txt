@@ -1,0 +1,30 @@
+195	01dd62c11f8b50ad	1600499594067	21032	34828	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073532Z-Generals-x64-52a-ui-gen\autoshot-matchopts-closed.bmp
+196	01dd62c11f8b50ad	1600499594453	21032	34828	matchopts	display	0	matchopts display=1920x1080
+197	01dd62c11f8b50ad	1600499594558	21032	34828	matchopts	window	0	(unnamed) [780,605 98x18] style=0x8400
+198	01dd62c11f8b50ad	1600499594604	21032	34828	matchopts	window	0	(unnamed) [703,605 75x18] style=0x80
+199	01dd62c11f8b78b3	1600499594756	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [704,628 174x62] style=0x200
+200	01dd62c11f8b78b3	1600499594800	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [1058,697 128x27] style=0x401
+201	01dd62c11f8b78b3	1600499594844	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [731,697 130x27] style=0x401
+202	01dd62c11f8b78b3	1600499594886	21032	34828	matchopts	window	0	(unnamed) [780,605 77x18] style=0x440
+203	01dd62c11f8b78b3	1600499594923	21032	34828	matchopts	window	0	(unnamed) [857,605 21x18] style=0x401
+204	01dd62c11f8b78b3	1600499595072	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [826,630 49x15] style=0x480
+205	01dd62c11f8b78b3	1600499595115	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [708,630 119x15] style=0x480
+206	01dd62c11f8b78b3	1600499595155	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [826,645 49x15] style=0x480
+207	01dd62c11f8b78b3	1600499595193	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [708,645 119x15] style=0x480
+208	01dd62c11f8b78b3	1600499595232	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWinsValue [826,660 49x14] style=0x480
+209	01dd62c11f8b78b3	1600499595270	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWins [708,660 119x14] style=0x480
+210	01dd62c11f8b78b3	1600499595310	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [826,675 49x14] style=0x480
+211	01dd62c11f8b78b3	1600499595348	21032	34828	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [708,675 119x14] style=0x480
+212	01dd62c11f8b78b3	1600499595399	21032	34828	matchopts	geometry	0	(unnamed) at 780,569 98x18
+213	01dd62c11f8b78b3	1600499595499	21032	34828	matchopts	geometry	0	(unnamed) at 780,587 98x18
+214	01dd62c11f8b78b3	1600499595589	21032	34828	matchopts	geometry	0	(unnamed) at 780,605 98x18
+215	01dd62c11f8b78b3	1600499595673	21032	34828	matchopts	geometry	0	(unnamed) at 703,569 75x18
+216	01dd62c11f8b78b3	1600499595759	21032	34828	matchopts	geometry	0	(unnamed) at 703,587 75x18
+217	01dd62c11f8b78b3	1600499595839	21032	34828	matchopts	geometry	0	(unnamed) at 703,605 75x18
+218	01dd62c11f8b78b3	1600499595918	21032	34828	matchopts	ok	0	closed layout overlaps=0
+219	01dd62c1201bffd9	1600509069827	21032	34828	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073532Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-0.bmp
+220	01dd62c1201bffd9	1600509070696	21032	34828	matchopts	ok	0	(unnamed) combo=780,569 98x78 list_open=1 list=780,587 98x60 rows=4 reachable=4 first_unreachable=-1 by=-
+221	01dd62c12096f5a6	1600517136290	21032	34828	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073532Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-1.bmp
+222	01dd62c12096f5a6	1600517136628	21032	34828	matchopts	ok	0	(unnamed) combo=780,587 98x50 list_open=1 list=780,605 98x32 rows=2 reachable=2 first_unreachable=-1 by=-
+223	01dd62c12112d4ef	1600525247471	21032	34828	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261023T073532Z-Generals-x64-52a-ui-gen\autoshot-matchopts-open-2.bmp
+224	01dd62c12112d4ef	1600525247988	21032	34828	matchopts	ok	0	(unnamed) combo=780,605 98x92 list_open=1 list=780,623 98x74 rows=5 reachable=5 first_unreachable=-1 by=-

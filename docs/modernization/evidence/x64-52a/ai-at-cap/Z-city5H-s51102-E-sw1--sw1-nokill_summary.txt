@@ -1,0 +1,45 @@
+X64.38 simulation benchmark (headless replay; serial reference path)
+replay: C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\x64-52a\aifree\Z-city5H-s51102-E-sw1--sw1-nokill.rep
+logical processors: 14 | ticks measured: 36000 | mismatch/errors: 0 | harness wall: 99.04 s | map-load update (excluded): 2312.9 ms
+tick ms: mean 2.670 | median 2.567 | p90 4.527 | p95 5.467 | p99 8.513 | p99.9 18.268 | worst 40.533 | best 0.053
+ticks above 16.67 ms: 61 | 25 ms: 13 | 33.333 ms: 4 | 50 ms: 0 | 66.67 ms: 0
+uncapped throughput: 374.5 ticks/s (12.48x real time at 30 TPS)
+real-time model (DERIVED from the measured tick durations, ticks run back to back as they become due; not a paced run):
+  missed deadlines: 4 | catch-up ticks: 4 | longest catch-up run: 1 | max backlog: 7.20 ms | sustained TPS: 30.00
+counters: update modules invoked 42103358 | queued paths 48969 | queue cells 10585731 | disabled-loop object visits 35210239
+phase attribution (EXCLUSIVE ms per tick; nested scopes are subtracted from their parent: ZoneCalc is inside path_queue, logic_* phases inside game_logic_update):
+  phase                          total_ms  share%      p50      p95      p99      max share_of_p99+%      calls
+  ai_object_base_update           37700.3   39.21   0.9871   2.3353   3.1271   7.2803        14.37    5421870
+  object_update_loops             24114.5   25.08   0.7038   1.2204   1.6659  16.6501         8.80      36000
+  logic_partition                  6046.4    6.29   0.1715   0.3214   0.4630   1.9388         2.30      36000
+  logic_scripts                    6018.0    6.26   0.1502   0.3253   0.5232  10.6906         2.80      36000
+  ai_player_strategy               4994.7    5.20   0.0152   0.7587   2.5004  23.3292         9.29     216000
+  path_search                      3183.6    3.31   0.0074   0.2043   1.6700  33.4838        25.89      90874
+  weapon_fire                      2528.4    2.63   0.0234   0.2722   0.4525  19.4431         1.53      54664
+  path_request_entries             2432.7    2.53   0.0069   0.5436   1.1936   6.3635         4.21      48694
+  locomotor_move                   2380.5    2.48   0.0635   0.1322   0.1905   4.7591         0.91    2412172
+  ai_global                        1673.9    1.74   0.0362   0.1243   0.1802   1.3806         0.82      36000
+  path_reconstruction              1303.6    1.36   0.0007   0.1955   0.6881   6.3677         4.33      48583
+  logic_destroy                    1152.2    1.20   0.0003   0.1223   0.1936   0.6637         0.46      36000
+  zone_flatten                      640.8    0.67   0.0000   0.0000   0.0000   9.3919        13.64         89
+  logic_disabled_loop               552.5    0.57   0.0145   0.0303   0.0545   0.4697         0.28      36000
+  missile_ai_update                 216.7    0.23   0.0021   0.0157   0.1197   0.4994         0.09     253924
+  path_queue                        210.9    0.22   0.0027   0.0245   0.0483   0.4766         0.17      36000
+  zone_hierarchy                    170.0    0.18   0.0000   0.0000   0.0000   3.6906         3.62         89
+  logic_stores                      161.2    0.17   0.0042   0.0083   0.0133   1.4611         0.07      36000
+  logic_crc                         158.5    0.16   0.0000   0.0000   0.0000   1.0372         0.04        360
+  zone_label                        125.2    0.13   0.0000   0.0000   0.0000   2.1631         2.66         89
+  game_logic_update                  89.3    0.09   0.0024   0.0040   0.0051   0.6199         0.03      36000
+  zone_blocks                        87.0    0.09   0.0000   0.0000   0.0000   2.4811         1.85         89
+  zone_relabel                       83.0    0.09   0.0000   0.0000   0.0000   2.0067         1.77         89
+  outer_frame_including_pacer        46.0    0.05   0.0012   0.0022   0.0027   0.1170         0.01      36000
+  logic_build_assist                 21.6    0.02   0.0006   0.0011   0.0013   0.0796         0.01      36000
+  weapon_store                       18.2    0.02   0.0001   0.0004   0.0121   0.4017         0.00      36000
+  logic_recorder                     12.1    0.01   0.0003   0.0006   0.0008   0.1360         0.00      36000
+  logic_terrain                       8.7    0.01   0.0002   0.0005   0.0007   0.0528         0.00      36000
+  logic_commands                      5.9    0.01   0.0001   0.0004   0.0009   0.0142         0.00      36000
+  zone_calc                           1.1    0.00   0.0000   0.0000   0.0000   0.0532         0.02         89
+determinism fingerprint: 1200 checkpoints every 30 frames | digest BA7CB68DD3206757
+zone calculation mode: default (minimum-root union-find)
+open list mode: default (exact open-list index) | inserts answered by the index 14098100 | inserts that walked 0 (0 hops)
+line walk mode: default (per-search passability memo) | memo hits 62349194
