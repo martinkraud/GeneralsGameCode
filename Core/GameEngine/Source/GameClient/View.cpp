@@ -49,9 +49,7 @@ Bool View::userScrollByPresented(const Coord2D *delta, Real fpsRatio)
 	setUserControlled(true);
 	if (delta != nullptr && fpsRatio > 0.0f)
 	{
-		m_pendingUserScrollPerBaseFrame.x = delta->x / fpsRatio;
-		m_pendingUserScrollPerBaseFrame.y = delta->y / fpsRatio;
-		m_hasPendingUserScroll = TRUE;
+		m_userScroll.set(delta->x, delta->y, fpsRatio);
 	}
 	return true;
 }
@@ -62,25 +60,13 @@ void View::applyPendingUserScroll()
 	QueryPerformanceCounter(&now);
 	QueryPerformanceFrequency(&frequency);
 	// Wall-clock time since the previous update of this view (never a jump: see PresentationScroll::stepSeconds).
-	const Real seconds = PresentationScroll::stepSeconds(now.QuadPart, m_lastUserScrollTicks, frequency.QuadPart);
-	m_lastUserScrollTicks = now.QuadPart;
-
-	if (!m_hasPendingUserScroll)
-		return;
-	m_hasPendingUserScroll = FALSE;
-
 	Coord2D offset;
-	offset.x = PresentationScroll::deltaForInterval(m_pendingUserScrollPerBaseFrame.x, seconds);
-	offset.y = PresentationScroll::deltaForInterval(m_pendingUserScrollPerBaseFrame.y, seconds);
-	scrollBy(&offset);
+	if (m_userScroll.advance(now.QuadPart, frequency.QuadPart, offset.x, offset.y))
+		scrollBy(&offset);
 }
 
 View::View()
 {
-	m_hasPendingUserScroll = FALSE;
-	m_pendingUserScrollPerBaseFrame.x = 0.0f;
-	m_pendingUserScrollPerBaseFrame.y = 0.0f;
-	m_lastUserScrollTicks = 0;
 	m_userControlLockedUntilFrame = 0u;
 	m_isUserControlled = true;
 	m_currentHeightAboveGround = 0.0f;
@@ -152,7 +138,7 @@ void View::reset()
 
 	m_userControlLockedUntilFrame = 0u;
 	m_isUserControlled = true;
-	m_hasPendingUserScroll = FALSE;
+	m_userScroll.clear();
 }
 
 /**

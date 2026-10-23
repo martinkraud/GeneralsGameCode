@@ -23,7 +23,7 @@
 
 namespace CameraProbe
 {
-enum Phase { Idle = 0, Settle, KeyHold, RestAfterKey, EdgeHold, RestAfterEdge, Finished };
+enum Phase { Idle = 0, Settle, KeyHold, RestAfterKey, EdgeHold, RestAfterEdge, RmbHold, RestAfterRmb, Finished };
 
 struct Row { char kind; int phase; double ms; unsigned logicFrame; double a, b, c, d, e; };
 
@@ -37,6 +37,8 @@ struct State
 	Phase phase = Idle;
 	double phaseStartMs = 0.0;
 	bool appliedFps = false;
+	bool realInput = false;      // GENERALS_CAMERA_PROBE_REAL=1: the probe injects NOTHING; an external driver (Invoke-CameraRealInput.ps1) sends real OS keyboard / mouse input in the phases
+	bool vsyncOff = false;       // GENERALS_CAMERA_PROBE_VSYNC=0: present without vertical sync so a 60 Hz monitor can still run the 120 / 240 caps
 	bool legacyScroll = false;   // GENERALS_CAMERA_PROBE_LEGACY=1: measure the former post-draw, previous-interval scroll step for a before/after comparison
 	bool wroteOutput = false;
 	std::vector<Row> rows;
@@ -52,6 +54,15 @@ inline double nowMs()
 	return 1000.0 * (double)(t.QuadPart - s.origin.QuadPart) / (double)s.freq.QuadPart;
 }
 
+// Real-input mode: a line per phase change / state sample, appended to <dir>\camera-probe-phase.txt (the external driver follows it).
+inline void phaseLog(const char *text)
+{
+	State &s = state();
+	if (!s.realInput) return;
+	const std::string path = s.dir + "\\camera-probe-phase.txt";
+	if (FILE *f = std::fopen(path.c_str(), "a")) { std::fprintf(f, "%.1f %s\n", nowMs(), text); std::fclose(f); }
+}
+
 inline bool enabled()
 {
 	State &s = state();
@@ -63,6 +74,10 @@ inline bool enabled()
 		s.dir = dir;
 		const char *legacy = std::getenv("GENERALS_CAMERA_PROBE_LEGACY");
 		s.legacyScroll = legacy && *legacy == '1';
+		const char *real = std::getenv("GENERALS_CAMERA_PROBE_REAL");
+		s.realInput = real && *real == '1';
+		const char *vs = std::getenv("GENERALS_CAMERA_PROBE_VSYNC");
+		s.vsyncOff = vs && *vs == '0';
 		const char *fps = std::getenv("GENERALS_CAMERA_PROBE_FPS");
 		s.fps = fps ? std::atoi(fps) : 0;
 		const char *hold = std::getenv("GENERALS_CAMERA_PROBE_HOLD");
@@ -116,7 +131,7 @@ inline void writeOutput()
 	std::string text;
 	char line[512];
 	std::snprintf(line, sizeof line, "target_fps=%d hold_seconds=%.2f rows=%zu\n", s.fps, s.holdSeconds, s.rows.size()); text += line;
-	for (int ph : { (int)KeyHold, (int)EdgeHold })
+	for (int ph : { (int)KeyHold, (int)EdgeHold, (int)RmbHold })
 	{
 		std::vector<double> frameMs, presentMs, stepDist, stepPerSec, presentSpeed, scrollOffset, scrollUpdateMs;
 		const Row *prev = nullptr, *first = nullptr, *last = nullptr, *lastD = nullptr, *prevP = nullptr;
@@ -167,7 +182,7 @@ inline void writeOutput()
 		const double elapsed = (first && last) ? (last->ms - first->ms) / 1000.0 : 0.0;
 		const double travelled = std::hypot(lastX - firstX, lastY - firstY);
 		std::snprintf(line, sizeof line, "[%s] drawn=%u scroll_steps=%u logic_ticks=%u elapsed_s=%.3f distance=%.2f speed_units_per_s=%.2f\n",
-			ph == KeyHold ? "key" : "edge", drawn, scrollSteps, ticksObserved, elapsed, travelled, elapsed > 0 ? travelled / elapsed : 0.0); text += line;
+			ph == KeyHold ? "key" : ph == EdgeHold ? "edge" : "rmb", drawn, scrollSteps, ticksObserved, elapsed, travelled, elapsed > 0 ? travelled / elapsed : 0.0); text += line;
 		std::snprintf(line, sizeof line, "  frame_ms: n=%zu mean=%.3f p50=%.3f p95=%.3f p99=%.3f worst=%.3f stddev=%.3f var=%.4f\n", ft.n, ft.mean, ft.p50, ft.p95, ft.p99, ft.worst, ft.stddev, ft.stddev * ft.stddev); text += line;
 		std::snprintf(line, sizeof line, "  present_interval_ms: n=%zu mean=%.3f p50=%.3f p95=%.3f p99=%.3f worst=%.3f stddev=%.3f var=%.4f\n", pm.n, pm.mean, pm.p50, pm.p95, pm.p99, pm.worst, pm.stddev, pm.stddev * pm.stddev); text += line;
 		std::snprintf(line, sizeof line, "  seen_world_speed_units_per_s (camera step / present interval): mean=%.2f p95=%.2f p99=%.2f stddev=%.2f cv=%.4f\n", ps2.mean, ps2.p95, ps2.p99, ps2.stddev, ps2.mean > 0 ? ps2.stddev / ps2.mean : 0.0); text += line;

@@ -30,6 +30,8 @@
 
 #include "Common/FramePacer.h"
 #include "Common/CameraProbe.h"
+#include "Common/DisplayRuntime.h"
+#include "Common/ScreenEdgeScroll.h"
 #include "Common/GameType.h"
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
@@ -79,7 +81,6 @@ static Bool scrollDir[4] = { false, false, false, false };
 constexpr const Real SCROLL_MULTIPLIER = 2.0f;
 constexpr const Real SCROLL_AMT = 100.0f * SCROLL_MULTIPLIER;
 
-static const Int edgeScrollSize = 3;
 
 static Mouse::MouseCursor prevCursor = Mouse::ARROW;
 
@@ -95,12 +96,13 @@ static CameraProbe::Phase probeAdvance()
 		TheFramePacer->enableFramesPerSecondLimit(TRUE);
 		TheWritableGlobalData->m_useFpsLimit = TRUE;
 	}
+	if (s.vsyncOff) { if (DisplayRuntime::VsyncFn vsync = DisplayRuntime::vsyncHook()) vsync(false); }
 	const Bool live = TheGameLogic && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isLoadingMap()
 		&& !TheGameLogic->isClearingGameData() && TheGameLogic->getFrame() > s.delayFrames;
 	if (!live || s.phase == Finished)
 		return s.phase;
 	const double t = nowMs();
-	auto enter = [&](Phase p) { s.phase = p; s.phaseStartMs = t; };
+	auto enter = [&](Phase p) { s.phase = p; s.phaseStartMs = t; char tag[32]; std::snprintf(tag, sizeof tag, "phase %d", (int)p); phaseLog(tag); };
 	const double hold = s.holdSeconds * 1000.0;
 	switch (s.phase)
 	{
@@ -118,6 +120,17 @@ static CameraProbe::Phase probeAdvance()
 	case RestAfterKey: if (t - s.phaseStartMs > 1500.0) enter(EdgeHold); break;
 	case EdgeHold:     if (t - s.phaseStartMs > hold) enter(RestAfterEdge); break;
 	case RestAfterEdge:
+		if (t - s.phaseStartMs > 1500.0)
+		{
+			if (s.realInput) enter(RmbHold); else enter(Finished);
+			if (s.phase == Finished) {
+			writeOutput();
+			if (TheGameEngine) TheGameEngine->setQuitting(TRUE);
+			}
+		}
+		break;
+	case RmbHold:      if (t - s.phaseStartMs > hold) enter(RestAfterRmb); break;
+	case RestAfterRmb:
 		if (t - s.phaseStartMs > 1500.0)
 		{
 			enter(Finished);
@@ -165,18 +178,13 @@ Bool LookAtTranslator::canScrollAtScreenEdge() const
 	if (!TheMouse->isCursorCaptured())
 		return false;
 
-	if (TheDisplay->getWindowed())
-	{
-		if ((m_screenEdgeScrollMode & ScreenEdgeScrollMode_EnabledInWindowedApp) == 0)
-			return false;
-	}
-	else
-	{
-		if ((m_screenEdgeScrollMode & ScreenEdgeScrollMode_EnabledInFullscreenApp) == 0)
-			return false;
-	}
-
-	return true;
+#if defined(_WIN64)
+	const Bool singlePresentationMode = TRUE;   // the modern runtime always presents in a window (see ScreenEdgeScroll::allowed)
+#else
+	const Bool singlePresentationMode = FALSE;
+#endif
+	return ScreenEdgeScroll::allowed((m_screenEdgeScrollMode & ScreenEdgeScrollMode_EnabledInWindowedApp) != 0,
+		(m_screenEdgeScrollMode & ScreenEdgeScrollMode_EnabledInFullscreenApp) != 0, TheDisplay->getWindowed(), singlePresentationMode);
 }
 
 //-----------------------------------------------------------------------------
@@ -396,14 +404,14 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 			{
 				if (m_isScrolling)
 				{
-					if ( m_scrollType == SCROLL_SCREENEDGE && (m_currentPos.x >= edgeScrollSize && m_currentPos.y >= edgeScrollSize && m_currentPos.y < height-edgeScrollSize && m_currentPos.x < width-edgeScrollSize) )
+					if ( m_scrollType == SCROLL_SCREENEDGE && !ScreenEdgeScroll::hit(m_currentPos.x, m_currentPos.y, width, height).any() )
 					{
 						stopScrolling();
 					}
 				}
 				else
 				{
-					if ( m_currentPos.x < edgeScrollSize || m_currentPos.y < edgeScrollSize || m_currentPos.y >= height-edgeScrollSize || m_currentPos.x >= width-edgeScrollSize )
+					if ( ScreenEdgeScroll::hit(m_currentPos.x, m_currentPos.y, width, height).any() )
 					{
 						setScrolling(SCROLL_SCREENEDGE);
 					}
@@ -491,7 +499,20 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 			if (CameraProbe::enabled())
 			{
 				probePhase = probeAdvance();
-				if (probePhase == CameraProbe::KeyHold)
+				if (CameraProbe::state().realInput)
+				{
+					// real-input mode: inject nothing; sample the translator's own view of the OS input a few times per second
+					static unsigned sample = 0;
+					if (probePhase != CameraProbe::Idle && (++sample % 15) == 0)
+					{
+						char text[200];
+						std::snprintf(text, sizeof text, "state phase=%d captured=%d pos=%d,%d display=%ux%u scrolling=%d type=%d edgeMode=%u windowed=%d left=%d right=%d",
+							(int)probePhase, (int)TheMouse->isCursorCaptured(), m_currentPos.x, m_currentPos.y, (unsigned)TheDisplay->getWidth(), (unsigned)TheDisplay->getHeight(),
+							(int)m_isScrolling, (int)m_scrollType, (unsigned)m_screenEdgeScrollMode, (int)TheDisplay->getWindowed(), (int)scrollDir[DIR_LEFT], (int)scrollDir[DIR_RIGHT]);
+						CameraProbe::phaseLog(text);
+					}
+				}
+				else if (probePhase == CameraProbe::KeyHold)
 				{
 					scrollDir[DIR_RIGHT] = true;
 					if (!m_isScrolling)
@@ -581,19 +602,20 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 					{
 						UnsignedInt height = TheDisplay->getHeight();
 						UnsignedInt width  = TheDisplay->getWidth();
-						if (m_currentPos.y < edgeScrollSize)
+						const ScreenEdgeScroll::Hit edge = ScreenEdgeScroll::hit(m_currentPos.x, m_currentPos.y, width, height);
+						if (edge.top)
 						{
 							offset.y -= TheGlobalData->m_verticalScrollSpeedFactor * fpsRatio * SCROLL_AMT * TheGlobalData->m_keyboardScrollFactor;
 						}
-						if (m_currentPos.y >= height-edgeScrollSize)
+						if (edge.bottom)
 						{
 							offset.y += TheGlobalData->m_verticalScrollSpeedFactor * fpsRatio * SCROLL_AMT * TheGlobalData->m_keyboardScrollFactor;
 						}
-						if (m_currentPos.x < edgeScrollSize)
+						if (edge.left)
 						{
 							offset.x -= TheGlobalData->m_horizontalScrollSpeedFactor * fpsRatio * SCROLL_AMT * TheGlobalData->m_keyboardScrollFactor;
 						}
-						if (m_currentPos.x >= width-edgeScrollSize)
+						if (edge.right)
 						{
 							offset.x += TheGlobalData->m_horizontalScrollSpeedFactor * fpsRatio * SCROLL_AMT * TheGlobalData->m_keyboardScrollFactor;
 						}

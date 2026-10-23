@@ -29,4 +29,38 @@ inline float deltaForInterval(float perBaseFrame, float seconds)
 {
 	return perBaseFrame * BaseFps * seconds;
 }
+
+// The state of one view's held scroll (X64.52B: moved out of View so the real logic is unit tested; View::applyPendingUserScroll is a thin wrapper).
+// set(): the look-at translator hands over the offset it computed for fpsRatio (every client update while a key / the screen edge / RMB scroll is held).
+// advance(): called once per client update before the camera transform is built; integrates the velocity for the wall-clock time since the previous advance(),
+//            consumes it (a velocity moves the camera ONCE: calling advance() again without a new set() moves nothing) and reports the offset.
+// clear(): release / forced stop.
+struct Integrator
+{
+	bool has = false;
+	float perBaseX = 0.0f, perBaseY = 0.0f;
+	long long lastTicks = 0;
+
+	void set(float offsetX, float offsetY, float fpsRatio)
+	{
+		if (fpsRatio <= 0.0f)
+			return;
+		perBaseX = offsetX / fpsRatio;
+		perBaseY = offsetY / fpsRatio;
+		has = true;
+	}
+	void clear() { has = false; }
+	bool advance(long long nowTicks, long long ticksPerSecond, float &outX, float &outY)
+	{
+		const float seconds = stepSeconds(nowTicks, lastTicks, ticksPerSecond);
+		lastTicks = nowTicks;
+		outX = outY = 0.0f;
+		if (!has)
+			return false;
+		has = false;
+		outX = deltaForInterval(perBaseX, seconds);
+		outY = deltaForInterval(perBaseY, seconds);
+		return true;
+	}
+};
 }

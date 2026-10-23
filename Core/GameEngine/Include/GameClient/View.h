@@ -30,6 +30,7 @@
 #pragma once
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
+#include "Common/PresentationScroll.h"
 #include "Common/GameType.h"
 #include "Common/Snapshot.h"
 #include "Lib/BaseType.h"
@@ -232,7 +233,7 @@ public:
 	// (applyPendingUserScroll). The former code applied a step sized by the PREVIOUS frame interval after the frame had been drawn, so irregular
 	// frame intervals made the camera speed visibly oscillate at high refresh rates. Position per second is unchanged (no gameplay effect).
 	Bool userScrollByPresented(const Coord2D *delta, Real fpsRatio);
-	void clearPendingUserScroll()                        { m_hasPendingUserScroll = FALSE; }
+	void clearPendingUserScroll()                        { m_userScroll.clear(); }
 	void applyPendingUserScroll();
 	Bool userSetLocation(const ViewLocation *location)   { return doUserAction(&View::setLocation, location); }
 	Bool userSetCameraLock(ObjectID id)                  { return doUserAction(&View::setCameraLock, id); }
@@ -330,9 +331,7 @@ protected:
 
 	UnsignedInt m_userControlLockedUntilFrame;									///< Locks the user control over camera until the given frame is reached
 	Bool m_isUserControlled;																		///< True if the user moved the camera last, false if the scripted camera moved the camera last
-	Bool m_hasPendingUserScroll;																///< X64.49: a user scroll velocity waits to be applied in presentation time
-	Coord2D m_pendingUserScrollPerBaseFrame;										///< X64.49: that velocity as a scroll delta per base (30 Hz) frame
-	Int64 m_lastUserScrollTicks;																///< X64.49: performance counter value of the previous applyPendingUserScroll()
+	PresentationScroll::Integrator m_userScroll;								///< X64.49: the pending user scroll velocity and the counter of the previous applyPendingUserScroll()
 
 	Coord3D m_pos;																							///< Pivot of the camera, in world coordinates
 	Int m_width, m_height;																			///< Dimensions of the view

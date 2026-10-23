@@ -149,3 +149,96 @@ TEST(PresentationScroll, LegacyModelStillCoversTheSameDistanceItsDefectIsRipple)
 	const Result legacy = runLegacy(irregular);
 	EXPECT_NEAR(legacy.distance, Velocity * legacy.totalSeconds, Velocity * legacy.totalSeconds * 0.02);
 }
+
+// ---- X64.52B: the REAL integrator (View::applyPendingUserScroll is a thin wrapper around it), driven the way the look-at translator drives it ----
+
+namespace
+{
+struct Drive { double x = 0.0, y = 0.0; std::vector<double> stepX; unsigned applied = 0; };
+
+// One client update per interval: while `held`, the translator sets the velocity (offset computed for the frame pacer's CURRENT fpsRatio), then the view advances.
+Drive drive(const std::vector<double> &intervals, double offsetPerBaseFrameX, double offsetPerBaseFrameY, bool held = true, bool advanceTwice = false)
+{
+	Drive d;
+	PresentationScroll::Integrator in;
+	long long ticks = 1;
+	for (double dt : intervals)
+	{
+		const long long next = ticks + static_cast<long long>(dt * TicksPerSecond + 0.5);
+		const float fpsRatio = static_cast<float>(30.0 / (1.0 / dt));          // BaseFps / updateFps, as the frame pacer reports it
+		if (held)
+			in.set(static_cast<float>(offsetPerBaseFrameX * fpsRatio), static_cast<float>(offsetPerBaseFrameY * fpsRatio), fpsRatio);
+		float ox = 0, oy = 0;
+		const bool moved = in.advance(next, TicksPerSecond, ox, oy);
+		if (advanceTwice) { float ax = 0, ay = 0; if (in.advance(next, TicksPerSecond, ax, ay)) { ox += ax; oy += ay; } }
+		ticks = next;
+		d.x += ox; d.y += oy; d.stepX.push_back(ox); d.applied += moved ? 1 : 0;
+	}
+	return d;
+}
+}
+
+TEST(PresentationScrollIntegrator, KeyboardAndRmbTravelTheSameDistanceAtEveryRenderRateAndJitter)
+{
+	// keyboard: a constant offset per base frame (SCROLL_AMT-style); RMB: an offset that depends on the mouse vector but is likewise constant while the mouse rests
+	for (double perBase : { PerBaseFrame, PerBaseFrame * 0.37 })
+		for (bool jitter : { false, true })
+			for (int fps : { 30, 60, 120, 240 })
+			{
+				const Drive d = drive(frameIntervals(fps, 3.0, jitter), perBase, 0.0);
+				EXPECT_NEAR(d.x, perBase * 30.0 * 3.0, perBase * 30.0 * 3.0 * 0.02 + 0.02) << "fps " << fps << " jitter " << jitter;
+			}
+}
+
+TEST(PresentationScrollIntegrator, TravelOverEqualWallClockTimeDoesNotDependOnTheRenderRate)
+{
+	const double reference = drive(frameIntervals(30, 2.0, false), PerBaseFrame, 0.0).x;
+	for (int fps : { 60, 120, 240 })
+		EXPECT_NEAR(drive(frameIntervals(fps, 2.0, false), PerBaseFrame, 0.0).x, reference, reference * 0.03) << fps;
+	// an irregular but equal-duration sequence
+	std::vector<double> irregular = { 0.004, 0.012, 0.007, 0.002, 0.016, 0.005, 0.009, 0.033, 0.003, 0.0083 };
+	double total = 0; for (double v : irregular) total += v;
+	EXPECT_NEAR(drive(irregular, PerBaseFrame, 0.0).x, PerBaseFrame * 30.0 * total, PerBaseFrame * 30.0 * 0.02);
+}
+
+TEST(PresentationScrollIntegrator, CameraMovesOnEveryRenderFrameNotOnTheSimulationTick)
+{
+	// at 120 fps every update moves the camera (no 30 Hz quantisation: 4 of 4 frames inside one 33 ms logic tick move it, with equal steps)
+	const Drive d = drive(frameIntervals(120, 1.0, false), PerBaseFrame, 0.0);
+	for (size_t i = 1; i < d.stepX.size(); ++i)
+		EXPECT_GT(d.stepX[i], 0.0) << i;
+	EXPECT_EQ(d.applied, d.stepX.size());
+	for (size_t i = 2; i < d.stepX.size(); ++i)
+		EXPECT_NEAR(d.stepX[i], d.stepX[1], d.stepX[1] * 0.02) << i;
+	// the count of distinct camera positions equals the frame count (a 30 TPS camera would show a quarter of them at 120 fps)
+	EXPECT_GE(d.stepX.size(), 119u);
+}
+
+TEST(PresentationScrollIntegrator, AVelocityMovesTheCameraOnceNeverTwice)
+{
+	const std::vector<double> iv = frameIntervals(120, 1.0, false);
+	const Drive once = drive(iv, PerBaseFrame, 0.0, true, false);
+	const Drive twice = drive(iv, PerBaseFrame, 0.0, true, true);          // advance() called a second time in the same update
+	EXPECT_NEAR(twice.x, once.x, 1e-3);
+	// no new input -> no motion at all (nothing is re-applied from an old velocity)
+	const Drive released = drive(iv, PerBaseFrame, 0.0, false);
+	EXPECT_EQ(released.x, 0.0);
+	EXPECT_EQ(released.applied, 0u);
+}
+
+TEST(PresentationScrollIntegrator, InvalidFpsRatioNeverSetsAVelocity)
+{
+	PresentationScroll::Integrator in;
+	in.set(5.0f, 5.0f, 0.0f);
+	in.set(5.0f, 5.0f, -1.0f);
+	float x = 0, y = 0;
+	EXPECT_FALSE(in.advance(100, TicksPerSecond, x, y));
+}
+
+TEST(PresentationScrollIntegrator, DiagonalAndNegativeDirectionsKeepTheirSignAndRatio)
+{
+	const Drive d = drive(frameIntervals(144, 1.0, true), -PerBaseFrame, PerBaseFrame * 0.5);
+	EXPECT_LT(d.x, 0.0);
+	EXPECT_GT(d.y, 0.0);
+	EXPECT_NEAR(d.y / -d.x, 0.5, 1e-3);
+}
