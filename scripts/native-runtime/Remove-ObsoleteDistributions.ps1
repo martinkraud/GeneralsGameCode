@@ -73,8 +73,9 @@ if (Test-Path -LiteralPath $StageRoot -PathType Container) {
     foreach ($t in $titles) {
         $dir = Join-Path $StageRoot $t
         if (-not (Test-Path -LiteralPath $dir -PathType Container)) { continue }
-        foreach ($c in Get-ChildItem -LiteralPath $dir -Directory -Force -Filter 'dist-*') {
-            if ($c.Name -notmatch '^dist-[0-9a-f]{7,40}-(gen|zh)$') { continue }
+        foreach ($c in Get-ChildItem -LiteralPath $dir -Directory -Force | Where-Object { $_.Name -like 'dist-*' -or $_.Name -match '^x64-48b-overlay-test-(gen|zh)$' }) {
+            # the validator's disposable overlay-test stage is left behind on success and blocks the next validation run
+            if ($c.Name -notmatch '^(dist-[0-9a-f]{7,40}|x64-48b-overlay-test)-(gen|zh)$') { continue }
             if ($c.LinkType -or ($c.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
             if ($keepCandidates -contains $c.Name) { continue }
             if (-not (Test-Path -LiteralPath (Join-Path $c.FullName 'ordinaryplay.json') -PathType Leaf)) { Write-Host "cleanup: $($c.FullName) has no stager marker, left alone"; continue }

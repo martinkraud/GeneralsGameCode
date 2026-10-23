@@ -45,6 +45,9 @@ class Cleanup(unittest.TestCase):
         make_dist(self.dist, self.stage, "eeeeeee0", record=False)       # legacy, no record
         (self.dist / "notes-by-hand.txt").write_text("mine")              # unknown file
         (self.dist / "MKRaudstein-Generals-x64-Preview-zzzzzzz9.txt").write_text("mine")   # similar name, not a generated one
+        for t, x in (("Generals", "gen"), ("ZeroHour", "zh")):                # the validator's leftover disposable stage
+            d = self.stage / t / ("x64-48b-overlay-test-" + x)
+            d.mkdir(); (d / "ordinaryplay.json").write_text("{}")
         (self.stage / "Generals" / "x64-48b-gen-v2").mkdir()             # not a dist-* stage
         (self.stage / "ZeroHour" / "dist-fffffff5-zh").mkdir()           # dist-looking stage without the stager marker
 
@@ -68,6 +71,8 @@ class Cleanup(unittest.TestCase):
             self.assertTrue((self.dist / ("MKRaudstein-ZeroHour-x64-Preview-%s-Symbols.zip" % ver)).exists())
             self.assertTrue((self.dist / ("MKRaudstein-x64-Preview-%s.distribution.json" % ver)).exists())
             self.assertTrue((self.stage / "ZeroHour" / ("dist-%s-zh" % ver)).exists())
+        self.assertFalse((self.stage / "Generals" / "x64-48b-overlay-test-gen").exists())
+        self.assertFalse((self.stage / "ZeroHour" / "x64-48b-overlay-test-zh").exists())
         for ver in ("aaaaaaa1", "bbbbbbb2", "eeeeeee0"):
             self.assertFalse(list(self.dist.glob("*" + ver + "*")), ver)
             self.assertFalse((self.stage / "Generals" / ("dist-%s-gen" % ver)).exists())
