@@ -1,0 +1,7 @@
+X64.52 distribution (New-MKRaudsteinDistribution.ps1, built from commit f190b4e82, both titles validated 26/26)
+MKRaudstein-Generals-x64-Preview-f190b4e82.zip              4,041,972 B  SHA-256 B4834B89B77BD9F50CC3611257859F206D6B353787B089E0850A4BD1B1C3C86E
+MKRaudstein-ZeroHour-x64-Preview-f190b4e82.zip              4,147,012 B  SHA-256 53E1FF6205C174C50997AAEA9C9241A29DB03124DF4FBDA43197B432883BA28D
+MKRaudstein-Generals-x64-Preview-f190b4e82-Symbols.zip     22,091,714 B
+MKRaudstein-ZeroHour-x64-Preview-f190b4e82-Symbols.zip     22,630,970 B
+Location: build/dist/ (manifests, SHA256SUMS, distribution.json alongside). Staged candidates: dist-f190b4e82-gen, dist-f190b4e82-zh.
+The packaged executables were re-checked with the golden gate (Original digests identical to the X64.51 executables; Enhanced repeatable) before this record.

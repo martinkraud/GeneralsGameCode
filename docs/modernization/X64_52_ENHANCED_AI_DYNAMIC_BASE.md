@@ -271,4 +271,19 @@ Central question: does Enhanced AI now build and defend visibly more competently
 
 ## 16. Packages
 
-(filled in after the build - `evidence/x64-52/packages.txt`)
+Built from commit `f190b4e82` with `New-MKRaudsteinDistribution.ps1` (both titles validated, 26/26 checks each; `build/dist/`, not committed; the packaged executables were re-run through the golden gate):
+
+| File | Size | SHA-256 |
+|---|---|---|
+| `MKRaudstein-Generals-x64-Preview-f190b4e82.zip` | 4 041 972 B | `B4834B89B77BD9F50CC3611257859F206D6B353787B089E0850A4BD1B1C3C86E` |
+| `MKRaudstein-ZeroHour-x64-Preview-f190b4e82.zip` | 4 147 012 B | `53E1FF6205C174C50997AAEA9C9241A29DB03124DF4FBDA43197B432883BA28D` |
+| `...-Generals-...-Symbols.zip` / `...-ZeroHour-...-Symbols.zip` | 22 091 714 B / 22 630 970 B | (separate, in the manifests) |
+
+The packages contain every runtime change through X64.49 + X64.51 + X64.52 (built from the HEAD tree, no allowlist, no PDBs in the player ZIPs).
+
+### Launching the Zero Hour candidate (default of `Run-ZeroHourCandidate.cmd`)
+
+`build\dev-runtimes
+ative\ZeroHour\dist-f190b4e82-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-f190b4e82-zh`
+(Generals: `build\dev-runtimes
+ative\Generals\dist-f190b4e82-gen`).
