@@ -66,8 +66,27 @@ Edge: the stale value predates X64.52A; the modern default (X64.31) never overro
 ## 5. Runner
 `scripts/native-runtime/Invoke-RegressionGates.ps1` chains the permanent gates: Python contracts and unit gates (always), `-GoogleTest` (built gtest executables), `-Native -GeneralsCandidate .. -ZeroHourCandidate ..` (real-input camera gate at 60 / 120 / 240 FPS per title). Run it before every milestone's candidate packages.
 
-## 6. Human native verification
-(see the end of this document for the candidate and the checklist)
+## 6. Clean build, packages and what is still unproven
+
+* Clean rebuild (`cmake --build --preset win64 --clean-first`, both titles, 3733 steps, 0 errors) at source commit `f38ba6418`; gtests Generals 468 / Zero Hour 467 passed; Python suites passed; `build/dist` was empty (the tester cleared it), the distribution ran from scratch: both titles built from the clean executables, packaged, validated (26 of 26 overlay checks per title, clean install + ZIP == staged candidate file-for-file) and the retention cleanup ran against a state with **no previous distribution** (kept the new one, removed only older generated stages, fabricated nothing).
+* Provenance: the `Generals.exe` inside each ZIP is byte-identical (SHA-256) to the freshly built `build/win64` executable of that title (Generals `6a0a745d...`, Zero Hour `1d306c27...`); no PDB in either player ZIP; symbols are separate archives.
+
+| file | size (B) | SHA-256 |
+|---|---:|---|
+| `MKRaudstein-Generals-x64-Preview-f38ba6418.zip` | 4 051 258 | `EF650EE7DBACA3D7CDA6A43F06427C24FE35594678AF19601FBA02B7A84A5488` |
+| `MKRaudstein-ZeroHour-x64-Preview-f38ba6418.zip` | 4 157 412 | `A4AD433DEB6CB354AA9C13C5A21460A0A3DA104AA54F678E3E4A6565BE490208` |
+| `MKRaudstein-Generals-x64-Preview-f38ba6418-Symbols.zip` | 22 221 482 | (manifest) |
+| `MKRaudstein-ZeroHour-x64-Preview-f38ba6418-Symbols.zip` | 22 701 031 | (manifest) |
+
+* **The real-input camera gate on exactly these clean executables is INCONCLUSIVE**: the workstation was locked (LogonUI running, no foreground window) when the clean build finished, so no window could take the foreground and the mouse phases cannot be judged. The gate passed (3 phases, zero stale frames) on an incremental build of the identical source before the clean build: Zero Hour 60 / 120 / 240, Generals 120 / 240 (`evidence/x64-52b/gate-*-fix*.txt`). The driver now reports exit code 3 / INCONCLUSIVE instead of a false FAIL. Re-run on the unlocked desktop: `pwsh scripts/native-runtime/Invoke-RegressionGates.ps1 -Native -GeneralsCandidate dist-f38ba6418-gen -ZeroHourCandidate dist-f38ba6418-zh`.
+* Automation cannot establish: the frame presentation cadence on a 120 Hz scan-out and the subjective smoothness; whether the tester's judder comes from the render / present pacing (open since X64.49) or from a settings combination absent on the 60 Hz test PC.
+
+### Human native test (ready for human native verification)
+Launch `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-f38ba6418-zh` (`build\dev-runtimes\native\ZeroHour\dist-f38ba6418-zh\game\generalszh.exe`; Generals `build\dev-runtimes\native\Generals\dist-f38ba6418-gen`) or install the two ZIPs over Steam as before.
+1. **Screen edge** (the fix): in a Skirmish move the mouse to each of the four screen borders: the camera must scroll in that direction, also if your `Options.ini` still contains `ScreenEdgeScrollEnabledInWindowedApp = no`.
+2. Hold an arrow key 3 - 5 s, then drag with the right mouse button: judge the smoothness at your 120 FPS setting and at 60.
+3. If the judder is still there, run the measurement on your PC and send the folder: `pwsh scripts/native-runtime/Invoke-CameraRealInput.ps1 -Title ZeroHour -ExePath <path to the installed generalszh/Generals.exe> -Fps 120` (needs the desktop for ~40 s: do not touch keyboard / mouse), then `python scripts/native-runtime/analyze_camera_real.py build/diag/camera-real-ZeroHour-real`; also send your `Options.ini`.
+4. Everything X64.52A listed (Match Options, Superweapons, AI Behaviour, Starting Cash) is unchanged.
 
 ## 7. Audit of the existing gates against the accepted invariants
 

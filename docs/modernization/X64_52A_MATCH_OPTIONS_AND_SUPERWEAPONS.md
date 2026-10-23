@@ -148,6 +148,8 @@ Built by `New-MKRaudsteinDistribution.ps1` (both titles in one run, clean instal
 
 Combined list: `MKRaudstein-x64-Preview-34b5f091c.SHA256SUMS`. Both contain X64.52 Enhanced AI (`AI=E2`), the corrected Match Options, AI Behaviour, Starting Cash and the Superweapons limit.
 
+> **Superseded by X64.52B** (`X64_52B_CAMERA_INPUT_REGRESSION.md`): the X64.52A packages failed the first human test (dead screen-edge scrolling); use the X64.52B packages. The checklist below still applies to them.
+
 ### 4.6 Human native test (one run of the whole current feature set)
 Launch the candidate (not the X64.52 packages): `build\dev-runtimes\native\ZeroHour\dist-34b5f091c-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-34b5f091c-zh`
 (Generals: `build\dev-runtimes\native\Generals\dist-34b5f091c-gen`), or install the two ZIPs over the Steam installations as in X64.48B.
