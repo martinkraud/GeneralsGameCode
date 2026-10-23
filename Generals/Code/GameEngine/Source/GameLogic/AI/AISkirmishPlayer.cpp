@@ -204,6 +204,10 @@ void AISkirmishPlayer::processBaseBuilding()
 			if (!isLocationSafe(info->getLocation(), curPlan)) {
 				continue;
 			}
+			// X64.52 Enhanced: a slot whose long fallback search just came up empty must not hold up the rest of the base (retail keeps selecting it)
+			if (m_enhanced && enhancedPlacementRecentlyFailed(info->getLocation(), curPlan)) {
+				continue;
+			}
 			if (info->isPriorityBuild()) {
 				// Always take priority build, unless we already have priority build.
 				if (!isPriority) {
@@ -678,6 +682,26 @@ void AISkirmishPlayer::buildAIBaseDefenseStructure(const AsciiString &thingName,
 		offset.x = goalPos.x-m_baseCenter.x;
 		offset.y = goalPos.y-m_baseCenter.y;
 		offset.normalize();
+		// X64.52 Enhanced: front defences face the direction the base is actually being attacked from (once it has been attacked enough), instead of only the
+		// scripted approach path; the arc bookkeeping restarts when the threat has moved by more than 45 degrees.
+		if (m_enhanced && !flank) {
+			Real threatAngle;
+			if (enhancedThreatDirection(&threatAngle)) {
+				AIEnhancedBase::State &eb = enhancedState();
+				const Int sector = AIEnhancedBase::ThreatMap::sectorOf(cos(threatAngle), sin(threatAngle));
+				if (eb.arcSector < 0 || AIEnhancedBase::angleDifference(AIEnhancedBase::ThreatMap::sectorCenterAngle(eb.arcSector), threatAngle) > AIEnhancedBase::kArcRecenterRadians) {
+					m_curFrontBaseDefense = 0;
+					m_curFrontLeftDefenseAngle = 0;
+					m_curFrontRightDefenseAngle = 0;
+					eb.arcSector = sector;
+					AIDiagnostics::count("x52.threat.arc_recentered");
+					AIDiagnostics::event(TheGameLogic->getFrame(), "x52.threat.arc_recentered", "player=%d threat_deg=%d", m_player->getPlayerIndex(), (Int)(threatAngle*180/PI));
+				}
+				offset.x = cos(threatAngle);
+				offset.y = sin(threatAngle);
+				AIDiagnostics::count("x52.threat.steered_defense");
+			}
+		}
 		offset.x *= m_baseRadius;
 		offset.y *= m_baseRadius;
 
@@ -709,6 +733,7 @@ void AISkirmishPlayer::buildAIBaseDefenseStructure(const AsciiString &thingName,
 
 		} else {
 			selector = m_curFrontBaseDefense;
+			if (m_enhanced) selector += (Int)((enhancedState().seed >> 5) & 1u);	// X64.52: which side of the front arc is used first depends on the match seed
 			if (selector&1) {
 				m_curFrontRightDefenseAngle -= angleOffset;
 				angle = m_curFrontRightDefenseAngle;
@@ -1098,6 +1123,11 @@ void AISkirmishPlayer::adjustBuildList(BuildListInfo *list)
 
 	angle += 3*PI/4;
 
+	// X64.52 Enhanced: one of a few bounded extra rotations of the whole layout, chosen from the match seed among the variants that keep the slots legal
+	if (m_enhanced && foundInBuildList) {
+		angle += enhancedLayoutOffset(list, buildPos, startPos, angle);
+	}
+
 	Real s = sin(angle);
 	Real c = cos(angle);
 
@@ -1118,6 +1148,11 @@ void AISkirmishPlayer::adjustBuildList(BuildListInfo *list)
 			cur->setAngle(cur->getAngle());
 		}
 		cur = cur->getNext();
+	}
+
+	// X64.52 Enhanced: small collision-free shifts of the non-critical slots, so two bases are not identical to the unit
+	if (m_enhanced) {
+		enhancedJitterSlots(list);
 	}
 
 }

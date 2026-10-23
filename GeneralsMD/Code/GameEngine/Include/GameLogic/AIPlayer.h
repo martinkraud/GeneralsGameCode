@@ -29,6 +29,7 @@
 #pragma once
 
 #include "Common/GameMemory.h"
+#include "Common/AIEnhancedBase.h"
 #include "Common/Snapshot.h"
 
 enum { INVALID_SKILLSET_SELECTION = -1 };
@@ -191,6 +192,19 @@ public:
 	GameDifficulty getAIDifficulty() const;
 	void setAIDifficulty(GameDifficulty difficulty) {m_difficulty = difficulty;}
 	Bool isEnhancedBehavior() const {return m_enhanced;}	///< X64.51: this AI follows the Enhanced AI Behaviour rule (false = Original, retail compatible)
+	// X64.52 Enhanced "Dynamic Base & Defence" (Core/GameEngine/Source/GameLogic/AI/AIEnhancedBase.cpp); never reached by an Original AI
+	void enhancedBaseUpdate();	///< once per second per AI: threat scan, autonomous threat defence, fill-in / recovery, supply expansion
+	void enhancedScanThreats(UnsignedInt frame);
+	Bool enhancedThreatDirection(Real *angle) const;	///< direction (radians from the base center) the base is being attacked from, once it has been attacked enough
+	void enhancedThreatDefense(UnsignedInt frame);
+	void enhancedFillIn(UnsignedInt frame);
+	void enhancedExpansion(UnsignedInt frame);
+	void enhancedXferState(Xfer *xfer);
+	Bool enhancedPlacementRecentlyFailed(const Coord3D *at, const ThingTemplate *tmpl);	///< X64.52: this slot's fallback search found nothing recently
+	void enhancedNotePlacementFailure(const Coord3D *at, const ThingTemplate *tmpl);
+	Bool enhancedFindPlaceable(const Coord3D *at, const ThingTemplate *tmpl, Real angle, Object *builder, Coord3D *out, Int rings);	///< X64.52: cheap exact-or-near legality probe
+	void diagnosticAttackAid();	///< X64.52: GENERALS_AI_DIAG_ATTACK scenario aid (diagnostics runs only)
+	AIEnhancedBase::State &enhancedState() {return m_eb;}
 	void diagnosticTick();	///< X64.51: GENERALS_AI_DIAG scenario aids (kills, build list dumps); inert unless the diagnostics are enabled
 	void buildBySupplies(Int minimumCash, const AsciiString &thingName ); ///< Builds a building by supplies.
 	void buildSpecificBuildingNearestTeam( const AsciiString &thingName, const Team *team );
@@ -271,6 +285,7 @@ protected:
 	Int			m_frameLastBuildingBuilt;	///< When we built the last building.
 
 	GameDifficulty m_difficulty;
+	AIEnhancedBase::State m_eb;	///< X64.52 Enhanced base policy state (saved only for an Enhanced AI player)
 	Bool m_enhanced;	///< X64.51: AI Behaviour rule of this match (Original unless the game rule says Enhanced); saved per AI player only when Enhanced
 
 	Int			m_skillsetSelector;

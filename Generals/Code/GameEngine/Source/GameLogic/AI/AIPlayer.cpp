@@ -103,6 +103,7 @@ m_curWarehouseID(INVALID_ID)
 	m_teamSeconds = TheAI->getAiData()->m_teamSeconds;
 	// X64.51: the AI Behaviour rule is a game rule (GameInfo: skirmish setup, replay header, save). Campaign / challenge games have none: Original.
 	m_enhanced = TheGameInfo && TheGameInfo->getAIBehavior() == AI_BEHAVIOR_ENHANCED;
+	if (m_enhanced) m_eb.seed = AIEnhancedBase::playerSeed((uint32_t)TheGameInfo->getSeed(), m_player->getPlayerIndex());	// X64.52: private decision stream, see Common/AIEnhancedBase.h
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -550,6 +551,13 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 																								 BuildAssistant::TERRAIN_RESTRICTIONS |
 																								 BuildAssistant::NO_OBJECT_OVERLAP,
 																								 dozer, m_player ) != LBC_OK ) {
+			if (m_enhanced && enhancedPlacementRecentlyFailed(info->getLocation(), bldgPlan)) {
+				TheTerrainVisual->removeAllBibs();
+				AIDiagnostics::count("x52.place.skipped_known_failure");
+				return nullptr;
+			}
+			AIDiagnostics::count("place.fallback_search");
+			AIDiagnostics::event(TheGameLogic->getFrame(), "place.fallback_search", "player=%d template=%s %s", m_player->getPlayerIndex(), bldgPlan->getName().str(), m_enhanced ? "enhanced" : "original");
 			// Warn.
 			AsciiString bldgName = bldgPlan->getName();
 			bldgName.concat(" - Dozer unable to place.  Attempting to adjust position.");
@@ -561,8 +569,21 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 			Real limit = 10*PATHFIND_CELL_SIZE_F;
 			if (isSkirmishAI()) {
 				limit = 120*PATHFIND_CELL_SIZE_F;
+				// X64.52 Enhanced: the retail search radius (a 2400 unit wide square) costs 100-350 ms when it comes up empty; a slot that cannot be placed within
+				// 500 units of its position is not a slot of this base, and a slot that just failed is not searched again for three minutes.
+				if (m_enhanced) limit = 50*PATHFIND_CELL_SIZE_F;
 			}
 			Coord3D newPos = pos;
+			if (m_enhanced) {
+				// X64.52: a cheap near probe first (at most 1 + 8 * 8 legality checks); only when it finds nothing does the retail search run, and then bounded (see limit)
+				Coord3D nearPos;
+				if (enhancedFindPlaceable(&pos, bldgPlan, angle, dozer, &nearPos, 8)) {
+					newPos = nearPos;
+					valid = true;
+					limit = 0;
+					AIDiagnostics::count("x52.place.near_probe_hit");
+				}
+			}
 			for (posOffset = 0; posOffset<limit; posOffset += 2*PATHFIND_CELL_SIZE_F) {
 				if (isSkirmishAI()) {
 					posOffset += 2*PATHFIND_CELL_SIZE_F;
@@ -614,6 +635,7 @@ Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildLi
 																						 BuildAssistant::NO_ENEMY_OBJECT_OVERLAP,
 																						 dozer, m_player ) == LBC_OK;
 				if (!valid) {
+					if (m_enhanced) enhancedNotePlacementFailure(info->getLocation(), bldgPlan);
 					return nullptr;
 				}
 			}
@@ -2737,6 +2759,8 @@ void AIPlayer::update()
 
 	if (AIDiagnostics::enabled()) diagnosticTick();	// X64.51: inert unless GENERALS_AI_DIAG is set
 
+	if (m_enhanced) enhancedBaseUpdate();	// X64.52: Enhanced Dynamic Base & Defence (once per second per AI, cheap early exits)
+
 	doBaseBuilding();		// See if it's time to build another building.
 
 	checkReadyTeams(); // See if any teams are ready to start.
@@ -2785,13 +2809,27 @@ void AIPlayer::diagnosticTick()
 		}
 		AIDiagnostics::event(frame, "scenario.defense", "player=%d requested=%d each", playerIndex, defense->count);
 	}
-	if (AIDiagnostics::dumpDue(frame))
+	diagnosticAttackAid();
+	if (AIDiagnostics::censusDue(frame, playerIndex))
+	{
+		// X64.52: every structure of this AI with its position relative to the base center (measures completeness / variation / expansion)
+		for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject())
+		{
+			if (obj->getControllingPlayer() != m_player || !obj->isKindOf(KINDOF_STRUCTURE)) continue;
+			const Coord3D *pos = obj->getPosition();
+			AIDiagnostics::censusLine("census frame=%u player=%d side=%s template=%s x=%.0f y=%.0f dx=%.0f dy=%.0f %s", frame, playerIndex, m_player->getSide().str(),
+				obj->getTemplate()->getName().str(), pos->x, pos->y, pos->x - m_baseCenter.x, pos->y - m_baseCenter.y,
+				obj->isKindOf(KINDOF_REBUILD_HOLE) ? "hole" : (obj->getStatusBits().test(OBJECT_STATUS_UNDER_CONSTRUCTION) ? "constructing" : "built"));
+		}
+		AIDiagnostics::censusLine("census frame=%u player=%d money=%d base=%.0f,%.0f radius=%.0f", frame, playerIndex, (int)m_player->getMoney()->countMoney(), m_baseCenter.x, m_baseCenter.y, m_baseRadius);
+	}
+	if (AIDiagnostics::dumpDue(frame, playerIndex))
 	{
 		for (BuildListInfo *info = m_player->getBuildList(); info; info = info->getNext())
 		{
 			Object *obj = TheGameLogic->findObjectByID(info->getObjectID());
-			AIDiagnostics::event(frame, "buildlist", "player=%d entry=%s automatic=%d priority=%d rebuilds=%d state=%s", playerIndex, info->getTemplateName().str(),
-				(int)info->isAutomaticBuild(), (int)info->isPriorityBuild(), info->getNumRebuilds(),
+			AIDiagnostics::event(frame, "buildlist", "player=%d entry=%s automatic=%d priority=%d rebuilds=%d dx=%.0f dy=%.0f state=%s", playerIndex, info->getTemplateName().str(),
+				(int)info->isAutomaticBuild(), (int)info->isPriorityBuild(), info->getNumRebuilds(), info->getLocation()->x - m_baseCenter.x, info->getLocation()->y - m_baseCenter.y,
 				obj ? (obj->isKindOf(KINDOF_REBUILD_HOLE) ? "hole" : "built") : "none");
 		}
 	}
@@ -3075,8 +3113,8 @@ void AIPlayer::xfer( Xfer *xfer )
 {
 
 	// version. X64.51: 2 appends the AI Behaviour rule and is written ONLY by an Enhanced AI player; an Original AI saves the retail version 1 layout.
-	XferVersion currentVersion = 2;
-	XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_enhanced) ? 2 : 1;
+	XferVersion currentVersion = 3;
+	XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_enhanced) ? 3 : 1;	// X64.52: 3 appends the Enhanced base policy state (2 = X64.51: the mode only)
 	xfer->xferVersion( &version, currentVersion );
 
 	// team build queue count
@@ -3239,6 +3277,10 @@ void AIPlayer::xfer( Xfer *xfer )
 	if (version >= 2)
 	{
 		xfer->xferBool( &m_enhanced );
+	}
+	if (version >= 3)
+	{
+		enhancedXferState( xfer );
 	}
 	else if (xfer->getXferMode() == XFER_LOAD)
 	{

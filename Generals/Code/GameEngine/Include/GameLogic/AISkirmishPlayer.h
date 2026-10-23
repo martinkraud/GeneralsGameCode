@@ -98,6 +98,8 @@ protected:
 
 protected:
 	void adjustBuildList(BuildListInfo *list);
+	Real enhancedLayoutOffset(BuildListInfo *list, const Coord3D &buildPos, const Coord3D &startPos, Real baseAngle);	///< X64.52: bounded extra rotation of the base layout (Enhanced)
+	void enhancedJitterSlots(BuildListInfo *list);	///< X64.52: small collision-free shifts of non-critical slots (Enhanced)
 	Int getMyEnemyPlayerIndex();
 	void acquireEnemy();
 

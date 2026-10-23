@@ -161,7 +161,7 @@ class ModePlumbing(unittest.TestCase):
         for tree in (GEN, ZH):
             pl = read(tree + "AIPlayer.cpp")
             body = body_of(pl, "void AIPlayer::xfer( Xfer *xfer )", "void AIPlayer::loadPostProcess")
-            self.assertIn("XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_enhanced) ? 2 : 1;", body)
+            self.assertIn("XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_enhanced) ? 3 : 1;", body)
             self.assertIn("if (version >= 2)", body)
             ctor = body_of(pl, "AIPlayer::AIPlayer( Player *p )", "AIPlayer::~AIPlayer")
             self.assertIn("m_enhanced = TheGameInfo && TheGameInfo->getAIBehavior() == AI_BEHAVIOR_ENHANCED;", ctor)
