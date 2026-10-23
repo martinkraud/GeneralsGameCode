@@ -136,7 +136,30 @@ Unlimited never reaches the counting code: `SuperweaponRule::blocksStart` reads 
 * Campaign and Challenge: `GameLogic::getSuperweaponLimit()` reads the Skirmish game info (null in Campaign); the Challenge game info is never given a rule.
 * LAN / online lobbies have no Modern control (unchanged scope). The value is serialized (`SW=`) and enforced inside the deterministic simulation, so a game that carries it is enforced identically on every peer.
 
-### 4.5 Known limits
+### 4.5 Packages (code commit `8d1e2e18b`, `build\dist`)
+Built by `New-MKRaudsteinDistribution.ps1` (both titles in one run, clean install + ZIP == staged candidate file-for-file, overlay test PASS for both). No PDB in either player ZIP; symbols are separate archives. The staged executables are byte-identical to the gated `build\win64` executables.
+
+| file | size (B) | SHA-256 |
+|---|---|---|
+| `MKRaudstein-Generals-x64-Preview-8d1e2e18b.zip` | 4 050 103 | `13E32AF7FB95072B1446CC5DEFE8FA77F2E005726983270BB6AB15A82E291D7C` |
+| `MKRaudstein-ZeroHour-x64-Preview-8d1e2e18b.zip` | 4 155 201 | `0B4A9F55A0C50BAE4843E409C561D23ADC7B0127F70516E687596049ACB41C88` |
+| `MKRaudstein-Generals-x64-Preview-8d1e2e18b-Symbols.zip` | 22 137 626 | (see `MKRaudstein-Generals-x64-Preview-8d1e2e18b.manifest.json`) |
+| `MKRaudstein-ZeroHour-x64-Preview-8d1e2e18b-Symbols.zip` | 22 496 788 | (see `MKRaudstein-ZeroHour-x64-Preview-8d1e2e18b.manifest.json`) |
+
+Combined list: `MKRaudstein-x64-Preview-8d1e2e18b.SHA256SUMS`. Both contain X64.52 Enhanced AI (`AI=E2`), the corrected Match Options, AI Behaviour, Starting Cash and the Superweapons limit.
+
+### 4.6 Human native test (one run of the whole current feature set)
+Launch the candidate (not the X64.52 packages): `build\dev-runtimes\native\ZeroHour\dist-8d1e2e18b-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-8d1e2e18b-zh`
+(Generals: `build\dev-runtimes\native\Generals\dist-8d1e2e18b-gen`), or install the two ZIPs over the Steam installations as in X64.48B.
+1. Skirmish > Game Options at 1920x1080, then your widest resolution and one larger UI scale: Starting Cash, AI Behaviour and Superweapons sit in one tidy row/column, nothing overlaps, open each drop-down and pick an entry in the row below it.
+2. Defaults: AI Behaviour Original, Superweapons Unlimited, Starting Cash unchanged. Start a match; superweapon buttons behave as retail.
+3. Superweapons = Max 1: build one Particle Cannon / Nuclear Missile / Scud Storm; the second's button is greyed (maxed out). Destroy the first: the button comes back. Max 3 / Max 5 the same at 3 / 5. Disabled: no superweapon structure can be started. General Powers still work.
+4. Capture an enemy superweapon (Max 1): it stays yours (not destroyed) and your own build button stays greyed.
+5. Vs. AI with Max 1 / Disabled, Original and Enhanced: the AI never exceeds the cap and keeps building the rest of its base.
+6. Save and load a Skirmish with a limit, and replay a recorded one: the limit holds. Campaign and General's Challenge: no Superweapons control, retail behaviour. `-classic`: no new controls.
+7. Report anything that overlaps, mis-clicks or differs.
+
+### 4.7 Known limits
 * Zero Hour's own retail "Limit Superweapons" check box is hidden in Modern mode (the new control supersedes it); an old ticked preference migrates to Max 1 once and the legacy preference is not rewritten.
 * Performance numbers above are from a loaded machine (see 4.2).
 * Replays that carry `SW=` are refused by builds older than X64.52A (unknown key), by design.
