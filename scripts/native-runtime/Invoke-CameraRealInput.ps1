@@ -48,6 +48,28 @@ public static class RealInput {
   [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
+  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint flags);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool attach);
+  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+  // Take the foreground even though this process does not own it (the foreground lock refuses a plain SetForegroundWindow from a background process).
+  public static bool Foreground(IntPtr h) {
+    uint pid; uint fg = GetWindowThreadProcessId(GetForegroundWindow(), out pid); uint me = GetCurrentThreadId();
+    uint target = GetWindowThreadProcessId(h, out pid);
+    ShowWindow(h, 9);
+    if (fg != me) AttachThreadInput(me, fg, true);
+    if (target != me && target != fg) AttachThreadInput(me, target, true);
+    BringWindowToTop(h); bool ok = SetForegroundWindow(h);
+    if (target != me && target != fg) AttachThreadInput(me, target, false);
+    if (fg != me) AttachThreadInput(me, fg, false);
+    return ok && GetForegroundWindow() == h;
+  }
+  public static bool OwnsPoint(IntPtr h, int x, int y) { POINT p = new POINT(); p.x = x; p.y = y; return GetAncestor(WindowFromPoint(p), 2) == h; }
   [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
   public static void Key(ushort scan, bool up, bool extended) {
     INPUT[] a = new INPUT[1]; a[0].type = 1; a[0].u.ki.wScan = scan;
@@ -65,6 +87,8 @@ public static class RealInput {
 }
 '@
 
+# Physical pixels everywhere: a DPI-unaware script would get 1536x960 for a 1920x1200 window on a 125 % desktop and park the cursor in the wrong place (found while re-running the gate).
+[void][RealInput]::SetProcessDpiAwarenessContext([IntPtr]::new(-4))
 function Get-Client($hwnd) {
     $r = New-Object RealInput+RECT; [void][RealInput]::GetClientRect($hwnd, [ref]$r)
     $p = New-Object RealInput+POINT; $p.x = 0; $p.y = 0; [void][RealInput]::ClientToScreen($hwnd, [ref]$p)
@@ -80,7 +104,7 @@ $phaseFile = Join-Path $out 'camera-probe-phase.txt'
 try {
     $p = Start-Process -FilePath $exe -WorkingDirectory $game -PassThru
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
-    $seen = 0; $held = $null; $rmbDown = $false; $dir = 1; $rmbMoves = 0
+    $inconclusive = $false; $seen = 0; $held = $null; $rmbDown = $false; $dir = 1; $rmbMoves = 0
     while (-not $p.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         Start-Sleep -Milliseconds 8
         $p.Refresh()
@@ -93,11 +117,13 @@ try {
             if ($held -eq 2) { [RealInput]::Key(0x4B, $true, $true) }
             if ($held -eq 6 -and $rmbDown) { [RealInput]::MouseButton($true, $true); $rmbDown = $false }
             $held = $phase
-            if ($hwnd -ne [IntPtr]::Zero) { [void][RealInput]::SetForegroundWindow($hwnd) }
+            if ($hwnd -ne [IntPtr]::Zero) { $fg = [RealInput]::Foreground($hwnd); if (-not $fg) { Write-Host 'driver: WARNING the game window did not take the foreground' -ForegroundColor Yellow; $inconclusive = $true } }
+            # outside the hold phases the cursor rests in the middle of the client area: a cursor left in a corner by an earlier run would edge-scroll the camera during the key phase
+            if (($phase -in 1, 3, 5, 7) -and $hwnd -ne [IntPtr]::Zero) { $c = Get-Client $hwnd; [void][RealInput]::SetCursorPos($c.X + [int]($c.W / 2), $c.Y + [int]($c.H / 2)); [RealInput]::MouseRel(1, 0); [RealInput]::MouseRel(-1, 0) }
             if ($phase -eq 2) { [RealInput]::Key(0x4B, $false, $true) }
             elseif ($phase -eq 4 -and $hwnd -ne [IntPtr]::Zero) { $c = Get-Client $hwnd; [void][RealInput]::SetCursorPos($c.X + $c.W - 2, $c.Y + [int]($c.H / 2)); [RealInput]::MouseRel(3, 0) }
             elseif ($phase -eq 6 -and $hwnd -ne [IntPtr]::Zero) { $c = Get-Client $hwnd; [void][RealInput]::SetCursorPos($c.X + [int]($c.W / 2), $c.Y + [int]($c.H / 2)); Start-Sleep -Milliseconds 50; [RealInput]::MouseButton($true, $false); $rmbDown = $true; $rmbMoves = 0 }
-            Write-Host "driver: entered phase $phase"
+            $cc = if ($hwnd -ne [IntPtr]::Zero) { Get-Client $hwnd } else { $null }; $owns = if ($cc) { [RealInput]::OwnsPoint($hwnd, $cc.X + [int]($cc.W / 2), $cc.Y + [int]($cc.H / 2)) } else { $false }; Write-Host "driver: entered phase $phase owns_centre=$owns hwnd=$hwnd client=$($cc.X),$($cc.Y) $($cc.W)x$($cc.H)"
         }
         if ($held -eq 6 -and $rmbDown -and $rmbMoves -lt 12) { [RealInput]::MouseRel(16 * $dir, 0); $rmbMoves++ }     # pull the mouse 192 px from the anchor, then hold it still: a constant scroll speed
         if ($held -eq 4 -and $hwnd -ne [IntPtr]::Zero) { $c = Get-Client $hwnd; [void][RealInput]::SetCursorPos($c.X + $c.W - 2, $c.Y + [int]($c.H / 2)) }   # keep it at the edge
@@ -115,3 +141,7 @@ $summary = Join-Path $out 'camera-probe-summary.txt'
 Write-Host "==== $Title real input, cap $Fps ===="
 if (Test-Path -LiteralPath $summary) { Get-Content -LiteralPath $summary } else { Write-Host 'no summary written' -ForegroundColor Red }
 if (Test-Path -LiteralPath $phaseFile) { Write-Host '---- translator state samples ----'; Get-Content -LiteralPath $phaseFile | Where-Object { $_ -match 'state' } | Select-Object -First 40 }
+if ($inconclusive) {
+    Write-Host 'INCONCLUSIVE: the game window could not take the foreground (locked workstation, screen saver or another window on top). The numbers above are NOT a camera result.' -ForegroundColor Yellow
+    exit 3
+}

@@ -50,6 +50,7 @@ if ($Native) {
             $label = "gate$fps"
             Step "camera real-input gate $($t.Title) @ $fps" {
                 & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Invoke-CameraRealInput.ps1') -Title $t.Title -Candidate $t.Candidate -Label $label -Fps $fps | Out-Null
+                if ($LASTEXITCODE -eq 3) { throw 'INCONCLUSIVE: locked workstation / game window not in the foreground (unlock the desktop and run again)' }
                 python (Join-Path $PSScriptRoot 'analyze_camera_real.py') (Join-Path $repo "build\diag\camera-real-$($t.Title)-$label")
             }
         }
