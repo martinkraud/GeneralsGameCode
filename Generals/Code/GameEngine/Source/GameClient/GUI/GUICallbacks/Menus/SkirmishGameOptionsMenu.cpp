@@ -31,6 +31,8 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/ModernExperience.h"
 #include "GameClient/AIBehaviorOptions.h"
+#include "GameClient/MatchOptionControls.h"
+#include "Common/SuperweaponLimit.h"
 #include "Common/MatchOptionsLayout.h"
 #include "Common/StartupDiagnostics.h"
 
@@ -133,6 +135,10 @@ static GameWindow *comboBoxStartingCash = nullptr;
 static NameKeyType comboBoxAIBehaviorID = NAMEKEY_INVALID;
 static GameWindow *comboBoxAIBehavior = nullptr;
 static const char aiBehaviorKey[] = "AIBehavior";
+// X64.52A: Superweapons (Disabled / Max 1 / Max 3 / Max 5 / Unlimited), the third Match Options row. A match rule for humans and both AI modes.
+static NameKeyType comboBoxSuperweaponsID = NAMEKEY_INVALID;
+static GameWindow *comboBoxSuperweapons = nullptr;
+static const char superweaponLimitKey[] = "Superweapons";
 
 static Bool startingCashExtensionEnabled()
 {
@@ -212,32 +218,46 @@ static Int hideGameSpeedRemnants(GameWindow *root, const MatchOptionsLayout::Lay
 	return hidden;
 }
 
-// Moves the Battle Honors statistics block down by the layout's shift (Zero Hour did the same 7 px) so the two
-// match-option rows fit above it. A window that moves carries its children, so only top-most matches are moved.
-static Int shiftHonorsBlock(GameWindow *root, const MatchOptionsLayout::Layout &layout)
+// X64.52A: the Battle Honors statistics block makes room for the three Match Options rows: it starts below the last row and ends where it always ended, so its windows are squeezed
+// vertically by the layout's factor (their order and left edges stay). The frame of the block (the window that is as tall as the block) is moved and resized, every other window
+// inside is moved and shortened by the same factor. A window that moves carries its children, so only top-most matches are changed.
+static Int squeezeHonorsBlock(GameWindow *root, const MatchOptionsLayout::Layout &layout)
 {
-	if (!root || layout.honorsShift <= 0)
+	if (!root)
 		return 0;
-	Int moved = 0;
+	Int changed = 0;
 	for (GameWindow *w = root->winGetChild(); w; w = w->winGetNext())
 	{
 		Int wx, wy, ww, wh;
 		w->winGetScreenPosition(&wx, &wy);
 		w->winGetSize(&ww, &wh);
-		const MatchOptionsLayout::Rect &b = layout.honorsBlockBefore;
+		const MatchOptionsLayout::Rect &b = layout.statsFind;
 		if (wx >= b.x && wx + ww <= b.right() && wy >= b.y && wy + wh <= b.bottom() && !w->winIsHidden())
 		{
+			const Int newY = layout.mapY(wy);
+			const Int newH = layout.mapH(wh);
 			Int px, py;
 			w->winGetPosition(&px, &py);
-			w->winSetPosition(px, py + layout.honorsShift);
-			++moved;
+			w->winSetPosition(px, py + (newY - wy));
+			w->winSetSize(ww, newH);
+			++changed;
+			// the statistics lines are children of the frame: they keep their order and are squeezed by the same factor inside it
+			for (GameWindow *child = w->winGetChild(); child; child = child->winGetNext())
+			{
+				Int cx, cy, cw, ch;
+				child->winGetPosition(&cx, &cy);
+				child->winGetSize(&cw, &ch);
+				child->winSetPosition(cx, static_cast<Int>(floor(cy * layout.squeeze() + 0.5)));
+				child->winSetSize(cw, layout.mapH(ch));
+				++changed;
+			}
 		}
 		else if (w->winGetChild())
 		{
-			moved += shiftHonorsBlock(w, layout);
+			changed += squeezeHonorsBlock(w, layout);
 		}
 	}
-	return moved;
+	return changed;
 }
 
 static MatchOptionsLayout::Layout matchOptionsLayoutFor(GameWindow *header, GameWindow *rowDonor, Bool screenSpace)
@@ -575,6 +595,15 @@ void SkirmishPreferences::setSuperweaponRestricted( Bool superweaponRestricted )
   (*this)[superweaponRestrictionKey] = superweaponRestricted ? "Yes" : "No";
 }
 
+static UnsignedShort storedSuperweaponLimit(const SkirmishPreferences &prefs)
+{
+  uint16_t limit = SuperweaponLimit::kUnlimited;
+  SkirmishPreferences::const_iterator it = prefs.find(superweaponLimitKey);
+  if (it == prefs.end() || !SuperweaponLimit::parsePreferenceText(it->second.str(), limit))
+    return SuperweaponLimit::kUnlimited;
+  return limit;
+}
+
 static AIBehaviorMode storedAIBehavior(const SkirmishPreferences &prefs)
 {
   AIBehaviorMode mode = AI_BEHAVIOR_ORIGINAL;
@@ -631,6 +660,8 @@ Bool SkirmishPreferences::write()
 	setStartingCash( TheSkirmishGameInfo->getStartingCash() );
 	if (ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
 		(*this)[aiBehaviorKey] = AIBehaviorOptions::preferenceValue(TheSkirmishGameInfo->getAIBehavior());
+	if (ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))
+		(*this)[superweaponLimitKey] = SuperweaponLimit::preferenceText(TheSkirmishGameInfo->getSuperweaponLimit());
 
 	setSlotList();
 
@@ -1519,6 +1550,8 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	}
 	// AI Behaviour: Original unless the player chose Enhanced (Classic never offers it).
 	TheSkirmishGameInfo->setAIBehavior(ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR) ? storedAIBehavior(prefs) : AI_BEHAVIOR_ORIGINAL);
+	// Superweapons: Unlimited (retail) unless the player chose a limit (Classic never offers it).
+	TheSkirmishGameInfo->setSuperweaponLimit(ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT) ? storedSuperweaponLimit(prefs) : SuperweaponLimit::kUnlimited);
 
 	UnsignedInt isPreorder = 0;
 	GetUnsignedIntFromRegistry("", "Preorder", isPreorder);
@@ -1575,11 +1608,11 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	comboBoxStartingCash = createStartingCashControl(sliderGameSpeed, speedLabel, comboBoxTeam[0], comboBoxPlayer[1]);
 	Int movedHonors = 0;
 	if (comboBoxStartingCash)
-		movedHonors = shiftHonorsBlock(parentSkirmishGameOptions, screenLayout);
+		movedHonors = squeezeHonorsBlock(parentSkirmishGameOptions, screenLayout);
 	{
 		char receipt[160];
-		sprintf(receipt, "match_options remnants_hidden=%d honors_windows_shifted=%d shift=%d", hiddenRemnants, movedHonors,
-			screenLayout.honorsShift);
+		sprintf(receipt, "match_options remnants_hidden=%d honors_windows_squeezed=%d stats_top=%d stats_bottom=%d", hiddenRemnants, movedHonors,
+			screenLayout.statsNewTop, screenLayout.statsNewBottom);
 		StartupDiagnostics::checkpoint("skirmish_ui", "layout", receipt);
 	}
 	if (comboBoxStartingCash)
@@ -1594,16 +1627,30 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	}
 	selectStartingCashInCombo();
 	comboBoxAIBehavior = nullptr;
-	if (comboBoxStartingCash && speedLabel && ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
+	comboBoxSuperweapons = nullptr;
+	if (comboBoxStartingCash && speedLabel)
 	{
+		// rows 1 and 2 of the Match Options block, in the header's own (parent) coordinates; row 0 is Starting Cash
 		const MatchOptionsLayout::Layout rows = matchOptionsLayoutFor(speedLabel, comboBoxTeam[0], FALSE);
-		comboBoxAIBehaviorID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior");
-		comboBoxAIBehavior = AIBehaviorOptions::create(speedLabel->winGetParent(),
-			{ rows.label[1].x, rows.label[1].y, rows.label[1].w, rows.label[1].h },
-			{ rows.control[1].x, rows.control[1].y, rows.control[1].w, rows.control[1].h },
-			comboBoxTeam[0], TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextWins")),
-			NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior"), comboBoxAIBehaviorID);
-		AIBehaviorOptions::select(comboBoxAIBehavior, TheSkirmishGameInfo->getAIBehavior());
+		GameWindow *captionDonor = TheWindowManager->winGetWindowFromId(nullptr, NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextWins"));
+		if (ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
+		{
+			int count = 0;
+			const MatchOptionControls::Entry *entries = MatchOptionControls::aiBehaviorEntries(count);
+			comboBoxAIBehaviorID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior");
+			comboBoxAIBehavior = MatchOptionControls::createCombo(speedLabel->winGetParent(), rows.label[1], rows.control[1], comboBoxTeam[0], captionDonor,
+				NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior"), comboBoxAIBehaviorID, "GUI:AIBehavior", L"AI Behaviour", entries, count);
+			MatchOptionControls::select(comboBoxAIBehavior, (int)TheSkirmishGameInfo->getAIBehavior());
+		}
+		if (ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))
+		{
+			int count = 0;
+			const MatchOptionControls::Entry *entries = MatchOptionControls::superweaponEntries(count);
+			comboBoxSuperweaponsID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxSuperweapons");
+			comboBoxSuperweapons = MatchOptionControls::createCombo(speedLabel->winGetParent(), rows.label[2], rows.control[2], comboBoxTeam[0], captionDonor,
+				NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons"), comboBoxSuperweaponsID, "GUI:Superweapons", L"Superweapons", entries, count);
+			MatchOptionControls::select(comboBoxSuperweapons, (int)TheSkirmishGameInfo->getSuperweaponLimit());
+		}
 	}
 	// The retail WND names this label StaticTextBattleHonors1 and gives it the GUI:GameSpeed text; it goes
 	// away with the slider it labels. Matching the text alone left the label visible without its slider when the
@@ -1806,7 +1853,12 @@ WindowMsgHandledType SkirmishGameOptionsMenuSystem( GameWindow *window, Unsigned
 				}
 				if (comboBoxAIBehavior && controlID == comboBoxAIBehaviorID)
 				{
-					TheSkirmishGameInfo->setAIBehavior(AIBehaviorOptions::selected(comboBoxAIBehavior));
+					TheSkirmishGameInfo->setAIBehavior(MatchOptionControls::selected(comboBoxAIBehavior, AI_BEHAVIOR_ORIGINAL) == AI_BEHAVIOR_ENHANCED ? AI_BEHAVIOR_ENHANCED : AI_BEHAVIOR_ORIGINAL);
+					break;
+				}
+				if (comboBoxSuperweapons && controlID == comboBoxSuperweaponsID)
+				{
+					TheSkirmishGameInfo->setSuperweaponLimit((UnsignedShort)MatchOptionControls::selected(comboBoxSuperweapons, SuperweaponLimit::kUnlimited));
 					break;
 				}
 				for (Int i = 0; i < MAX_SLOTS; i++)

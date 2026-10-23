@@ -231,6 +231,7 @@ public:
 	Int getRankPointsToAddAtGameStart() const { return m_rankPointsToAddAtGameStart; }
 
   UnsignedShort getSuperweaponRestriction() const; ///< Get any optional limits on superweapons
+  UnsignedShort getSuperweaponLimit() const; ///< X64.52A: the Superweapons match rule (0 = Unlimited): Skirmish / replay / LAN games only, never Campaign or General's Challenge
 
 #ifdef DUMP_PERF_STATS
 	void getAIMetricsStatistics( UnsignedInt *numAI, UnsignedInt *numMoving, UnsignedInt *numAttacking, UnsignedInt *numWaitingForPath, UnsignedInt *overallFailedPathfinds );

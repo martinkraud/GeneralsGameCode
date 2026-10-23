@@ -49,6 +49,9 @@ set(GAMEENGINE_SRC
     Include/Common/AIBehavior.h
     Include/Common/AIEnhancedBase.h
     Include/Common/AIEnhancedBaseXfer.h
+    Include/Common/SuperweaponLimit.h
+    Include/Common/SuperweaponLimitXfer.h
+    Include/GameLogic/SuperweaponRule.h
     Include/Common/AIDiagnostics.h
     Include/Common/CameraProbe.h
     Include/Common/PresentationScroll.h
@@ -622,7 +625,9 @@ set(GAMEENGINE_SRC
     Source/Common/FrameRateLimit.cpp
     Source/GameClient/GUI/FrameRateOptions.cpp
     Source/GameClient/GUI/AIBehaviorOptions.cpp
+    Source/GameClient/GUI/MatchOptionControls.cpp
     Source/GameLogic/AI/AIEnhancedBase.cpp
+    Source/GameLogic/System/SuperweaponRule.cpp
     Source/GameClient/GUI/ModernDisplayOptions.cpp
     Source/GameClient/GUI/OptionsTabs.cpp
 #    Source/Common/GameEngine.cpp

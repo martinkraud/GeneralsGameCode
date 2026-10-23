@@ -13,6 +13,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/PresentationScrollTest.cpp
     GameEngine/Common/AIBehaviorTest.cpp
     GameEngine/Common/AIEnhancedBaseTest.cpp
+    GameEngine/Common/SuperweaponLimitTest.cpp
     GameEngine/Common/DisplayGeometryTest.cpp
     GameEngine/Common/PresentationSmoothnessTest.cpp
     GameEngine/Common/DisplaySettingsTest.cpp

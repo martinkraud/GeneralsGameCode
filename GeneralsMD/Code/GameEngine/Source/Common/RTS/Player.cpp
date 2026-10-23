@@ -56,6 +56,7 @@
 #include "Common/MiscAudio.h"
 #include "Common/PerfTimer.h"
 #include "Common/Player.h"
+#include "GameLogic/SuperweaponRule.h"
 #include "Common/PlayerList.h"
 #include "Common/PlayerTemplate.h"
 #include "Common/ProductionPrerequisite.h"
@@ -2916,6 +2917,10 @@ static void countExisting( Object *obj, void *userData )
 // Make sure that building another of this unit/structure/object won't exceed MaxSimultaneousOfType()
 Bool Player::canBuildMoreOfType( const ThingTemplate *whatToBuild ) const
 {
+  // X64.52A: the Skirmish "Superweapons" match rule (Unlimited by default: nothing is checked). Authoritative: canMakeUnit and canBuild come through here.
+  if ( SuperweaponRule::blocksStart( this, whatToBuild ) )
+    return false;
+
   // make sure we're not maxed out for this type of unit.
   UnsignedInt maxSimultaneousOfType = whatToBuild->getMaxSimultaneousOfType();
   if (maxSimultaneousOfType != 0)

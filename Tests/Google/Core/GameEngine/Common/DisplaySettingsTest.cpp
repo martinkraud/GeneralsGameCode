@@ -333,30 +333,92 @@ TEST(DisplayRuntime, ShortcutSidebarAndRadarStayOnTheirEdgesOnUltrawide)
 
 #include "Common/MatchOptionsLayout.h"
 
-TEST(MatchOptionsLayout, RowsAreOnTheGridRhythmAndLeaveTheHonorsBlockAlone)
+TEST(MatchOptionsLayout, GeneralsColumnHasThreeRowsOnTheGridRhythmAndTheStatisticsSqueezeBelow)
 {
+	using namespace MatchOptionsLayout;
 	for (int percent : {75, 100, 125, 150, 175, 200, 250, 300})
 	{
 		const double s = percent / 100.0;
-		const int hx = MatchOptionsLayout::scaled(57, s), hy = MatchOptionsLayout::scaled(315, s);
-		const MatchOptionsLayout::Layout l =
-			MatchOptionsLayout::compute(hx, hy, MatchOptionsLayout::scaled(156, s), MatchOptionsLayout::scaled(24, s), s);
-		const int rowH = MatchOptionsLayout::scaled(24, s);
-		for (int i = 0; i < MatchOptionsLayout::kRowCapacity; ++i)
+		const int hx = scaled(57, s), hy = scaled(315, s);
+		const Layout l = compute(hx, hy, scaled(156, s), scaled(24, s), s);
+		const int rowH = scaled(24, s);
+		ASSERT_EQ(kRowCapacity, 3);
+		for (int i = 0; i < kRowCapacity; ++i)
 		{
 			EXPECT_EQ(l.label[i].h, rowH);
+			EXPECT_EQ(l.control[i].h, rowH);
 			EXPECT_EQ(l.control[i].y, l.label[i].y);
 			EXPECT_LE(l.label[i].right(), l.control[i].x) << percent;
-			EXPECT_LE(l.control[i].right(), hx + MatchOptionsLayout::scaled(240, s)) << percent;   // stays in the left column
+			EXPECT_LE(l.control[i].right(), hx + scaled(240, s)) << percent;   // stays in the left column
+			EXPECT_EQ(l.label[i].x, l.label[0].x);                            // one label column
+			EXPECT_EQ(l.control[i].x, l.control[0].x);                        // one dropdown column
+			EXPECT_EQ(l.control[i].w, l.control[0].w);
 			if (i)
-				EXPECT_EQ(l.label[i].y, l.label[i - 1].bottom());
+				EXPECT_EQ(l.label[i].y, l.label[i - 1].bottom());             // uniform vertical rhythm, no gaps, no overlap
 		}
-		// Both rows end exactly where the shifted honors block begins (Zero Hour's 7 px move).
-		const int honorsTopAfterShift = l.honorsBlockBefore.y + 1 + l.honorsShift;
-		EXPECT_NEAR(l.label[MatchOptionsLayout::kRowCapacity - 1].bottom(), honorsTopAfterShift, 2) << percent;
-		// The retired speed block is entirely above the honors block and below the header top.
+		EXPECT_EQ(l.label[0].y, l.header.bottom());                           // flush under the header, like the grid's columns
+		// the squeezed statistics panel starts below the last row and ends where the retail block ended (+ Zero Hour's 7 units)
+		EXPECT_GE(l.statsNewTop, l.control[kRowCapacity - 1].bottom());
+		EXPECT_EQ(l.statsNewBottom, l.statsOldBottom + scaled(7, s));
+		const double k = l.squeeze();
+		EXPECT_GT(k, 0.6) << percent;
+		EXPECT_LT(k, 0.85) << percent;
+		// a retail 47 px line pitch at 1.75 (26.9 units) keeps at least 19 units: the 24 unit text stays readable and the lines keep their order
+		EXPECT_GE(26.9 * k * s, 19.0 * s - 1.0) << percent;
+		EXPECT_EQ(l.mapY(l.statsOldTop), l.statsNewTop);
+		EXPECT_EQ(l.mapY(l.statsOldBottom), l.statsNewBottom);
+		for (int y = l.statsOldTop; y < l.statsOldBottom; y += 3) EXPECT_LE(l.mapY(y), l.mapY(y + 3));
+		EXPECT_GE(l.mapH(1), 1);
+		// the retired speed block is entirely above the statistics block and below the header top
 		EXPECT_GE(l.remnantBlock.y, hy);
-		EXPECT_LE(l.remnantBlock.bottom(), hy + MatchOptionsLayout::scaled(69, s)) << percent;   // first honors row (retail y 384)
+		EXPECT_LE(l.remnantBlock.bottom(), hy + scaled(69, s)) << percent;
+	}
+}
+
+TEST(MatchOptionsLayout, ZeroHourBandHasThreeEvenPairsInsideTheGridEdges)
+{
+	using namespace MatchOptionsLayout;
+	// the band is derived from the grid's own left edge and the map preview's right edge at any window size and UI scale
+	for (int scalePercent : {75, 100, 125, 150, 175, 200, 250, 300})
+	{
+		const double s = scalePercent / 100.0;
+		for (int width : {1366, 1920, 2560, 3440, 5120})
+		{
+			const int left = scaled(346, s) + width / 20, right = left + scaled(680, s), rowH = scaled(24, s), y = scaled(300, s);
+			const Band b = computeBand(left, right, y, rowH, s);
+			for (int i = 0; i < kRowCapacity; ++i)
+			{
+				EXPECT_EQ(b.label[i].y, y); EXPECT_EQ(b.control[i].y, y);
+				EXPECT_EQ(b.label[i].h, rowH); EXPECT_EQ(b.control[i].h, rowH);
+				EXPECT_GE(b.label[i].x, left);
+				EXPECT_LE(b.control[i].right(), right);
+				EXPECT_LT(b.label[i].right(), b.control[i].x + 1);
+				EXPECT_GT(b.control[i].w, 8 * rowH / 2) << "a dropdown at least as wide as 4 rows (room for the entry text and the button)";
+				EXPECT_GE(b.label[i].w, 5 * rowH / 2);
+				if (i)
+				{
+					EXPECT_GE(b.label[i].x - b.control[i - 1].right(), scaled(24, s) - 1) << "gutter between pairs";
+					EXPECT_NEAR(b.control[i].w, b.control[0].w, 1);
+					EXPECT_NEAR(b.label[i].w, b.label[0].w, 1);
+					EXPECT_LE(b.control[i - 1].right() + 0, b.label[i].x);
+				}
+			}
+		}
+	}
+}
+
+TEST(MatchOptionsLayout, ComboPartsFillTheComboAndTheListOpensBelowIt)
+{
+	using namespace MatchOptionsLayout;
+	for (int h : {24, 42, 48, 72, 120})
+	{
+		const MatchOptionsLayout::Rect combo = {10, 20, 6 * h, h};
+		const ComboParts p = comboParts(combo, 5);
+		EXPECT_EQ(p.entry.w + p.button.w, combo.w);
+		EXPECT_EQ(p.entry.x, 0); EXPECT_EQ(p.button.x, p.entry.w);
+		EXPECT_EQ(p.entry.h, h); EXPECT_EQ(p.button.h, h);
+		EXPECT_EQ(p.button.w, h / 2);
+		EXPECT_EQ(p.list.y, h); EXPECT_EQ(p.list.w, combo.w); EXPECT_EQ(p.list.h, 5 * h);
 	}
 }
 

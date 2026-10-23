@@ -526,6 +526,11 @@ public:
   NameKeyType getMaxSimultaneousLinkKey() const { return m_maxSimultaneousLinkKey; }
   UnsignedInt getMaxSimultaneousOfType() const;
 
+  /** X64.52A: is this a normal buildable SUPERWEAPON STRUCTURE (Particle Cannon, Nuclear Missile, SCUD Storm and the general-specific variants)? True for every template the Zero Hour
+    * data marks "MaxSimultaneousOfType = DeterminedBySuperweaponRestriction" (that includes the GLA rebuild holes of a Scud Storm), and for every STRUCTURE that carries one of the
+    * superweapon special powers (the original Generals data has no such marker). General Powers are not structures and never qualify. Computed once from the template, then cached. */
+  Bool isSuperweaponStructure() const;
+
 	void validate();
 
 // The version that does not take an Object argument is labeled friend for use by WorldBuilder.  All game requests
@@ -755,6 +760,7 @@ private:
 	UnsignedShort		m_maxSimultaneousOfType;			///< max simultaneous of this unit we can have (per player) at one time. (0 == unlimited)
 
 	// ---- Bool-sized things
+  mutable Int   m_superweaponKind;            ///< X64.52A cache of isSuperweaponStructure(): -1 not computed, 0 no, 1 yes
   Bool          m_maxSimultaneousDeterminedBySuperweaponRestriction; ///< If true, override value in m_maxSimultaneousOfType with value from GameInfo::getSuperweaponRestriction()
 	Bool					m_isPrerequisite;							///< Is this thing considered in a prerequisite for any other thing?
 	Bool					m_isBridge;										///< True if this model is a bridge.

@@ -54,6 +54,7 @@
 #include "GameNetwork/GameInfo.h"
 #include "Common/AIBehavior.h"
 #include "Common/AIDiagnostics.h"
+#include "GameLogic/SuperweaponRule.h"
 #include "GameLogic/PartitionManager.h"
 #include "GameLogic/ScriptEngine.h"
 #include "GameLogic/Module/ProductionUpdate.h"
@@ -210,6 +211,12 @@ void AISkirmishPlayer::processBaseBuilding()
 			}
 			// Make sure it is safe to build here.
 			if (!isLocationSafe(info->getLocation(), curPlan)) {
+				continue;
+			}
+			// X64.52A: the Skirmish "Superweapons" match rule, for Original AND Enhanced AI. At the cap the order is skipped (not attempted, not blocking the orders behind it) and is
+			// selected again as soon as a destroyed / sold superweapon frees capacity. Unlimited (the default): blocksStart is always false, nothing changes.
+			if (SuperweaponRule::blocksStart(m_player, curPlan)) {
+				AIDiagnostics::count("sw.order_skipped_at_limit");
 				continue;
 			}
 			// X64.52 Enhanced: a slot whose long fallback search just came up empty must not hold up the rest of the base (retail keeps selecting it)

@@ -107,6 +107,7 @@ public:
 	NameKeyType getModuleTagNameKey() const { return m_moduleTagNameKey; }
 
 	virtual Bool isAiModuleData() const { return false; }
+	virtual Bool isSpecialPowerModuleData() const { return false; }	///< X64.52A: identifies the superweapon structures through their special power module
 
 	// ugh, hack
 	virtual const W3DModelDrawModuleData* getAsW3DModelDrawModuleData() const { return nullptr; }

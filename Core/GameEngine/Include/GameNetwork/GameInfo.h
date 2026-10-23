@@ -31,6 +31,7 @@
 #include "Common/Snapshot.h"
 #include "Common/Money.h"
 #include "Common/AIBehavior.h"
+#include "Common/SuperweaponLimit.h"
 #include "GameNetwork/NetworkDefs.h"
 #include "GameNetwork/FirewallHelper.h"
 
@@ -234,6 +235,10 @@ public:
   inline void setOldFactionsOnly( Bool oldFactionsOnly );
 
   // X64.51: the AI Behaviour game rule (Original / Enhanced). Written to the options string / replay header only when Enhanced.
+  // X64.52A: the Superweapons match rule (Unlimited / Max 1 / 3 / 5 / Disabled, see Common/SuperweaponLimit.h). Written to the options string / replay header ("SW=") and saved only when not Unlimited.
+  inline UnsignedShort getSuperweaponLimit() const { return m_superweaponLimit; }
+  inline void setSuperweaponLimit( UnsignedShort limit ) { m_superweaponLimit = SuperweaponLimit::isValid( limit ) ? limit : SuperweaponLimit::kUnlimited; }
+
   inline AIBehaviorMode getAIBehavior() const { return m_aiBehavior; }
   inline void setAIBehavior( AIBehaviorMode mode ) { m_aiBehavior = mode; }
 
@@ -258,6 +263,7 @@ protected:
   Money         m_startingCash;
   UnsignedShort m_superweaponRestriction;
   Bool m_oldFactionsOnly; // Only USA, China, GLA -- not USA Air Force General, GLA Toxic General, et al
+  UnsignedShort m_superweaponLimit; // X64.52A: Superweapons match rule, 0 = Unlimited (default)
   AIBehaviorMode m_aiBehavior; // X64.51: Original (default, retail compatible) or Enhanced AI
 };
 

@@ -8,6 +8,8 @@
 // display, the review scale and the stretched swap chain untouched.
 #pragma once
 
+#include <cstdlib>
+
 #include "Common/DisplayGeometry.h"
 #include "Common/DisplaySettings.h"
 
@@ -51,12 +53,19 @@ inline VsyncFn &vsyncHook() { static VsyncFn fn = nullptr; return fn; }
 
 inline const DisplayGeometry::Layout &layout() { return state().layout; }
 
+// X64.52A developer aid: GENERALS_FORCE_UI_SCALE=<75..300> overrides the requested UI scale (layout audits at every UI scale without touching the player's settings). Inert when unset.
+inline int forcedUiScalePercent()
+{
+	static const int forced = [] { const char *t = std::getenv("GENERALS_FORCE_UI_SCALE"); const int v = t ? std::atoi(t) : 0; return (v >= 75 && v <= 300) ? v : 0; }();
+	return forced;
+}
+
 // Called once the window/back buffer exists at `client` (or after a runtime change).
 inline void setClient(DisplayGeometry::Size client)
 {
 	State &s = state();
 	s.resolved.client = client;
-	s.layout = DisplayGeometry::computeLayout(client, s.settings.uiScalePercent);
+	s.layout = DisplayGeometry::computeLayout(client, forcedUiScalePercent() ? forcedUiScalePercent() : s.settings.uiScalePercent);
 }
 
 inline void setUiScalePercent(int percent)
@@ -64,7 +73,7 @@ inline void setUiScalePercent(int percent)
 	State &s = state();
 	s.settings.uiScalePercent = percent;
 	if (s.resolved.client.valid())
-		s.layout = DisplayGeometry::computeLayout(s.resolved.client, percent);
+		s.layout = DisplayGeometry::computeLayout(s.resolved.client, forcedUiScalePercent() ? forcedUiScalePercent() : percent);
 }
 
 // Effective UI scale as a factor (1.0 when not modern): fonts and ui art multiply by this.

@@ -39,6 +39,7 @@
 #include "Common/Xfer.h"
 #include "GameNetwork/FileTransfer.h"
 #include "GameNetwork/GameInfo.h"
+#include "Common/SuperweaponLimitXfer.h"
 #include "GameNetwork/GameSpy/ThreadUtils.h"
 #include "GameNetwork/GameSpy/StagingRoomGameInfo.h"
 #include "GameNetwork/LANAPI.h"						// for testing packet size
@@ -313,6 +314,7 @@ void GameInfo::reset()
 	m_surrendered = FALSE;
   m_oldFactionsOnly = FALSE;
 	m_aiBehavior = AI_BEHAVIOR_ORIGINAL;
+	m_superweaponLimit = SuperweaponLimit::kUnlimited;
 //	m_localIP = 0; // BGC - actually we don't want this to be reset since the m_localIP is
 										// set properly in the constructor of LANGameInfo which uses this as a base class.
 	m_mapCRC = 0;
@@ -1005,6 +1007,20 @@ static AsciiString buildGameInfoAsciiString(const GameInfo& game, const AsciiStr
 		optionsString.concat(';');
 	}
 
+	// X64.52A: the Superweapons match rule is written ONLY when it is not Unlimited, so every default options string / replay header is byte-identical to before. An executable that
+	// does not know the key refuses the string (unknown key), so a custom-rule replay can never be played as Unlimited by an older build.
+	if (SuperweaponLimit::isActive(game.getSuperweaponLimit()))
+	{
+		char value[4];
+		if (SuperweaponLimit::formatOptionValue(game.getSuperweaponLimit(), value, sizeof value))
+		{
+			optionsString.concat(SuperweaponLimit::optionKey());
+			optionsString.concat('=');
+			optionsString.concat(value);
+			optionsString.concat(';');
+		}
+	}
+
 	//add player info for each slot
 	optionsString.concat(slotListID);
 	optionsString.concat('=');
@@ -1130,6 +1146,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
   Money startingCash = TheGlobalData->m_defaultStartingCash;
   UnsignedShort restriction = 0; // Always the default
   AIBehaviorMode aiBehavior = AI_BEHAVIOR_ORIGINAL; // X64.51: absent key = Original
+  uint16_t superweaponLimit = SuperweaponLimit::kUnlimited; // X64.52A: absent key = Unlimited
 
 	Bool sawMap = FALSE;
 	Bool sawMapCRC = FALSE;
@@ -1248,6 +1265,16 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
     {
       oldFactionsOnly = ( val.compareNoCase( "Y" ) == 0 );
       sawOldFactions = TRUE;
+    }
+    else if (key.compare(SuperweaponLimit::optionKey()) == 0 )
+    {
+      // X64.52A: only the selectable values are accepted; anything else rejects the options (never silently plays a different rule)
+      if (!SuperweaponLimit::parseOptionValue(val.str(), superweaponLimit))
+      {
+        optionsOk = FALSE;
+        DEBUG_LOG(("ParseAsciiStringToGameInfo - unknown superweapon limit value, quitting"));
+        break;
+      }
     }
     else if (key.compare(AIBehavior::optionKey()) == 0 )
     {
@@ -1628,6 +1655,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
 		game->setStartingCash(startingCash);
 		game->setOldFactionsOnly(oldFactionsOnly);
 		game->setAIBehavior(aiBehavior);
+		game->setSuperweaponLimit(superweaponLimit);
 
 		return true;
 	}
@@ -1661,8 +1689,9 @@ void SkirmishGameInfo::xfer( Xfer *xfer )
 #endif
 	// X64.51: version 5 adds the AI Behaviour rule. It is written ONLY for an Enhanced game; an Original game still saves the retail version, so its saves
 	// keep the retail layout. A save of an Enhanced game cannot be read by an older executable (its version check rejects it), never played as Original.
-	const XferVersion currentVersion = 5;
-	XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_aiBehavior == AI_BEHAVIOR_ENHANCED) ? currentVersion : retailVersion;
+	// X64.52A: version 6 adds the Superweapons match rule and is written when it is not Unlimited (or the game is Enhanced); version 6 also carries the AI Behaviour rule.
+	const XferVersion currentVersion = 6;
+	XferVersion version = (xfer->getXferMode() == XFER_SAVE && (m_aiBehavior == AI_BEHAVIOR_ENHANCED || SuperweaponLimit::isActive(m_superweaponLimit))) ? currentVersion : retailVersion;
 	xfer->xferVersion( &version, currentVersion );
 
 
@@ -1769,6 +1798,8 @@ void SkirmishGameInfo::xfer( Xfer *xfer )
   {
     m_aiBehavior = AI_BEHAVIOR_ORIGINAL;
   }
+
+  SuperweaponLimit::xferLimit( xfer, m_superweaponLimit, version );   // X64.52A: version 6, see Common/SuperweaponLimitXfer.h
 
 }
 

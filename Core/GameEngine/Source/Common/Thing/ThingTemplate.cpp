@@ -65,6 +65,7 @@
 
 #include "GameLogic/Armor.h"
 #include "GameLogic/Module/AIUpdate.h"
+#include "Common/SpecialPower.h"
 #include "GameLogic/Module/SpecialPowerModule.h"
 #include "GameLogic/Object.h"
 #include "GameLogic/Powers.h"
@@ -1068,6 +1069,7 @@ ThingTemplate::ThingTemplate() :
 	m_maxSimultaneousOfType = 0;	// unlimited
   m_maxSimultaneousLinkKey = NAMEKEY_INVALID; // Not linked
   m_maxSimultaneousDeterminedBySuperweaponRestriction = false;
+  m_superweaponKind = -1;
 	m_crusherLevel = 0;			//Unspecified, this object is unable to crush anything!
 	m_crushableLevel = 255; //Unspecified, this object is unable to be crushed by anything!
 
@@ -1500,6 +1502,55 @@ UnsignedInt ThingTemplate::getMaxSimultaneousOfType() const
   }
 
   return m_maxSimultaneousOfType;
+}
+
+//-------------------------------------------------------------------------------------------------
+// X64.52A: superweapon structure identification (see ThingTemplate.h). The special powers that make a STRUCTURE a superweapon are the three of the original game and, in Zero Hour,
+// the general-specific copies of the Particle Cannon and Nuclear Missile. General Powers (A-10, Artillery Barrage, Spectre, ...) are not structures and are not in the set.
+static Bool isSuperweaponSpecialPower(SpecialPowerType type)
+{
+  switch (type)
+  {
+    case SPECIAL_PARTICLE_UPLINK_CANNON:
+    case SPECIAL_NEUTRON_MISSILE:
+    case SPECIAL_SCUD_STORM:
+#if !RTS_GENERALS
+    case SUPW_SPECIAL_PARTICLE_UPLINK_CANNON:
+    case LAZR_SPECIAL_PARTICLE_UPLINK_CANNON:
+    case NUKE_SPECIAL_NEUTRON_MISSILE:
+    case SUPW_SPECIAL_NEUTRON_MISSILE:
+#endif
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+Bool ThingTemplate::isSuperweaponStructure() const
+{
+  if (m_superweaponKind >= 0)
+    return m_superweaponKind != 0;
+
+  Bool result = FALSE;
+  if (m_maxSimultaneousDeterminedBySuperweaponRestriction)
+  {
+    result = TRUE;   // the data's own marker (Zero Hour): also the GLA Scud Storm rebuild holes, which hold the capacity of the structure they will rebuild
+  }
+  else if (isKindOf(KINDOF_STRUCTURE))
+  {
+    const ModuleInfo &modules = getBehaviorModuleInfo();
+    for (Int i = 0; i < modules.getCount() && !result; ++i)
+    {
+      const ModuleData *data = modules.getNthData(i);
+      if (!data || !data->isSpecialPowerModuleData())
+        continue;
+      const SpecialPowerTemplate *power = static_cast<const SpecialPowerModuleData *>(data)->m_specialPowerTemplate;
+      if (power && isSuperweaponSpecialPower(power->getSpecialPowerType()))
+        result = TRUE;
+    }
+  }
+  m_superweaponKind = result ? 1 : 0;
+  return result;
 }
 
 

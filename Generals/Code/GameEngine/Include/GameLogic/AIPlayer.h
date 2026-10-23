@@ -205,6 +205,7 @@ public:
 	void enhancedNoteStartFailure(const BuildListInfo *info, const ThingTemplate *tmpl);	///< X64.52: the first priority order could not be started
 	void enhancedNoteStartSuccess();
 	Bool enhancedFindPlaceable(const Coord3D *at, const ThingTemplate *tmpl, Real angle, Object *builder, Coord3D *out, Int rings);	///< X64.52: cheap exact-or-near legality probe
+	void diagnosticSuperweaponAid();	///< X64.52A: GENERALS_AI_DIAG_SW scenario aids + owned-superweapon peak (diagnostics runs only)
 	void diagnosticAttackAid();	///< X64.52: GENERALS_AI_DIAG_ATTACK scenario aid (diagnostics runs only)
 	AIEnhancedBase::State &enhancedState() {return m_eb;}
 	void diagnosticTick();	///< X64.51: GENERALS_AI_DIAG scenario aids (kills, build list dumps); inert unless the diagnostics are enabled

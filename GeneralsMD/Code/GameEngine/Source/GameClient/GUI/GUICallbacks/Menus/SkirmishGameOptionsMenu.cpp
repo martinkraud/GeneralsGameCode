@@ -34,6 +34,8 @@
 #include "Common/BattleHonors.h"
 #include "Common/ModernExperience.h"
 #include "GameClient/AIBehaviorOptions.h"
+#include "GameClient/MatchOptionControls.h"
+#include "Common/SuperweaponLimit.h"
 #include "Common/FileSystem.h"
 #include "Common/GameEngine.h"
 #include "Common/PlayerTemplate.h"
@@ -118,6 +120,10 @@ static NameKeyType sliderGameSpeedID = NAMEKEY_INVALID;
 static NameKeyType comboBoxAIBehaviorID = NAMEKEY_INVALID;
 static GameWindow *comboBoxAIBehavior = nullptr;
 static const char aiBehaviorKey[] = "AIBehavior";
+// X64.52A: Superweapons (Disabled / Max 1 / Max 3 / Max 5 / Unlimited), the third option of the Match Options band. A match rule for humans and both AI modes.
+static NameKeyType comboBoxSuperweaponsID = NAMEKEY_INVALID;
+static GameWindow *comboBoxSuperweapons = nullptr;
+static const char superweaponLimitKey[] = "Superweapons";
 static NameKeyType staticTextGameSpeedID = NAMEKEY_INVALID;
 static NameKeyType checkBoxLimitSuperweaponsID = NAMEKEY_INVALID;
 static NameKeyType comboBoxStartingCashID = NAMEKEY_INVALID;
@@ -301,6 +307,19 @@ AsciiString SkirmishPreferences::getPreferredMap()
 	return ret;
 }
 
+// X64.52A: the stored Superweapons rule. A player who ticked the retail "Limit Superweapons" box before the selector existed (preference "SuperweaponRestrict = Yes", no
+// "Superweapons" entry) keeps that choice as "Max 1" - the retail box meant exactly one superweapon of all kinds.
+static UnsignedShort storedSuperweaponLimit(const SkirmishPreferences &prefs)
+{
+  uint16_t limit = SuperweaponLimit::kUnlimited;
+  SkirmishPreferences::const_iterator it = prefs.find(superweaponLimitKey);
+  if (it == prefs.end())
+    return prefs.getSuperweaponRestricted() ? 1 : SuperweaponLimit::kUnlimited;
+  if (!SuperweaponLimit::parsePreferenceText(it->second.str(), limit))
+    return SuperweaponLimit::kUnlimited;
+  return limit;
+}
+
 static AIBehaviorMode storedAIBehavior(const SkirmishPreferences &prefs)
 {
   AIBehaviorMode mode = AI_BEHAVIOR_ORIGINAL;
@@ -372,9 +391,12 @@ Bool SkirmishPreferences::write()
 	(*this)["UserName"] = UnicodeStringToQuotedPrintable(TheSkirmishGameInfo->getConstSlot(0)->getName());
 
   setStartingCash( TheSkirmishGameInfo->getStartingCash() );
-  setSuperweaponRestricted( TheSkirmishGameInfo->getSuperweaponRestriction() != 0 );
+  if ( !ModernExperience::enabled( ModernExperience::FEATURE_SUPERWEAPON_LIMIT ) )   // X64.52A: with the selector the retail preference is left alone (Classic keeps using it)
+    setSuperweaponRestricted( TheSkirmishGameInfo->getSuperweaponRestriction() != 0 );
 	if (ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
 		(*this)[aiBehaviorKey] = AIBehaviorOptions::preferenceValue(TheSkirmishGameInfo->getAIBehavior());
+	if (ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))
+		(*this)[superweaponLimitKey] = SuperweaponLimit::preferenceText(TheSkirmishGameInfo->getSuperweaponLimit());
 
 	setSlotList();
 
@@ -1325,7 +1347,11 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	}
 
   TheSkirmishGameInfo->setStartingCash( prefs.getStartingCash() );
-  TheSkirmishGameInfo->setSuperweaponRestriction( prefs.getSuperweaponRestricted() ? 1 : 0 );
+  // X64.52A: with the Superweapons selector the legacy check box is gone, so the legacy restriction must not stay active behind it: the selector's limit carries the rule
+  // (Classic keeps the retail check box and the legacy value).
+  const Bool superweaponSelector = ModernExperience::enabled( ModernExperience::FEATURE_SUPERWEAPON_LIMIT );
+  TheSkirmishGameInfo->setSuperweaponRestriction( superweaponSelector ? 0 : ( prefs.getSuperweaponRestricted() ? 1 : 0 ) );
+  TheSkirmishGameInfo->setSuperweaponLimit( superweaponSelector ? storedSuperweaponLimit( prefs ) : SuperweaponLimit::kUnlimited );
 	// AI Behaviour: Original unless the player chose Enhanced (Classic never offers it).
 	TheSkirmishGameInfo->setAIBehavior(ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR) ? storedAIBehavior(prefs) : AI_BEHAVIOR_ORIGINAL);
 
@@ -1366,19 +1392,57 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 		NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1"));
 	if (speedLabel && speedLabel->winGetText() == TheGameText->fetch("GUI:GameSpeed"))
 		speedLabel->winHide(TRUE);
-	// X64.51: the retired Game Speed slider's place hosts "AI Behaviour".
+	// X64.52A: the retired Game Speed slider's place hosts the Match Options band: Starting Cash | AI Behaviour | Superweapons, three label + dropdown pairs of equal width over the
+	// grid's own left edge and the map preview's right edge, one row of the grid's height (Common/MatchOptionsLayout.h). The retail Game Speed caption and the retail
+	// "Limit Superweapons" check box (replaced by the Superweapons dropdown) are hidden; the retail Starting Cash caption and dropdown move into the band.
 	comboBoxAIBehavior = nullptr;
-	if (ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR) && sliderGameSpeed && staticTextGameSpeed && comboBoxStartingCash)
+	comboBoxSuperweapons = nullptr;
+	if (sliderGameSpeed && staticTextGameSpeed && comboBoxStartingCash && ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
 	{
-		Int lx, ly, lw, lh, cx, cy, cw, ch;
-		staticTextGameSpeed->winGetPosition(&lx, &ly);
-		staticTextGameSpeed->winGetSize(&lw, &lh);
-		sliderGameSpeed->winGetPosition(&cx, &cy);
-		sliderGameSpeed->winGetSize(&cw, &ch);
+		if (speedLabel)
+			speedLabel->winHide(TRUE);   // "Game Speed": identified by name, not by a text comparison that failed on some localisations
+		GameWindow *parent = comboBoxStartingCash->winGetParent();
+		Int px = 0, py = 0, gx = 0, gy = 0, gw = 0, gh = 0, mx = 0, my = 0, mw = 0, mh = 0, cx = 0, cy = 0, cw = 0, ch = 0;
+		if (parent) parent->winGetScreenPosition(&px, &py);
+		// the grid's left edge and row height: slot 1 (the human slot 0 is a name entry field, not a dropdown)
+		comboBoxPlayer[1]->winGetScreenPosition(&gx, &gy); comboBoxPlayer[1]->winGetSize(&gw, &gh);
+		buttonSelectMap->winGetScreenPosition(&mx, &my); buttonSelectMap->winGetSize(&mw, &mh);
+		comboBoxStartingCash->winGetScreenPosition(&cx, &cy); comboBoxStartingCash->winGetSize(&cw, &ch);
+		const double scale = gh > 0 ? gh / 24.0 : 1.0;   // grid rows are 24 reference units high
+		const MatchOptionsLayout::Band band = MatchOptionsLayout::computeBand(gx - px, mx + mw - px, cy - py, ch, scale);
+		// the retail Starting Cash caption: the static text that ends at the dropdown's left edge on the same row
+		GameWindow *cashLabel = nullptr;
+		for (GameWindow *w = parent ? parent->winGetChild() : nullptr; w && !cashLabel; w = w->winGetNext())
+		{
+			Int wx, wy, ww, wh;
+			w->winGetScreenPosition(&wx, &wy); w->winGetSize(&ww, &wh);
+			if (BitIsSet(w->winGetStyle(), GWS_STATIC_TEXT) && !w->winIsHidden() && w != staticTextGameSpeed && wx + ww <= cx + 4 && wx + ww >= cx - 8 && wy < cy + ch && wy + wh > cy)
+				cashLabel = w;
+		}
+		MatchOptionControls::place(cashLabel, band.label[0]);
+		if (cashLabel)
+			if (TextData *labelData = (TextData *)cashLabel->winGetUserData())
+			{
+				labelData->centered = FALSE;   // left aligned like the other two captions
+				labelData->centeredVertically = TRUE;
+			}
+		MatchOptionControls::placeCombo(comboBoxStartingCash, band.control[0]);
+		if (checkBoxLimitSuperweapons && ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))
+			checkBoxLimitSuperweapons->winHide(TRUE);   // replaced by the Superweapons dropdown
+		int count = 0;
+		const MatchOptionControls::Entry *entries = MatchOptionControls::aiBehaviorEntries(count);
 		comboBoxAIBehaviorID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior");
-		comboBoxAIBehavior = AIBehaviorOptions::create(sliderGameSpeed->winGetParent(), { lx, ly, lw, lh }, { cx, cy, cw, ch > 0 ? ch : lh },
-			comboBoxStartingCash, staticTextGameSpeed, NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior"), comboBoxAIBehaviorID);
-		AIBehaviorOptions::select(comboBoxAIBehavior, TheSkirmishGameInfo->getAIBehavior());
+		comboBoxAIBehavior = MatchOptionControls::createCombo(parent, band.label[1], band.control[1], comboBoxStartingCash, cashLabel,
+			NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior"), comboBoxAIBehaviorID, "GUI:AIBehavior", L"AI Behaviour", entries, count);
+		MatchOptionControls::select(comboBoxAIBehavior, (int)TheSkirmishGameInfo->getAIBehavior());
+		if (ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))
+		{
+			entries = MatchOptionControls::superweaponEntries(count);
+			comboBoxSuperweaponsID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxSuperweapons");
+			comboBoxSuperweapons = MatchOptionControls::createCombo(parent, band.label[2], band.control[2], comboBoxStartingCash, cashLabel,
+				NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons"), comboBoxSuperweaponsID, "GUI:Superweapons", L"Superweapons", entries, count);
+			MatchOptionControls::select(comboBoxSuperweapons, (int)TheSkirmishGameInfo->getSuperweaponLimit());
+		}
 	}
 	setFPSTextBox(sliderPos);
 	buttonStart->winSetText(TheGameText->fetch("GUI:Start"));
@@ -1580,7 +1644,11 @@ WindowMsgHandledType SkirmishGameOptionsMenuSystem( GameWindow *window, Unsigned
 				Int controlID = control->winGetWindowId();
         if ( comboBoxAIBehavior && controlID == comboBoxAIBehaviorID )
         {
-          TheSkirmishGameInfo->setAIBehavior( AIBehaviorOptions::selected( comboBoxAIBehavior ) );
+          TheSkirmishGameInfo->setAIBehavior( MatchOptionControls::selected( comboBoxAIBehavior, AI_BEHAVIOR_ORIGINAL ) == AI_BEHAVIOR_ENHANCED ? AI_BEHAVIOR_ENHANCED : AI_BEHAVIOR_ORIGINAL );
+        }
+        else if ( comboBoxSuperweapons && controlID == comboBoxSuperweaponsID )
+        {
+          TheSkirmishGameInfo->setSuperweaponLimit( (UnsignedShort)MatchOptionControls::selected( comboBoxSuperweapons, SuperweaponLimit::kUnlimited ) );
         }
         else if ( controlID == comboBoxStartingCashID )
         {

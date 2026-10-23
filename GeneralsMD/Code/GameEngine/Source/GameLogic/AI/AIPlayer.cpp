@@ -65,6 +65,7 @@
 #include "GameNetwork/GameInfo.h"
 #include "Common/AIBehavior.h"
 #include "Common/AIDiagnostics.h"
+#include "GameLogic/SuperweaponRule.h"
 
 
 #define SUPPLY_CENTER_CLOSE_DIST (20*PATHFIND_CELL_SIZE_F)
@@ -526,6 +527,10 @@ Object *AIPlayer::buildStructureNow(const ThingTemplate *bldgPlan, BuildListInfo
 // ------------------------------------------------------------------------------------------------
 Object *AIPlayer::buildStructureWithDozer(const ThingTemplate *bldgPlan, BuildListInfo *info)
 {
+	// X64.52A: defence in depth for the Superweapons match rule (the order selection already skips blocked superweapon orders)
+	if (SuperweaponRule::blocksStart(m_player, bldgPlan)) {
+		return nullptr;
+	}
 	// Find a dozer.
 	Object *dozer = findDozer(info->getLocation());
 	if (dozer==nullptr) {
@@ -3145,6 +3150,7 @@ void AIPlayer::update()
 /** X64.51: scenario aids of the GENERALS_AI_DIAG diagnostics (see Common/AIDiagnostics.h). Only called when they are enabled. */
 void AIPlayer::diagnosticTick()
 {
+	diagnosticSuperweaponAid();	// X64.52A: acts on any player that owns an AIPlayer object (including the idle human slot of the benchmark replays)
 	if (!isSkirmishAI()) return;	// the idle human slot of the benchmark replays also owns a (solo) AIPlayer object; the aids concern the skirmish AIs only
 	const UnsignedInt frame = TheGameLogic->getFrame();
 	const Int playerIndex = m_player->getPlayerIndex();

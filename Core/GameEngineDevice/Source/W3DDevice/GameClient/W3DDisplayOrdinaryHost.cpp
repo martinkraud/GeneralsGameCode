@@ -1524,7 +1524,7 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { SLOT_FILL, SLOT_PROBE, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
@@ -1560,6 +1560,9 @@ void NativeAutoShot()
     static const Step slotSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { SLOT_FILL, nullptr, nullptr, 300, 1 },
         { SLOT_PROBE, nullptr, nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    // X64.52A: the Skirmish Match Options panel: closed and open captures of each match-option dropdown, geometry, overlap and mouse reachability of every row
+    static const Step matchSteps[] = {
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { MATCH_UI, nullptr, nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;
@@ -1568,12 +1571,13 @@ void NativeAutoShot()
         if (!_stricmp(text, "challenge")) return 3;
         if (!_stricmp(text, "saveload")) return 4;
         if (!_stricmp(text, "slots")) return 5;
+        if (!_stricmp(text, "matchoptions")) return 6;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -1723,6 +1727,113 @@ void NativeAutoShot()
                         GadgetComboBoxHideList(combo);
                     }
                     advance(step.kind == SLOT_FILL ? "filled the Skirmish slots" : "probed the Skirmish slots", nullptr); done = true;
+                }
+            } else if (step.kind == MATCH_UI) {
+                // phase machine over many frames: 0 closed capture + geometry + overlap audit; then per control: open, capture, probe every row of the open list, close
+                static const char *const controls[] = { "SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash", "SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior", "SkirmishGameOptionsMenu.wnd:ComboBoxSuperweapons" };
+                static const char *const labels[] = { "SkirmishGameOptionsMenu.wnd:StaticTextStartingCash", "SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior", "SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons" };
+                static unsigned phase = 0, phaseWait = 0;
+                if (phaseWait > 0) { --phaseWait; }
+                else {
+                    auto rect = [](GameWindow *w, int &x, int &y, int &ww, int &hh) { w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh); };
+                    auto nameOf = [](GameWindow *w) -> std::string {
+                        if (!w) return "none";
+                        std::string nm = w->winGetInstanceData() ? w->winGetInstanceData()->m_decoratedNameString.str() : "?";
+                        return nm.empty() ? "(unnamed)" : nm;
+                    };
+                    auto isAncestor = [](GameWindow *a, GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c == a) return true; return false; };
+                    const unsigned controlCount = sizeof(controls) / sizeof(controls[0]);
+                    if (phase == 0) {
+                        shoot("matchopts-closed");
+                        GameWindow *root = find("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent");
+                        sprintf_s(flowText, "matchopts display=%dx%d", TheDisplay->getWidth(), TheDisplay->getHeight());
+                        StartupDiagnostics::checkpoint("matchopts", "display", flowText);
+                        {   // every visible window below the player grid (the Match Options band, the Battle Honors block and the buttons): name, rectangle, style
+                            std::vector<GameWindow *> all; if (root) all.push_back(root);
+                            for (size_t i = 0; i < all.size(); ++i)
+                                for (GameWindow *child = all[i]->winGetChild(); child; child = child->winGetNext()) {
+                                    if (child->winIsHidden()) continue;
+                                    all.push_back(child);
+                                    int x, y, ww, hh; rect(child, x, y, ww, hh);
+                                    if (ww <= 0 || hh <= 0 || y < TheDisplay->getHeight() * 5 / 100 * 11) continue;   // below ~55 % of the screen height: the lower part of the dialog
+                                    sprintf_s(flowText, "%s [%d,%d %dx%d] style=0x%x", nameOf(child).c_str(), x, y, ww, hh, (unsigned)child->winGetStyle());
+                                    StartupDiagnostics::checkpoint("matchopts", "window", flowText);
+                                }
+                        }
+                        int overlaps = 0;
+                        for (unsigned c = 0; c < controlCount * 2; ++c) {
+                            GameWindow *w = find(c < controlCount ? controls[c] : labels[c - controlCount]);
+                            if (!w || w->winIsHidden()) { sprintf_s(flowText, "%s not present (a retail caption may carry no name)", c < controlCount ? controls[c] : labels[c - controlCount]); StartupDiagnostics::checkpoint("matchopts", c < controlCount ? "defect" : "info", flowText); continue; }
+                            int x, y, ww, hh; rect(w, x, y, ww, hh);
+                            sprintf_s(flowText, "%s at %d,%d %dx%d", nameOf(w).c_str(), x, y, ww, hh);
+                            StartupDiagnostics::checkpoint("matchopts", "geometry", flowText);
+                            // every other visible window of the screen whose rectangle partly covers this control (windows that wholly contain it are backdrops)
+                            std::vector<GameWindow *> stack; if (root) stack.push_back(root);
+                            while (!stack.empty()) {
+                                GameWindow *cur = stack.back(); stack.pop_back();
+                                for (GameWindow *child = cur->winGetChild(); child; child = child->winGetNext()) {
+                                    if (child->winIsHidden()) continue;
+                                    stack.push_back(child);
+                                    if (child == w || isAncestor(child, w) || isAncestor(w, child)) continue;
+                                    int cx, cy, cw, ch; rect(child, cx, cy, cw, ch);
+                                    if (cw <= 0 || ch <= 0) continue;
+                                    const bool inter = cx < x + ww && cx + cw > x && cy < y + hh && cy + ch > y;
+                                    if (!inter) continue;
+                                    const bool containsAll = cx <= x && cy <= y && cx + cw >= x + ww && cy + ch >= y + hh;
+                                    const bool insideAll = x <= cx && y <= cy && x + ww >= cx + cw && y + hh >= cy + ch;
+                                    if (containsAll || insideAll) continue;
+                                    const bool decor = !BitIsSet(child->winGetStyle(), GWS_STATIC_TEXT) && !BitIsSet(child->winGetStyle(), GWS_COMBO_BOX) && !BitIsSet(child->winGetStyle(), GWS_PUSH_BUTTON) &&
+                                                       !BitIsSet(child->winGetStyle(), GWS_CHECK_BOX) && !BitIsSet(child->winGetStyle(), GWS_ENTRY_FIELD);
+                                    if (decor) continue;
+                                    sprintf_s(flowText, "%s [%d,%d %dx%d] is partly covered by %s [%d,%d %dx%d]", nameOf(w).c_str(), x, y, ww, hh, nameOf(child).c_str(), cx, cy, cw, ch);
+                                    StartupDiagnostics::checkpoint("matchopts", "defect", flowText);
+                                    ++overlaps;
+                                }
+                            }
+                        }
+                        sprintf_s(flowText, "closed layout overlaps=%d", overlaps);
+                        StartupDiagnostics::checkpoint("matchopts", overlaps ? "defect" : "ok", flowText);
+                        phase = 1; phaseWait = 20;
+                    } else {
+                        const unsigned which = (phase - 1) / 3, step3 = (phase - 1) % 3;
+                        if (which >= controlCount) { advance("match options audited", nullptr); done = true; }
+                        else {
+                            GameWindow *combo = find(controls[which]);
+                            if (!combo) { phase += 3; }
+                            else if (step3 == 0) {
+                                GameWindow *drop = GadgetComboBoxGetDropDownButton(combo);
+                                if (drop) TheWindowManager->winSendSystemMsg(combo, GBM_SELECTED, (WindowMsgData)drop, drop->winGetWindowId());
+                                phase++; phaseWait = 20;
+                            } else if (step3 == 1) {
+                                char tag[96]; sprintf_s(tag, "matchopts-open-%u", which); shoot(tag);
+                                GameWindow *list = GadgetComboBoxGetListBox(combo);
+                                const bool open = list && !list->winIsHidden();
+                                int lx = 0, ly = 0, lw = 0, lh = 0, rows = 0, reachable = 0, firstBad = -1; std::string badBy = "-";
+                                if (open) {
+                                    list->winGetScreenPosition(&lx, &ly); list->winGetSize(&lw, &lh);
+                                    rows = GadgetListBoxGetNumEntries(list);
+                                    for (int row = 0; row < rows; ++row) {
+                                        const int rowH = rows ? lh / rows : lh;
+                                        const int px = lx + lw / 2, py = ly + row * rowH + rowH / 2;
+                                        ICoord2D pos = { px, py }; GameWindow *tip = nullptr;
+                                        GameWindow *w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_ABOVE, WIN_STATUS_HIDDEN);
+                                        if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_NONE, WIN_STATUS_ABOVE | WIN_STATUS_BELOW | WIN_STATUS_HIDDEN);
+                                        if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_BELOW, WIN_STATUS_HIDDEN);
+                                        if (w && BitIsSet(w->winGetStatus(), WIN_STATUS_NO_INPUT)) w = (w->winGetParent() && BitIsSet(w->winGetParent()->winGetInstanceData()->getStyle(), GWS_COMBO_BOX)) ? w->winGetParent() : nullptr;
+                                        if (w == list || (w && (w->winGetParent() == list || w->winGetParent() == combo))) ++reachable;
+                                        else if (firstBad < 0) { firstBad = row; badBy = nameOf(w); }
+                                    }
+                                }
+                                int cx, cy, cw, ch; rect(combo, cx, cy, cw, ch);
+                                sprintf_s(flowText, "%s combo=%d,%d %dx%d list_open=%d list=%d,%d %dx%d rows=%d reachable=%d first_unreachable=%d by=%s", nameOf(combo).c_str(), cx, cy, cw, ch, open ? 1 : 0, lx, ly, lw, lh, rows, reachable, firstBad, badBy.c_str());
+                                StartupDiagnostics::checkpoint("matchopts", (open && reachable == rows) ? "ok" : "defect", flowText);
+                                phase++; phaseWait = 5;
+                            } else {
+                                GadgetComboBoxHideList(combo);
+                                phase++; phaseWait = 10;
+                            }
+                        }
+                    }
                 }
             } else if (step.kind == WAIT_INPUT) {
                 if (TheInGameUI && TheInGameUI->getInputEnabled()) { advance("the player has input control", nullptr); done = true; }

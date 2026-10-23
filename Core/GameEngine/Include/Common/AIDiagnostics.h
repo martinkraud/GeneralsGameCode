@@ -41,6 +41,13 @@ struct State
 	// the nearest base structure through the normal damage path. Identical in Original and Enhanced runs; it exists to prove that attack direction steers Enhanced defences.
 	struct Attack { unsigned frame; int count; int angle; int player; bool done; int fired; unsigned source; unsigned next; };
 	std::vector<Attack> attacks;
+	// X64.52A: GENERALS_AI_DIAG_SW="<frame>:<verb>:<Template>@<player>[>from];..." superweapon rule scenario aids (identical for every run):
+	//   give     a finished <Template> appears at the player's base (what a completed construction leaves; no cost, no prerequisites: the owner-count set-up of a test)
+	//   capture  the first <Template> of player <from> changes owner to <player> through Object::setTeam (the central point of every capture)
+	//   probe    the first dozer of <player> asks BuildAssistant::canMakeUnit about <Template>; the result is logged (the authoritative check the construct command uses)
+	//   build    the first dozer of <player> calls DozerAIUpdate::construct for <Template> - the call a human's construct command ends in - and logs whether a site was created
+	struct SwAid { unsigned frame; std::string verb; std::string templateName; int player; int from; bool done; };
+	std::vector<SwAid> swAids;
 	~State()
 	{
 		if (enabled <= 0 || base.empty()) return;
@@ -128,6 +135,25 @@ inline bool enabled()
 				pos = end + 1;
 			}
 		}
+		if (const char *sw = std::getenv("GENERALS_AI_DIAG_SW"))
+		{
+			std::string text(sw);
+			size_t pos = 0;
+			while (pos < text.size())
+			{
+				size_t end = text.find(';', pos);
+				if (end == std::string::npos) end = text.size();
+				const std::string item = text.substr(pos, end - pos);
+				const size_t c1 = item.find(':'), c2 = c1 == std::string::npos ? std::string::npos : item.find(':', c1 + 1), at = item.find('@');
+				if (c1 != std::string::npos && c2 != std::string::npos && at != std::string::npos && c2 < at)
+				{
+					const size_t gt = item.find('>', at);
+					s.swAids.push_back({ (unsigned)std::strtoul(item.substr(0, c1).c_str(), nullptr, 10), item.substr(c1 + 1, c2 - c1 - 1), item.substr(c2 + 1, at - c2 - 1),
+						std::atoi(item.c_str() + at + 1), gt == std::string::npos ? -1 : std::atoi(item.c_str() + gt + 1), false });
+				}
+				pos = end + 1;
+			}
+		}
 		if (const char *census = std::getenv("GENERALS_AI_DIAG_CENSUS"))
 		{
 			std::string text(census);
@@ -145,6 +171,7 @@ inline bool enabled()
 }
 
 inline void count(const char *key, long long n = 1) { if (enabled()) state().counters[key] += n; }
+inline void maxCount(const char *key, long long value) { if (!enabled()) return; long long &c = state().counters[key]; if (value > c) c = value; }
 
 inline void event(unsigned frame, const char *tag, const char *format, ...)
 {
@@ -175,6 +202,15 @@ inline State::Defense *dueDefense(unsigned frame, int playerIndex)
 	if (!enabled()) return nullptr;
 	for (State::Defense &d : state().defenses)
 		if (!d.done && (d.player == playerIndex || d.player < 0) && frame >= d.frame) return &d;
+	return nullptr;
+}
+
+// the next aid that is due; any AI player may carry it out (the human slot owns no AIPlayer object), it acts on the player the aid names
+inline State::SwAid *dueSwAid(unsigned frame)
+{
+	if (!enabled()) return nullptr;
+	for (State::SwAid &a : state().swAids)
+		if (!a.done && frame >= a.frame) return &a;
 	return nullptr;
 }
 

@@ -241,6 +241,13 @@ UnsignedShort GameLogic::getSuperweaponRestriction() const
 }
 
 // ------------------------------------------------------------------------------------------------
+// X64.52A. TheGameInfo is null in a Campaign and is the Challenge game info (never given a rule) in General's Challenge, so both keep their authored rules.
+UnsignedShort GameLogic::getSuperweaponLimit() const
+{
+  return TheGameInfo ? TheGameInfo->getSuperweaponLimit() : 0;
+}
+
+// ------------------------------------------------------------------------------------------------
 /** GameLogic class constructor */
 // ------------------------------------------------------------------------------------------------
 GameLogic::GameLogic()

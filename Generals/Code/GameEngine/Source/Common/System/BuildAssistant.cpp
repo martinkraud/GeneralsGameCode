@@ -48,6 +48,7 @@
 #include "GameLogic/PartitionManager.h"
 #include "GameLogic/TerrainLogic.h"
 #include "GameLogic/AIPathfind.h"
+#include "GameLogic/SuperweaponRule.h"
 #include "GameLogic/Module/AIUpdate.h"
 #include "GameLogic/Module/BehaviorModule.h"
 #include "GameLogic/Module/ContainModule.h"
@@ -1282,6 +1283,11 @@ CanMakeType BuildAssistant::canMakeUnit( Object *builder, const ThingTemplate *w
 	if (builder->testScriptStatusBit(OBJECT_STATUS_SCRIPT_DISABLED) || builder->testScriptStatusBit(OBJECT_STATUS_SCRIPT_UNPOWERED))
 		return CANMAKE_FACTORY_IS_DISABLED;
 
+	// X64.52A: the Skirmish "Superweapons" match rule (Unlimited by default: nothing is checked). Authoritative for the human player (DozerAIUpdate::construct) and the build buttons.
+	Player *player = builder->getControllingPlayer();
+	if( SuperweaponRule::blocksStart( player, whatToBuild ) )
+		return CANMAKE_MAXED_OUT_FOR_PLAYER;
+
 	if (!isPossibleToMakeUnit(builder, whatToBuild))
 		return CANMAKE_NO_PREREQ;
 
@@ -1294,7 +1300,6 @@ CanMakeType BuildAssistant::canMakeUnit( Object *builder, const ThingTemplate *w
 	}
 
 	// make sure we have enough money to build this
-	Player *player = builder->getControllingPlayer();
 	Money *money = player->getMoney();
 	if( whatToBuild->calcCostToBuild( player ) > money->countMoney() )
 		return CANMAKE_NO_MONEY;

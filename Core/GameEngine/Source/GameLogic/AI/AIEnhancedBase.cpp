@@ -13,6 +13,7 @@
 #include "Common/AIEnhancedBaseXfer.h"
 #include "Common/GlobalData.h"
 #include "Common/Player.h"
+#include "Common/PlayerList.h"
 #include "Common/ThingFactory.h"
 #include "Common/ThingTemplate.h"
 #include "GameLogic/AI.h"
@@ -20,6 +21,8 @@
 #include "GameLogic/AIPlayer.h"
 #include "GameLogic/AISkirmishPlayer.h"
 #include "GameLogic/Damage.h"
+#include "GameLogic/SuperweaponRule.h"
+#include "GameLogic/Module/DozerAIUpdate.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Module/BodyModule.h"
 #include "GameLogic/Object.h"
@@ -30,6 +33,8 @@
 #include "Common/BuildAssistant.h"
 
 #include <cmath>
+#include <set>
+#include <string>
 #include <vector>
 
 using namespace AIEnhancedBase;
@@ -515,4 +520,116 @@ void AIPlayer::diagnosticAttackAid()
 	attack->next = frame + 15;
 	if (attack->fired >= attack->count) attack->done = true;
 	AIDiagnostics::count("scenario.attack.hits");
+}
+
+// ================================================================================================
+// X64.52A diagnostics scenario aid (GENERALS_AI_DIAG_SW): superweapon rule set-ups and probes. Identical in every run of a comparison; inert without the variable.
+// ================================================================================================
+void AIPlayer::diagnosticSuperweaponAid()
+{
+	const UnsignedInt frame = TheGameLogic->getFrame();
+	const Int playerIndex = m_player->getPlayerIndex();
+	{
+		static std::set<int> reported;   // the money every player starts with (Starting Cash regression checks): once per player, at its first AI update
+		if (reported.insert(playerIndex).second)
+			AIDiagnostics::event(frame, "start.money", "player=%d side=%s human=%d money=%d", playerIndex, m_player->getSide().str(), m_player->getPlayerType() == PLAYER_HUMAN ? 1 : 0, (int)m_player->getMoney()->countMoney());
+	}
+	if (frame % 30 == 0)
+		AIDiagnostics::maxCount((std::string("sw.peak_owned.p") + std::to_string(playerIndex)).c_str(), SuperweaponRule::countOwned(m_player));
+	AIDiagnostics::State::SwAid *aid = AIDiagnostics::dueSwAid(frame);
+	if (!aid)
+		return;
+	aid->done = TRUE;
+	if (aid->verb == "money")   // Starting Cash regression checks: the money of any player (the human slot has no AIPlayer to report it)
+	{
+		if (Player *p = ThePlayerList ? ThePlayerList->getNthPlayer(aid->player) : nullptr)
+			AIDiagnostics::event(frame, "sw.money", "player=%d side=%s human=%d money=%d", aid->player, p->getSide().str(), p->getPlayerType() == PLAYER_HUMAN ? 1 : 0, (int)p->getMoney()->countMoney());
+		return;
+	}
+	Player *who = ThePlayerList ? ThePlayerList->getNthPlayer(aid->player) : nullptr;   // the aid names the player it acts on (the human slot has no AIPlayer)
+	if (!who)
+	{
+		AIDiagnostics::event(frame, "sw.aid_unknown_player", "player=%d", aid->player);
+		return;
+	}
+	const Int aidPlayer = aid->player;
+	const ThingTemplate *tmpl = TheThingFactory->findTemplate(aid->templateName.c_str());
+	if (!tmpl)
+	{
+		AIDiagnostics::event(frame, "sw.aid_unknown_template", "player=%d template=%s", aidPlayer, aid->templateName.c_str());
+		return;
+	}
+	// the player's Command Center (position for new things) and first dozer
+	Object *center = nullptr, *dozer = nullptr;
+	for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject())
+	{
+		if (obj->getControllingPlayer() != who)
+			continue;
+		if (!center && obj->isKindOf(KINDOF_COMMANDCENTER)) center = obj;
+		if (!dozer && obj->isKindOf(KINDOF_DOZER) && obj->getAI() && obj->getAI()->getDozerAIInterface()) dozer = obj;
+	}
+	if (aid->verb == "give")
+	{
+		if (!center) return;
+		Coord3D at = *center->getPosition();
+		at.x += 260.0f + 40.0f * (float)SuperweaponRule::countOwned(who);
+		at.y += 260.0f;
+		Object *made = TheThingFactory->newObject(tmpl, who->getDefaultTeam());
+		if (made)
+		{
+			made->setPosition(&at);
+			made->clearStatus(MAKE_OBJECT_STATUS_MASK(OBJECT_STATUS_UNDER_CONSTRUCTION));
+		}
+		AIDiagnostics::event(frame, "sw.give", "player=%d template=%s owned_after=%u", aidPlayer, aid->templateName.c_str(), SuperweaponRule::countOwned(who));
+	}
+	else if (aid->verb == "kill")
+	{
+		Object *target = nullptr;
+		for (Object *obj = TheGameLogic->getFirstObject(); obj && !target; obj = obj->getNextObject())
+			if (obj->getControllingPlayer() == who && obj->getTemplate()->isEquivalentTo(tmpl) && !obj->isEffectivelyDead())
+				target = obj;
+		if (target)
+			target->kill();   // the normal death path (a GLA structure leaves its rebuild hole)
+		AIDiagnostics::event(frame, "sw.kill", "player=%d template=%s killed=%d", aidPlayer, aid->templateName.c_str(), target ? 1 : 0);
+	}
+	else if (aid->verb == "capture")
+	{
+		Object *target = nullptr;
+		for (Object *obj = TheGameLogic->getFirstObject(); obj && !target; obj = obj->getNextObject())
+			if (obj->getControllingPlayer() && obj->getControllingPlayer()->getPlayerIndex() == aid->from && obj->getTemplate()->isEquivalentTo(tmpl) && !obj->isEffectivelyDead())
+				target = obj;
+		if (target)
+			target->setTeam(who->getDefaultTeam());   // Object::setTeam -> onCapture: the central point of every capture
+		AIDiagnostics::event(frame, "sw.capture", "player=%d template=%s from=%d captured=%d owned_after=%u", aidPlayer, aid->templateName.c_str(), aid->from, target ? 1 : 0, SuperweaponRule::countOwned(who));
+	}
+	else if (aid->verb == "probe" || aid->verb == "build")
+	{
+		if (!dozer)
+		{
+			AIDiagnostics::event(frame, "sw.probe_no_dozer", "player=%d", aidPlayer);
+			return;
+		}
+		const CanMakeType result = TheBuildAssistant->canMakeUnit(dozer, tmpl);
+		AIDiagnostics::event(frame, "sw.probe", "player=%d template=%s owned=%u limit=%u canMakeUnit=%d (%s)", aidPlayer, aid->templateName.c_str(), SuperweaponRule::countOwned(who),
+			(unsigned)TheGameLogic->getSuperweaponLimit(), (int)result, result == CANMAKE_OK ? "OK" : result == CANMAKE_MAXED_OUT_FOR_PLAYER ? "MAXED_OUT_FOR_PLAYER" : result == CANMAKE_NO_PREREQ ? "NO_PREREQ" : result == CANMAKE_NO_MONEY ? "NO_MONEY" : "other");
+		if (aid->verb == "build")
+		{
+			// the call a human's construct command ends in (DozerAIUpdate::construct): it re-checks canMakeUnit for a human player and refuses; the site is created only if the rule allows it
+			DozerAIInterface *dozerAI = dozer->getAI()->getDozerAIInterface();
+			// try a ring of sites around the base (the first legal one gets the construction site); a refusal by the rule fails at the first attempt, and at every other
+			const Coord3D base = center ? *center->getPosition() : *dozer->getPosition();
+			const Object *site = nullptr;
+			for (Int ring = 1; ring <= 6 && !site; ++ring)
+				for (Int step = 0; step < 12 && !site; ++step)
+				{
+					Coord3D at = base;
+					at.x += std::cos(step * kPi / 6.0f) * 220.0f * (float)ring;
+					at.y += std::sin(step * kPi / 6.0f) * 220.0f * (float)ring;
+					at.z = TheTerrainLogic->getGroundHeight(at.x, at.y);
+					site = dozerAI->construct(tmpl, &at, tmpl->getPlacementViewAngle(), who, FALSE);
+				}
+			AIDiagnostics::event(frame, "sw.build", "player=%d template=%s site_created=%d owned_after=%u", aidPlayer, aid->templateName.c_str(), site ? 1 : 0, SuperweaponRule::countOwned(who));
+			AIDiagnostics::count(site ? "sw.build.site_created" : "sw.build.refused");
+		}
+	}
 }

@@ -83,6 +83,8 @@ public:
 
 	static void buildFieldParse(MultiIniFieldParse& p);
 
+	virtual Bool isSpecialPowerModuleData() const override { return true; }
+
 	const SpecialPowerTemplate *m_specialPowerTemplate;		///< pointer to the special power template
 	AudioEventRTS			m_initiateSound;
 	Bool							m_updateModuleStartsAttack;	///< update module determines when the special power actually starts! If true, update module is required.
