@@ -99,6 +99,30 @@ class Cleanup(unittest.TestCase):
         self.run_cleanup("-CurrentVersion", "ddddddd4")
         self.assertEqual(before, sorted(p.name for p in self.dist.iterdir()))
 
+    def test_cleanup_cannot_escape_the_distribution_area(self):
+        import os
+        outside = self.tmp / "outside"
+        (outside / "keep").mkdir(parents=True)
+        (outside / "ordinaryplay.json").write_text("{}")
+        (outside / "MKRaudstein-Generals-x64-Preview-eeeeeee0.zip").write_text("precious")
+        # a stage that is a junction to somewhere else, and a candidate name in a record that tries to climb out
+        link = self.stage / "Generals" / "dist-abcdef1-gen"
+        r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)], capture_output=True, text=True) if os.name == "nt" else None
+        rec = self.dist / "MKRaudstein-x64-Preview-bbbbbbb2.distribution.json"
+        j = json.loads(rec.read_text())
+        j["titles"][0]["candidate"] = "..\..\outside"
+        rec.write_text(json.dumps(j))
+        # an output directory spelled with .. still only touches generated names inside it
+        spelled = str(self.dist / ".." / "dist")
+        r2 = subprocess.run([PWSH, "-NoProfile", "-File", str(SCRIPT), "-OutputDirectory", spelled, "-StageRoot", str(self.stage), "-CurrentVersion", "ddddddd4"],
+                            capture_output=True, text=True)
+        self.assertEqual(r2.returncode, 0, r2.stdout + r2.stderr)
+        self.assertTrue((outside / "keep").exists())
+        self.assertTrue((outside / "ordinaryplay.json").exists())
+        self.assertTrue((outside / "MKRaudstein-Generals-x64-Preview-eeeeeee0.zip").exists())
+        self.assertTrue(self.tmp.exists())
+        self.assertTrue((self.dist / "notes-by-hand.txt").exists())
+
 
 class Wiring(unittest.TestCase):
     def test_cleanup_runs_only_after_the_distribution_is_ready(self):
@@ -108,6 +132,13 @@ class Wiring(unittest.TestCase):
         self.assertGreater(MAIN.index("Remove-ObsoleteDistributions.ps1"), ready)
         self.assertIn("elseif ($SkipValidation)", MAIN)
         self.assertEqual(MAIN.count("Remove-ObsoleteDistributions.ps1"), 1)
+        # failed build / package / validation: every step throws (ErrorActionPreference Stop) before the cleanup, which sits after the final "not validated" check
+        self.assertIn("$ErrorActionPreference = 'Stop'", MAIN)
+        self.assertGreater(MAIN.index("Remove-ObsoleteDistributions.ps1"), MAIN.index("throw 'A title was not validated.'"))
+        self.assertGreater(MAIN.index("Remove-ObsoleteDistributions.ps1"), MAIN.index("Test-ZeroHourOverlayPackage.ps1"))
+        # -NoCleanup is checked first and never reaches the script
+        self.assertLess(MAIN.index("if ($NoCleanup)"), MAIN.index("Remove-ObsoleteDistributions.ps1"))
+        self.assertIn("if ($NoCleanup) { Write-Host 'cleanup: skipped (-NoCleanup).' }", MAIN)
 
 
 if __name__ == "__main__":
