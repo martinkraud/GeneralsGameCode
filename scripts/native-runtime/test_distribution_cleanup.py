@@ -110,7 +110,7 @@ class Cleanup(unittest.TestCase):
         r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)], capture_output=True, text=True) if os.name == "nt" else None
         rec = self.dist / "MKRaudstein-x64-Preview-bbbbbbb2.distribution.json"
         j = json.loads(rec.read_text())
-        j["titles"][0]["candidate"] = "..\..\outside"
+        j["titles"][0]["candidate"] = "../../outside"
         rec.write_text(json.dumps(j))
         # an output directory spelled with .. still only touches generated names inside it
         spelled = str(self.dist / ".." / "dist")
