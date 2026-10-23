@@ -16,7 +16,11 @@ param([Parameter(Mandatory)][ValidateSet('Generals', 'ZeroHour')][string]$Title,
       [string]$Dump = '',
       [string]$Defense = '',
       [string]$Attack = '',
-      [string]$Off = '',                                       # ablation: layout,jitter,threat,threatdef,fill,expand
+      [string]$Off = '',
+      [string]$Sw = '0',                                       # X64.52A: Superweapons match rule 0|1|3|5|D (written into the replay setup)
+      [string]$Cash = '0',                                     # X64.52A: Starting Cash match option (SC=N), 0 = default
+      [string]$SwAid = '',                                     # X64.52A: GENERALS_AI_DIAG_SW aids (give / capture / probe / build)
+      [string]$Tag = '',                                       # ablation: layout,jitter,threat,threatdef,fill,expand
       [double]$Minutes = 0)
 $ErrorActionPreference = 'Stop'
 $Seeds = @($Seeds | ForEach-Object { $_ -split ',' } | Where-Object { $_ }); $Modes = @($Modes | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
@@ -45,16 +49,16 @@ Push-Location $GameDir
 try {
     foreach ($seed in $Seeds) {
         foreach ($mode in $Modes) {
-            $tag = if ($Off) { '-off-' + ($Off -replace ',', '+') } else { '' }
+            $tag = $(if ($Off) { '-off-' + ($Off -replace ',', '+') } else { '' }) + $(if ($Sw -ne '0') { "-sw$Sw" } else { '' }) + $(if ($Cash -ne '0') { "-cash$Cash" } else { '' }) + $(if ($Tag) { "-$Tag" } else { '' })
             $base = Join-Path $Out "$Scenario-s$seed-$mode$tag"
             $rep = "$base.rep"
-            $genArgs = @('-I', $gen, '--template', $Template, '--out', $rep, '--map', $x.Map, '--map-size', $x.Size, '--ai', $x.Ai, '--level', $x.Level, '--minutes', $x.Min, '--seed', $seed, '--ai-mode', $mode)
+            $genArgs = @('-I', $gen, '--template', $Template, '--out', $rep, '--map', $x.Map, '--map-size', $x.Size, '--ai', $x.Ai, '--level', $x.Level, '--minutes', $x.Min, '--seed', $seed, '--ai-mode', $mode, '--superweapons', $Sw, '--cash', $Cash)
             if ($x.F) { $genArgs += @('--factions', $x.F) }
             & python @genArgs | Out-Null
             $env:GENERALS_SIM_IGNORE_CRC = '1'; $env:GENERALS_SIM_FP_INTERVAL = '30'; $env:GENERALS_SIM_BENCH = $base; $env:GENERALS_AI_DIAG = "$base-diag"
-            $env:GENERALS_AI_DIAG_KILL = $Kill; $env:GENERALS_AI_DIAG_DUMP = $Dump; $env:GENERALS_AI_DIAG_DEFENSE = $Defense; $env:GENERALS_AI_DIAG_CENSUS = $Census; $env:GENERALS_AI_DIAG_ATTACK = $Attack; $env:GENERALS_AI_DIAG_X52_OFF = $Off
+            $env:GENERALS_AI_DIAG_KILL = $Kill; $env:GENERALS_AI_DIAG_DUMP = $Dump; $env:GENERALS_AI_DIAG_DEFENSE = $Defense; $env:GENERALS_AI_DIAG_CENSUS = $Census; $env:GENERALS_AI_DIAG_ATTACK = $Attack; $env:GENERALS_AI_DIAG_X52_OFF = $Off; $env:GENERALS_AI_DIAG_SW = $SwAid
             cmd /c "`"$(Join-Path $GameDir $exeName)`" -headless -replay `"$rep`" > `"$base.stdout.txt`" 2>&1"
-            Remove-Item Env:GENERALS_SIM_BENCH, Env:GENERALS_AI_DIAG, Env:GENERALS_AI_DIAG_KILL, Env:GENERALS_AI_DIAG_DUMP, Env:GENERALS_AI_DIAG_DEFENSE, Env:GENERALS_AI_DIAG_CENSUS, Env:GENERALS_AI_DIAG_ATTACK, Env:GENERALS_AI_DIAG_X52_OFF -ErrorAction SilentlyContinue
+            Remove-Item Env:GENERALS_SIM_BENCH, Env:GENERALS_AI_DIAG, Env:GENERALS_AI_DIAG_KILL, Env:GENERALS_AI_DIAG_DUMP, Env:GENERALS_AI_DIAG_DEFENSE, Env:GENERALS_AI_DIAG_CENSUS, Env:GENERALS_AI_DIAG_ATTACK, Env:GENERALS_AI_DIAG_X52_OFF, Env:GENERALS_AI_DIAG_SW -ErrorAction SilentlyContinue
             $diag = Get-Content -LiteralPath "$base-diag_ai.txt" -ErrorAction SilentlyContinue
             $counters = [ordered]@{}
             foreach ($l in $diag) { if ($l -match '^counter (\S+) = (-?\d+)') { $counters[$Matches[1]] = [long]$Matches[2] } }

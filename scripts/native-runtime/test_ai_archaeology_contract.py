@@ -145,7 +145,7 @@ class ModePlumbing(unittest.TestCase):
         self.assertIn("AIBehaviorMode aiBehavior = AI_BEHAVIOR_ORIGINAL;", info)
         self.assertIn("if (!AIBehavior::parseOptionValue(val.str(), aiBehavior))", info)
         self.assertIn("game->setAIBehavior(aiBehavior);", info)
-        self.assertIn("m_aiBehavior = AI_BEHAVIOR_ORIGINAL;\n//", info.replace("\t", ""))  # reset() default
+        self.assertIn("m_aiBehavior = AI_BEHAVIOR_ORIGINAL;\nm_superweaponLimit", info.replace("\t", ""))  # reset() default (X64.52A adds the Superweapons rule next to it)
         hdr = read("Core/GameEngine/Include/GameNetwork/GameInfo.h")
         self.assertIn("AIBehaviorMode m_aiBehavior;", hdr)
 
@@ -154,7 +154,7 @@ class ModePlumbing(unittest.TestCase):
         body = body_of(info, "void SkirmishGameInfo::xfer", "void SkirmishGameInfo::loadPostProcess")
         self.assertIn("const XferVersion retailVersion = 2;", body)
         self.assertIn("const XferVersion retailVersion = 4;", body)
-        self.assertIn("XferVersion version = (xfer->getXferMode() == XFER_SAVE && m_aiBehavior == AI_BEHAVIOR_ENHANCED) ? currentVersion : retailVersion;", body)
+        self.assertIn("XferVersion version = (xfer->getXferMode() == XFER_SAVE && (m_aiBehavior == AI_BEHAVIOR_ENHANCED || SuperweaponLimit::isActive(m_superweaponLimit))) ? currentVersion : retailVersion;", body)
         self.assertIn("if ( version >= 5 )", body)
 
     def test_ai_player_save_keeps_version_1_for_original(self):
@@ -185,15 +185,15 @@ class ModePlumbing(unittest.TestCase):
         for menu in ("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp",
                      "GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp"):
             text = read(menu)
-            self.assertIn("AIBehaviorOptions::create(", text)
-            self.assertIn("AIBehaviorOptions::selected(", text)
+            self.assertIn("MatchOptionControls::aiBehaviorEntries(", text)   # X64.52A: the shared dropdown builder
+            self.assertRegex(text, r"MatchOptionControls::selected\(\s*comboBoxAIBehavior")
             self.assertIn("ModernExperience::FEATURE_AI_BEHAVIOR", text)
             # default Original: the stored value is only honoured when the feature is on
             self.assertIn(": AI_BEHAVIOR_ORIGINAL);", text)
             self.assertIn('aiBehaviorKey[] = "AIBehavior"', text)
-        ui = read("Core/GameEngine/Source/GameClient/GUI/AIBehaviorOptions.cpp")
-        self.assertIn("Original (retail)", ui)
-        self.assertIn("Enhanced (repaired)", ui)
+        ui = read("Core/GameEngine/Source/GameClient/GUI/MatchOptionControls.cpp")
+        self.assertIn('L"Original"', ui)
+        self.assertIn('L"Enhanced"', ui)
         self.assertIn("AIBehaviorOptions.cpp", read("Core/GameEngine/CMakeLists.txt"))
 
 

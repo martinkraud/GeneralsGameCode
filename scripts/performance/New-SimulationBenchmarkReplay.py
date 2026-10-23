@@ -64,6 +64,12 @@ def build_setup(args):
         slots.append("X:")
     # X64.51: --ai-mode E writes the AI Behaviour rule (AI=E2: Enhanced revision 2) into the setup; Original (the default) writes nothing, so Original setups stay byte-identical.
     behavior = "AI=E2;" if args.ai_mode == "E" else ""
+    # X64.52A: --superweapons 1|3|5|D writes the Superweapons match rule (SW=<v>); the default (0) writes nothing, so default setups stay byte-identical.
+    if args.superweapons != "0":
+        behavior += "SW=%s;" % args.superweapons
+    # X64.52A: --cash N writes the Starting Cash match option (SC=N) for the regression checks of that option; the default writes nothing
+    if args.cash:
+        behavior += "SC=%d;" % args.cash
     return "M=03maps/%s;MC=%X;MS=%d;SD=%d;C=%d;%sS=%s;" % (
         args.map.lower(), args.map_crc, args.map_size, args.seed, args.crc_interval, behavior, "".join(slots))
 
@@ -80,6 +86,8 @@ def main():
     p.add_argument("--minutes", type=float, default=10.0, help="length of the simulated game")
     p.add_argument("--seed", type=int, default=12345)
     p.add_argument("--factions", default="", help="comma separated PlayerTemplate indices for the AI slots (default cycles America, China, GLA = 2,3,4)")
+    p.add_argument("--cash", type=int, default=0, help="Starting Cash match option (SC=N); 0 = not written (the game default)")
+    p.add_argument("--superweapons", choices=["0", "1", "3", "5", "D"], default="0", help="Superweapons match rule: 0 unlimited (default, nothing written), 1/3/5 maximum, D disabled")
     p.add_argument("--ai-mode", choices="OE", default="O", help="AI Behaviour rule: O original (default, nothing written), E enhanced (AI=E2)")
     p.add_argument("--crc-interval", type=int, default=100)
     args = p.parse_args()

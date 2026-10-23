@@ -199,7 +199,7 @@ class ZeroHourNativeContract(unittest.TestCase):
         self.assertNotIn("TheGameLogic->setFrame", body)
         script = read("scripts/native-runtime/Invoke-NativeAutoCapture.ps1")
         self.assertIn("$env:GENERALS_AUTOFLOW = $Flow.ToLowerInvariant()", script)
-        self.assertIn("'Skirmish','Campaign','Challenge','SaveLoad','Slots','QuickGame'", script)
+        self.assertIn("'Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','QuickGame'", script)
 
     def test_the_native_screenshot_path_keeps_its_separator(self):
         host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")

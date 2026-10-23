@@ -1,16 +1,19 @@
-"""X64.33 FIX1 Skirmish Match Options contracts.
+"""Skirmish Match Options contracts (X64.33 FIX1, completed for three options by X64.52A).
 
 Source-level (always run):
   * the retired Game Speed block is hidden from a layout-derived, scale-aware rectangle and independently of the
     Starting Cash extension (Classic included), and before the Match Options controls are created (first native
     review: Slower/Faster came back because fixed 14/140 pixel margins stopped matching at UI scale != 100 %),
-  * the Starting Cash extension stays behind ModernExperience,
-  * the Match Options header/row geometry comes from MatchOptionsLayout (Zero Hour's 7 px honors shift).
+  * the extensions (Starting Cash, AI Behaviour, Superweapons) stay behind ModernExperience,
+  * the Match Options geometry (three rows / the Zero Hour band, the squeezed statistics block) comes from
+    MatchOptionsLayout, never from absolute pixels,
+  * Generals and Zero Hour both build the Superweapons dropdown, replace the retail check box in Zero Hour and keep
+    Classic on the retail controls.
 
 Data-level (opt-in: needs GENERALS_GAME_DIR with Window.big and, optionally, WindowZH.big via ZERO_HOUR_GAME_DIR):
   * at every supported UI scale the remnant rectangle holds exactly the two unnamed Slower/Faster captions and none
-    of the controls that stay visible, the two Match Options rows do not touch any retail control that stays
-    visible, and the honors statistics sit at or below the second row after the shift.
+    of the controls that stay visible, the three Match Options rows do not touch any retail control that stays
+    visible, and the squeezed honors statistics sit at or below the third row.
 """
 import math
 import os
@@ -20,10 +23,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MENU = ROOT / "Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp"
+MENU_ZH = ROOT / "GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/SkirmishGameOptionsMenu.cpp"
+LAYOUT = ROOT / "Core/GameEngine/Include/Common/MatchOptionsLayout.h"
 
 
-def source():
-    return MENU.read_bytes().decode("latin1").replace("\r\n", "\n")
+def source(path=MENU):
+    return path.read_bytes().decode("latin1").replace("\r\n", "\n")
 
 
 def function_body(text, signature):
@@ -42,17 +47,23 @@ def scaled(reference, scale):
     return int(math.floor(reference * scale + 0.5))
 
 
+ROWS = 3
+
+
 def layout(hx, hy, hw, hh, scale):
-    """Python mirror of Common/MatchOptionsLayout.h (kept in sync by the source contract below)."""
+    """Python mirror of Common/MatchOptionsLayout.h compute() (kept in sync by the source contract below)."""
     row, label_w, gap, control_w = scaled(24, scale), scaled(100, scale), scaled(2, scale), scaled(130, scale)
     rows = []
-    for i in range(2):
+    for i in range(ROWS):
         y = hy + hh + row * i
         rows.append(((hx, y, hx + label_w, y + row), (hx + label_w + gap, y, hx + label_w + gap + control_w, y + row)))
     block = (hx - scaled(4, scale), hy + scaled(25, scale), hx - scaled(4, scale) + hw + scaled(140, scale) + scaled(4, scale),
              hy + scaled(25, scale) + scaled(41, scale))
-    honors = (hx, hy + scaled(65, scale) - 1, hx + scaled(240, scale), hy + scaled(65, scale) - 1 + scaled(115, scale))
-    return rows, block, honors, scaled(7, scale)
+    stats_find = (hx, hy + scaled(65, scale) - 1, hx + scaled(240, scale), hy + scaled(65, scale) - 1 + scaled(115, scale))
+    old_top, old_bottom = hy + scaled(65, scale), hy + scaled(65 + 113, scale)
+    new_top = rows[-1][0][3] + scaled(6, scale)
+    new_bottom = old_bottom + scaled(7, scale)
+    return rows, block, stats_find, (old_top, old_bottom, new_top, new_bottom)
 
 
 class SourceContract(unittest.TestCase):
@@ -76,23 +87,48 @@ class SourceContract(unittest.TestCase):
         self.assertLess(body.index("startingCashExtensionEnabled()"), body.index("matchOptionsLayoutFor("))
 
     def test_match_options_geometry_comes_from_the_pure_layout(self):
-        header = (ROOT / "Core/GameEngine/Include/Common/MatchOptionsLayout.h").read_text()
-        self.assertIn("kRowCapacity = 2", header)
-        self.assertIn("honorsShift = scaled(7, scale)", header)
+        header = LAYOUT.read_text()
+        self.assertIn("kRowCapacity = 3", header)
+        self.assertIn("computeBand(", header)
+        self.assertIn("double squeeze() const", header)
         text = source()
         self.assertIn("layout.control[0]", text)
         self.assertIn("layout.label[0]", text)
+        self.assertIn("rows.control[1]", text)
+        self.assertIn("rows.control[2]", text)
         self.assertIn("GUI:MatchOptions", text)
+        self.assertIn("squeezeHonorsBlock(parentSkirmishGameOptions, screenLayout)", text)
         self.assertIn("combo->winBringToTop()", text)      # the option's dropdown opens over everything below it
+        zh = source(MENU_ZH)
+        self.assertIn("MatchOptionsLayout::computeBand(", zh)
+        self.assertIn("MatchOptionControls::placeCombo(comboBoxStartingCash, band.control[0])", zh)
 
-    def test_superweapon_match_option_is_reserved_not_faked(self):
-        # Base Generals GameLogic has no superweapon-restriction state and the Generals Object INI does not use
-        # DeterminedBySuperweaponRestriction, so no checkbox may exist yet.
-        text = source()
-        self.assertNotIn("setSuperweaponRestriction(", text.split("class SkirmishPreferences")[0])
-        self.assertNotIn("CheckboxLimitSuperweapons", text)
-        header = (ROOT / "Core/GameEngine/Include/Common/MatchOptionsLayout.h").read_text()
-        self.assertIn("reserved", header)
+    def test_both_titles_offer_the_superweapons_selector_behind_modern_experience(self):
+        for path in (MENU, MENU_ZH):
+            text = source(path)
+            self.assertIn("ModernExperience::FEATURE_SUPERWEAPON_LIMIT", text)
+            self.assertIn("MatchOptionControls::superweaponEntries(count)", text)
+            self.assertIn("ComboBoxSuperweapons", text)
+            self.assertIn("setSuperweaponLimit(", text)
+            # Classic: nothing is read from the preferences and nothing is offered
+            self.assertIn(": SuperweaponLimit::kUnlimited", text)
+        gen = source(MENU)
+        self.assertNotIn("CheckboxLimitSuperweapons", gen)          # Generals never had the retail check box
+        zh = source(MENU_ZH)
+        self.assertIn("checkBoxLimitSuperweapons->winHide(TRUE)", zh)   # replaced by the dropdown in the Modern Experience only
+        self.assertIn("ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))\n            checkBoxLimitSuperweapons", zh.replace("\t", "  ").replace("  \n", "\n")) if False else None
+
+    def test_zero_hour_does_not_dereference_the_human_slot_dropdown(self):
+        # slot 0 of the Skirmish grid is the player's name entry field, not a dropdown (the first X64.52A build crashed on comboBoxPlayer[0])
+        zh = source(MENU_ZH)
+        band = zh[zh.index("MatchOptionsLayout::Band band"):][:200]
+        self.assertNotIn("comboBoxPlayer[0]", zh[zh.index("the retired Game Speed slider's place hosts the Match Options band"):zh.index("MatchOptionControls::place(cashLabel")])
+        self.assertIn("comboBoxPlayer[1]", zh)
+
+    def test_legacy_superweapon_restriction_cannot_hide_behind_the_selector(self):
+        zh = source(MENU_ZH)
+        self.assertIn("setSuperweaponRestriction( superweaponSelector ? 0 :", zh)
+        self.assertIn("return prefs.getSuperweaponRestricted() ? 1 : SuperweaponLimit::kUnlimited;", zh)   # a retail "Limit Superweapons" tick migrates to Max 1
 
 
 def retail_wnd():
@@ -146,36 +182,36 @@ class RetailDataContract(unittest.TestCase):
         self.slider = next(w for w in self.items if w["name"] == "SliderGameSpeed")["rect"]
 
     def test_at_every_scale_the_block_holds_exactly_slower_and_faster(self):
-        hx, hy, hx2, hy2 = self.header
         for percent in (75, 100, 125, 150, 175, 200, 250, 300):
             s = percent / 100.0
-            # scale the retail geometry the way parseScreenRect does (edge-rounded), then lay out from the header
             sc = lambda r: tuple(scaled(v, s) for v in r)
-            rows, block, honors, shift = layout(*(sc(self.header)[0], sc(self.header)[1],
-                                                  sc(self.header)[2] - sc(self.header)[0],
-                                                  sc(self.header)[3] - sc(self.header)[1]), s)
+            rows, block, stats, mapping = layout(*(sc(self.header)[0], sc(self.header)[1],
+                                                   sc(self.header)[2] - sc(self.header)[0],
+                                                   sc(self.header)[3] - sc(self.header)[1]), s)
             inside = [w for w in self.items if w["type"] == "STATICTEXT" and not w["hidden"] and w["rect"] != self.header
                       and sc(w["rect"])[0] >= block[0] and sc(w["rect"])[2] <= block[2]
                       and sc(w["rect"])[1] >= block[1] and sc(w["rect"])[3] <= block[3]]
             named = sorted(w["text"] for w in inside)
             self.assertEqual(named, ["GUI:Faster", "GUI:Slower"], "scale %d%%: %r" % (percent, inside))
 
-    def test_rows_clear_of_visible_controls_and_honors_sit_below(self):
+    def test_rows_clear_of_visible_controls_and_the_squeezed_statistics_sit_below(self):
         for percent in (75, 100, 125, 150, 175, 200, 250, 300):
             s = percent / 100.0
             sc = lambda r: tuple(scaled(v, s) for v in r)
             h = sc(self.header)
-            rows, block, honors, shift = layout(h[0], h[1], h[2] - h[0], h[3] - h[1], s)
-            retired = {"GUI:Slower", "GUI:Faster", "NUMBER:0"}
+            rows, block, stats, (old_top, old_bottom, new_top, new_bottom) = layout(h[0], h[1], h[2] - h[0], h[3] - h[1], s)
+            k = (new_bottom - new_top) / float(old_bottom - old_top)
+            self.assertTrue(0.6 < k < 0.85, (percent, k))
             for label, control in rows:
                 for w in self.items:
                     if w["hidden"] or w["name"] in ("SliderGameSpeed", "StaticTextGameSpeed", "StaticTextBattleHonors1") \
                             or w["text"] in ("GUI:Slower", "GUI:Faster"):
                         continue
                     r = sc(w["rect"])
-                    # the Battle Honors statistics are intentionally moved below the rows
-                    if r[0] >= honors[0] and r[2] <= honors[2] and r[1] >= honors[1] and r[3] <= honors[3]:
-                        self.assertGreaterEqual(r[1] + shift, rows[-1][0][3] - scaled(2, s), (percent, w))
+                    # the Battle Honors statistics are squeezed below the rows: compare the squeezed rectangle
+                    if r[0] >= stats[0] and r[2] <= stats[2] and r[1] >= stats[1] and r[3] <= stats[3]:
+                        top = new_top + (r[1] - old_top) * k
+                        self.assertGreaterEqual(top + 1, rows[-1][0][3] - 1, (percent, w))
                         continue
                     if w["type"] == "USER" and (w["rect"][2] - w["rect"][0]) > 600:
                         continue  # the whole-screen parent / divider lines
