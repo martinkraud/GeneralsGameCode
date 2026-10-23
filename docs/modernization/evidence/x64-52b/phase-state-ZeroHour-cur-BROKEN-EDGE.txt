@@ -1,0 +1,50 @@
+20754.8 phase 1
+20987.6 state phase=1 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+21237.6 state phase=1 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+21487.6 state phase=1 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+21737.3 state phase=1 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+21987.5 state phase=1 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+22237.1 state phase=1 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+22270.6 phase 2
+22487.2 state phase=2 captured=1 pos=968,760 display=1920x1200 scrolling=1 type=2 edgeMode=2 windowed=1 left=0 right=1
+22737.5 state phase=2 captured=1 pos=968,760 display=1920x1200 scrolling=1 type=2 edgeMode=2 windowed=1 left=0 right=1
+22987.7 state phase=2 captured=1 pos=968,760 display=1920x1200 scrolling=1 type=2 edgeMode=2 windowed=1 left=0 right=1
+23237.1 state phase=2 captured=1 pos=968,760 display=1920x1200 scrolling=1 type=2 edgeMode=2 windowed=1 left=0 right=1
+23487.0 state phase=2 captured=1 pos=968,760 display=1920x1200 scrolling=1 type=2 edgeMode=2 windowed=1 left=0 right=1
+23736.7 state phase=2 captured=1 pos=968,760 display=1920x1200 scrolling=1 type=2 edgeMode=2 windowed=1 left=0 right=1
+23786.6 phase 3
+23987.0 state phase=3 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+24236.7 state phase=3 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+24487.1 state phase=3 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+24736.6 state phase=3 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+24986.5 state phase=3 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+25236.2 state phase=3 captured=1 pos=968,760 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+25302.9 phase 4
+25486.5 state phase=4 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+25736.5 state phase=4 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+25986.5 state phase=4 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+26236.4 state phase=4 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+26486.2 state phase=4 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+26736.0 state phase=4 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+26819.8 phase 5
+26986.0 state phase=5 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+27236.0 state phase=5 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+27485.8 state phase=5 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+27735.5 state phase=5 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+28002.3 state phase=5 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+28252.3 state phase=5 captured=1 pos=1,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+28335.7 phase 6
+28502.1 state phase=6 captured=1 pos=962,600 display=1920x1200 scrolling=1 type=1 edgeMode=2 windowed=1 left=0 right=0
+28752.0 state phase=6 captured=1 pos=990,600 display=1920x1200 scrolling=1 type=1 edgeMode=2 windowed=1 left=0 right=0
+29001.9 state phase=6 captured=1 pos=1015,600 display=1920x1200 scrolling=1 type=1 edgeMode=2 windowed=1 left=0 right=0
+29251.7 state phase=6 captured=1 pos=1041,600 display=1920x1200 scrolling=1 type=1 edgeMode=2 windowed=1 left=0 right=0
+29501.6 state phase=6 captured=1 pos=1058,600 display=1920x1200 scrolling=1 type=1 edgeMode=2 windowed=1 left=0 right=0
+29751.8 state phase=6 captured=1 pos=1082,600 display=1920x1200 scrolling=1 type=1 edgeMode=2 windowed=1 left=0 right=0
+29851.7 phase 7
+30001.5 state phase=7 captured=1 pos=1095,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+30251.5 state phase=7 captured=1 pos=1095,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+30501.5 state phase=7 captured=1 pos=1095,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+30751.6 state phase=7 captured=1 pos=1095,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+31001.1 state phase=7 captured=1 pos=1095,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+31251.2 state phase=7 captured=1 pos=1095,600 display=1920x1200 scrolling=0 type=0 edgeMode=2 windowed=1 left=0 right=0
+31368.0 phase 8

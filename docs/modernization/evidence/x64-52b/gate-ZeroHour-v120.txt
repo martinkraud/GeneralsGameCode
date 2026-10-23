@@ -1,0 +1,5 @@
+key  PASS {'frames': 122, 'distance': 1568.3, 'stale_fraction': 0.0, 'ripple': 0.019}
+edge FAIL {'frames': 177, 'distance': 0.0}
+      - the camera travelled only 0.0 units (< 400): the edge input does not scroll
+rmb  PASS {'frames': 135, 'distance': 643.5, 'stale_fraction': 0.0, 'ripple': 0.027}
+CAMERA REAL-INPUT GATE: FAIL (1 phase(s))

@@ -1,0 +1,7 @@
+key  FAIL {'frames': 116, 'distance': 1571.9, 'stale_fraction': 0.0, 'ripple': 1.071}
+      - camera speed ripples (1.07 > 0.15): the step does not follow the frame interval
+edge FAIL {'frames': 121, 'distance': 1470.9, 'stale_fraction': 0.0, 'ripple': 0.81}
+      - camera speed ripples (0.81 > 0.15): the step does not follow the frame interval
+rmb  FAIL {'frames': 122, 'distance': 782.8, 'stale_fraction': 0.0, 'ripple': 1.165}
+      - camera speed ripples (1.17 > 0.15): the step does not follow the frame interval
+CAMERA REAL-INPUT GATE: FAIL (3 phase(s))

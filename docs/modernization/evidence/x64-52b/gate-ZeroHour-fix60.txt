@@ -1,0 +1,4 @@
+key  PASS {'frames': 91, 'distance': 1579.9, 'stale_fraction': 0.0, 'ripple': 0.009}
+edge PASS {'frames': 90, 'distance': 1508.0, 'stale_fraction': 0.0, 'ripple': 0.012}
+rmb  PASS {'frames': 91, 'distance': 720.7, 'stale_fraction': 0.0, 'ripple': 0.109}
+CAMERA REAL-INPUT GATE: PASS

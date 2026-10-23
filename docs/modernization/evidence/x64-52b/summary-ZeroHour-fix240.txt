@@ -1,0 +1,22 @@
+target_fps=240 hold_seconds=1.50 rows=4905
+[key] drawn=98 scroll_steps=98 logic_ticks=46 elapsed_s=1.499 distance=611.96 speed_units_per_s=408.21
+  frame_ms: n=97 mean=15.455 p50=15.596 p95=27.999 p99=29.375 worst=29.707 stddev=7.737 var=59.8613
+  present_interval_ms: n=97 mean=15.477 p50=15.777 p95=28.932 p99=30.353 worst=30.979 stddev=8.310 var=69.0487
+  seen_world_speed_units_per_s (camera step / present interval): mean=917.65 p95=5807.13 p99=10305.78 stddev=2062.64 cv=2.2477
+  camera_step_per_frame: mean=6.7300 p50=0.0000 p95=28.5707 p99=32.1875 max=50.2194 stddev=10.6025 stale_frames=60
+  camera_speed_units_per_s (per draw interval): mean=433.15 p95=1155.72 p99=1724.20 stddev=568.84 cv=1.3133
+  camera_move_per_logic_tick: n=45 mean=14.4543 p95=57.2197 max=66.6740 stddev=20.3965
+[edge] drawn=116 scroll_steps=108 logic_ticks=46 elapsed_s=1.488 distance=1515.55 speed_units_per_s=1018.23
+  frame_ms: n=115 mean=12.943 p50=13.227 p95=21.656 p99=22.780 worst=22.858 stddev=5.054 var=25.5427
+  present_interval_ms: n=115 mean=12.935 p50=13.108 p95=22.660 p99=23.571 worst=24.035 stddev=5.491 var=30.1475
+  seen_world_speed_units_per_s (camera step / present interval): mean=1526.18 p95=4857.37 p99=7248.96 stddev=1530.87 cv=1.0031
+  camera_step_per_frame: mean=13.2061 p50=14.1859 p95=23.2859 p99=24.5099 max=24.6484 stddev=6.1638 stale_frames=7
+  camera_speed_units_per_s (per draw interval): mean=1018.70 p95=1137.31 p99=1228.71 stddev=261.13 cv=0.2563
+  camera_move_per_logic_tick: n=45 mean=33.6906 p95=48.6626 max=53.5119 stddev=12.4095
+[rmb] drawn=123 scroll_steps=119 logic_ticks=46 elapsed_s=1.497 distance=1372.85 speed_units_per_s=916.76
+  frame_ms: n=122 mean=12.275 p50=12.261 p95=21.573 p99=22.260 worst=22.624 stddev=5.422 var=29.3963
+  present_interval_ms: n=122 mean=12.259 p50=12.259 p95=22.734 p99=23.857 worst=24.285 stddev=6.321 var=39.9540
+  seen_world_speed_units_per_s (camera step / present interval): mean=1495.45 p95=6578.26 p99=16572.80 stddev=3379.28 cv=2.2597
+  camera_step_per_frame: mean=11.2601 p50=0.0000 p95=47.8069 p99=71.9889 max=76.8848 stddev=19.4388 stale_frames=76
+  camera_speed_units_per_s (per draw interval): mean=894.64 p95=3483.36 p99=3527.13 stddev=1410.13 cv=1.5762
+  camera_move_per_logic_tick: n=45 mean=30.5273 p95=132.6252 max=174.7219 stddev=48.5294
