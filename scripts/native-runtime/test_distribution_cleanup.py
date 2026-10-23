@@ -136,6 +136,8 @@ class Wiring(unittest.TestCase):
         self.assertIn("$ErrorActionPreference = 'Stop'", MAIN)
         self.assertGreater(MAIN.index("Remove-ObsoleteDistributions.ps1"), MAIN.index("throw 'A title was not validated.'"))
         self.assertGreater(MAIN.index("Remove-ObsoleteDistributions.ps1"), MAIN.index("Test-ZeroHourOverlayPackage.ps1"))
+        # the stage root handed to the cleanup is the real stage folder (a mangled escape once silently disabled the stage cleanup)
+        self.assertIn("(Join-Path $repo 'build\\dev-runtimes\\native')", MAIN)
         # -NoCleanup is checked first and never reaches the script
         self.assertLess(MAIN.index("if ($NoCleanup)"), MAIN.index("Remove-ObsoleteDistributions.ps1"))
         self.assertIn("if ($NoCleanup) { Write-Host 'cleanup: skipped (-NoCleanup).' }", MAIN)

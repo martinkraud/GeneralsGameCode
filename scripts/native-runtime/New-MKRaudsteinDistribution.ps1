@@ -87,8 +87,7 @@ Write-Host "DISTRIBUTION READY for BOTH titles: $combinedPath"
 if ($NoCleanup) { Write-Host 'cleanup: skipped (-NoCleanup).' }
 elseif ($SkipValidation) { Write-Host 'cleanup: skipped (this distribution was not validated).' }
 else {
-    $cleanup = @{ OutputDirectory = $OutputDirectory; StageRoot = (Join-Path $repo 'build\dev-runtimes
-ative'); CurrentVersion = $Version }
+    $cleanup = @{ OutputDirectory = $OutputDirectory; StageRoot = (Join-Path $repo 'build\dev-runtimes\native'); CurrentVersion = $Version }
     if ($CleanupDryRun) { $cleanup.DryRun = $true }
     try { & (Join-Path $PSScriptRoot 'Remove-ObsoleteDistributions.ps1') @cleanup }
     catch { Write-Warning "cleanup failed (the distribution itself is intact): $_" }
