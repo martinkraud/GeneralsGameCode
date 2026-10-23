@@ -136,21 +136,21 @@ Unlimited never reaches the counting code: `SuperweaponRule::blocksStart` reads 
 * Campaign and Challenge: `GameLogic::getSuperweaponLimit()` reads the Skirmish game info (null in Campaign); the Challenge game info is never given a rule.
 * LAN / online lobbies have no Modern control (unchanged scope). The value is serialized (`SW=`) and enforced inside the deterministic simulation, so a game that carries it is enforced identically on every peer.
 
-### 4.5 Packages (code commit `8d1e2e18b`, `build\dist`)
+### 4.5 Packages (rebuilt at `34b5f091c` with the automatic distribution cleanup; gameplay executables byte-identical to the gated ones; `builddist`)
 Built by `New-MKRaudsteinDistribution.ps1` (both titles in one run, clean install + ZIP == staged candidate file-for-file, overlay test PASS for both). No PDB in either player ZIP; symbols are separate archives. The staged executables are byte-identical to the gated `build\win64` executables.
 
 | file | size (B) | SHA-256 |
 |---|---|---|
-| `MKRaudstein-Generals-x64-Preview-8d1e2e18b.zip` | 4 050 103 | `13E32AF7FB95072B1446CC5DEFE8FA77F2E005726983270BB6AB15A82E291D7C` |
-| `MKRaudstein-ZeroHour-x64-Preview-8d1e2e18b.zip` | 4 155 201 | `0B4A9F55A0C50BAE4843E409C561D23ADC7B0127F70516E687596049ACB41C88` |
-| `MKRaudstein-Generals-x64-Preview-8d1e2e18b-Symbols.zip` | 22 137 626 | (see `MKRaudstein-Generals-x64-Preview-8d1e2e18b.manifest.json`) |
-| `MKRaudstein-ZeroHour-x64-Preview-8d1e2e18b-Symbols.zip` | 22 496 788 | (see `MKRaudstein-ZeroHour-x64-Preview-8d1e2e18b.manifest.json`) |
+| `MKRaudstein-Generals-x64-Preview-34b5f091c.zip` | 4 050 100 | `15D095E40536C7EC09D2D85C44196179BBBC45DE988D352D70D978EB4B073211` |
+| `MKRaudstein-ZeroHour-x64-Preview-34b5f091c.zip` | 4 155 197 | `D0F8D5EE148BA04E52B6875047D41252ECDC6E6309B2670433E6E40E4DB065B0` |
+| `MKRaudstein-Generals-x64-Preview-34b5f091c-Symbols.zip` | 22 137 626 | (see `MKRaudstein-Generals-x64-Preview-34b5f091c.manifest.json`) |
+| `MKRaudstein-ZeroHour-x64-Preview-34b5f091c-Symbols.zip` | 22 496 788 | (see `MKRaudstein-ZeroHour-x64-Preview-34b5f091c.manifest.json`) |
 
-Combined list: `MKRaudstein-x64-Preview-8d1e2e18b.SHA256SUMS`. Both contain X64.52 Enhanced AI (`AI=E2`), the corrected Match Options, AI Behaviour, Starting Cash and the Superweapons limit.
+Combined list: `MKRaudstein-x64-Preview-34b5f091c.SHA256SUMS`. Both contain X64.52 Enhanced AI (`AI=E2`), the corrected Match Options, AI Behaviour, Starting Cash and the Superweapons limit.
 
 ### 4.6 Human native test (one run of the whole current feature set)
-Launch the candidate (not the X64.52 packages): `build\dev-runtimes\native\ZeroHour\dist-8d1e2e18b-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-8d1e2e18b-zh`
-(Generals: `build\dev-runtimes\native\Generals\dist-8d1e2e18b-gen`), or install the two ZIPs over the Steam installations as in X64.48B.
+Launch the candidate (not the X64.52 packages): `build\dev-runtimes\native\ZeroHour\dist-34b5f091c-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-34b5f091c-zh`
+(Generals: `build\dev-runtimes\native\Generals\dist-34b5f091c-gen`), or install the two ZIPs over the Steam installations as in X64.48B.
 1. Skirmish > Game Options at 1920x1080, then your widest resolution and one larger UI scale: Starting Cash, AI Behaviour and Superweapons sit in one tidy row/column, nothing overlaps, open each drop-down and pick an entry in the row below it.
 2. Defaults: AI Behaviour Original, Superweapons Unlimited, Starting Cash unchanged. Start a match; superweapon buttons behave as retail.
 3. Superweapons = Max 1: build one Particle Cannon / Nuclear Missile / Scud Storm; the second's button is greyed (maxed out). Destroy the first: the button comes back. Max 3 / Max 5 the same at 3 / 5. Disabled: no superweapon structure can be started. General Powers still work.
