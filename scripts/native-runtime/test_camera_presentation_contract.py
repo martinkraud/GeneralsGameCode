@@ -38,13 +38,15 @@ class CameraPresentationContract(unittest.TestCase):
         self.assertEqual(len(re.findall(r"TheGlobalData->m_verticalScrollSpeedFactor \* fpsRatio \* SCROLL_AMT \* TheGlobalData->m_keyboardScrollFactor", t)), 4)
         self.assertEqual(len(re.findall(r"TheGlobalData->m_horizontalScrollSpeedFactor \* fpsRatio \* SCROLL_AMT \* TheGlobalData->m_keyboardScrollFactor", t)), 4)
         self.assertIn("vecLength * vec.x * SCROLL_MULTIPLIER * TheGlobalData->m_keyboardScrollFactor", t)
-        self.assertIn("static const Int edgeScrollSize = 3;", t)
+        self.assertIn("constexpr int kEdgeSize = 3;", read("Core/GameEngine/Include/Common/ScreenEdgeScroll.h"))   # X64.52B: the edge band moved into the tested header, same 3 px
         self.assertIn("TheInGameUI->setScrollAmount(offset);", t)
 
     def test_view_applies_the_velocity_in_presentation_time(self):
         v = read("Core/GameEngine/Source/GameClient/View.cpp")
-        self.assertIn("PresentationScroll::stepSeconds(now.QuadPart, m_lastUserScrollTicks, frequency.QuadPart)", v)
-        self.assertIn("PresentationScroll::deltaForInterval", v)
+        self.assertIn("m_userScroll.advance(now.QuadPart, frequency.QuadPart, offset.x, offset.y)", v)   # X64.52B: the tested PresentationScroll::Integrator
+        h = read("Core/GameEngine/Include/Common/PresentationScroll.h")
+        self.assertIn("stepSeconds(nowTicks, lastTicks, ticksPerSecond)", h)
+        self.assertIn("deltaForInterval(perBaseX, seconds)", h)
         self.assertIn("if (isUserControlLocked())", v[v.index("Bool View::userScrollByPresented"):])
         w = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DView.cpp")
         body = w[w.index("void W3DView::update()"):]
