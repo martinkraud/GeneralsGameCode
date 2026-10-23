@@ -17,7 +17,9 @@ param([string]$GeneralsCandidate,
       [switch]$SkipValidation,        # development only: package without running the validator (a distribution MUST be validated)
       [string]$OutputDirectory,
       [string]$Version,
-      [switch]$AllowDirtyTree)
+      [switch]$AllowDirtyTree,
+      [switch]$NoCleanup,             # keep every older distribution (debugging, archaeology)
+      [switch]$CleanupDryRun)         # list what the retention cleanup would remove, delete nothing
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
 $repo = $script:ZHRepository
@@ -80,3 +82,14 @@ Write-Host ''
 foreach ($s in $summary) { Write-Host ("{0,-9} {1} files {2:N0} B  SHA-256 {3}  validated={4}" -f $s.title, $s.files, $s.bytes, $s.sha256, $s.validated) }
 if (-not $SkipValidation -and @($summary | Where-Object { -not $_.validated }).Count) { throw 'A title was not validated.' }
 Write-Host "DISTRIBUTION READY for BOTH titles: $combinedPath"
+
+# Retention (current + previous validated distribution) - only now, after BOTH titles were built, packaged and validated; any earlier failure throws before this point.
+if ($NoCleanup) { Write-Host 'cleanup: skipped (-NoCleanup).' }
+elseif ($SkipValidation) { Write-Host 'cleanup: skipped (this distribution was not validated).' }
+else {
+    $cleanup = @{ OutputDirectory = $OutputDirectory; StageRoot = (Join-Path $repo 'build\dev-runtimes
+ative'); CurrentVersion = $Version }
+    if ($CleanupDryRun) { $cleanup.DryRun = $true }
+    try { & (Join-Path $PSScriptRoot 'Remove-ObsoleteDistributions.ps1') @cleanup }
+    catch { Write-Warning "cleanup failed (the distribution itself is intact): $_" }
+}
