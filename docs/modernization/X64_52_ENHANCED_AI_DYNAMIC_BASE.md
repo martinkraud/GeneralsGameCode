@@ -283,7 +283,5 @@ The packages contain every runtime change through X64.49 + X64.51 + X64.52 (buil
 
 ### Launching the Zero Hour candidate (default of `Run-ZeroHourCandidate.cmd`)
 
-`build\dev-runtimes
-ative\ZeroHour\dist-f190b4e82-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-f190b4e82-zh`
-(Generals: `build\dev-runtimes
-ative\Generals\dist-f190b4e82-gen`).
+`build\dev-runtimes\native\ZeroHour\dist-f190b4e82-zh\game\generalszh.exe`, or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-f190b4e82-zh`
+(Generals: `build\dev-runtimes\native\Generals\dist-f190b4e82-gen`).
