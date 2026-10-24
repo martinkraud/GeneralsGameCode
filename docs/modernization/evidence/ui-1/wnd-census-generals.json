@@ -1,0 +1,3025 @@
+{
+ "files": {
+  "window/controlbar.wnd": {
+   "callbacks": [
+    "BeaconWindowInput",
+    "ControlBarInput",
+    "ControlBarObserverSystem",
+    "ControlBarSystem",
+    "GameWinBlockInput",
+    "GameWinDefaultInput",
+    "GameWinDefaultSystem",
+    "GameWinDefaultTooltip",
+    "LeftHUDInput",
+    "PassSelectedButtonsToParentSystem",
+    "W3DCommandBarBackgroundDraw",
+    "W3DCommandBarForegroundDraw",
+    "W3DCommandBarGenExpDraw",
+    "W3DCommandBarGridDraw",
+    "W3DCommandBarTopDraw",
+    "W3DGadgetPushButtonImageDraw",
+    "W3DGameWinDefaultDraw",
+    "W3DLeftHUDDraw",
+    "W3DNoDraw",
+    "W3DPowerDraw",
+    "W3DRightHUDDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 96
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 12,
+    "Arial 14": 3,
+    "Arial 8": 29,
+    "Generals 15": 2,
+    "Generals 20": 1,
+    "Times New Roman 10": 8,
+    "Times New Roman 14": 41
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 42,
+    "STATICTEXT": 21,
+    "USER": 31
+   },
+   "images_referenced": 18,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "BORDER": 1,
+    "ENABLED": 95,
+    "HIDDEN": 8,
+    "IMAGE": 53,
+    "NOFOCUS": 50,
+    "NOINPUT": 4,
+    "SEE_THRU": 8,
+    "WRAP_CENTERED": 33
+   },
+   "windows": 96
+  },
+  "window/controlbarpopupdescription.wnd": {
+   "callbacks": [
+    "W3DCommandBarHelpPopupDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    224,
+    401
+   ],
+   "fonts": {
+    "Arial 8": 3,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "STATICTEXT": 3,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 4,
+    "HOTKEY_TEXT": 1,
+    "IMAGE": 1,
+    "WRAP_CENTERED": 1
+   },
+   "windows": 4
+  },
+  "window/diplomacy.wnd": {
+   "callbacks": [
+    "DiplomacyInput",
+    "DiplomacySystem",
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 64
+   },
+   "extent_on_800x600": [
+    428,
+    401
+   ],
+   "fonts": {
+    "Arial 10": 60,
+    "Placard MT Condensed 16": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 17,
+    "RADIOBUTTON": 2,
+    "SCROLLLISTBOX": 3,
+    "STATICTEXT": 37,
+    "USER": 4
+   },
+   "images_referenced": 45,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayInit",
+    "LAYOUTSHUTDOWN": "WOLBuddyOverlayShutdown",
+    "LAYOUTUPDATE": "WOLBuddyOverlayUpdate"
+   },
+   "status_flags": {
+    "DRAGABLE": 1,
+    "ENABLED": 64,
+    "HIDDEN": 2,
+    "IMAGE": 25,
+    "NOFOCUS": 1
+   },
+   "windows": 64
+  },
+  "window/generalsexppoints.wnd": {
+   "callbacks": [
+    "GeneralsExpPointsInput",
+    "GeneralsExpPointsSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 29
+   },
+   "extent_on_800x600": [
+    554,
+    435
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Arial 11": 2,
+    "Arial 8": 2,
+    "Arial 9": 3,
+    "Times New Roman 14": 21
+   },
+   "gadgets": {
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 17,
+    "STATICTEXT": 8,
+    "USER": 3
+   },
+   "images_referenced": 7,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 29,
+    "IMAGE": 18
+   },
+   "windows": 29
+  },
+  "window/genpowersshortcutbarchina.wnd": {
+   "callbacks": [
+    "ControlBarSystem",
+    "GameWinBlockInput",
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 11
+   },
+   "extent_on_800x600": [
+    800,
+    437
+   ],
+   "fonts": {
+    "Arial 8": 5,
+    "Times New Roman 14": 6
+   },
+   "gadgets": {
+    "PUSHBUTTON": 5,
+    "USER": 6
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 11,
+    "IMAGE": 10,
+    "NOFOCUS": 5,
+    "WRAP_CENTERED": 5
+   },
+   "windows": 11
+  },
+  "window/genpowersshortcutbargla.wnd": {
+   "callbacks": [
+    "ControlBarSystem",
+    "GameWinBlockInput",
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 7
+   },
+   "extent_on_800x600": [
+    800,
+    337
+   ],
+   "fonts": {
+    "Arial 8": 3,
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "PUSHBUTTON": 3,
+    "USER": 4
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 7,
+    "IMAGE": 6,
+    "NOFOCUS": 3,
+    "WRAP_CENTERED": 3
+   },
+   "windows": 7
+  },
+  "window/genpowersshortcutbarus.wnd": {
+   "callbacks": [
+    "ControlBarSystem",
+    "GameWinBlockInput",
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 11
+   },
+   "extent_on_800x600": [
+    800,
+    429
+   ],
+   "fonts": {
+    "Arial 8": 5,
+    "Times New Roman 14": 6
+   },
+   "gadgets": {
+    "PUSHBUTTON": 5,
+    "USER": 6
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 11,
+    "IMAGE": 10,
+    "NOFOCUS": 5,
+    "WRAP_CENTERED": 5
+   },
+   "windows": 11
+  },
+  "window/imecandidatewindow.wnd": {
+   "callbacks": [
+    "IMECandidateMainDraw",
+    "IMECandidateTextAreaDraw",
+    "IMECandidateWindowInput",
+    "IMECandidateWindowSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    208,
+    224
+   ],
+   "fonts": {
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "USER": 4
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "DRAGABLE": 1,
+    "ENABLED": 4,
+    "IMAGE": 2
+   },
+   "windows": 4
+  },
+  "window/imestatuswindow.wnd": {
+   "callbacks": [
+    "GameWinDefaultDraw",
+    "GameWinDefaultSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    144,
+    64
+   ],
+   "fonts": {
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "STATICTEXT": 1,
+    "USER": 1
+   },
+   "images_referenced": 1,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "DRAGABLE": 1,
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/ingamechat.wnd": {
+   "callbacks": [
+    "InGameChatInput",
+    "InGameChatSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    656,
+    416
+   ],
+   "fonts": {
+    "Arial 10": 2,
+    "Arial 8": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 1,
+    "STATICTEXT": 1,
+    "USER": 1
+   },
+   "images_referenced": 15,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 4,
+    "IMAGE": 1
+   },
+   "windows": 4
+  },
+  "window/ingamepopupmessage.wnd": {
+   "callbacks": [
+    "InGamePopupMessageInput",
+    "InGamePopupMessageSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 3
+   },
+   "extent_on_800x600": [
+    336,
+    280
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Arial 9": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "STATICTEXT": 1,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "InGamePopupMessageInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 3,
+    "IMAGE": 1
+   },
+   "windows": 3
+  },
+  "window/menus/blankwindow.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 1
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 1,
+    "IMAGE": 1
+   },
+   "windows": 1
+  },
+  "window/menus/crcmismatch.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    640,
+    128
+   ],
+   "fonts": {
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "STATICTEXT": 1,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2
+   },
+   "windows": 2
+  },
+  "window/menus/creditsmenu.wnd": {
+   "callbacks": [
+    "CreditsMenuInput",
+    "CreditsMenuSystem",
+    "PassMessagesToParentSystem",
+    "W3DCreditsMenuDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "CreditsMenuInit",
+    "LAYOUTSHUTDOWN": "CreditsMenuShutdown",
+    "LAYOUTUPDATE": "CreditsMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/defeat.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    700,
+    340
+   ],
+   "fonts": {
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/difficultyselect.wnd": {
+   "callbacks": [
+    "DifficultySelectInput",
+    "DifficultySelectSystem",
+    "PassMessagesToParentSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 8
+   },
+   "extent_on_800x600": [
+    592,
+    416
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Placard MT Condensed 14": 1,
+    "Placard MT Condensed 16": 2,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "PUSHBUTTON": 2,
+    "RADIOBUTTON": 3,
+    "STATICTEXT": 1,
+    "USER": 2
+   },
+   "images_referenced": 14,
+   "layout_callbacks": {
+    "LAYOUTINIT": "DifficultySelectInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "BORDER": 1,
+    "ENABLED": 8,
+    "IMAGE": 6,
+    "SEE_THRU": 1
+   },
+   "windows": 8
+  },
+  "window/menus/disconnectscreen.wnd": {
+   "callbacks": [
+    "DisconnectControlInput",
+    "DisconnectControlSystem",
+    "GameWinDefaultTooltip",
+    "W3DGameWinDefaultDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 36
+   },
+   "extent_on_800x600": [
+    740,
+    584
+   ],
+   "fonts": {
+    "Arial 10": 23,
+    "Arial 12": 7,
+    "Placard MT Condensed 14": 2,
+    "Placard MT Condensed 16": 1,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 8,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 24,
+    "USER": 2
+   },
+   "images_referenced": 35,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 36,
+    "IMAGE": 11,
+    "NOFOCUS": 17,
+    "NOINPUT": 17
+   },
+   "windows": 36
+  },
+  "window/menus/downloadmenu.wnd": {
+   "callbacks": [
+    "DownloadMenuInput",
+    "DownloadMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 7
+   },
+   "extent_on_800x600": [
+    592,
+    384
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Arial 9": 4,
+    "Placard MT Condensed 16": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 1,
+    "STATICTEXT": 4,
+    "USER": 1
+   },
+   "images_referenced": 8,
+   "layout_callbacks": {
+    "LAYOUTINIT": "DownloadMenuInit",
+    "LAYOUTSHUTDOWN": "DownloadMenuShutdown",
+    "LAYOUTUPDATE": "DownloadMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 7,
+    "IMAGE": 2
+   },
+   "windows": 7
+  },
+  "window/menus/establishconnectionsscreen.wnd": {
+   "callbacks": [
+    "DisconnectControlInput",
+    "EstablishConnectionsControlSystem",
+    "GameWinDefaultTooltip",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 18
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 14,
+    "Generals 20": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "STATICTEXT": 15,
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 18,
+    "HIDDEN": 1,
+    "IMAGE": 1,
+    "NOFOCUS": 16,
+    "NOINPUT": 15,
+    "WRAP_CENTERED": 1
+   },
+   "windows": 18
+  },
+  "window/menus/gameinfowindow.wnd": {
+   "callbacks": [
+    "GameInfoWindowSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 7
+   },
+   "extent_on_800x600": [
+    520,
+    308
+   ],
+   "fonts": {
+    "Arial 10": 6,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 5,
+    "USER": 1
+   },
+   "images_referenced": 34,
+   "layout_callbacks": {
+    "LAYOUTINIT": "GameInfoWindowInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 7
+   },
+   "windows": 7
+  },
+  "window/menus/gamespygameoptionsmenu.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "PassSelectedButtonsToParentSystem",
+    "W3DDrawMapPreview",
+    "WOLGameSetupMenuInput",
+    "WOLGameSetupMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 82
+   },
+   "extent_on_800x600": [
+    799,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 53,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 6,
+    "Placard MT Condensed 16": 3,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 11
+   },
+   "gadgets": {
+    "COMBOBOX": 32,
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 21,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 15,
+    "USER": 12
+   },
+   "images_referenced": 46,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLGameSetupMenuInit",
+    "LAYOUTSHUTDOWN": "WOLGameSetupMenuShutdown",
+    "LAYOUTUPDATE": "WOLGameSetupMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 82,
+    "IMAGE": 71,
+    "NOFOCUS": 21,
+    "NOINPUT": 14,
+    "RIGHT_CLICK": 8
+   },
+   "windows": 82
+  },
+  "window/menus/gamespyloadscreen.wnd": {
+   "callbacks": [
+    "W3DDrawMapPreview",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 83
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 32,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 6,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 36
+   },
+   "gadgets": {
+    "PROGRESSBAR": 8,
+    "PUSHBUTTON": 8,
+    "STATICTEXT": 39,
+    "USER": 28
+   },
+   "images_referenced": 6,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 83,
+    "IMAGE": 25,
+    "RIGHT_CLICK": 8
+   },
+   "windows": 83
+  },
+  "window/menus/gamespyloginprofile.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "PassSelectedButtonsToParentSystem",
+    "W3DNoDraw",
+    "WOLLoginMenuInput",
+    "WOLLoginMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 34
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 11,
+    "Arial 14": 4,
+    "Arial 8": 2,
+    "Generals 15": 5,
+    "Generals 20": 2,
+    "Times New Roman 14": 10
+   },
+   "gadgets": {
+    "CHECKBOX": 1,
+    "COMBOBOX": 2,
+    "ENTRYFIELD": 4,
+    "PUSHBUTTON": 5,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 11,
+    "USER": 10
+   },
+   "images_referenced": 38,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLLoginMenuInit",
+    "LAYOUTSHUTDOWN": "WOLLoginMenuShutdown",
+    "LAYOUTUPDATE": "WOLLoginMenuUpdate"
+   },
+   "status_flags": {
+    "DRAGABLE": 1,
+    "ENABLED": 34,
+    "HIDDEN": 1,
+    "IMAGE": 18,
+    "NOFOCUS": 1,
+    "NOINPUT": 1,
+    "WRAP_CENTERED": 1
+   },
+   "windows": 34
+  },
+  "window/menus/gamespyloginquick.wnd": {
+   "callbacks": [
+    "PassSelectedButtonsToParentSystem",
+    "W3DMainMenuDraw",
+    "WOLLoginMenuInput",
+    "WOLLoginMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 13
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 2,
+    "Arial 12": 3,
+    "Arial 14": 4,
+    "Arial 16": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 6,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 2,
+    "USER": 3
+   },
+   "images_referenced": 50,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLLoginMenuInit",
+    "LAYOUTSHUTDOWN": "WOLLoginMenuShutdown",
+    "LAYOUTUPDATE": "WOLLoginMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 5,
+    "DRAGABLE": 1,
+    "ENABLED": 13,
+    "HIDDEN": 1,
+    "IMAGE": 8,
+    "NOFOCUS": 6,
+    "NOINPUT": 1,
+    "SEE_THRU": 1
+   },
+   "windows": 13
+  },
+  "window/menus/langameoptionsmenu.wnd": {
+   "callbacks": [
+    "LanGameOptionsMenuInput",
+    "LanGameOptionsMenuSystem",
+    "PassMessagesToParentSystem",
+    "PassSelectedButtonsToParentSystem",
+    "W3DDrawMapPreview",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 65
+   },
+   "extent_on_800x600": [
+    799,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 44,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 5,
+    "Placard MT Condensed 16": 3,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "COMBOBOX": 32,
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 20,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 7,
+    "USER": 4
+   },
+   "images_referenced": 45,
+   "layout_callbacks": {
+    "LAYOUTINIT": "LanGameOptionsMenuInit",
+    "LAYOUTSHUTDOWN": "LanGameOptionsMenuShutdown",
+    "LAYOUTUPDATE": "LanGameOptionsMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 65,
+    "IMAGE": 54,
+    "NOFOCUS": 20,
+    "NOINPUT": 14,
+    "RIGHT_CLICK": 8
+   },
+   "windows": 65
+  },
+  "window/menus/lanlobbymenu.wnd": {
+   "callbacks": [
+    "LanLobbyMenuInput",
+    "LanLobbyMenuSystem",
+    "PassMessagesToParentSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 20
+   },
+   "extent_on_800x600": [
+    799,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 7,
+    "Arial 14": 4,
+    "Generals 15": 5,
+    "Generals 20": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "ENTRYFIELD": 2,
+    "PUSHBUTTON": 6,
+    "SCROLLLISTBOX": 3,
+    "STATICTEXT": 6,
+    "USER": 3
+   },
+   "images_referenced": 40,
+   "layout_callbacks": {
+    "LAYOUTINIT": "LanLobbyMenuInit",
+    "LAYOUTSHUTDOWN": "LanLobbyMenuShutdown",
+    "LAYOUTUPDATE": "LanLobbyMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 20,
+    "IMAGE": 9,
+    "NOFOCUS": 8,
+    "NOINPUT": 5
+   },
+   "windows": 20
+  },
+  "window/menus/lanmapselectmenu.wnd": {
+   "callbacks": [
+    "LanMapSelectMenuInput",
+    "LanMapSelectMenuSystem",
+    "PassSelectedButtonsToParentSystem",
+    "W3DDrawMapPreview",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 17
+   },
+   "extent_on_800x600": [
+    800,
+    320
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 1,
+    "Placard MT Condensed 16": 2,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 10,
+    "RADIOBUTTON": 2,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 1,
+    "USER": 3
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "LanMapSelectMenuInit",
+    "LAYOUTSHUTDOWN": "LanMapSelectMenuShutdown",
+    "LAYOUTUPDATE": "LanMapSelectMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 17,
+    "IMAGE": 12,
+    "NOFOCUS": 4,
+    "NOINPUT": 1,
+    "RIGHT_CLICK": 8,
+    "SEE_THRU": 1
+   },
+   "windows": 17
+  },
+  "window/menus/legalpage.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    798,
+    599
+   ],
+   "fonts": {
+    "Arial 8": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "STATICTEXT": 1,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/localdefeat.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    702,
+    342
+   ],
+   "fonts": {
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "BORDER": 1,
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/mainmenu.wnd": {
+   "callbacks": [
+    "MainMenuInput",
+    "MainMenuSystem",
+    "PassSelectedButtonsToParentSystem",
+    "W3DClockDraw",
+    "W3DNoDraw",
+    "W3DShellMenuSchemeDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 63
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 7,
+    "Arial 14": 1,
+    "Courier 10": 1,
+    "Generals 15": 23,
+    "Times New Roman 14": 31
+   },
+   "gadgets": {
+    "PUSHBUTTON": 30,
+    "STATICTEXT": 1,
+    "USER": 32
+   },
+   "images_referenced": 22,
+   "layout_callbacks": {
+    "LAYOUTINIT": "W3DMainMenuInit",
+    "LAYOUTSHUTDOWN": "MainMenuShutdown",
+    "LAYOUTUPDATE": "MainMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 63,
+    "HIDDEN": 22,
+    "IMAGE": 51
+   },
+   "windows": 63
+  },
+  "window/menus/mapselectmenu.wnd": {
+   "callbacks": [
+    "MapSelectMenuInput",
+    "MapSelectMenuSystem",
+    "W3DMainMenuDraw",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 15
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 4,
+    "Times New Roman 10": 3,
+    "Times New Roman 12": 1,
+    "Times New Roman 14": 6,
+    "Times New Roman 18": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 4,
+    "RADIOBUTTON": 5,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 2,
+    "USER": 3
+   },
+   "images_referenced": 23,
+   "layout_callbacks": {
+    "LAYOUTINIT": "MapSelectMenuInit",
+    "LAYOUTSHUTDOWN": "MapSelectMenuShutdown",
+    "LAYOUTUPDATE": "MapSelectMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 4,
+    "ENABLED": 15,
+    "IMAGE": 6,
+    "SEE_THRU": 1
+   },
+   "windows": 15
+  },
+  "window/menus/maptransferscreen.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 36
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 18,
+    "Placard MT Condensed 14": 3,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 14
+   },
+   "gadgets": {
+    "PROGRESSBAR": 8,
+    "STATICTEXT": 22,
+    "USER": 6
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 36,
+    "IMAGE": 11,
+    "SEE_THRU": 3
+   },
+   "windows": 36
+  },
+  "window/menus/marketingscreen.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 1
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "MarketingScreenInit",
+    "LAYOUTSHUTDOWN": "MarketingScreenShutdown",
+    "LAYOUTUPDATE": "MarketingScreenUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 1,
+    "IMAGE": 1
+   },
+   "windows": 1
+  },
+  "window/menus/messagebox.wnd": {
+   "callbacks": [
+    "MessageBoxSystem",
+    "PassMessagesToParentSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 9
+   },
+   "extent_on_800x600": [
+    799,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Generals 15": 4,
+    "Generals 20": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 4,
+    "STATICTEXT": 2,
+    "USER": 3
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 9,
+    "HIDDEN": 4,
+    "IMAGE": 4
+   },
+   "windows": 9
+  },
+  "window/menus/multiplayerloadscreen.wnd": {
+   "callbacks": [
+    "W3DDrawMapPreview",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 49
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 24,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 4,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 12
+   },
+   "gadgets": {
+    "PROGRESSBAR": 8,
+    "PUSHBUTTON": 8,
+    "STATICTEXT": 29,
+    "USER": 4
+   },
+   "images_referenced": 6,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 49,
+    "IMAGE": 9,
+    "RIGHT_CLICK": 8
+   },
+   "windows": 49
+  },
+  "window/menus/networkdirectconnect.wnd": {
+   "callbacks": [
+    "GameWinDefaultTooltip",
+    "NetworkDirectConnectInput",
+    "NetworkDirectConnectSystem",
+    "PassMessagesToParentSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 14
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Placard MT Condensed 14": 3,
+    "Placard MT Condensed 16": 3,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "COMBOBOX": 1,
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 3,
+    "STATICTEXT": 5,
+    "USER": 4
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "NetworkDirectConnectInit",
+    "LAYOUTSHUTDOWN": "NetworkDirectConnectShutdown",
+    "LAYOUTUPDATE": "NetworkDirectConnectUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 14,
+    "IMAGE": 6
+   },
+   "windows": 14
+  },
+  "window/menus/observerquit.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    705,
+    342
+   ],
+   "fonts": {
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/optionsmenu.wnd": {
+   "callbacks": [
+    "OptionsMenuInput",
+    "OptionsMenuSystem",
+    "PassMessagesToParentSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 88
+   },
+   "extent_on_800x600": [
+    935,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 34,
+    "Arial 14": 18,
+    "Arial 8": 1,
+    "Generals 15": 5,
+    "Generals 20": 1,
+    "Times New Roman 14": 29
+   },
+   "gadgets": {
+    "CHECKBOX": 17,
+    "COMBOBOX": 5,
+    "ENTRYFIELD": 2,
+    "HORZSLIDER": 7,
+    "PUSHBUTTON": 7,
+    "RADIOBUTTON": 3,
+    "STATICTEXT": 27,
+    "USER": 20
+   },
+   "images_referenced": 50,
+   "layout_callbacks": {
+    "LAYOUTINIT": "OptionsMenuInit",
+    "LAYOUTSHUTDOWN": "OptionsMenuShutdown",
+    "LAYOUTUPDATE": "OptionsMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 16,
+    "ENABLED": 88,
+    "HIDDEN": 14,
+    "IMAGE": 41,
+    "NOFOCUS": 2,
+    "SEE_THRU": 1,
+    "TABSTOP": 7,
+    "WRAP_CENTERED": 5
+   },
+   "windows": 88
+  },
+  "window/menus/popupbuddylistnotification.wnd": {
+   "callbacks": [
+    "PopupBuddyNotificationSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    795,
+    595
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "USER": 1
+   },
+   "images_referenced": 1,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "SEE_THRU": 1
+   },
+   "windows": 2
+  },
+  "window/menus/popupcommunicator.wnd": {
+   "callbacks": [
+    "PopupCommunicatorInput",
+    "PopupCommunicatorSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    568,
+    408
+   ],
+   "fonts": {
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "STATICTEXT": 2,
+    "USER": 1
+   },
+   "images_referenced": 6,
+   "layout_callbacks": {
+    "LAYOUTINIT": "PopupCommunicatorInit",
+    "LAYOUTSHUTDOWN": "PopupCommunicatorShutdown",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "BORDER": 1,
+    "ENABLED": 4,
+    "IMAGE": 3
+   },
+   "windows": 4
+  },
+  "window/menus/popupgamespycreategame.wnd": {
+   "callbacks": [
+    "WOLMapSelectMenuInput",
+    "WOLMapSelectMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 8
+   },
+   "extent_on_800x600": [
+    568,
+    376
+   ],
+   "fonts": {
+    "Abadi MT Bold 10": 4,
+    "Abadi MT Bold 12": 3,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "ENTRYFIELD": 2,
+    "PUSHBUTTON": 2,
+    "STATICTEXT": 3,
+    "USER": 1
+   },
+   "images_referenced": 17,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLMapSelectMenuInit",
+    "LAYOUTSHUTDOWN": "WOLMapSelectMenuShutdown",
+    "LAYOUTUPDATE": "WOLMapSelectMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 2,
+    "ENABLED": 8,
+    "IMAGE": 4,
+    "NOFOCUS": 4,
+    "NOINPUT": 1
+   },
+   "windows": 8
+  },
+  "window/menus/popuphostgame.wnd": {
+   "callbacks": [
+    "PopupHostGameInput",
+    "PopupHostGameSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 10
+   },
+   "extent_on_800x600": [
+    737,
+    348
+   ],
+   "fonts": {
+    "Arial 10": 7,
+    "Generals 15": 2,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "CHECKBOX": 1,
+    "ENTRYFIELD": 3,
+    "PUSHBUTTON": 2,
+    "STATICTEXT": 3,
+    "USER": 1
+   },
+   "images_referenced": 17,
+   "layout_callbacks": {
+    "LAYOUTINIT": "PopupHostGameInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 10,
+    "HIDDEN": 3,
+    "IMAGE": 6
+   },
+   "windows": 10
+  },
+  "window/menus/popupjoingame.wnd": {
+   "callbacks": [
+    "PopupJoinGameInput",
+    "PopupJoinGameSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 6
+   },
+   "extent_on_800x600": [
+    584,
+    320
+   ],
+   "fonts": {
+    "Arial 10": 2,
+    "Arial 9": 3,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 1,
+    "STATICTEXT": 3,
+    "USER": 1
+   },
+   "images_referenced": 19,
+   "layout_callbacks": {
+    "LAYOUTINIT": "PopupJoinGameInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 6,
+    "IMAGE": 2
+   },
+   "windows": 6
+  },
+  "window/menus/popupladderdetails.wnd": {
+   "callbacks": [
+    "RCGameDetailsMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    580,
+    404
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Arial 11": 1,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 1,
+    "USER": 2
+   },
+   "images_referenced": 34,
+   "layout_callbacks": {
+    "LAYOUTINIT": "RCGameDetailsMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 4
+   },
+   "windows": 4
+  },
+  "window/menus/popupladderselect.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "PopupLadderSelectInput",
+    "PopupLadderSelectSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 16
+   },
+   "extent_on_800x600": [
+    736,
+    416
+   ],
+   "fonts": {
+    "Arial 10": 5,
+    "Placard MT Condensed 14": 1,
+    "Placard MT Condensed 16": 5,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 5,
+    "SCROLLLISTBOX": 2,
+    "STATICTEXT": 4,
+    "USER": 4
+   },
+   "images_referenced": 35,
+   "layout_callbacks": {
+    "LAYOUTINIT": "PopupLadderSelectInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 16,
+    "IMAGE": 8
+   },
+   "windows": 16
+  },
+  "window/menus/popuplocaleselect.wnd": {
+   "callbacks": [
+    "WOLLocaleSelectInput",
+    "WOLLocaleSelectSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 6
+   },
+   "extent_on_800x600": [
+    799,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Generals 15": 1,
+    "Generals 20": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 1,
+    "USER": 3
+   },
+   "images_referenced": 23,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLLocaleSelectInit",
+    "LAYOUTSHUTDOWN": "WOLLocaleSelectShutdown",
+    "LAYOUTUPDATE": "WOLLocaleSelectUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 6,
+    "IMAGE": 1
+   },
+   "windows": 6
+  },
+  "window/menus/popupplayerinfo.wnd": {
+   "callbacks": [
+    "GameSpyPlayerInfoOverlayInput",
+    "GameSpyPlayerInfoOverlaySystem",
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 50
+   },
+   "extent_on_800x600": [
+    808,
+    592
+   ],
+   "fonts": {
+    "Arial 10": 34,
+    "Arial 14": 5,
+    "Generals 15": 4,
+    "Times New Roman 14": 7
+   },
+   "gadgets": {
+    "CHECKBOX": 2,
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 4,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 34,
+    "USER": 8
+   },
+   "images_referenced": 5,
+   "layout_callbacks": {
+    "LAYOUTINIT": "GameSpyPlayerInfoOverlayInit",
+    "LAYOUTSHUTDOWN": "GameSpyPlayerInfoOverlayShutdown",
+    "LAYOUTUPDATE": "GameSpyPlayerInfoOverlayUpdate"
+   },
+   "status_flags": {
+    "DRAGABLE": 1,
+    "ENABLED": 50,
+    "HIDDEN": 14,
+    "IMAGE": 7,
+    "NOFOCUS": 2,
+    "SEE_THRU": 2,
+    "WRAP_CENTERED": 1
+   },
+   "windows": 50
+  },
+  "window/menus/popupreplay.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "PassSelectedButtonsToParentSystem",
+    "PopupReplayInput",
+    "PopupReplaySystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 11
+   },
+   "extent_on_800x600": [
+    799,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 2,
+    "Generals 15": 2,
+    "Generals 20": 1,
+    "Times New Roman 14": 6
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 2,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 2,
+    "USER": 5
+   },
+   "images_referenced": 35,
+   "layout_callbacks": {
+    "LAYOUTINIT": "PopupReplayInit",
+    "LAYOUTSHUTDOWN": "PopupReplayShutdown",
+    "LAYOUTUPDATE": "PopupReplayUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 11,
+    "IMAGE": 4
+   },
+   "windows": 11
+  },
+  "window/menus/popupsaveload.wnd": {
+   "callbacks": [
+    "PassSelectedButtonsToParentSystem",
+    "SaveLoadMenuInput",
+    "SaveLoadMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 26
+   },
+   "extent_on_800x600": [
+    692,
+    517
+   ],
+   "fonts": {
+    "Arial 10": 2,
+    "Arial 14": 4,
+    "Generals 15": 12,
+    "Generals 20": 1,
+    "Times New Roman 14": 7
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 12,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 5,
+    "USER": 7
+   },
+   "images_referenced": 35,
+   "layout_callbacks": {
+    "LAYOUTINIT": "SaveLoadMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 26,
+    "HIDDEN": 4,
+    "IMAGE": 13
+   },
+   "windows": 26
+  },
+  "window/menus/quitmenu.wnd": {
+   "callbacks": [
+    "GameWinBlockInput",
+    "QuitMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 7
+   },
+   "extent_on_800x600": [
+    552,
+    428
+   ],
+   "fonts": {
+    "Placard MT Condensed 16": 5,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "PUSHBUTTON": 5,
+    "USER": 2
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 7,
+    "IMAGE": 6
+   },
+   "windows": 7
+  },
+  "window/menus/quitmessagebox.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "QuitMessageBoxSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 10
+   },
+   "extent_on_800x600": [
+    799,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Placard MT Condensed 16": 4,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "PUSHBUTTON": 4,
+    "STATICTEXT": 2,
+    "USER": 4
+   },
+   "images_referenced": 4,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 10,
+    "HIDDEN": 4,
+    "IMAGE": 5
+   },
+   "windows": 10
+  },
+  "window/menus/quitnosave.wnd": {
+   "callbacks": [
+    "GameWinBlockInput",
+    "QuitMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 6
+   },
+   "extent_on_800x600": [
+    547,
+    393
+   ],
+   "fonts": {
+    "Placard MT Condensed 16": 4,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "PUSHBUTTON": 4,
+    "USER": 2
+   },
+   "images_referenced": 3,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 6,
+    "IMAGE": 5
+   },
+   "windows": 6
+  },
+  "window/menus/rcbuddiesmenu.wnd": {
+   "callbacks": [
+    "WOLBuddyOverlayRCMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    416,
+    232
+   ],
+   "fonts": {
+    "Arial 10": 4
+   },
+   "gadgets": {
+    "PUSHBUTTON": 3,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayRCMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 4,
+    "IMAGE": 3
+   },
+   "windows": 4
+  },
+  "window/menus/rcbuddyrequestmenu.wnd": {
+   "callbacks": [
+    "WOLBuddyOverlayRCMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 3
+   },
+   "extent_on_800x600": [
+    416,
+    208
+   ],
+   "fonts": {
+    "Arial 10": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 2,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayRCMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 3,
+    "IMAGE": 2
+   },
+   "windows": 3
+  },
+  "window/menus/rcgamedetailsmenu.wnd": {
+   "callbacks": [
+    "RCGameDetailsMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    432,
+    200
+   ],
+   "fonts": {
+    "Abadi MT Bold 10": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "RCGameDetailsMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/rclocalplayermenu.wnd": {
+   "callbacks": [
+    "WOLBuddyOverlayRCMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    416,
+    184
+   ],
+   "fonts": {
+    "Arial 10": 2
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayRCMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/rcnonbuddiesmenu.wnd": {
+   "callbacks": [
+    "WOLBuddyOverlayRCMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 4
+   },
+   "extent_on_800x600": [
+    424,
+    240
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 3,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayRCMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 4,
+    "IMAGE": 3
+   },
+   "windows": 4
+  },
+  "window/menus/rcnoprofilemenu.wnd": {
+   "callbacks": [
+    "WOLBuddyOverlayRCMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    432,
+    200
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "USER": 1
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayRCMenuInit",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/replaymenu.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "ReplayMenuInput",
+    "ReplayMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 10
+   },
+   "extent_on_800x600": [
+    799,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 1,
+    "Placard MT Condensed 16": 4,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 4
+   },
+   "gadgets": {
+    "PUSHBUTTON": 4,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 1,
+    "USER": 4
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "ReplayMenuInit",
+    "LAYOUTSHUTDOWN": "ReplayMenuShutdown",
+    "LAYOUTUPDATE": "ReplayMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 10,
+    "IMAGE": 5
+   },
+   "windows": 10
+  },
+  "window/menus/saveload.wnd": {
+   "callbacks": [
+    "PassSelectedButtonsToParentSystem",
+    "SaveLoadMenuInput",
+    "SaveLoadMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 27
+   },
+   "extent_on_800x600": [
+    798,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 2,
+    "Placard MT Condensed 14": 4,
+    "Placard MT Condensed 16": 12,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 8
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 12,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 5,
+    "USER": 8
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "SaveLoadMenuFullScreenInit",
+    "LAYOUTSHUTDOWN": "SaveLoadMenuShutdown",
+    "LAYOUTUPDATE": "SaveLoadMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 27,
+    "HIDDEN": 4,
+    "IMAGE": 14
+   },
+   "windows": 27
+  },
+  "window/menus/scorescreen.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "ScoreScreenInput",
+    "ScoreScreenSystem",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 108
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 84,
+    "Generals 15": 4,
+    "Times New Roman 14": 20
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 5,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 81,
+    "USER": 20
+   },
+   "images_referenced": 47,
+   "layout_callbacks": {
+    "LAYOUTINIT": "ScoreScreenInit",
+    "LAYOUTSHUTDOWN": "ScoreScreenShutdown",
+    "LAYOUTUPDATE": "ScoreScreenUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 108,
+    "HIDDEN": 1,
+    "IMAGE": 22,
+    "NOFOCUS": 84,
+    "NOINPUT": 83,
+    "WRAP_CENTERED": 7
+   },
+   "windows": 108
+  },
+  "window/menus/shellgameloadscreen.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 3
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 8": 1,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "PROGRESSBAR": 1,
+    "STATICTEXT": 1,
+    "USER": 1
+   },
+   "images_referenced": 7,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "SinglePlayerLoadScreenShutdown",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 3,
+    "HIDDEN": 1,
+    "IMAGE": 2
+   },
+   "windows": 3
+  },
+  "window/menus/singleplayerloadscreen.wnd": {
+   "callbacks": [
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 21
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Arial 14": 6,
+    "Arial 8": 1,
+    "Times New Roman 14": 11
+   },
+   "gadgets": {
+    "PROGRESSBAR": 1,
+    "STATICTEXT": 10,
+    "USER": 10
+   },
+   "images_referenced": 8,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "SinglePlayerLoadScreenShutdown",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 21,
+    "HIDDEN": 12,
+    "IMAGE": 7,
+    "WRAP_CENTERED": 4
+   },
+   "windows": 21
+  },
+  "window/menus/singleplayermenu.wnd": {
+   "callbacks": [
+    "SinglePlayerMenuInput",
+    "SinglePlayerMenuSystem",
+    "W3DMainMenuDraw",
+    "W3DNoDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 6
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Times New Roman 14": 5,
+    "Times New Roman 18": 1
+   },
+   "gadgets": {
+    "PUSHBUTTON": 3,
+    "STATICTEXT": 1,
+    "USER": 2
+   },
+   "images_referenced": 5,
+   "layout_callbacks": {
+    "LAYOUTINIT": "SinglePlayerMenuInit",
+    "LAYOUTSHUTDOWN": "SinglePlayerMenuShutdown",
+    "LAYOUTUPDATE": "SinglePlayerMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 2,
+    "ENABLED": 6,
+    "IMAGE": 3,
+    "SEE_THRU": 1
+   },
+   "windows": 6
+  },
+  "window/menus/skirmishgameoptionsmenu.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "PassSelectedButtonsToParentSystem",
+    "SkirmishGameOptionsMenuInput",
+    "SkirmishGameOptionsMenuSystem",
+    "W3DDrawMapPreview",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 72
+   },
+   "extent_on_800x600": [
+    800,
+    599
+   ],
+   "fonts": {
+    "Arial 10": 45,
+    "Arial 12": 1,
+    "Arial 14": 7,
+    "Arial 8": 8,
+    "Generals 15": 4,
+    "Generals 20": 1,
+    "Times New Roman 14": 6
+   },
+   "gadgets": {
+    "COMBOBOX": 31,
+    "ENTRYFIELD": 1,
+    "HORZSLIDER": 1,
+    "PUSHBUTTON": 13,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 20,
+    "USER": 5
+   },
+   "images_referenced": 44,
+   "layout_callbacks": {
+    "LAYOUTINIT": "SkirmishGameOptionsMenuInit",
+    "LAYOUTSHUTDOWN": "SkirmishGameOptionsMenuShutdown",
+    "LAYOUTUPDATE": "SkirmishGameOptionsMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 72,
+    "HIDDEN": 2,
+    "IMAGE": 57,
+    "NOFOCUS": 13,
+    "NOINPUT": 8,
+    "RIGHT_CLICK": 8,
+    "TABSTOP": 1
+   },
+   "windows": 72
+  },
+  "window/menus/skirmishmapselectmenu.wnd": {
+   "callbacks": [
+    "PassSelectedButtonsToParentSystem",
+    "SkirmishMapSelectMenuInput",
+    "SkirmishMapSelectMenuSystem",
+    "W3DDrawMapPreview",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 17
+   },
+   "extent_on_800x600": [
+    800,
+    322
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 1,
+    "Placard MT Condensed 16": 2,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 10,
+    "RADIOBUTTON": 2,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 1,
+    "USER": 3
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "SkirmishMapSelectMenuInit",
+    "LAYOUTSHUTDOWN": "SkirmishMapSelectMenuShutdown",
+    "LAYOUTUPDATE": "SkirmishMapSelectMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 17,
+    "IMAGE": 12,
+    "NOFOCUS": 4,
+    "NOINPUT": 1,
+    "RIGHT_CLICK": 8,
+    "SEE_THRU": 1
+   },
+   "windows": 17
+  },
+  "window/menus/victorious.wnd": {
+   "callbacks": [
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 2
+   },
+   "extent_on_800x600": [
+    702,
+    345
+   ],
+   "fonts": {
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "ENABLED": 2,
+    "IMAGE": 1
+   },
+   "windows": 2
+  },
+  "window/menus/wolbuddyoverlay.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "WOLBuddyOverlayInput",
+    "WOLBuddyOverlaySystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 12
+   },
+   "extent_on_800x600": [
+    781,
+    422
+   ],
+   "fonts": {
+    "Arial 10": 7,
+    "Placard MT Condensed 16": 1,
+    "Placard MT Condensed 20": 1,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 1,
+    "RADIOBUTTON": 2,
+    "SCROLLLISTBOX": 3,
+    "STATICTEXT": 1,
+    "USER": 4
+   },
+   "images_referenced": 44,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLBuddyOverlayInit",
+    "LAYOUTSHUTDOWN": "WOLBuddyOverlayShutdown",
+    "LAYOUTUPDATE": "WOLBuddyOverlayUpdate"
+   },
+   "status_flags": {
+    "DRAGABLE": 1,
+    "ENABLED": 12,
+    "HIDDEN": 1,
+    "IMAGE": 5,
+    "NOFOCUS": 1
+   },
+   "windows": 12
+  },
+  "window/menus/wolcustomlobby.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "WOLLobbyMenuInput",
+    "WOLLobbyMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 23
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 13,
+    "Generals 15": 4,
+    "Times New Roman 14": 6
+   },
+   "gadgets": {
+    "COMBOBOX": 1,
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 10,
+    "SCROLLLISTBOX": 3,
+    "USER": 7,
+    "VERTSLIDER": 1
+   },
+   "images_referenced": 50,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLLobbyMenuInit",
+    "LAYOUTSHUTDOWN": "WOLLobbyMenuShutdown",
+    "LAYOUTUPDATE": "WOLLobbyMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 23,
+    "HIDDEN": 2,
+    "IMAGE": 17,
+    "NOFOCUS": 5,
+    "NOINPUT": 4,
+    "ONE_LINE": 1,
+    "SEE_THRU": 1,
+    "TABSTOP": 1
+   },
+   "windows": 23
+  },
+  "window/menus/wolladderscreen.wnd": {
+   "callbacks": [
+    "WOLLadderScreenInput",
+    "WOLLadderScreenSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 3
+   },
+   "extent_on_800x600": [
+    796,
+    596
+   ],
+   "fonts": {
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "USER": 2
+   },
+   "images_referenced": 2,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLLadderScreenInit",
+    "LAYOUTSHUTDOWN": "WOLLadderScreenShutdown",
+    "LAYOUTUPDATE": "WOLLadderScreenUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 3,
+    "IMAGE": 1
+   },
+   "windows": 3
+  },
+  "window/menus/wolloginmenu.wnd": {
+   "callbacks": [
+    "WOLLoginMenuInput",
+    "WOLLoginMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 16
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Times New Roman 12": 2,
+    "Times New Roman 14": 14
+   },
+   "gadgets": {
+    "CHECKBOX": 2,
+    "COMBOBOX": 2,
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 3,
+    "STATICTEXT": 6,
+    "USER": 2
+   },
+   "images_referenced": 23,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLLoginMenuInit",
+    "LAYOUTSHUTDOWN": "WOLLoginMenuShutdown",
+    "LAYOUTUPDATE": "WOLLoginMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 8,
+    "ENABLED": 16,
+    "IMAGE": 8,
+    "NOFOCUS": 10,
+    "NOINPUT": 7
+   },
+   "windows": 16
+  },
+  "window/menus/wolmapselectmenu.wnd": {
+   "callbacks": [
+    "PassSelectedButtonsToParentSystem",
+    "W3DDrawMapPreview",
+    "WOLMapSelectMenuInput",
+    "WOLMapSelectMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 17
+   },
+   "extent_on_800x600": [
+    800,
+    320
+   ],
+   "fonts": {
+    "Arial 10": 3,
+    "Arial 8": 8,
+    "Placard MT Condensed 14": 1,
+    "Placard MT Condensed 16": 2,
+    "Times New Roman 14": 3
+   },
+   "gadgets": {
+    "PUSHBUTTON": 10,
+    "RADIOBUTTON": 2,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 1,
+    "USER": 3
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLMapSelectMenuInit",
+    "LAYOUTSHUTDOWN": "WOLMapSelectMenuShutdown",
+    "LAYOUTUPDATE": "WOLMapSelectMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 17,
+    "IMAGE": 12,
+    "NOFOCUS": 4,
+    "NOINPUT": 1,
+    "RIGHT_CLICK": 8,
+    "SEE_THRU": 1
+   },
+   "windows": 17
+  },
+  "window/menus/wolmessagewindow.wnd": {
+   "callbacks": [
+    "WOLMessageWindowInput",
+    "WOLMessageWindowSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 6
+   },
+   "extent_on_800x600": [
+    624,
+    408
+   ],
+   "fonts": {
+    "Times New Roman 14": 6
+   },
+   "gadgets": {
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 2,
+    "STATICTEXT": 2,
+    "USER": 1
+   },
+   "images_referenced": 29,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLMessageWindowInit",
+    "LAYOUTSHUTDOWN": "WOLMessageWindowShutdown",
+    "LAYOUTUPDATE": "WOLMessageWindowUpdate"
+   },
+   "status_flags": {
+    "BORDER": 2,
+    "ENABLED": 6,
+    "IMAGE": 3,
+    "NOFOCUS": 4,
+    "NOINPUT": 2
+   },
+   "windows": 6
+  },
+  "window/menus/wolquickmatchmenu.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "WOLQuickMatchMenuInput",
+    "WOLQuickMatchMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 51
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 36,
+    "Arial 14": 5,
+    "Generals 20": 1,
+    "Times New Roman 14": 9
+   },
+   "gadgets": {
+    "COMBOBOX": 6,
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 6,
+    "SCROLLLISTBOX": 2,
+    "STATICTEXT": 27,
+    "USER": 9
+   },
+   "images_referenced": 36,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLQuickMatchMenuInit",
+    "LAYOUTSHUTDOWN": "WOLQuickMatchMenuShutdown",
+    "LAYOUTUPDATE": "WOLQuickMatchMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 51,
+    "HIDDEN": 7,
+    "IMAGE": 21,
+    "NOFOCUS": 7,
+    "NOINPUT": 2,
+    "SEE_THRU": 2,
+    "WRAP_CENTERED": 1
+   },
+   "windows": 51
+  },
+  "window/menus/wolstatusmenu.wnd": {
+   "callbacks": [
+    "WOLStatusMenuInput",
+    "WOLStatusMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 5
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Times New Roman 14": 5
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 2,
+    "USER": 1
+   },
+   "images_referenced": 38,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLStatusMenuInit",
+    "LAYOUTSHUTDOWN": "WOLStatusMenuShutdown",
+    "LAYOUTUPDATE": "WOLStatusMenuUpdate"
+   },
+   "status_flags": {
+    "BORDER": 4,
+    "ENABLED": 5,
+    "IMAGE": 2,
+    "NOFOCUS": 2,
+    "NOINPUT": 2
+   },
+   "windows": 5
+  },
+  "window/menus/wolwelcomemenu.wnd": {
+   "callbacks": [
+    "PassMessagesToParentSystem",
+    "W3DNoDraw",
+    "WOLWelcomeMenuInput",
+    "WOLWelcomeMenuSystem",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 28
+   },
+   "extent_on_800x600": [
+    800,
+    600
+   ],
+   "fonts": {
+    "Arial 10": 10,
+    "Arial 14": 2,
+    "Generals 15": 6,
+    "Generals 20": 1,
+    "Times New Roman 14": 9
+   },
+   "gadgets": {
+    "PROGRESSBAR": 1,
+    "PUSHBUTTON": 6,
+    "SCROLLLISTBOX": 1,
+    "STATICTEXT": 11,
+    "USER": 9
+   },
+   "images_referenced": 16,
+   "layout_callbacks": {
+    "LAYOUTINIT": "WOLWelcomeMenuInit",
+    "LAYOUTSHUTDOWN": "WOLWelcomeMenuShutdown",
+    "LAYOUTUPDATE": "WOLWelcomeMenuUpdate"
+   },
+   "status_flags": {
+    "ENABLED": 28,
+    "IMAGE": 8,
+    "NOFOCUS": 6,
+    "NOINPUT": 1,
+    "SEE_THRU": 1
+   },
+   "windows": 28
+  },
+  "window/motd.wnd": {
+   "callbacks": [
+    "GadgetPushButtonInput",
+    "GadgetPushButtonSystem",
+    "GameWinDefaultInput",
+    "GameWinDefaultTooltip",
+    "MOTDSystem",
+    "W3DGadgetPushButtonImageDraw",
+    "W3DGameWinDefaultDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 3
+   },
+   "extent_on_800x600": [
+    712,
+    328
+   ],
+   "fonts": {
+    "Courier New 10": 1,
+    "Times New Roman 14": 2
+   },
+   "gadgets": {
+    "PUSHBUTTON": 1,
+    "SCROLLLISTBOX": 1,
+    "USER": 1
+   },
+   "images_referenced": 38,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "BORDER": 2,
+    "ENABLED": 3,
+    "IMAGE": 2
+   },
+   "windows": 3
+  },
+  "window/replaycontrol.wnd": {
+   "callbacks": [
+    "GameWinDefaultTooltip",
+    "ReplayControlInput",
+    "ReplayControlSystem",
+    "W3DGameWinDefaultDraw",
+    "[None]"
+   ],
+   "creation_resolutions": {
+    "800x600": 6
+   },
+   "extent_on_800x600": [
+    600,
+    456
+   ],
+   "fonts": {
+    "Times New Roman 10": 5,
+    "Times New Roman 14": 1
+   },
+   "gadgets": {
+    "ENTRYFIELD": 1,
+    "PUSHBUTTON": 4,
+    "USER": 1
+   },
+   "images_referenced": 17,
+   "layout_callbacks": {
+    "LAYOUTINIT": "[None]",
+    "LAYOUTSHUTDOWN": "[None]",
+    "LAYOUTUPDATE": "[None]"
+   },
+   "status_flags": {
+    "BORDER": 2,
+    "DRAGABLE": 1,
+    "ENABLED": 6,
+    "HIDDEN": 1,
+    "IMAGE": 5,
+    "NOFOCUS": 1,
+    "NOINPUT": 1,
+    "SEE_THRU": 6
+   },
+   "windows": 6
+  }
+ },
+ "gadget_totals": {
+  "CHECKBOX": 23,
+  "COMBOBOX": 112,
+  "ENTRYFIELD": 32,
+  "HORZSLIDER": 8,
+  "PROGRESSBAR": 33,
+  "PUSHBUTTON": 382,
+  "RADIOBUTTON": 21,
+  "SCROLLLISTBOX": 38,
+  "STATICTEXT": 522,
+  "USER": 360,
+  "VERTSLIDER": 1
+ },
+ "ini": {
+  "controlbarscheme.ini": {
+   "bytes": 11733,
+   "lines": 393,
+   "top_level_blocks": 4
+  },
+  "mouse.ini": {
+   "bytes": 5663,
+   "lines": 220,
+   "top_level_blocks": 1
+  },
+  "shellmenuscheme.ini": {
+   "bytes": 59,
+   "lines": 5,
+   "top_level_blocks": 1
+  },
+  "windowtransitions.ini": {
+   "bytes": 49938,
+   "lines": 2405,
+   "top_level_blocks": 0
+  }
+ },
+ "title": "Generals",
+ "total_windows": 1532,
+ "wnd_files": 78
+}
