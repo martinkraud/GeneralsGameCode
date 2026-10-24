@@ -8,8 +8,10 @@
 > The project focuses on preserving the original games while modernizing the
 > engine, rendering, display support, performance and optional user experience.
 >
-> **Status:** Active development. Generals is playable on the modernized native
-> AMD64/D3D11 engine. This project is not yet intended as a finished end-user release.
+> **Status:** Active development. Generals and Zero Hour are both playable on the
+> modernized native AMD64/D3D11 engine and have been stable on the project's tested
+> desktop and laptop systems. This project is not yet intended as a finished
+> end-user release. Current detail: [docs/modernization/PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md).
 
 ---
 
@@ -57,6 +59,8 @@ The modernization deliberately separates:
 | What changed, by area | [CHANGELOG.md](CHANGELOG.md) |
 | Performance methodology and results | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) |
 | Engineering findings (what was wrong, where, how it was verified) | [docs/findings/README.md](docs/findings/README.md) - [performance](docs/findings/PERFORMANCE_FINDINGS.md), [AMD64 porting](docs/findings/AMD64_PORTING_FINDINGS.md), [replay / determinism](docs/findings/REPLAY_DETERMINISM_FINDINGS.md) |
+| Current status: completed / in progress / planned / known issues | [docs/modernization/PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md) |
+| Modern Experience UI: archaeology of the retail UI and the target architecture | [archaeology](docs/modernization/MODERN_UI_ARCHAEOLOGY.md), [architecture and phases](docs/modernization/MODERN_UI_ARCHITECTURE.md) |
 | Roadmap, milestone records and handoff | [docs/modernization/](docs/modernization/) - [roadmap](docs/modernization/FIRST_PLAYABLE_ROADMAP.md), [handoff](docs/modernization/AGENT_HANDOFF.md) |
 | Original Game Speed facts and the (unimplemented) Game Speed design | [audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [design](docs/modernization/GAME_SPEED_DESIGN.md) |
 | Building | [Building](#building) below |
@@ -159,13 +163,24 @@ Current Modern Experience work includes:
 - UI scaling
 - Modernized Options interface
 - Improved frontend layout
-- Starting Cash match option
+- Skirmish match options: Starting Cash, AI Behaviour (Original / Enhanced) and a Superweapons limit
 - Smooth unit presentation
 - Optional Enhanced gameplay interface (USA, China, GLA)
 
 The guiding design principle is:
 
 > **Modernize Generals, not replace its identity.**
+
+### Where the Modern UI is going
+
+The retail interface is built on 800x600-era windows. Modern Experience keeps
+that content and atmosphere but replaces the fixed layout with a responsive,
+extensible one (reusable layout components, a real Match Setup screen, a
+Modern HUD) so new options never again have to be squeezed into unused pixels.
+Original / `-classic` remains the preservation path. The investigation and the
+phased plan are in
+[MODERN_UI_ARCHAEOLOGY.md](docs/modernization/MODERN_UI_ARCHAEOLOGY.md) and
+[MODERN_UI_ARCHITECTURE.md](docs/modernization/MODERN_UI_ARCHITECTURE.md).
 
 The project asks what Generals might look and feel like if its original design
 team were adapting it for modern hardware and displays today.
@@ -365,7 +380,11 @@ modernization.
 | Movies / cutscenes | 🚧 Incomplete |
 | Replay record / re-simulate (Generals Skirmish) | ✅ Verified for a recorded match; wider validation needed |
 | Multiplayer / determinism | ⏳ Further validation needed |
-| Full Zero Hour native validation | ⏳ Planned |
+| Zero Hour native gameplay | ✅ Working, human-tested on desktop and laptop; broader (multiplayer, campaign, endurance) validation continues |
+| Skirmish match rules (Starting Cash, AI Behaviour, Superweapons) | ✅ Working, optional (Original/defaults preserved; `-classic` hides them) |
+| Enhanced AI (opt-in per match) | 🚧 Experimental; development paused while the Modern UI is built, Original AI is the default and is gate-protected |
+| Overlay player packages (Generals + Zero Hour) | ✅ Working (ZIP over the legitimate installation; no game assets are redistributed) |
+| Modern Experience UI (responsive frontend, Match Setup, Modern HUD) | 🚧 Architecture phase (see [Modern UI](docs/modernization/MODERN_UI_ARCHITECTURE.md)) |
 
 ---
 
@@ -382,16 +401,14 @@ validated in Generals first.
 
 ## Command & Conquer: Generals – Zero Hour
 
-Zero Hour remains a target of the same modernized engine.
+Zero Hour now runs on the same native AMD64/D3D11 engine and has been played
+through Skirmish on the project's tested desktop and laptop systems, with the
+Enhanced HUD for all three base factions.
 
-Shared engine changes are built and tested against Zero Hour where
-appropriate.
-
-However, successful Generals native validation should not be interpreted as
-complete Zero Hour runtime validation.
-
-Zero Hour will receive its own broader native gameplay validation as the
-modernization progresses.
+Zero Hour keeps its own validation track: its content, shell, Challenge mode
+and generals' powers differ from Generals. Multiplayer, campaign progression,
+movies and long-session endurance are not yet fully validated. See
+[PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md).
 
 ---
 
@@ -480,6 +497,18 @@ Further fidelity and correctness improvements remain ongoing.
 - [ ] Cross-faction Enhanced HUD polish and final artwork
 - [ ] Further graphics enhancements
 - [ ] Higher-quality optional visual assets
+
+## Phase 7b — Modern Experience UI (in progress)
+
+- [x] UI archaeology and responsive layout foundation (UI.1)
+- [ ] Main frontend / navigation shell (UI.2)
+- [ ] Modern Match Setup (UI.3)
+- [ ] Options and secondary frontend screens (UI.4)
+- [ ] Modern in-game HUD for USA / China / GLA (UI.5)
+- [ ] Resolution / scaling matrix, polish and native acceptance (UI.6)
+
+Active performance optimization and Enhanced AI development are paused while
+this phase runs; their regression gates stay in force.
 
 ## Phase 8 — Compatibility Completion
 
@@ -719,7 +748,7 @@ Important remaining areas include:
 - Full replay validation (a recorded Generals Skirmish re-simulates; Zero Hour, campaign and cross-version replays are not validated)
 - Multiplayer validation
 - Determinism validation
-- Full Zero Hour native validation
+- Broader Zero Hour validation (multiplayer, campaign, endurance)
 - Additional renderer fidelity work
 - Some shadow correctness/fidelity cases
 - Further display controls

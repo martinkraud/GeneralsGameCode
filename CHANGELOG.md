@@ -7,6 +7,18 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-10-25 - Zero Hour native, packages, Enhanced AI, match rules, camera/input (X64.43-X64.52B) and Modern UI foundation (UI.1)
+
+* **Zero Hour on the native engine:** Zero Hour reaches Skirmish play through the same AMD64/D3D11 path (X64.45 - X64.46); human-tested on a desktop and a laptop. Steam-overlay ZIP packages for both titles (runtime DLLs app-local,
+  symbols separate, SHA-256 manifests, clean-install + ZIP == staged candidate validation) and an automatic retention cleanup of old generated packages/stages (X64.47 - X64.48B, X64.52A).
+* **Display:** ultrawide black bands and vanishing fog of war fixed; Skirmish slots 7/8 lost clicks on lower drop-down rows (X64.48A).
+* **Camera:** held scrolling integrates in presentation time (X64.49); screen-edge scrolling works again when an old `Options.ini` says `ScreenEdgeScrollEnabledInWindowedApp = no`; a real-input (SendInput) camera gate and a
+  one-command regression-gate runner (X64.52B).
+* **AI:** archaeology and bug audit (X64.50); opt-in per-match *AI Behaviour: Enhanced* with proven fixes (X64.51) and dynamic base/defence (`AI=E2`, X64.52); Original stays the default and is protected by golden replay digests.
+* **Match rules:** Skirmish Starting Cash, AI Behaviour and a Superweapons limit (Disabled / Max 1 / 3 / 5 / Unlimited; enforced for humans and both AI modes, replay/save aware) with a rebuilt Match Options layout (X64.52A).
+* **Modern UI foundation (UI.1):** archaeology of the retail UI, architecture and phase plan, a pure allocation-free responsive layout core with a resolution/scale test matrix, Classic/Modern contract test
+  ([`MODERN_UI_ARCHITECTURE.md`](docs/modernization/MODERN_UI_ARCHITECTURE.md)). No screen was redesigned yet.
+
 ## 2026-10-17 - Simulation tail and replay correctness (X64.41-X64.42)
 
 * **Performance:** removed a synchronous disk flush of the normal-launch log from special-power, payload-delivery and group-dispatch code. It caused a 70-110 ms tick every 300 logic frames and
