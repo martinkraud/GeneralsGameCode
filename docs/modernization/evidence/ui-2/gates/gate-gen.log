@@ -1,0 +1,13 @@
+G-desert3H           base  O digest 659C8E11AC36F1E2 repeatable=True mean 0,118 ms p99 0,64 p99.9 1,667 over33 0
+G-desert3H           new   O digest 659C8E11AC36F1E2 repeatable=True mean 0,114 ms p99 0,637 p99.9 1,565 over33 0
+G-desert3H           new   E digest 412741810A5D8B66 repeatable=True mean 0,122 ms p99 0,562 p99.9 2,639 over33 0
+G-twilight7H         base  O digest 4215BF3745E5B9D8 repeatable=True mean 1,619 ms p99 8,605 p99.9 14,076 over33 17
+G-twilight7H         new   O digest 4215BF3745E5B9D8 repeatable=True mean 1,623 ms p99 8,591 p99.9 13,988 over33 16
+G-twilight7H         new   E digest 7CB3C4A94266AACB repeatable=True mean 1,773 ms p99 10,018 p99.9 15,124 over33 9
+G-wasteland5M        base  O digest 97DD40E4D0A0E73A repeatable=True mean 0,141 ms p99 0,734 p99.9 2,873 over33 0
+G-wasteland5M        new   O digest 97DD40E4D0A0E73A repeatable=True mean 0,137 ms p99 0,769 p99.9 2,446 over33 0
+G-wasteland5M        new   E digest 84B5683033140DBA repeatable=True mean 0,221 ms p99 1,011 p99.9 3,643 over33 0
+G-desert3E           base  O digest EBE872BC013C750B repeatable=True mean 0,06 ms p99 0,344 p99.9 1,368 over33 0
+G-desert3E           new   O digest EBE872BC013C750B repeatable=True mean 0,052 ms p99 0,296 p99.9 1,192 over33 0
+G-desert3E           new   E digest 0AC11BCBB8ACEA46 repeatable=True mean 0,051 ms p99 0,283 p99.9 1,465 over33 0
+GATE PASS (Generals): Original digests equal the reference for every scenario; every run is repeatable. Results: C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\x64-ui2\gate-gen\gate-Generals.json

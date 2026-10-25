@@ -1,7 +1,7 @@
 # MKRaudstein Modern Engine - project status
 
 One-page, evidence-linked status. Updated at every milestone closeout together with `README.md` and `AGENT_HANDOFF.md` (rule since UI.1: a milestone that changes what is true updates this file in the same milestone).
-Last updated: 2026-10-25 (UI.1). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
+Last updated: 2026-10-25 (UI.2). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Current direction
 Performance optimization and Enhanced AI development are **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
@@ -24,9 +24,10 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | Enhanced AI foundation + dynamic base and defence (`AI=E2`) | delivered, opt-in per match, Original untouched and gate-protected (X64.51, X64.52) |
 | AI archaeology and bug audit | delivered (X64.50) |
 | UI archaeology + responsive layout foundation + Classic/Modern contract test (UI.1) | delivered |
+| Modern main menu / navigation shell for Generals and Zero Hour: left-docked panel over the shell map, pure focus/navigation model, design-system tokens (UI.2) | implemented and automatically validated (layout matrix, real-window audit, Classic isolation, golden gates); **native visual acceptance pending** ([MODERN_UI_2_MAIN_MENU.md](MODERN_UI_2_MAIN_MENU.md)) |
 
 ## In progress
-* Modern Experience UI phase: UI.2 (main frontend shell) is the next milestone, **waiting for review** of UI.1.
+* Modern Experience UI phase: UI.2 (main frontend shell) is implemented and **waiting for the owner's native visual review**; UI.3 (Match Setup) starts only after that review.
 * Native human verification of X64.52B (edge scrolling, camera smoothness at 120 FPS) - the real-input camera gate on the final clean executables is still to be run on an unlocked desktop.
 
 ## Planned

@@ -7,6 +7,10 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-10-25 - Modern main menu (UI.2)
+
+* **Modern Experience main menu** for Generals and Zero Hour: a left-docked command panel over the live 3D shell map (Solo Play > Campaign / Challenge (Zero Hour) / Training (Generals) / Skirmish, Multiplayer, Load, Options, Credits, Exit), responsive from 1920x1080 to 5120x1440 and UI scales 75 - 300 %, retail button art, sounds, localised labels and behaviour; keyboard navigation (arrows, Tab, Enter, Escape) with focus restoration; `-classic` keeps the retail frontend. Foundation: pure focus / navigation model, design-system tokens (typography roles, title variants), main-menu model and geometry ([`MODERN_UI_2_MAIN_MENU.md`](docs/modernization/MODERN_UI_2_MAIN_MENU.md)).
+
 ## 2026-10-25 - Zero Hour native, packages, Enhanced AI, match rules, camera/input (X64.43-X64.52B) and Modern UI foundation (UI.1)
 
 * **Zero Hour on the native engine:** Zero Hour reaches Skirmish play through the same AMD64/D3D11 path (X64.45 - X64.46); human-tested on a desktop and a laptop. Steam-overlay ZIP packages for both titles (runtime DLLs app-local,

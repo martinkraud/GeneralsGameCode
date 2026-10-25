@@ -1,0 +1,5 @@
+193	01dd6425b13b8d6a	3131917132982	31996	24636	autoflow	observed	0	step 0: sent a key to MainMenu.wnd:MainMenuParent
+194	01dd6425b6a085cb	3132007633084	31996	24636	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T020801Z-ZeroHour-x64-ui2-zh\autoshot-mainmenu-classic.bmp
+195	01dd6425b6a085cb	3132007633396	31996	24636	mainmenu	ok	0	classic frontend: the Modern shell was not instantiated
+196	01dd6425b6a085cb	3132007633594	31996	24636	mainmenu	ok	0	classic frontend: no Modern panel window exists
+197	01dd6425b6a085cb	3132007633644	31996	24636	mainmenu	ok	0	classic frontend: the retail Solo Play button is visible

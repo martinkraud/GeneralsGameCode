@@ -1,0 +1,5 @@
+189	01dd6423ccd07aad	3123789937859	32380	1600	autoflow	observed	0	step 0: sent a key to MainMenu.wnd:MainMenuParent
+190	01dd6423d0d98ec6	3123857647893	32380	1600	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T015434Z-Generals-x64-ui2-gen\autoshot-mainmenu-classic.bmp
+191	01dd6423d0d98ec6	3123857648202	32380	1600	mainmenu	ok	0	classic frontend: the Modern shell was not instantiated
+192	01dd6423d0d98ec6	3123857648426	32380	1600	mainmenu	ok	0	classic frontend: no Modern panel window exists
+193	01dd6423d0d98ec6	3123857648470	32380	1600	mainmenu	ok	0	classic frontend: the retail Solo Play button is visible

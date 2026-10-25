@@ -384,7 +384,8 @@ modernization.
 | Skirmish match rules (Starting Cash, AI Behaviour, Superweapons) | ✅ Working, optional (Original/defaults preserved; `-classic` hides them) |
 | Enhanced AI (opt-in per match) | 🚧 Experimental; development paused while the Modern UI is built, Original AI is the default and is gate-protected |
 | Overlay player packages (Generals + Zero Hour) | ✅ Working (ZIP over the legitimate installation; no game assets are redistributed) |
-| Modern Experience UI (responsive frontend, Match Setup, Modern HUD) | 🚧 Architecture phase (see [Modern UI](docs/modernization/MODERN_UI_ARCHITECTURE.md)) |
+| Modern Experience main menu (left-docked, keyboard navigable, both titles) | 🚧 Implemented; awaiting native visual acceptance ([UI.2](docs/modernization/MODERN_UI_2_MAIN_MENU.md)) |
+| Modern Match Setup, Options, in-game Modern HUD | ⏳ Planned ([architecture](docs/modernization/MODERN_UI_ARCHITECTURE.md)) |
 
 ---
 
@@ -501,7 +502,7 @@ Further fidelity and correctness improvements remain ongoing.
 ## Phase 7b — Modern Experience UI (in progress)
 
 - [x] UI archaeology and responsive layout foundation (UI.1)
-- [ ] Main frontend / navigation shell (UI.2)
+- [ ] Main frontend / navigation shell (UI.2) - implemented, awaiting native acceptance
 - [ ] Modern Match Setup (UI.3)
 - [ ] Options and secondary frontend screens (UI.4)
 - [ ] Modern in-game HUD for USA / China / GLA (UI.5)

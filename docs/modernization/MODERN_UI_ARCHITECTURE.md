@@ -1,6 +1,6 @@
 # Modern Experience UI - architecture and roadmap (UI.1)
 
-Status: **architecture phase delivered (UI.1). No screen has been redesigned yet.** Evidence base: [MODERN_UI_ARCHAEOLOGY.md](MODERN_UI_ARCHAEOLOGY.md). Read with
+Status: **UI.1 (architecture) and UI.2 (Modern main menu / navigation shell, [MODERN_UI_2_MAIN_MENU.md](MODERN_UI_2_MAIN_MENU.md)) delivered; native acceptance of UI.2 pending. Match Setup, Options and the HUD are not redesigned yet.** Evidence base: [MODERN_UI_ARCHAEOLOGY.md](MODERN_UI_ARCHAEOLOGY.md). Read with
 [ENHANCED_HUD_FRAMEWORK_V1.md](ENHANCED_HUD_FRAMEWORK_V1.md) (frozen in-match HUD) and [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## 1. Goal and principle
@@ -174,7 +174,7 @@ baseline (menu frame time, screen open time) is recorded when the Modern UI phas
 | Phase | Content | Exit |
 |---|---|---|
 | **UI.1** (this) | archaeology, architecture, layout core + tests, Classic contract test, docs | delivered |
-| **UI.2** Main frontend shell | component bindings for push button / static text / panel on retail art; `ModernFocus`; Modern main menu + navigation shell (shell map backdrop, transitions kept); generic UI audit; frame-cost measurement | human visual acceptance of the Modern main menu |
+| **UI.2** Main frontend shell (**implemented**, native acceptance pending) | component bindings for push button / static text / panel on retail art; `ModernFocus`; Modern main menu + navigation shell (shell map backdrop, transitions kept); generic UI audit; frame-cost measurement | human visual acceptance of the Modern main menu |
 | **UI.3** Modern Match Setup | `MatchRulesPanel` + setting specs; map / players / rules zones; Generals + Zero Hour themes; replaces the squeezed Match Options | acceptance + all matrix audits |
 | **UI.4** Options + secondary screens | category pages from setting specs; Campaign / Load / Replays / LAN / dialogs | acceptance |
 | **UI.5** Modern in-match HUD | replace remaining legacy plates (Options / Idle worker / Beacon / Communicator, and the "Command Menu" control once identified) with themed controls, per faction; same ownership rules as Framework v1 | acceptance per faction |
