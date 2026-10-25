@@ -64,6 +64,7 @@
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/WinInstanceData.h"
 #include "GameClient/GUICallbacks.h"
+#include "GameClient/ModernMenuShell.h"
 #include "Common/KindOf.h"
 #include "Common/XferCRC.h"
 #include "Common/ThingTemplate.h"
@@ -1524,7 +1525,7 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
@@ -1563,6 +1564,10 @@ void NativeAutoShot()
     // X64.52A: the Skirmish Match Options panel: closed and open captures of each match-option dropdown, geometry, overlap and mouse reachability of every row
     static const Step matchSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { MATCH_UI, nullptr, nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    // UI.2: the Modern main menu: layout / overlap / text-fit / mouse-hit audit of every page, keyboard navigation and focus restoration, and the cost of the shell. In the Classic frontend
+    // the same flow checks that the Modern shell was NOT instantiated.
+    static const Step mainSteps[] = {
+        { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { MAIN_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;
@@ -1572,12 +1577,13 @@ void NativeAutoShot()
         if (!_stricmp(text, "saveload")) return 4;
         if (!_stricmp(text, "slots")) return 5;
         if (!_stricmp(text, "matchoptions")) return 6;
+        if (!_stricmp(text, "mainmenu")) return 7;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -1610,7 +1616,11 @@ void NativeAutoShot()
                     GameWindow *menu = find("MainMenu.wnd:MainMenuParent");
                     if (menu) TheWindowManager->winSendInputMsg(menu, GWM_CHAR, KEY_SPACE, KEY_STATE_DOWN);
                 }
-                if (usable(button)) {
+                if (!usable(button) && button && !strncmp(name.str(), "MainMenu.wnd:", 13) && ModernMenuShell::active() && ModernMenuShell::built() && ModernMenuShell::revealed() &&
+                    ModernMenuShell::performRetail(button)) {
+                    advance("pressed (through the Modern main menu)", name.str()); done = true;
+                }
+                if (!done && usable(button)) {
                     GameWindow *top = button->winGetOwner() ? button->winGetOwner() : topWindow(button);   // the gadget sends its click to its owner
                     TheWindowManager->winSendSystemMsg(top, GBM_SELECTED, (WindowMsgData)button, button->winGetWindowId());
                     advance("pressed", name.str()); done = true;
@@ -1834,6 +1844,122 @@ void NativeAutoShot()
                             }
                         }
                     }
+                }
+            } else if (step.kind == MAIN_UI) {
+                static unsigned op = 0, opWait = 0, costBaseUpdates = 0, costBaseDraws = 0;
+                static unsigned long long costBaseUpdateUs = 0, costBaseDrawUs = 0;
+                auto rectOf = [](GameWindow *w, int &x, int &y, int &ww, int &hh) { w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh); };
+                auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("mainmenu", ok ? "ok" : "defect", what); };
+                const bool modern = ModernMenuShell::active() && ModernMenuShell::built();
+                if (opWait > 0) { --opWait; }
+                else if (!modern) {
+                    if (op == 0) {
+                        static unsigned classicWait = 0;
+                        if (++classicWait < 240) { opWait = 1; }   // the retail menu shows its buttons through window transitions: give them time
+                        else {
+                        shoot("mainmenu-classic");
+                        check(!ModernMenuShell::built(), "classic frontend: the Modern shell was not instantiated");
+                        check(find("MainMenu.wnd:ModernPanel") == nullptr, "classic frontend: no Modern panel window exists");
+                        check(usable(find("MainMenu.wnd:ButtonSinglePlayer")), "classic frontend: the retail Solo Play button is visible");
+                        ++op; opWait = 20;
+                        }
+                    } else { advance("main menu audited (classic)", nullptr); done = true; }
+                } else {
+                    using ModernMainMenu::Action;
+                    using ModernMainMenu::Page;
+                    auto press = [&](Action a) {
+                        GameWindow *b = ModernMenuShell::buttonWindow(a);
+                        if (b && usable(b)) {
+                            GameWindow *owner = b->winGetOwner() ? b->winGetOwner() : topWindow(b);
+                            TheWindowManager->winSendSystemMsg(owner, GBM_SELECTED, (WindowMsgData)b, b->winGetWindowId());
+                        } else check(false, "button to press is not usable");
+                    };
+                    auto key = [&](int k) { GameWindow *menu = find("MainMenu.wnd:MainMenuParent"); if (menu) TheWindowManager->winSendInputMsg(menu, GWM_CHAR, k, KEY_STATE_DOWN); };
+                    auto expectPage = [&](Page p, const char *what) { check(ModernMenuShell::currentPage() == p, what); };
+                    auto expectFocus = [&](Action a, const char *what) { sprintf_s(flowText, "%s (focused action %d, expected %d)", what, ModernMenuShell::focusedActionId(), (int)a); check(ModernMenuShell::focusedActionId() == (int)a, flowText); };
+                    auto audit = [&](const char *label) {
+                        const ModernMainMenu::Geometry &geo = ModernMenuShell::geometry();
+                        GameWindow *panel = ModernMenuShell::panelWindow();
+                        int px, py, pw, ph; rectOf(panel, px, py, pw, ph);
+                        const int W = TheDisplay->getWidth(), H = TheDisplay->getHeight();
+                        sprintf_s(flowText, "%s page=%d display=%dx%d effective_scale=%d%% compact=%d panel=%d,%d %dx%d composition=%d,%d %dx%d", label, (int)ModernMenuShell::currentPage(), W, H,
+                                  geo.effectiveScale, geo.compact ? 1 : 0, px, py, pw, ph, geo.composition.x, geo.composition.y, geo.composition.w, geo.composition.h);
+                        StartupDiagnostics::checkpoint("mainmenu", "geometry", flowText);
+                        check(px >= 0 && py >= 0 && px + pw <= W && py + ph <= H, "panel inside the display");
+                        struct R { int x, y, w, h; int a; } r[32]; int n = 0;
+                        for (int a = 1; a < (int)Action::Count && n < 32; ++a) {
+                            GameWindow *b = ModernMenuShell::buttonWindow((Action)a);
+                            if (!b || b->winIsHidden()) continue;
+                            rectOf(b, r[n].x, r[n].y, r[n].w, r[n].h); r[n].a = a;
+                            const bool inside = r[n].x >= px && r[n].y >= py && r[n].x + r[n].w <= px + pw && r[n].y + r[n].h <= py + ph;
+                            int tw = 0, th = 0;
+                            if (DisplayString *ds = b->winGetInstanceData()->getTextDisplayString()) ds->getSize(&tw, &th);
+                            const bool fits = tw * 10 <= r[n].w * 8 && th <= r[n].h;
+                            ICoord2D pos = { r[n].x + r[n].w / 2, r[n].y + r[n].h / 2 }; GameWindow *tip = nullptr;
+                            GameWindow *w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_ABOVE, WIN_STATUS_HIDDEN);
+                            if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_NONE, WIN_STATUS_ABOVE | WIN_STATUS_BELOW | WIN_STATUS_HIDDEN);
+                            if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_BELOW, WIN_STATUS_HIDDEN);
+                            const bool hit = w == b || (w && w->winGetParent() == b);
+                            sprintf_s(flowText, "%s button %s [%d,%d %dx%d] inside_panel=%d text=%dx%d fits=%d mouse_hit=%d", label, b->winGetInstanceData()->m_decoratedNameString.str(), r[n].x, r[n].y, r[n].w, r[n].h,
+                                      inside ? 1 : 0, tw, th, fits ? 1 : 0, hit ? 1 : 0);
+                            StartupDiagnostics::checkpoint("mainmenu", (inside && fits && hit && r[n].w >= 60 && r[n].h >= 20) ? "ok" : "defect", flowText);
+                            ++n;
+                        }
+                        int overlaps = 0;
+                        for (int i = 0; i < n; ++i) for (int j = i + 1; j < n; ++j)
+                            if (r[i].x < r[j].x + r[j].w && r[i].x + r[i].w > r[j].x && r[i].y < r[j].y + r[j].h && r[i].y + r[i].h > r[j].y) ++overlaps;
+                        sprintf_s(flowText, "%s overlaps=%d visible_buttons=%d", label, overlaps, n);
+                        check(overlaps == 0, flowText);
+                        const ModernMainMenu::PageDef &def = ModernMainMenu::pageDef(ModernMenuShell::title(), ModernMenuShell::currentPage());
+                        sprintf_s(flowText, "%s the page lists %d entries + footer, %d buttons visible", label, def.count, n);
+                        check(n == def.count + 1, flowText);
+                        check(ModernMenuShell::focusedActionId() != -1, "a focused entry exists");
+                        shoot(label);
+                    };
+                    switch (op) {
+                    case 0: {   // park the real cursor in the top-left corner of the client area: a hover must not move the focus under the keyboard checks
+                        POINT corner = { 2, 2 };
+                        if (ApplicationHWnd && ClientToScreen(ApplicationHWnd, &corner)) SetCursorPos(corner.x, corner.y);
+                        audit("mainmenu-root");
+                        break;
+                    }
+                    case 1:  press(Action::GoSoloPlay); break;
+                    case 2:  expectPage(Page::SoloPlay, "Solo Play page opened"); audit("mainmenu-soloplay"); break;
+                    case 3:  press(Action::GoCampaign); break;
+                    case 4:  expectPage(Page::Campaign, "Campaign page opened"); audit("mainmenu-campaign"); break;
+                    case 5:  press(Action::CampaignUSA); break;
+                    case 6:  expectPage(Page::Difficulty, "difficulty page opened after choosing a campaign"); audit("mainmenu-difficulty"); break;
+                    case 7:  key(KEY_ESC); break;
+                    case 8:  expectPage(Page::Campaign, "Escape on the difficulty page returns to Campaign"); expectFocus(Action::CampaignUSA, "focus restored to the chosen campaign"); break;
+                    case 9:  key(KEY_ESC); break;
+                    case 10: expectPage(Page::SoloPlay, "Escape returns to Solo Play"); expectFocus(Action::GoCampaign, "focus restored to Campaign"); break;
+                    case 11: key(KEY_ESC); break;
+                    case 12: expectPage(Page::Root, "Escape returns to the root"); expectFocus(Action::GoSoloPlay, "focus restored to Solo Play"); break;
+                    case 13: key(KEY_ESC); break;
+                    case 14: expectPage(Page::Root, "Escape at the root does nothing"); key(KEY_DOWN); break;
+                    case 15: expectFocus(Action::GoMultiplayer, "Down moves the focus to Multiplayer"); key(KEY_ENTER); break;
+                    case 16: expectPage(Page::Multiplayer, "Enter activates the focused entry"); audit("mainmenu-multiplayer"); break;
+                    case 17: key(KEY_ESC); break;
+                    case 18: expectFocus(Action::GoMultiplayer, "focus restored to Multiplayer"); key(KEY_DOWN); break;
+                    case 19: expectFocus(Action::GoLoad, "Down moves the focus to Load"); key(KEY_ENTER); break;
+                    case 20: expectPage(Page::Load, "Load page opened"); audit("mainmenu-load"); break;
+                    case 21: press(Action::Back); break;
+                    case 22: expectPage(Page::Root, "the Back button returns to the root"); expectFocus(Action::GoLoad, "focus restored to Load");
+                             { const ModernMenuShell::Stats &st = ModernMenuShell::stats(); costBaseUpdates = st.updates; costBaseUpdateUs = st.updateMicros; costBaseDraws = st.draws; costBaseDrawUs = st.drawMicros; }
+                             opWait = 240; break;   // 240 idle frames of the finished menu: the cost of the shell
+                    default: {
+                        const ModernMenuShell::Stats &st = ModernMenuShell::stats();
+                        const unsigned du = st.updates - costBaseUpdates, dd = st.draws - costBaseDraws;
+                        sprintf_s(flowText, "idle frames=%u avg_update_us=%.3f worst_update_us=%llu panel_draws=%u avg_panel_draw_us=%.3f relayouts_total=%u relayout_total_us=%llu page_changes=%u",
+                                  du, du ? (double)(st.updateMicros - costBaseUpdateUs) / du : 0.0, st.worstUpdateMicros, dd, dd ? (double)(st.drawMicros - costBaseDrawUs) / dd : 0.0,
+                                  st.relayouts, st.relayoutMicros, st.pageChanges);
+                        StartupDiagnostics::checkpoint("mainmenu", "cost", flowText);
+                        check(st.relayouts <= 3, "the layout was recomputed only for the surface / first show, not per frame");
+                        advance("main menu audited", nullptr); done = true;
+                        break;
+                    }
+                    }
+                    if (!done && op <= 22) { ++op; if (opWait == 0) opWait = 12; }
                 }
             } else if (step.kind == WAIT_INPUT) {
                 if (TheInGameUI && TheInGameUI->getInputEnabled()) { advance("the player has input control", nullptr); done = true; }

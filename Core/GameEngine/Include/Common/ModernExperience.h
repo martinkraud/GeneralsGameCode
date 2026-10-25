@@ -17,6 +17,7 @@ enum Feature
 	FEATURE_SMOOTH_MOTION,   // X64.33: Options > Unit Motion (ground interpolation); off by default until native-accepted
 	FEATURE_AI_BEHAVIOR,     // X64.51: Skirmish "AI Behaviour: Original / Enhanced" selector (a match rule, default Original; -classic = Original)
 	FEATURE_SUPERWEAPON_LIMIT, // X64.52A: Skirmish "Superweapons: Disabled / Max 1 / 3 / 5 / Unlimited" selector (a match rule, default Unlimited; -classic = Unlimited)
+	FEATURE_MODERN_FRONTEND, // UI.2: the Modern main menu / navigation shell (needs the modern display; -classic = the retail frontend; GENERALS_MODERN_FRONTEND=0 switches it off for comparison)
 	FEATURE_COUNT
 };
 

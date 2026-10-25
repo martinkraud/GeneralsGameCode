@@ -65,6 +65,7 @@
 #include "GameLogic/ScriptEngine.h"
 #include "GameNetwork/GameSpyOverlay.h"
 #include "GameClient/GameWindowTransitions.h"
+#include "GameClient/ModernMenuShell.h"
 #include "GameClient/ChallengeGenerals.h"
 
 #include "GameNetwork/GameSpy/PeerDefs.h"
@@ -298,6 +299,116 @@ void prepareCampaignGame(GameDifficulty diff)
 	buttonPushed = FALSE;
 	TheTransitionHandler->reverse("MainMenuDifficultyMenuBack");
 	setupGameStart(TheCampaignManager->getCurrentMap(), diff );
+}
+
+//-------------------------------------------------------------------------------------------------
+// UI.2 Modern Experience main menu: the engine side of the Modern shell's actions (GameClient/ModernMenuShell). The retail statics above remain the single owner of the behaviour;
+// the Modern shell only decides WHICH action the user chose. The retail window transitions are not run (their windows are hidden while the Modern shell is active).
+//-------------------------------------------------------------------------------------------------
+static void modernStartCampaign( Int difficulty )
+{
+	const GameDifficulty diff = difficulty <= 0 ? DIFFICULTY_EASY : ( difficulty == 1 ? DIFFICULTY_NORMAL : DIFFICULTY_HARD );
+	dontAllowTransitions = TRUE;
+	OptionPreferences pref;
+	pref.setCampaignDifficulty(diff);
+	pref.write();
+	TheScriptEngine->setGlobalDifficulty(diff);
+	buttonPushed = FALSE;
+	TheCampaignManager->setGameDifficulty(diff);
+	if (launchChallengeMenu)
+	{
+		if (TheChallengeGenerals)
+			TheChallengeGenerals->setCurrentDifficulty(diff);
+		campaignSelected = TRUE;
+		TheShell->push( "Menus/ChallengeMenu.wnd" );
+	}
+	else
+	{
+		startGame = TRUE;
+		TheWritableGlobalData->m_pendingFile = TheCampaignManager->getCurrentMap();
+		TheShell->reverseAnimatewindow();
+		TheTransitionHandler->setGroup("FadeWholeScreen");
+	}
+}
+
+// returns true when the main menu is being left
+static Bool modernPerform( const ModernMainMenu::Effect &e )
+{
+	using namespace ModernMainMenu;
+	switch( e.kind )
+	{
+	case EffectKind::SelectCampaign:
+		TheCampaignManager->setCampaign( e.action == Action::CampaignUSA ? "USA" : ( e.action == Action::CampaignGLA ? "GLA" : ( e.action == Action::CampaignChina ? "China" : "TRAINING" ) ) );
+		campaignSelected = TRUE;
+		launchChallengeMenu = FALSE;
+		return false;
+	case EffectKind::SelectChallenge:
+		campaignSelected = TRUE;
+		launchChallengeMenu = TRUE;
+		return false;
+	case EffectKind::CancelSelection:
+		TheCampaignManager->setCampaign( AsciiString::TheEmptyString );
+		campaignSelected = FALSE;
+		launchChallengeMenu = FALSE;
+		return false;
+	case EffectKind::StartSelected:
+		modernStartCampaign( e.difficulty );
+		return true;
+	case EffectKind::Engine:
+		switch( e.action )
+		{
+		case Action::Skirmish:
+			buttonPushed = TRUE;
+			campaignSelected = TRUE;
+			TheShell->push( "Menus/SkirmishGameOptionsMenu.wnd" );
+			TheScriptEngine->signalUIInteract(TheShellHookNames[SHELL_SCRIPT_HOOK_MAIN_MENU_SKIRMISH_SELECTED]);
+			return true;
+		case Action::Network:
+			buttonPushed = TRUE;
+			TheShell->push( "Menus/LanLobbyMenu.wnd" );
+			TheScriptEngine->signalUIInteract(TheShellHookNames[SHELL_SCRIPT_HOOK_MAIN_MENU_NETWORK_SELECTED]);
+			return true;
+		case Action::Online:
+			buttonPushed = TRUE;
+			StartPatchCheck();
+			dropDown = DROPDOWN_NONE;
+			return true;
+		case Action::LoadGame:
+			buttonPushed = TRUE;
+			TheShell->push( "Menus/SaveLoad.wnd" );
+			return true;
+		case Action::LoadReplay:
+			buttonPushed = TRUE;
+			TheShell->push( "Menus/ReplayMenu.wnd" );
+			return true;
+		case Action::Credits:
+			buttonPushed = TRUE;
+			TheShell->push( "Menus/CreditsMenu.wnd" );
+			return true;
+		case Action::Options:
+		{
+			TheScriptEngine->signalUIInteract(TheShellHookNames[SHELL_SCRIPT_HOOK_MAIN_MENU_OPTIONS_SELECTED]);
+			WindowLayout *optLayout = TheShell->getOptionsLayout(TRUE);
+			DEBUG_ASSERTCRASH(optLayout != nullptr, ("unable to get options menu layout"));
+			optLayout->runInit();
+			optLayout->hide(FALSE);
+			optLayout->bringForward();
+			return false;   // the Options overlay is shown above the main menu, which stays
+		}
+		case Action::Exit:
+			if (TheGlobalData->m_windowed)
+			{
+				quitCallback();
+				return true;
+			}
+			QuitMessageBoxYesNo(TheGameText->fetch("GUI:QuitPopupTitle"), TheGameText->fetch("GUI:QuitPopupMessage"), quitCallback, nullptr);
+			return false;   // until the player confirms
+		default:
+			return false;
+		}
+	default:
+		return false;
+	}
 }
 
 static void doGameStart()
@@ -643,6 +754,16 @@ void MainMenuInit( WindowLayout *layout, void *userData )
 		rule->winHide(FALSE);
 	}
 
+	if (ModernMenuShell::active())
+	{
+		launchChallengeMenu = FALSE;
+		ModernMenuShell::Hooks hooks;
+		hooks.perform = modernPerform;
+		ModernMenuShell::init( parentMainMenu, ModernTheme::Title::ZeroHour, hooks );
+		if (!notShown)
+			ModernMenuShell::reveal( true );   // returning from a child screen: no entrance animation
+	}
+
 	layout->bringForward();
 	// set keyboard focus to main parent
 	TheWindowManager->winSetFocus( parentMainMenu );
@@ -802,6 +923,13 @@ void MainMenuUpdate( WindowLayout *layout, void *userData )
 	if(DontShowMainMenu && justEntered)
 		justEntered = FALSE;
 
+	const Bool modernMenu = ModernMenuShell::active() && ModernMenuShell::built();
+	if (modernMenu)
+	{
+		justEntered = FALSE;   // the retail logo-fade transition would show retail windows
+		ModernMenuShell::update( buttonPushed || startGame || isShuttingDown );
+	}
+
 	if (TheDownloadManager && !TheDownloadManager->isDone())
 	{
 		TheDownloadManager->update();
@@ -936,6 +1064,24 @@ void MainMenuUpdate( WindowLayout *layout, void *userData )
 
 }
 
+// UI.2: the first mouse movement / key press shows the main menu (retail: the window transitions; Modern: the shell slides in).
+static void revealMainMenu()
+{
+	initialGadgetDelay = 1;
+	if (ModernMenuShell::active() && ModernMenuShell::built())
+	{
+		ModernMenuShell::reveal(false);
+	}
+	else
+	{
+		dropDownWindows[DROPDOWN_MAIN]->winHide(FALSE);
+		TheTransitionHandler->setGroup("MainMenuFade", TRUE);
+		TheTransitionHandler->setGroup("MainMenuDefaultMenu");
+	}
+	TheMouse->setVisibility(TRUE);
+	notShown = FALSE;
+}
+
 //-------------------------------------------------------------------------------------------------
 /** Main menu input callback */
 //-------------------------------------------------------------------------------------------------
@@ -943,7 +1089,11 @@ WindowMsgHandledType MainMenuInput( GameWindow *window, UnsignedInt msg,
 																		WindowMsgData mData1, WindowMsgData mData2 )
 {
 	if(!notShown)
+	{
+		if (msg == GWM_CHAR && ModernMenuShell::active() && ModernMenuShell::onKey((Int)mData1, (Int)mData2))
+			return MSG_HANDLED;
 		return MSG_IGNORED;
+	}
 
 	switch( msg )
 	{
@@ -967,12 +1117,7 @@ WindowMsgHandledType MainMenuInput( GameWindow *window, UnsignedInt msg,
 
 			if (doShow)
 			{
-				initialGadgetDelay = 1;
-				dropDownWindows[DROPDOWN_MAIN]->winHide(FALSE);
-				TheTransitionHandler->setGroup("MainMenuFade", TRUE);
-				TheTransitionHandler->setGroup("MainMenuDefaultMenu");
-				TheMouse->setVisibility(TRUE);
-				notShown = FALSE;
+				revealMainMenu();
 				return MSG_HANDLED;
 			}
 
@@ -982,12 +1127,7 @@ WindowMsgHandledType MainMenuInput( GameWindow *window, UnsignedInt msg,
 		// --------------------------------------------------------------------------------------------
 		case GWM_CHAR:
 		{
-			initialGadgetDelay = 1;
-			dropDownWindows[DROPDOWN_MAIN]->winHide(FALSE);
-			TheTransitionHandler->setGroup("MainMenuFade", TRUE);
-			TheTransitionHandler->setGroup("MainMenuDefaultMenu");
-			TheMouse->setVisibility(TRUE);
-			notShown = FALSE;
+			revealMainMenu();
 			return MSG_HANDLED;
 		}
 	}
@@ -1042,6 +1182,11 @@ WindowMsgHandledType MainMenuSystem( GameWindow *window, UnsignedInt msg,
 		{
 			GameWindow *control = (GameWindow *)mData1;
 			Int controlID = control->winGetWindowId();
+			if (ModernMenuShell::active() && ModernMenuShell::built())
+			{
+				ModernMenuShell::onHover( control );
+				break;
+			}
 			if(controlID == onlineID)
 			{
 				TheScriptEngine->signalUIInteract(TheShellHookNames[SHELL_SCRIPT_HOOK_MAIN_MENU_ONLINE_HIGHLIGHTED]);
@@ -1262,6 +1407,13 @@ WindowMsgHandledType MainMenuSystem( GameWindow *window, UnsignedInt msg,
 
 			GameWindow *control = (GameWindow *)mData1;
 			Int controlID = control->winGetWindowId();
+
+			if (ModernMenuShell::active() && ModernMenuShell::built())
+			{
+				if (!buttonPushed)
+					ModernMenuShell::onSelected( control );
+				break;
+			}
 
 			if(buttonPushed)
 				break;
