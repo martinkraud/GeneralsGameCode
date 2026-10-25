@@ -1,0 +1,14 @@
+7	01dd647c91396c5f	3505042273886	20124	10512	HWND_DX8_browser_input	skipped	0	
+98	01dd647c919109fd	3505048013841	20124	10512	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+198	01dd647c97f06e17	3505154926991	20124	10512	browser	complete	0	scale=180 effective=180 panel=1764x980 list=1231x786
+199	01dd647c98f1fd54	3505171807855	20124	10512	browser	geometry	0	browser display=1920x1080 effective_scale=180 panel=78,50 1764x980 list=121,201 1231x786
+200	01dd647c98f1fd54	3505171808143	20124	10512	browser	ok	0	the panel is inside the display
+201	01dd647c98f1fd54	3505171808365	20124	10512	browser	ok	0	list [121,201 1231x786] expected [121,201 1231x786] visible=1 mouse_hit=1
+202	01dd647c98f1fd54	3505171808448	20124	10512	browser	ok	0	action 0 [1381,201 418x79] expected [1381,201 418x79] visible=1 mouse_hit=1
+203	01dd647c98f1fd54	3505171808507	20124	10512	browser	ok	0	action 1 [1381,298 418x79] expected [1381,298 418x79] visible=1 mouse_hit=1
+204	01dd647c98f1fd54	3505171808561	20124	10512	browser	ok	0	action 2 [1381,395 418x79] expected [1381,395 418x79] visible=1 mouse_hit=1
+205	01dd647c98f1fd54	3505171808617	20124	10512	browser	ok	0	action 3 [1381,908 418x79] expected [1381,908 418x79] visible=1 mouse_hit=1
+206	01dd647c98f6a246	3505172114674	20124	10512	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T123006Z-ZeroHour-x64-ui3-zh\autoshot-browser.bmp
+207	01dd647c98f6a246	3505172114941	20124	10512	browser	ok	0	browser defects=0
+208	01dd647c990c0c99	3505173514626	20124	10512	cost	frontend	0	browser decor_draws=98 avg_decor_us=50.82 worst_decor_us=1018 button_draws=588 avg_button_us=12.30 string_allocations=2 layout_solves_total=1
+209	01dd647c990c0c99	3505173514833	20124	10512	autoflow	observed	0	step 1: browser audited 

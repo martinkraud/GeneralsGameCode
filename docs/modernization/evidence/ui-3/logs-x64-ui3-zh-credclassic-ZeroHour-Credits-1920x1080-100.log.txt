@@ -1,0 +1,9 @@
+193	01dd648786ba1f59	3552110803364	23496	28360	autoflow	observed	0	step 0: pushed Menus/CreditsMenu.wnd
+194	01dd648788eec221	3552147802801	23496	28360	credits	window	0	CreditsMenu.wnd:ParentCreditsWindow [0,0 800x600] status=0x8 image0=-
+195	01dd648788eec221	3552147803101	23496	28360	credits	window	0	BlankWindow.wnd:BlankWindow [0,0 800x600] status=0x88 image0=MainMenuBackdrop
+196	01dd648788eec221	3552147803327	23496	28360	credits	window	0	CreditsMenu.wnd:BackgroundWindow [0,0 799x599] status=0x88 image0=CreditsScreen
+197	01dd648788eec221	3552147803431	23496	28360	credits	window	0	CreditsMenu.wnd:WinTextDraw [0,0 799x599] status=0x8 image0=-
+198	01dd648788eec221	3552147803642	23496	28360	credits	ok	0	no Modern credits band (Classic: the retail black screen)
+199	01dd648788ef7e87	3552147853899	23496	28360	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T134821Z-ZeroHour-x64-ui3-zh\autoshot-credits.bmp
+200	01dd648788ef7e87	3552147854338	23496	28360	cost	frontend	0	credits decor_draws=0 avg_decor_us=0.00 worst_decor_us=0 button_draws=0 avg_button_us=0.00 string_allocations=0 layout_solves_total=0
+201	01dd648788ef7e87	3552147854381	23496	28360	autoflow	observed	0	step 1: credits audited 

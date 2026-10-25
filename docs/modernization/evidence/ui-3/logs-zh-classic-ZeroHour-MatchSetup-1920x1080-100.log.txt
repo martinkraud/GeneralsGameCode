@@ -1,0 +1,32 @@
+194	01dd64850eab31c2	3541506620160	31784	22044	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133032Z-ZeroHour-x64-ui3-zh\autoshot-matchsetup-classic.bmp
+195	01dd64850eab31c2	3541506620861	31784	22044	matchsetup	ok	0	classic frontend: no Modern Match Setup backdrop exists
+197	01dd64850fddeeaf	3541526727582	31784	22044	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133032Z-ZeroHour-x64-ui3-zh\autoshot-matchopts-closed.bmp
+198	01dd64850fddeeaf	3541526727811	31784	22044	matchopts	display	0	matchopts display=800x600
+199	01dd64850fde15a5	3541526727973	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [58,387 233x112] style=0x200
+200	01dd64850fde15a5	3541526728013	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash [453,334 104x24] style=0x8400
+201	01dd64850fde15a5	3541526728043	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:CheckboxLimitSuperweapons [593,336 152x24] style=0x404
+202	01dd64850fde15a5	3541526728071	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [360,334 93x24] style=0x480
+203	01dd64850fde15a5	3541526728099	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBattleHonors1 [42,336 135x24] style=0x480
+204	01dd64850fde15a5	3541526728132	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ListboxInfo [303,380 442x119] style=0x420
+205	01dd64850fde15a5	3541526728157	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [300,387 446x112] style=0x200
+206	01dd64850fde15a5	3541526728184	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [530,513 171x36] style=0x401
+207	01dd64850fde15a5	3541526728214	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [94,513 174x36] style=0x401
+208	01dd64850fde15a5	3541526728332	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [221,391 66x26] style=0x480
+209	01dd64850fde15a5	3541526728361	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [64,391 158x26] style=0x480
+210	01dd64850fde15a5	3541526728388	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [221,418 66x26] style=0x480
+211	01dd64850fde15a5	3541526728415	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [64,418 159x26] style=0x480
+212	01dd64850fde15a5	3541526728441	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWinsValue [221,445 66x26] style=0x480
+213	01dd64850fde15a5	3541526728467	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWins [64,445 158x26] style=0x480
+214	01dd64850fde15a5	3541526728492	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [221,472 66x26] style=0x480
+215	01dd64850fde15a5	3541526728519	31784	22044	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [64,472 158x26] style=0x480
+216	01dd64850fde15a5	3541526728547	31784	22044	matchopts	window	0	(unnamed) [453,334 83x24] style=0x440
+217	01dd64850fde15a5	3541526728572	31784	22044	matchopts	window	0	(unnamed) [536,334 21x24] style=0x401
+218	01dd64850fde15a5	3541526728679	31784	22044	matchopts	geometry	0	SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash at 453,334 104x24
+219	01dd64850fde15a5	3541526728883	31784	22044	matchopts	defect	0	SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior not present (a retail caption may carry no name)
+220	01dd64850fde15a5	3541526728931	31784	22044	matchopts	defect	0	SkirmishGameOptionsMenu.wnd:ComboBoxSuperweapons not present (a retail caption may carry no name)
+221	01dd64850fde15a5	3541526728974	31784	22044	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextStartingCash not present (a retail caption may carry no name)
+222	01dd64850fde15a5	3541526729134	31784	22044	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior not present (a retail caption may carry no name)
+223	01dd64850fde15a5	3541526729201	31784	22044	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons not present (a retail caption may carry no name)
+224	01dd64850fde15a5	3541526729228	31784	22044	matchopts	ok	0	closed layout overlaps=0
+225	01dd6485104a87a0	3541533844027	31784	22044	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133032Z-ZeroHour-x64-ui3-zh\autoshot-matchopts-open-0.bmp
+226	01dd6485104a87a0	3541533844316	31784	22044	matchopts	ok	0	SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash combo=453,334 104x100 list_open=1 list=453,358 104x76 rows=4 reachable=4 first_unreachable=-1 by=-

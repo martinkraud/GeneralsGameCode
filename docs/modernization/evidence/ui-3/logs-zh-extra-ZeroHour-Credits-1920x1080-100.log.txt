@@ -1,0 +1,10 @@
+197	01dd6484d7e4fe5c	3540587662535	27840	26584	autoflow	observed	0	step 0: pushed Menus/CreditsMenu.wnd
+198	01dd6484da1dec99	3540624948514	27840	26584	credits	window	0	CreditsMenu.wnd:ParentCreditsWindow [0,0 1920x1080] status=0x8 image0=-
+199	01dd6484da1dec99	3540624948770	27840	26584	credits	window	0	CreditsMenu.wnd:BackgroundWindow [0,0 799x599] status=0x8 image0=-
+200	01dd6484da1dec99	3540624948803	27840	26584	credits	window	0	 [0,0 1920x1080] status=0x200 image0=-
+201	01dd6484da1dec99	3540624948831	27840	26584	credits	window	0	 [0,0 380x1080] status=0x208 image0=-
+202	01dd6484da1dec99	3540624948898	27840	26584	credits	window	0	CreditsMenu.wnd:WinTextDraw [0,0 799x599] status=0x8 image0=-
+203	01dd6484da1dec99	3540624948973	27840	26584	credits	ok	0	the Modern credits scrim band is present
+204	01dd6484da207349	3540625113266	27840	26584	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T132909Z-ZeroHour-x64-ui3-zh\autoshot-credits.bmp
+205	01dd6484da207349	3540625113770	27840	26584	cost	frontend	0	credits decor_draws=284 avg_decor_us=9.53 worst_decor_us=185 button_draws=408 avg_button_us=4.52 string_allocations=1 layout_solves_total=0
+206	01dd6484da207349	3540625113973	27840	26584	autoflow	observed	0	step 1: credits audited 

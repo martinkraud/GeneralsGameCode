@@ -1,0 +1,6 @@
+189	01dd6485f3f6f3a8	3545353565379	7196	12520	autoflow	observed	0	step 0: pushed Menus/OptionsMenu.wnd
+190	01dd6485f55aa1d2	3545376879812	7196	12520	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133711Z-Generals-x64-ui3-gen\autoshot-options-classic.bmp
+191	01dd6485f55aa1d2	3545376880421	7196	12520	options	ok	0	classic frontend: no Modern Options backdrop exists
+192	01dd6485f55aa1d2	3545376880513	7196	12520	options	ok	0	classic frontend: no Modern category rail exists
+193	01dd6485f55aa1d2	3545376880577	7196	12520	options	ok	0	classic frontend: the retail Accept button is visible
+194	01dd6485f55aa1d2	3545376880678	7196	12520	autoflow	observed	0	step 1: options audited (classic) 

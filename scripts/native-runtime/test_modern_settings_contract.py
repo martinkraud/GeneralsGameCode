@@ -210,10 +210,10 @@ class ModernOptionsVocabulary(unittest.TestCase):
     def test_advanced_panel_is_a_sub_screen_of_the_modern_panel(self):
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
         body = tabs[tabs.index("void setAdvancedOpen(bool open)"):tabs.index("bool onButton(int controlId)")]
-        self.assertIn("advancedPopupRect(s_geom, pw, ph, s_scale)", body)
+        self.assertIn("s_layout.panel.x + (s_layout.panel.w - pw) / 2", body)      # UI.3: centred in the Modern panel
         self.assertIn("s_tabs[i]->winHide(TRUE);", body)          # the tab strip is hidden while the panel is open ...
         self.assertIn("s_tabs[i]->winHide(FALSE);", body)         # ... and restored afterwards
-        self.assertIn("showCategory(s_active);", body)
+        self.assertIn("showCategory(s_active, true);", body)
         menu = read(MENU)
         self.assertIn("OptionsTabs::setAdvancedOpen(true);", menu)
         self.assertEqual(menu.count("OptionsTabs::setAdvancedOpen(FALSE);"), 2)   # accept and cancel

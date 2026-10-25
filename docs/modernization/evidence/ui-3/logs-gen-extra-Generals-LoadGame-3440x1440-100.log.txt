@@ -1,0 +1,19 @@
+7	01dd6485c640c69a	3544586654088	23392	6440	HWND_DX8_browser_input	skipped	0	
+99	01dd6485c6707de1	3544589779727	23392	6440	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+195	01dd6485ca0413fe	3544649788844	23392	6440	browser	complete	0	scale=100 effective=100 panel=980x600 list=684x492
+196	01dd6485caab6210	3544660752925	23392	6440	browser	geometry	0	browser display=3440x1440 effective_scale=100 panel=1230,420 980x600 list=1254,504 684x492
+197	01dd6485caab6210	3544660753134	23392	6440	browser	ok	0	the panel is inside the display
+198	01dd6485caab6210	3544660753204	23392	6440	browser	ok	0	list [1254,504 684x492] expected [1254,504 684x492] visible=1 mouse_hit=1
+199	01dd6485caab6210	3544660753251	23392	6440	browser	ok	0	action 0 [1954,504 232x44] expected [1954,504 232x44] visible=1 mouse_hit=1
+200	01dd6485caab6210	3544660753281	23392	6440	browser	ok	0	action 1 [1954,558 232x44] expected [1954,558 232x44] visible=1 mouse_hit=1
+201	01dd6485caab6210	3544660753307	23392	6440	browser	ok	0	action 2 [1954,612 232x44] expected [1954,612 232x44] visible=1 mouse_hit=1
+202	01dd6485caab6210	3544660753335	23392	6440	browser	ok	0	action 3 [1954,952 232x44] expected [1954,952 232x44] visible=1 mouse_hit=1
+203	01dd6485cab0bf47	3544661099768	23392	6440	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133600Z-Generals-x64-ui3-gen\autoshot-browser.bmp
+204	01dd6485cab0bf47	3544661100015	23392	6440	browser	ok	0	inline dialog 0 [1460,618 520x204] inside the panel=1
+205	01dd6485cab0bf47	3544661100061	23392	6440	browser	ok	0	inline dialog 1 [1460,618 520x204] inside the panel=1
+206	01dd6485cab0bf47	3544661100095	23392	6440	browser	ok	0	inline dialog 2 [1460,596 520x248] inside the panel=1
+207	01dd6485cab0bf47	3544661100122	23392	6440	browser	ok	0	inline dialog 3 [1460,618 520x204] inside the panel=1
+208	01dd6485cab0bf47	3544661100150	23392	6440	browser	ok	0	browser defects=0
+209	01dd6485cac75b61	3544662580607	23392	6440	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133600Z-Generals-x64-ui3-gen\autoshot-browser-dialog.bmp
+210	01dd6485cac75b61	3544662580960	23392	6440	cost	frontend	0	browser decor_draws=97 avg_decor_us=36.85 worst_decor_us=514 button_draws=528 avg_button_us=6.89 string_allocations=6 layout_solves_total=5
+211	01dd6485cac75b61	3544662580996	23392	6440	autoflow	observed	0	step 1: browser audited 

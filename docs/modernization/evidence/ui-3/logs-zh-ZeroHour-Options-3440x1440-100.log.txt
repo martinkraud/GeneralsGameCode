@@ -1,0 +1,87 @@
+197	01dd64794528e7b2	3490881216238	32064	22668	autoflow	observed	0	step 0: pushed Menus/OptionsMenu.wnd
+199	01dd64794535bd2d	3490882064934	32064	22668	options_tabs	complete	0	tabs=7 scale=100 effective=100 panel=944x560 content=652x376 rows=5 visible=5
+200	01dd647945c7125c	3490891582347	32064	22668	options	geometry	0	options display=3440x1440 effective_scale=100 panel=1248,440 944x560 content=1516,524 652x376 rail=1272,524 220x376
+201	01dd647945c7125c	3490891583239	32064	22668	options	ok	0	the panel is inside the display
+202	01dd647945ce80ab	3490892076235	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+203	01dd647945e05c98	3490893244740	32064	22668	options	ok	0	the pressed category is the active one
+204	01dd647945e05c98	3490893245278	32064	22668	options	ok	0	category 0 ModernMode [1818,527 320x30] inside_content=1 mouse_hit=1 label_fits=1
+205	01dd647945e05c98	3490893245354	32064	22668	options	ok	0	category 0 ComboBoxResolution [1818,573 320x30] inside_content=1 mouse_hit=1 label_fits=1
+206	01dd647945e05c98	3490893245410	32064	22668	options	ok	0	category 0 ModernUiScale [1818,619 320x30] inside_content=1 mouse_hit=1 label_fits=1
+207	01dd647945e05c98	3490893245461	32064	22668	options	ok	0	category 0 ModernVsync [1818,665 320x30] inside_content=1 mouse_hit=1 label_fits=1
+208	01dd647945e05c98	3490893245510	32064	22668	options	ok	0	category 0 ComboBoxFrameRateLimit [1818,711 320x30] inside_content=1 mouse_hit=1 label_fits=1
+209	01dd647945e05c98	3490893245618	32064	22668	options	ok	0	category 0 rows_visible=5 layout_visible=5 defects=0
+210	01dd647945e05c98	3490893245662	32064	22668	options	ok	0	Apply is visible and reachable
+211	01dd647945e05c98	3490893245696	32064	22668	options	ok	0	Cancel is visible and reachable
+212	01dd647945e05c98	3490893245722	32064	22668	options	ok	0	Defaults is visible and reachable
+213	01dd647945e5d6ac	3490893610647	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-0.bmp
+214	01dd647945ee890b	3490894174532	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+215	01dd647946005fe6	3490895343483	32064	22668	options	ok	0	the pressed category is the active one
+216	01dd647946005fe6	3490895343904	32064	22668	options	ok	0	category 1 ComboBoxDetail [1818,527 320x30] inside_content=1 mouse_hit=1 label_fits=1
+217	01dd647946005fe6	3490895343972	32064	22668	options	ok	0	category 1 ModernRenderScale [1818,573 320x30] inside_content=1 mouse_hit=1 label_fits=1
+218	01dd647946005fe6	3490895344121	32064	22668	options	ok	0	category 1 rows_visible=2 layout_visible=2 defects=0
+219	01dd647946005fe6	3490895344163	32064	22668	options	ok	0	Apply is visible and reachable
+220	01dd647946005fe6	3490895344195	32064	22668	options	ok	0	Cancel is visible and reachable
+221	01dd647946005fe6	3490895344224	32064	22668	options	ok	0	Defaults is visible and reachable
+222	01dd64794605b94a	3490895688525	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-1.bmp
+223	01dd6479460e31db	3490896247674	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+224	01dd64794620161f	3490897417091	32064	22668	options	ok	0	the pressed category is the active one
+225	01dd64794620161f	3490897417422	32064	22668	options	ok	0	category 2 SliderSFXVolume [1818,527 256x30] inside_content=1 mouse_hit=1 label_fits=1
+226	01dd64794620161f	3490897417488	32064	22668	options	ok	0	category 2 SliderMusicVolume [1818,573 256x30] inside_content=1 mouse_hit=1 label_fits=1
+227	01dd64794620161f	3490897417540	32064	22668	options	ok	0	category 2 SliderVoiceVolume [1818,619 256x30] inside_content=1 mouse_hit=1 label_fits=1
+228	01dd64794620161f	3490897417717	32064	22668	options	ok	0	category 2 rows_visible=3 layout_visible=3 defects=0
+229	01dd64794620161f	3490897417753	32064	22668	options	ok	0	Apply is visible and reachable
+230	01dd64794620161f	3490897417784	32064	22668	options	ok	0	Cancel is visible and reachable
+231	01dd64794620161f	3490897417811	32064	22668	options	ok	0	Defaults is visible and reachable
+232	01dd64794625dd91	3490897801461	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-2.bmp
+233	01dd6479462e8ed4	3490898364046	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+234	01dd647946404df1	3490899534054	32064	22668	options	ok	0	the pressed category is the active one
+235	01dd647946404df1	3490899534442	32064	22668	options	ok	0	category 3 CheckAlternateMouse [1516,527 622x30] inside_content=1 mouse_hit=1 label_fits=1
+236	01dd647946404df1	3490899534514	32064	22668	options	ok	0	category 3 SliderScrollSpeed [1818,573 256x30] inside_content=1 mouse_hit=1 label_fits=1
+237	01dd647946404df1	3490899534564	32064	22668	options	ok	0	category 3 CheckBoxDrawAnchor [1516,619 622x30] inside_content=1 mouse_hit=1 label_fits=1
+238	01dd647946404df1	3490899534601	32064	22668	options	ok	0	category 3 CheckBoxMoveAnchor [1516,665 622x30] inside_content=1 mouse_hit=1 label_fits=1
+239	01dd647946404df1	3490899534771	32064	22668	options	ok	0	category 3 rows_visible=4 layout_visible=4 defects=0
+240	01dd647946404df1	3490899534813	32064	22668	options	ok	0	Apply is visible and reachable
+241	01dd647946404df1	3490899534841	32064	22668	options	ok	0	Cancel is visible and reachable
+242	01dd647946404df1	3490899534869	32064	22668	options	ok	0	Defaults is visible and reachable
+243	01dd64794645d02f	3490899895561	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-3.bmp
+244	01dd6479464e4c24	3490900456611	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+245	01dd6479466058f6	3490901627037	32064	22668	options	ok	0	the pressed category is the active one
+246	01dd6479466058f6	3490901627399	32064	22668	options	ok	0	category 4 CheckBoxUseCamera [1516,527 622x30] inside_content=1 mouse_hit=1 label_fits=1
+247	01dd6479466058f6	3490901627451	32064	22668	options	ok	0	category 4 CheckBoxSaveCamera [1516,573 622x30] inside_content=1 mouse_hit=1 label_fits=1
+248	01dd6479466058f6	3490901627645	32064	22668	options	ok	0	category 4 rows_visible=2 layout_visible=2 defects=0
+249	01dd6479466058f6	3490901627691	32064	22668	options	ok	0	Apply is visible and reachable
+250	01dd6479466058f6	3490901627721	32064	22668	options	ok	0	Cancel is visible and reachable
+251	01dd6479466058f6	3490901627748	32064	22668	options	ok	0	Defaults is visible and reachable
+252	01dd6479466603c2	3490902006261	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-4.bmp
+253	01dd6479466eb62b	3490902572051	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+254	01dd64794680929a	3490903745092	32064	22668	options	ok	0	the pressed category is the active one
+255	01dd64794680929a	3490903745554	32064	22668	options	ok	0	category 5 ModernMotion [1818,527 320x30] inside_content=1 mouse_hit=1 label_fits=1
+256	01dd64794680929a	3490903745631	32064	22668	options	ok	0	category 5 ModernInterface [1818,573 320x30] inside_content=1 mouse_hit=1 label_fits=1
+257	01dd64794680929a	3490903745881	32064	22668	options	ok	0	category 5 rows_visible=2 layout_visible=2 defects=0
+258	01dd64794680929a	3490903745953	32064	22668	options	ok	0	Apply is visible and reachable
+259	01dd64794680929a	3490903745993	32064	22668	options	ok	0	Cancel is visible and reachable
+260	01dd64794680929a	3490903746034	32064	22668	options	ok	0	Defaults is visible and reachable
+261	01dd64794685d031	3490904091897	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-5.bmp
+262	01dd6479468e7b49	3490904656235	32064	22668	options	ok	0	the rail button is visible and reachable by the mouse
+263	01dd647946a069b9	3490905830028	32064	22668	options	ok	0	the pressed category is the active one
+264	01dd647946a069b9	3490905830941	32064	22668	options	ok	0	network block: 8 visible windows, 0 outside the content viewport
+265	01dd647946a069b9	3490905831212	32064	22668	options	ok	0	category 6 rows_visible=0 layout_visible=0 defects=0
+266	01dd647946a069b9	3490905831270	32064	22668	options	ok	0	Apply is visible and reachable
+267	01dd647946a069b9	3490905831300	32064	22668	options	ok	0	Cancel is visible and reachable
+268	01dd647946a069b9	3490905831328	32064	22668	options	ok	0	Defaults is visible and reachable
+269	01dd647946a6164c	3490906199367	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-6.bmp
+270	01dd647946acb312	3490906635234	32064	22668	options	ok	0	Page Up moves to the previous category
+271	01dd647946acb312	3490906636116	32064	22668	options	ok	0	Page Down wraps from the last category to the first
+272	01dd647946acb312	3490906636658	32064	22668	options	ok	0	Ctrl+End then Ctrl+Home returns to the first category
+273	01dd647946b6e089	3490907305058	32064	22668	options	ok	0	the SFX volume slider is on the Audio page
+274	01dd647946b6e089	3490907305336	32064	22668	options	ok	0	slider moved
+275	01dd647946bcd13a	3490907694507	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-dirty.bmp
+276	01dd647946c8780c	3490908464865	32064	22668	options	ok	0	changing a setting makes the screen dirty
+277	01dd647946e9b455	3490910629953	32064	22668	options	ok	0	leaving a dirty screen opens the discard confirmation
+278	01dd647946e9b455	3490910630188	32064	22668	options	ok	0	the confirmation is inside the display
+279	01dd647946ef4892	3490911000700	32064	22668	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T120618Z-ZeroHour-x64-ui3-zh\autoshot-options-dialog.bmp
+280	01dd647946ef4892	3490911001037	32064	22668	options	ok	0	the No button is reachable
+281	01dd6479470f180d	3490913084770	32064	22668	options	ok	0	No keeps the Options screen open
+282	01dd6479470f180d	3490913085069	32064	22668	options	ok	0	the changes are still pending after No
+283	01dd6479470f180d	3490913085161	32064	22668	cost	frontend	0	options decor_draws=184 avg_decor_us=56.17 worst_decor_us=479 button_draws=2129 avg_button_us=6.09 string_allocations=56 layout_solves_total=15
+284	01dd6479470f180d	3490913085197	32064	22668	autoflow	observed	0	step 1: options audited 

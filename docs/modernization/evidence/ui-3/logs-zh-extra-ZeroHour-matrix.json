@@ -1,0 +1,50 @@
+[
+  {
+    "Flow": "LoadGame",
+    "Title": "ZeroHour",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "100",
+    "Cost": "browser decor_draws=105 avg_decor_us=33.33 worst_decor_us=348 button_draws=576 avg_button_us=7.24 string_allocations=6 layout_solves_total=5",
+    "Dir": ""
+  },
+  {
+    "Flow": "LoadGame",
+    "Title": "ZeroHour",
+    "Size": "3440x1440",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "100",
+    "Cost": "browser decor_draws=103 avg_decor_us=45.91 worst_decor_us=711 button_draws=564 avg_button_us=9.58 string_allocations=6 layout_solves_total=5",
+    "Dir": ""
+  },
+  {
+    "Flow": "Credits",
+    "Title": "ZeroHour",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "credits decor_draws=284 avg_decor_us=9.53 worst_decor_us=185 button_draws=408 avg_button_us=4.52 string_allocations=1 layout_solves_total=0",
+    "Dir": ""
+  },
+  {
+    "Flow": "Credits",
+    "Title": "ZeroHour",
+    "Size": "3440x1440",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "credits decor_draws=513 avg_decor_us=15.24 worst_decor_us=174 button_draws=1782 avg_button_us=3.51 string_allocations=1 layout_solves_total=0",
+    "Dir": ""
+  }
+]

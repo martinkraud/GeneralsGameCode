@@ -1,0 +1,5 @@
+7	01dd6485ff84a316	3545547406186	18212	28284	HWND_DX8_browser_input	skipped	0	
+96	01dd6485ffb91440	3545550838850	18212	28284	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+190	01dd648605e585c6	3545654411005	18212	28284	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133736Z-Generals-x64-ui3-gen\autoshot-browser-classic.bmp
+191	01dd648605e585c6	3545654411370	18212	28284	browser	ok	0	classic frontend: no Modern browser backdrop exists
+192	01dd648605e585c6	3545654411419	18212	28284	autoflow	observed	0	step 1: browser audited (classic) 

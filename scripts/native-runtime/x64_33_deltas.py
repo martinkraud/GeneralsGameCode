@@ -13,6 +13,9 @@ Every hunk is a (new_text, old_text) pair in LF line endings.
 DELTAS = {
     # X64.48A (second-PC correctness pass): the open combo box owns its list rectangle in the mouse path (Generals Skirmish slots 7/8 lost clicks).
     "Core/GameEngine/Source/GameClient/GUI/GameWindowManager.cpp": [
+        # UI.3: the Modern dialog skin (include + the call at the end of gogoMessageBox; a no-op in Classic)
+        ('#include "GameClient/ModernDialog.h"\n', ""),
+        ('\n\t// Modern Experience: the same dialog, composed as a Modern panel over a scrim (no-op in Classic)\n\tModernDialog::apply( trueParent, parent, menuName.str(), ModernDialog::Buttons{ (buttonFlags & MSG_BOX_OK) != 0, (buttonFlags & MSG_BOX_YES) != 0, (buttonFlags & MSG_BOX_NO) != 0, (buttonFlags & MSG_BOX_CANCEL) != 0 }, titleString, bodyString );\n', ""),
         ('\t// X64.48A: an open combo box (the "lone window") owns the rectangle of its drop-down list. The list is a child that extends the combo window\n\t// downwards, and the sibling scan below tries windows in creation order: an earlier sibling that takes no input and overlaps the list (the\n\t// Generals Skirmish screen\'s "Starting Cash" label lies over the lists of player slots 7 and 8) was found first and then discarded as "no input",\n\t// so the click on the list row was lost. The open combo is tried first.\n\tif (m_loneWindow && BitIsSet(m_loneWindow->winGetStyle(), GWS_COMBO_BOX) && !BitIsSet(m_loneWindow->m_status, WIN_STATUS_HIDDEN) &&\n\t\tBitIsSet(m_loneWindow->m_status, WIN_STATUS_ENABLED) && m_loneWindow->winPointInWindow(mousePos->x, mousePos->y))\n\t{\n\t\treturn m_loneWindow->winPointInChild(mousePos->x, mousePos->y);\n\t}\n\n', ""),
     ],
     "Core/Libraries/Source/WWVegas/WW3D2/ww3d.cpp": [

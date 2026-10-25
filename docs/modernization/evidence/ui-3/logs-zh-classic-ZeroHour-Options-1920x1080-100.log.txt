@@ -1,0 +1,6 @@
+193	01dd6484ff37b651	3541247391471	34572	20872	autoflow	observed	0	step 0: pushed Menus/OptionsMenu.wnd
+194	01dd64850198fbad	3541287322598	34572	20872	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133015Z-ZeroHour-x64-ui3-zh\autoshot-options-classic.bmp
+195	01dd64850198fbad	3541287323098	34572	20872	options	ok	0	classic frontend: no Modern Options backdrop exists
+196	01dd64850198fbad	3541287323153	34572	20872	options	ok	0	classic frontend: no Modern category rail exists
+197	01dd64850198fbad	3541287323191	34572	20872	options	ok	0	classic frontend: the retail Accept button is visible
+198	01dd64850198fbad	3541287323220	34572	20872	autoflow	observed	0	step 1: options audited (classic) 

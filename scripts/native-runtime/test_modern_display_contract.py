@@ -125,7 +125,7 @@ class ModernDisplayContracts(unittest.TestCase):
         for token in ("gogoGadgetComboBox", "gogoGadgetStaticText", "copyAppearance"):
             self.assertIn(token, display)
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
-        for token in ("gogoGadgetPushButton", "tab->winSetDrawFunc(tabDraw);", "GadgetButtonSetText"):
+        for token in ("gogoGadgetPushButton", "ModernDraw::skinButton(s_tabs[i]", "GadgetButtonSetText"):
             self.assertIn(token, tabs)
         cmake = read("Core/GameEngine/CMakeLists.txt")
         self.assertIn("ModernDisplayOptions.cpp", cmake)
@@ -240,10 +240,9 @@ class FixThreeContracts(unittest.TestCase):
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
         self.assertIn("inline TabStrip computeTabStrip(", layout)
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
-        self.assertIn("computePanel(measured, s_scale,", tabs)
-        self.assertIn("tab->winSetDrawFunc(tabDraw);", tabs)
-        self.assertIn("drawFillRect(x, y, w, h, fill)", tabs)          # opaque dark fill: nothing shows through a tab
-        self.assertNotIn("copyAppearance(tab, donor)", tabs)           # no more large retail button art
+        self.assertIn("ModernScreen::compute(in)", tabs)               # UI.3: the rail is laid out by ModernScreenLayout.h
+        self.assertIn("ModernDraw::skinButton(s_tabs[i], ModernComponents::Kind::Tab", tabs)   # and drawn by the Modern Tab component, not retail art
+        self.assertNotIn("copyAppearance(tab, donor)", tabs)
 
     def test_options_pages_are_built_after_every_retail_show_hide_decision(self):
         menu = read("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp")
@@ -286,8 +285,8 @@ class FinalGeometryContracts(unittest.TestCase):
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
         # the retail frame is a plain colour rectangle (OptionsMenuParentOld): resized, not stretched art
         self.assertIn('byName("OptionsMenuParentOld")', tabs)
-        self.assertIn("place(frame, s_geom.panel);", tabs)
-        self.assertIn("measureTab(tab, captions[i]", tabs)           # measured from the tab's own display string
+        self.assertIn("place(frame, L.panel);", tabs)                # UI.3: the frame covers the Modern panel and draws nothing
+        self.assertIn("ModernScreen::compute(in)", tabs)             # the composition comes from the pure screen layout
         layout = read("Core/GameEngine/Include/Common/OptionsPageLayout.h")
         self.assertIn("kPanelRefW = 760", layout)
         self.assertIn("kPanelMaxW = 780", layout)

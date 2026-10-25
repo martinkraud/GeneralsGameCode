@@ -1,0 +1,74 @@
+[
+  {
+    "Flow": "MainMenu",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": true,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "",
+    "Dir": ""
+  },
+  {
+    "Flow": "Options",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": true,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "",
+    "Dir": ""
+  },
+  {
+    "Flow": "MatchSetup",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": true,
+    "Completed": true,
+    "Defects": 3,
+    "EffectiveScale": "",
+    "Cost": "",
+    "Dir": ""
+  },
+  {
+    "Flow": "Replay",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": true,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "",
+    "Dir": ""
+  },
+  {
+    "Flow": "LoadGame",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": true,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "",
+    "Dir": ""
+  },
+  {
+    "Flow": "Credits",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": true,
+    "Completed": false,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "",
+    "Dir": ""
+  }
+]

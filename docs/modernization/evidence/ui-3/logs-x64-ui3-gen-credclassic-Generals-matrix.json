@@ -1,0 +1,12 @@
+{
+  "Flow": "Credits",
+  "Title": "Generals",
+  "Size": "1920x1080",
+  "Scale": "100",
+  "Classic": true,
+  "Completed": true,
+  "Defects": 0,
+  "EffectiveScale": "",
+  "Cost": "credits decor_draws=0 avg_decor_us=0.00 worst_decor_us=0 button_draws=0 avg_button_us=0.00 string_allocations=0 layout_solves_total=0",
+  "Dir": ""
+}

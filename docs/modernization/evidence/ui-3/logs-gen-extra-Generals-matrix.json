@@ -1,0 +1,50 @@
+[
+  {
+    "Flow": "LoadGame",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "100",
+    "Cost": "browser decor_draws=93 avg_decor_us=35.38 worst_decor_us=297 button_draws=504 avg_button_us=4.91 string_allocations=6 layout_solves_total=5",
+    "Dir": ""
+  },
+  {
+    "Flow": "LoadGame",
+    "Title": "Generals",
+    "Size": "3440x1440",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "100",
+    "Cost": "browser decor_draws=97 avg_decor_us=36.85 worst_decor_us=514 button_draws=528 avg_button_us=6.89 string_allocations=6 layout_solves_total=5",
+    "Dir": ""
+  },
+  {
+    "Flow": "Credits",
+    "Title": "Generals",
+    "Size": "1920x1080",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "credits decor_draws=217 avg_decor_us=2.76 worst_decor_us=31 button_draws=0 avg_button_us=0.00 string_allocations=1 layout_solves_total=0",
+    "Dir": ""
+  },
+  {
+    "Flow": "Credits",
+    "Title": "Generals",
+    "Size": "3440x1440",
+    "Scale": "100",
+    "Classic": false,
+    "Completed": true,
+    "Defects": 0,
+    "EffectiveScale": "",
+    "Cost": "credits decor_draws=216 avg_decor_us=2.68 worst_decor_us=15 button_draws=0 avg_button_us=0.00 string_allocations=1 layout_solves_total=0",
+    "Dir": ""
+  }
+]

@@ -1,0 +1,23 @@
+191	01dd6485fd28b200	3545507821390	20656	32400	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133721Z-Generals-x64-ui3-gen\autoshot-matchsetup-classic.bmp
+192	01dd6485fd28b200	3545507822071	20656	32400	matchsetup	ok	0	classic frontend: no Modern Match Setup backdrop exists
+194	01dd6485fe08bed5	3545522502346	20656	32400	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133721Z-Generals-x64-ui3-gen\autoshot-matchopts-closed.bmp
+195	01dd6485fe08bed5	3545522502573	20656	32400	matchopts	display	0	matchopts display=800x600
+196	01dd6485fe08bed5	3545522502728	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd: [58,380 233x113] style=0x200
+197	01dd6485fe08bed5	3545522502770	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ListboxInfo [303,345 442x148] style=0x420
+198	01dd6485fe08bed5	3545522502813	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [530,509 171x36] style=0x401
+199	01dd6485fe08bed5	3545522502849	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [94,509 174x36] style=0x401
+200	01dd6485fe08bed5	3545522502956	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [221,384 66x26] style=0x480
+201	01dd6485fe08bed5	3545522502989	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [64,384 158x26] style=0x480
+202	01dd6485fe08bed5	3545522503020	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [221,411 66x26] style=0x480
+203	01dd6485fe08bed5	3545522503050	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [64,411 159x26] style=0x480
+204	01dd6485fe08bed5	3545522503079	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWinsValue [221,438 66x26] style=0x480
+205	01dd6485fe08bed5	3545522503109	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextWins [64,438 158x26] style=0x480
+206	01dd6485fe08bed5	3545522503143	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [221,465 66x26] style=0x480
+207	01dd6485fe08bed5	3545522503173	20656	32400	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [64,465 158x26] style=0x480
+208	01dd6485fe08bed5	3545522503387	20656	32400	matchopts	defect	0	SkirmishGameOptionsMenu.wnd:ComboBoxStartingCash not present (a retail caption may carry no name)
+209	01dd6485fe08bed5	3545522503454	20656	32400	matchopts	defect	0	SkirmishGameOptionsMenu.wnd:ComboBoxAIBehavior not present (a retail caption may carry no name)
+210	01dd6485fe08bed5	3545522503520	20656	32400	matchopts	defect	0	SkirmishGameOptionsMenu.wnd:ComboBoxSuperweapons not present (a retail caption may carry no name)
+211	01dd6485fe08bed5	3545522503567	20656	32400	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextStartingCash not present (a retail caption may carry no name)
+212	01dd6485fe08bed5	3545522503613	20656	32400	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior not present (a retail caption may carry no name)
+213	01dd6485fe08bed5	3545522503664	20656	32400	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons not present (a retail caption may carry no name)
+214	01dd6485fe08bed5	3545522503700	20656	32400	matchopts	ok	0	closed layout overlaps=0

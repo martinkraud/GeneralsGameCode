@@ -1,0 +1,89 @@
+197	01dd647594afafe5	3475035589469	17892	35428	autoflow	observed	0	step 0: sent a key to MainMenu.wnd:MainMenuParent
+198	01dd64759592d706	3475050470739	17892	35428	mainmenu	window	0	MainMenu.wnd:MainMenuParent [0,0 1920x1080] status=0x8 image0=-
+199	01dd64759592d706	3475050471074	17892	35428	mainmenu	window	0	 [0,0 380x1080] status=0x208 image0=-
+200	01dd64759592d706	3475050471332	17892	35428	mainmenu	geometry	0	mainmenu-root page=0 display=1920x1080 effective_scale=100% compact=0 panel=0,0 380x1080 composition=0,0 1920x1080
+201	01dd64759592d706	3475050471363	17892	35428	mainmenu	ok	0	panel inside the display
+202	01dd64759592d706	3475050471422	17892	35428	mainmenu	ok	0	mainmenu-root button  [22,405 336x46] inside_panel=1 text=125x29 fits=1 mouse_hit=1
+203	01dd64759592d706	3475050471462	17892	35428	mainmenu	ok	0	mainmenu-root button  [22,455 336x46] inside_panel=1 text=158x29 fits=1 mouse_hit=1
+204	01dd64759592d706	3475050471496	17892	35428	mainmenu	ok	0	mainmenu-root button  [22,505 336x46] inside_panel=1 text=64x29 fits=1 mouse_hit=1
+205	01dd64759592d706	3475050471535	17892	35428	mainmenu	ok	0	mainmenu-root button  [22,555 336x46] inside_panel=1 text=99x29 fits=1 mouse_hit=1
+206	01dd64759592d706	3475050471578	17892	35428	mainmenu	ok	0	mainmenu-root button  [22,605 336x46] inside_panel=1 text=98x29 fits=1 mouse_hit=1
+207	01dd64759592d706	3475050471612	17892	35428	mainmenu	ok	0	mainmenu-root button  [22,689 336x46] inside_panel=1 text=93x23 fits=1 mouse_hit=1
+208	01dd64759592d706	3475050471643	17892	35428	mainmenu	ok	0	mainmenu-root overlaps=0 visible_buttons=6
+209	01dd64759592d706	3475050471674	17892	35428	mainmenu	ok	0	mainmenu-root the page lists 5 entries + footer, 6 buttons visible
+210	01dd64759592d706	3475050471699	17892	35428	mainmenu	ok	0	a focused entry exists
+211	01dd64759595eb50	3475050679162	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-root.bmp
+212	01dd647595d6a7e7	3475054914539	17892	35428	mainmenu	ok	0	Solo Play page opened
+213	01dd647595d6a7e7	3475054914816	17892	35428	mainmenu	geometry	0	mainmenu-soloplay page=1 display=1920x1080 effective_scale=100% compact=0 panel=0,0 380x1080 composition=0,0 1920x1080
+214	01dd647595d6a7e7	3475054914854	17892	35428	mainmenu	ok	0	panel inside the display
+215	01dd647595d6a7e7	3475054914937	17892	35428	mainmenu	ok	0	mainmenu-soloplay button  [22,405 336x46] inside_panel=1 text=124x29 fits=1 mouse_hit=1
+216	01dd647595d6a7e7	3475054914981	17892	35428	mainmenu	ok	0	mainmenu-soloplay button  [22,689 336x46] inside_panel=1 text=50x23 fits=1 mouse_hit=1
+217	01dd647595d6a7e7	3475054915019	17892	35428	mainmenu	ok	0	mainmenu-soloplay button  [22,455 336x46] inside_panel=1 text=139x29 fits=1 mouse_hit=1
+218	01dd647595d6a7e7	3475054915053	17892	35428	mainmenu	ok	0	mainmenu-soloplay button  [22,505 336x46] inside_panel=1 text=113x29 fits=1 mouse_hit=1
+219	01dd647595d6a7e7	3475054915084	17892	35428	mainmenu	ok	0	mainmenu-soloplay overlaps=0 visible_buttons=4
+220	01dd647595d6a7e7	3475054915119	17892	35428	mainmenu	ok	0	mainmenu-soloplay the page lists 3 entries + footer, 4 buttons visible
+221	01dd647595d6a7e7	3475054915145	17892	35428	mainmenu	ok	0	a focused entry exists
+222	01dd647595d9687e	3475055093994	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-soloplay.bmp
+223	01dd64759619f1e0	3475059327495	17892	35428	mainmenu	ok	0	Campaign page opened
+224	01dd64759619f1e0	3475059327917	17892	35428	mainmenu	geometry	0	mainmenu-campaign page=2 display=1920x1080 effective_scale=100% compact=0 panel=0,0 380x1080 composition=0,0 1920x1080
+225	01dd64759619f1e0	3475059327998	17892	35428	mainmenu	ok	0	panel inside the display
+226	01dd64759619f1e0	3475059328103	17892	35428	mainmenu	ok	0	mainmenu-campaign button  [22,689 336x46] inside_panel=1 text=50x23 fits=1 mouse_hit=1
+227	01dd64759619f1e0	3475059328169	17892	35428	mainmenu	ok	0	mainmenu-campaign button  [22,405 336x46] inside_panel=1 text=50x29 fits=1 mouse_hit=1
+228	01dd64759619f1e0	3475059328228	17892	35428	mainmenu	ok	0	mainmenu-campaign button  [22,455 336x46] inside_panel=1 text=49x29 fits=1 mouse_hit=1
+229	01dd64759619f1e0	3475059328286	17892	35428	mainmenu	ok	0	mainmenu-campaign button  [22,505 336x46] inside_panel=1 text=74x29 fits=1 mouse_hit=1
+230	01dd64759619f1e0	3475059328340	17892	35428	mainmenu	ok	0	mainmenu-campaign overlaps=0 visible_buttons=4
+231	01dd64759619f1e0	3475059328394	17892	35428	mainmenu	ok	0	mainmenu-campaign the page lists 3 entries + footer, 4 buttons visible
+232	01dd64759619f1e0	3475059328438	17892	35428	mainmenu	ok	0	a focused entry exists
+233	01dd6475961cd1b8	3475059513318	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-campaign.bmp
+234	01dd6475965d9dee	3475063762214	17892	35428	mainmenu	ok	0	difficulty page opened after choosing a campaign
+235	01dd6475965d9dee	3475063762520	17892	35428	mainmenu	geometry	0	mainmenu-difficulty page=3 display=1920x1080 effective_scale=100% compact=0 panel=0,0 380x1080 composition=0,0 1920x1080
+236	01dd6475965d9dee	3475063762558	17892	35428	mainmenu	ok	0	panel inside the display
+237	01dd6475965d9dee	3475063762642	17892	35428	mainmenu	ok	0	mainmenu-difficulty button  [22,689 336x46] inside_panel=1 text=50x23 fits=1 mouse_hit=1
+238	01dd6475965d9dee	3475063762682	17892	35428	mainmenu	ok	0	mainmenu-difficulty button  [22,405 336x46] inside_panel=1 text=60x29 fits=1 mouse_hit=1
+239	01dd6475965d9dee	3475063762718	17892	35428	mainmenu	ok	0	mainmenu-difficulty button  [22,455 336x46] inside_panel=1 text=94x29 fits=1 mouse_hit=1
+240	01dd6475965d9dee	3475063762754	17892	35428	mainmenu	ok	0	mainmenu-difficulty button  [22,505 336x46] inside_panel=1 text=67x29 fits=1 mouse_hit=1
+241	01dd6475965d9dee	3475063762786	17892	35428	mainmenu	ok	0	mainmenu-difficulty overlaps=0 visible_buttons=4
+242	01dd6475965d9dee	3475063762818	17892	35428	mainmenu	ok	0	mainmenu-difficulty the page lists 3 entries + footer, 4 buttons visible
+243	01dd6475965d9dee	3475063762843	17892	35428	mainmenu	ok	0	a focused entry exists
+244	01dd64759660a9a6	3475063955780	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-difficulty.bmp
+245	01dd647596a15b21	3475068197511	17892	35428	mainmenu	ok	0	Escape on the difficulty page returns to Campaign
+246	01dd647596a15b21	3475068197842	17892	35428	mainmenu	ok	0	focus restored to the chosen campaign (focused action 7, expected 7)
+247	01dd647596e36ed8	3475072527382	17892	35428	mainmenu	ok	0	Escape returns to Solo Play
+248	01dd647596e36ed8	3475072527660	17892	35428	mainmenu	ok	0	focus restored to Campaign (focused action 2, expected 2)
+249	01dd647597257198	3475076860687	17892	35428	mainmenu	ok	0	Escape returns to the root
+250	01dd647597257198	3475076861082	17892	35428	mainmenu	ok	0	focus restored to Solo Play (focused action 1, expected 1)
+251	01dd647597679bc0	3475081194083	17892	35428	mainmenu	ok	0	Escape at the root does nothing
+252	01dd64759788ab16	3475083356828	17892	35428	mainmenu	ok	0	Down moves the focus to Multiplayer (focused action 3, expected 3)
+253	01dd647597a9af8c	3475085527201	17892	35428	mainmenu	ok	0	Enter activates the focused entry
+254	01dd647597a9af8c	3475085527494	17892	35428	mainmenu	geometry	0	mainmenu-multiplayer page=4 display=1920x1080 effective_scale=100% compact=0 panel=0,0 380x1080 composition=0,0 1920x1080
+255	01dd647597a9af8c	3475085527588	17892	35428	mainmenu	ok	0	panel inside the display
+256	01dd647597a9af8c	3475085527691	17892	35428	mainmenu	ok	0	mainmenu-multiplayer button  [22,689 336x46] inside_panel=1 text=50x23 fits=1 mouse_hit=1
+257	01dd647597a9af8c	3475085527736	17892	35428	mainmenu	ok	0	mainmenu-multiplayer button  [22,405 336x46] inside_panel=1 text=113x29 fits=1 mouse_hit=1
+258	01dd647597a9af8c	3475085527778	17892	35428	mainmenu	ok	0	mainmenu-multiplayer button  [22,455 336x46] inside_panel=1 text=87x29 fits=1 mouse_hit=1
+259	01dd647597a9af8c	3475085527810	17892	35428	mainmenu	ok	0	mainmenu-multiplayer overlaps=0 visible_buttons=3
+260	01dd647597a9af8c	3475085527843	17892	35428	mainmenu	ok	0	mainmenu-multiplayer the page lists 2 entries + footer, 3 buttons visible
+261	01dd647597a9af8c	3475085527867	17892	35428	mainmenu	ok	0	a focused entry exists
+262	01dd647597acaaf5	3475085716518	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-multiplayer.bmp
+263	01dd647597ed2bd2	3475089945165	17892	35428	mainmenu	ok	0	focus restored to Multiplayer (focused action 3, expected 3)
+264	01dd6475980e54dc	3475092118235	17892	35428	mainmenu	ok	0	Down moves the focus to Load (focused action 4, expected 4)
+265	01dd6475982f5f74	3475094280697	17892	35428	mainmenu	ok	0	Load page opened
+266	01dd6475982f5f74	3475094280947	17892	35428	mainmenu	geometry	0	mainmenu-load page=5 display=1920x1080 effective_scale=100% compact=0 panel=0,0 380x1080 composition=0,0 1920x1080
+267	01dd6475982f5f74	3475094281004	17892	35428	mainmenu	ok	0	panel inside the display
+268	01dd6475982f5f74	3475094281087	17892	35428	mainmenu	ok	0	mainmenu-load button  [22,689 336x46] inside_panel=1 text=50x23 fits=1 mouse_hit=1
+269	01dd6475982f5f74	3475094281136	17892	35428	mainmenu	ok	0	mainmenu-load button  [22,405 336x46] inside_panel=1 text=135x29 fits=1 mouse_hit=1
+270	01dd6475982f5f74	3475094281172	17892	35428	mainmenu	ok	0	mainmenu-load button  [22,455 336x46] inside_panel=1 text=157x29 fits=1 mouse_hit=1
+271	01dd6475982f5f74	3475094281203	17892	35428	mainmenu	ok	0	mainmenu-load overlaps=0 visible_buttons=3
+272	01dd6475982f5f74	3475094281236	17892	35428	mainmenu	ok	0	mainmenu-load the page lists 2 entries + footer, 3 buttons visible
+273	01dd6475982f5f74	3475094281261	17892	35428	mainmenu	ok	0	a focused entry exists
+274	01dd647598326da5	3475094482240	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-load.bmp
+275	01dd6475987336ad	3475098730233	17892	35428	mainmenu	ok	0	the Back button returns to the root
+276	01dd6475987336ad	3475098730506	17892	35428	mainmenu	ok	0	focus restored to Load (focused action 4, expected 4)
+279	01dd6475989adb4c	3475101326666	17892	35428	mainmenu	ok	0	the Options overlay opened over the main menu
+280	01dd6475989ec236	3475101589288	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-options-open.bmp
+281	01dd647598dfe769	3475105853655	17892	35428	mainmenu	ok	0	Cancel closed the Options overlay
+282	01dd647598dfe769	3475105854050	17892	35428	mainmenu	ok	0	the main menu still shows its six buttons after the overlay closed
+283	01dd647598dfe769	3475105854093	17892	35428	mainmenu	ok	0	the main menu is back at the root page
+284	01dd647598e41b44	3475106124402	17892	35428	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T113953Z-ZeroHour-x64-ui3-zh\autoshot-mainmenu-after-options.bmp
+285	01dd64759b47c8ed	3475146211915	17892	35428	mainmenu	cost	0	idle frames=116 avg_update_us=1.379 worst_update_us=5 relayouts_total=1 relayout_total_us=8 page_changes=11
+286	01dd64759b47c8ed	3475146212136	17892	35428	mainmenu	ok	0	the layout was recomputed only for the surface / first show, not per frame
+287	01dd64759b47c8ed	3475146212204	17892	35428	cost	frontend	0	main decor_draws=678 avg_decor_us=34.37 worst_decor_us=448 button_draws=3886 avg_button_us=5.88 string_allocations=21 layout_solves_total=1

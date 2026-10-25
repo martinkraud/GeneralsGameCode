@@ -1592,7 +1592,7 @@ void NativeAutoShot()
     // UI.3: the Modern list browsers
     static const Step replaySteps[] = { { PUSH, "Menus/ReplayMenu.wnd", nullptr, 600, 1 }, { BROWSER_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const Step loadGameSteps[] = { { PUSH, "Menus/SaveLoad.wnd", nullptr, 600, 1 }, { BROWSER_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
-    static const Step creditsSteps[] = { { PUSH, "Menus/CreditsMenu.wnd", nullptr, 600, 1 }, { CREDITS_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step creditsSteps[] = { { PUSH, "Menus/CreditsMenu.wnd", nullptr, 600, 1 }, { CREDITS_UI, nullptr, nullptr, 60, 0 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;

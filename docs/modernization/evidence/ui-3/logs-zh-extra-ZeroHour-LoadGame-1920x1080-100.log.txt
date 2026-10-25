@@ -1,0 +1,19 @@
+7	01dd6484b3eb4939	3539984098199	11644	29356	HWND_DX8_browser_input	skipped	0	
+98	01dd6484b4b2871c	3539997146932	11644	29356	display_bypass	complete	0	legacy_debug_display_browser: debug display and embedded browser not created
+198	01dd6484bb194521	3540104544563	11644	29356	browser	complete	0	scale=100 effective=100 panel=980x600 list=684x492
+199	01dd6484bc17764f	3540121211560	11644	29356	browser	geometry	0	browser display=1920x1080 effective_scale=100 panel=470,240 980x600 list=494,324 684x492
+200	01dd6484bc17764f	3540121211731	11644	29356	browser	ok	0	the panel is inside the display
+201	01dd6484bc17764f	3540121211961	11644	29356	browser	ok	0	list [494,324 684x492] expected [494,324 684x492] visible=1 mouse_hit=1
+202	01dd6484bc17764f	3540121212005	11644	29356	browser	ok	0	action 0 [1194,324 232x44] expected [1194,324 232x44] visible=1 mouse_hit=1
+203	01dd6484bc17764f	3540121212033	11644	29356	browser	ok	0	action 1 [1194,378 232x44] expected [1194,378 232x44] visible=1 mouse_hit=1
+204	01dd6484bc17764f	3540121212062	11644	29356	browser	ok	0	action 2 [1194,432 232x44] expected [1194,432 232x44] visible=1 mouse_hit=1
+205	01dd6484bc17764f	3540121212088	11644	29356	browser	ok	0	action 3 [1194,772 232x44] expected [1194,772 232x44] visible=1 mouse_hit=1
+206	01dd6484bc1a84fe	3540121414949	11644	29356	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T132819Z-ZeroHour-x64-ui3-zh\autoshot-browser.bmp
+207	01dd6484bc1a84fe	3540121415173	11644	29356	browser	ok	0	inline dialog 0 [700,438 520x204] inside the panel=1
+208	01dd6484bc1a84fe	3540121415223	11644	29356	browser	ok	0	inline dialog 1 [700,438 520x204] inside the panel=1
+209	01dd6484bc1a84fe	3540121415253	11644	29356	browser	ok	0	inline dialog 2 [700,416 520x248] inside the panel=1
+210	01dd6484bc1a84fe	3540121415279	11644	29356	browser	ok	0	inline dialog 3 [700,438 520x204] inside the panel=1
+211	01dd6484bc1a84fe	3540121415306	11644	29356	browser	ok	0	browser defects=0
+212	01dd6484bc3361d0	3540123038386	11644	29356	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T132819Z-ZeroHour-x64-ui3-zh\autoshot-browser-dialog.bmp
+213	01dd6484bc3361d0	3540123038703	11644	29356	cost	frontend	0	browser decor_draws=105 avg_decor_us=33.33 worst_decor_us=348 button_draws=576 avg_button_us=7.24 string_allocations=6 layout_solves_total=5
+214	01dd6484bc3361d0	3540123038745	11644	29356	autoflow	observed	0	step 1: browser audited 

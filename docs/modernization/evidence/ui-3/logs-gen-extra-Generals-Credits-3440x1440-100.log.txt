@@ -1,0 +1,8 @@
+194	01dd6485df30ab97	3545005027601	7628	19332	autoflow	observed	0	step 0: pushed Menus/CreditsMenu.wnd
+195	01dd6485e0e25aa9	3545033453272	7628	19332	credits	window	0	CreditsMenu.wnd:ParentCreditsWindow [0,0 3440x1440] status=0x8 image0=-
+196	01dd6485e0e25aa9	3545033453763	7628	19332	credits	window	0	CreditsMenu.wnd:WinTextDraw [0,0 800x600] status=0x8 image0=-
+197	01dd6485e0e25aa9	3545033453805	7628	19332	credits	window	0	 [0,0 3440x1440] status=0x200 image0=-
+198	01dd6485e0e25aa9	3545033454107	7628	19332	credits	ok	0	the Modern credits scrim band is present
+199	01dd6485e0f54cad	3545034688977	7628	19332	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T133635Z-Generals-x64-ui3-gen\autoshot-credits.bmp
+200	01dd6485e0f54cad	3545034689316	7628	19332	cost	frontend	0	credits decor_draws=216 avg_decor_us=2.68 worst_decor_us=15 button_draws=0 avg_button_us=0.00 string_allocations=1 layout_solves_total=0
+201	01dd6485e0f54cad	3545034689359	7628	19332	autoflow	observed	0	step 1: credits audited 

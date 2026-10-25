@@ -1,0 +1,8 @@
+189	01dd64877cf6005d	3551946953719	32172	20944	autoflow	observed	0	step 0: pushed Menus/CreditsMenu.wnd
+190	01dd64877e1108c9	3551965496366	32172	20944	credits	window	0	CreditsMenu.wnd:ParentCreditsWindow [0,0 800x600] status=0x88 image0=CreditsScreen
+191	01dd64877e1108c9	3551965496708	32172	20944	credits	window	0	BlankWindow.wnd:BlankWindow [0,0 800x600] status=0x88 image0=MainMenuBackdrop
+192	01dd64877e1108c9	3551965496790	32172	20944	credits	window	0	CreditsMenu.wnd:WinTextDraw [0,0 800x600] status=0x8 image0=-
+193	01dd64877e1108c9	3551965497646	32172	20944	credits	ok	0	no Modern credits band (Classic: the retail black screen)
+194	01dd64877e12082a	3551965562137	32172	20944	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T134809Z-Generals-x64-ui3-gen\autoshot-credits.bmp
+195	01dd64877e12082a	3551965562668	32172	20944	cost	frontend	0	credits decor_draws=0 avg_decor_us=0.00 worst_decor_us=0 button_draws=0 avg_button_us=0.00 string_allocations=0 layout_solves_total=0
+196	01dd64877e12082a	3551965562712	32172	20944	autoflow	observed	0	step 1: credits audited 

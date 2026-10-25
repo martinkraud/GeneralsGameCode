@@ -1,0 +1,72 @@
+197	01dd6481d370cbd4	3527628034506	13884	3788	matchsetup	complete	0	scale=100 effective=100 panel=1280x600 rules=3
+198	01dd6481d44b98ac	3527642375662	13884	3788	matchsetup	geometry	0	matchsetup display=1920x1080 effective_scale=100 panel=320,240 1280x600 rules=3
+199	01dd6481d44b98ac	3527642375976	13884	3788	matchsetup	ok	0	the panel is inside the display
+200	01dd6481d44b98ac	3527642376037	13884	3788	matchsetup	window	0	SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent [0,0 1920x1080] style=0x200 status=0x408
+201	01dd6481d44b98ac	3527642376084	13884	3788	matchsetup	window	0	SkirmishGameOptionsMenu.wnd:SubParent [320,240 1280x600] style=0x200 status=0x8
+202	01dd6481d44b98ac	3527642376185	13884	3788	matchsetup	window	0	 [320,240 1280x600] style=0x0 status=0x200
+203	01dd6481d44b98ac	3527642376974	13884	3788	matchsetup	ok	0	the rules zone holds at least the Starting Cash card
+204	01dd6481d44b98ac	3527642377045	13884	3788	matchsetup	ok	0	start position markers visible=8 outside_preview=0
+205	01dd6481d44b98ac	3527642377076	13884	3788	matchsetup	ok	0	matchsetup defects=0
+206	01dd6481d4500750	3527642666939	13884	3788	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T130738Z-Generals-x64-ui3-gen\autoshot-matchsetup.bmp
+207	01dd6481d4500750	3527642667206	13884	3788	cost	frontend	0	match decor_draws=82 avg_decor_us=111.01 worst_decor_us=1823 button_draws=3034 avg_button_us=2.62 string_allocations=14 layout_solves_total=1
+209	01dd6481d54a2718	3527659055959	13884	3788	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T130738Z-Generals-x64-ui3-gen\autoshot-matchopts-closed.bmp
+210	01dd6481d54a2718	3527659056231	13884	3788	matchopts	display	0	matchopts display=1920x1080
+211	01dd6481d54a2718	3527659056323	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreakValue [1498,644 64x22] style=0x480
+212	01dd6481d54a2718	3527659056366	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextBestStreak [1270,644 228x22] style=0x480
+213	01dd6481d54a2718	3527659056405	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreakValue [1498,622 64x22] style=0x480
+214	01dd6481d54a2718	3527659056441	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextStreak [1270,622 228x22] style=0x480
+215	01dd6481d54a2718	3527659056479	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLossesValue [1498,600 64x22] style=0x480
+216	01dd6481d54a2718	3527659056514	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:StaticTextLosses [1270,600 228x22] style=0x480
+217	01dd6481d54a2718	3527659056554	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonBack [1200,778 180x38] style=0x401
+218	01dd6481d54a2718	3527659056587	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonStart [1396,778 180x38] style=0x401
+219	01dd6481d54a2718	3527659056622	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ButtonSelectMap [358,642 272x38] style=0x401
+220	01dd6481d54a2718	3527659056661	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:TextEntryMapDisplay [358,606 272x28] style=0x480
+221	01dd6481d54a2718	3527659056738	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxPlayer5 [674,602 150x34] style=0x8400
+222	01dd6481d54a2718	3527659056775	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxColor5 [834,602 92x34] style=0x8400
+223	01dd6481d54a2718	3527659056813	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxPlayerTemplate5 [936,602 208x34] style=0x8400
+224	01dd6481d54a2718	3527659056873	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxTeam5 [1154,602 72x34] style=0x8400
+225	01dd6481d54a2718	3527659056927	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxPlayer6 [674,642 150x34] style=0x8400
+226	01dd6481d54a2718	3527659056963	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxColor6 [834,642 92x34] style=0x8400
+227	01dd6481d54a2718	3527659056996	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxPlayerTemplate6 [936,642 208x34] style=0x8400
+228	01dd6481d54a2718	3527659057032	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxTeam6 [1154,642 72x34] style=0x8400
+229	01dd6481d54a2718	3527659057065	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxPlayer7 [674,682 150x34] style=0x8400
+230	01dd6481d54a2718	3527659057098	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxColor7 [834,682 92x34] style=0x8400
+231	01dd6481d54a2718	3527659057132	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxPlayerTemplate7 [936,682 208x34] style=0x8400
+232	01dd6481d54a2718	3527659057168	13884	3788	matchopts	window	0	SkirmishGameOptionsMenu.wnd:ComboBoxTeam7 [1154,682 72x34] style=0x8400
+233	01dd6481d54a2718	3527659057302	13884	3788	matchopts	window	0	(unnamed) [674,602 133x34] style=0x440
+234	01dd6481d54a2718	3527659057338	13884	3788	matchopts	window	0	(unnamed) [807,602 17x34] style=0x401
+235	01dd6481d54a2718	3527659057370	13884	3788	matchopts	window	0	(unnamed) [834,602 75x34] style=0x440
+236	01dd6481d54a2718	3527659057397	13884	3788	matchopts	window	0	(unnamed) [909,602 17x34] style=0x401
+237	01dd6481d54a2718	3527659057430	13884	3788	matchopts	window	0	(unnamed) [936,602 191x34] style=0x440
+238	01dd6481d54a2718	3527659057462	13884	3788	matchopts	window	0	(unnamed) [1127,602 17x34] style=0x401
+239	01dd6481d54a2718	3527659057494	13884	3788	matchopts	window	0	(unnamed) [1154,602 55x34] style=0x440
+240	01dd6481d54a2718	3527659057525	13884	3788	matchopts	window	0	(unnamed) [1209,602 17x34] style=0x401
+241	01dd6481d54a2718	3527659057558	13884	3788	matchopts	window	0	(unnamed) [674,642 133x34] style=0x440
+242	01dd6481d54a2718	3527659057597	13884	3788	matchopts	window	0	(unnamed) [807,642 17x34] style=0x401
+243	01dd6481d54a2718	3527659057628	13884	3788	matchopts	window	0	(unnamed) [834,642 75x34] style=0x440
+244	01dd6481d54a2718	3527659057660	13884	3788	matchopts	window	0	(unnamed) [909,642 17x34] style=0x401
+245	01dd6481d54a2718	3527659057692	13884	3788	matchopts	window	0	(unnamed) [936,642 191x34] style=0x440
+246	01dd6481d54a2718	3527659057726	13884	3788	matchopts	window	0	(unnamed) [1127,642 17x34] style=0x401
+247	01dd6481d54a2718	3527659057759	13884	3788	matchopts	window	0	(unnamed) [1154,642 55x34] style=0x440
+248	01dd6481d54a2718	3527659057787	13884	3788	matchopts	window	0	(unnamed) [1209,642 17x34] style=0x401
+249	01dd6481d54a2718	3527659057818	13884	3788	matchopts	window	0	(unnamed) [674,682 133x34] style=0x440
+250	01dd6481d54a2718	3527659057847	13884	3788	matchopts	window	0	(unnamed) [807,682 17x34] style=0x401
+251	01dd6481d54a2718	3527659057877	13884	3788	matchopts	window	0	(unnamed) [834,682 75x34] style=0x440
+252	01dd6481d54a2718	3527659057906	13884	3788	matchopts	window	0	(unnamed) [909,682 17x34] style=0x401
+253	01dd6481d54a2718	3527659057937	13884	3788	matchopts	window	0	(unnamed) [936,682 191x34] style=0x440
+254	01dd6481d54a2718	3527659057968	13884	3788	matchopts	window	0	(unnamed) [1127,682 17x34] style=0x401
+255	01dd6481d54a2718	3527659058001	13884	3788	matchopts	window	0	(unnamed) [1154,682 55x34] style=0x440
+256	01dd6481d54a2718	3527659058032	13884	3788	matchopts	window	0	(unnamed) [1209,682 17x34] style=0x401
+257	01dd6481d54a2718	3527659058133	13884	3788	matchopts	geometry	0	(unnamed) at 1270,392 292x32
+258	01dd6481d54a2718	3527659058218	13884	3788	matchopts	geometry	0	(unnamed) at 1270,458 292x32
+259	01dd6481d54a2718	3527659058296	13884	3788	matchopts	geometry	0	(unnamed) at 1270,524 292x32
+260	01dd6481d54a2718	3527659058387	13884	3788	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextStartingCash not present (a retail caption may carry no name)
+261	01dd6481d54a2718	3527659058438	13884	3788	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextAIBehavior not present (a retail caption may carry no name)
+262	01dd6481d54a2718	3527659058483	13884	3788	matchopts	info	0	SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons not present (a retail caption may carry no name)
+263	01dd6481d54a2718	3527659058515	13884	3788	matchopts	ok	0	closed layout overlaps=0
+264	01dd6481d5a67291	3527665108616	13884	3788	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T130738Z-Generals-x64-ui3-gen\autoshot-matchopts-open-0.bmp
+265	01dd6481d5a67291	3527665108880	13884	3788	matchopts	ok	0	(unnamed) combo=1270,392 292x120 list_open=1 list=1270,424 292x88 rows=4 reachable=4 first_unreachable=-1 by=-
+266	01dd6481d5fc1a7e	3527670719177	13884	3788	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T130738Z-Generals-x64-ui3-gen\autoshot-matchopts-open-1.bmp
+267	01dd6481d5fc1a7e	3527670719776	13884	3788	matchopts	ok	0	(unnamed) combo=1270,458 292x78 list_open=1 list=1270,490 292x46 rows=2 reachable=2 first_unreachable=-1 by=-
+268	01dd6481d6512ebe	3527676293065	13884	3788	autoshot	complete	0	C:\Users\buskr\Documents\ProjectsX\GeneralsGameCode\build\diag\autocapture-20261025T130738Z-Generals-x64-ui3-gen\autoshot-matchopts-open-2.bmp
+269	01dd6481d6512ebe	3527676293361	13884	3788	matchopts	ok	0	(unnamed) combo=1270,524 292x141 list_open=1 list=1270,556 292x109 rows=5 reachable=5 first_unreachable=-1 by=-
