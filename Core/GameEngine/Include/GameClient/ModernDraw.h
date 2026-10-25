@@ -19,12 +19,18 @@ namespace ModernDraw
 using ModernComponents::Kind;
 using ModernTheme::TypeRole;
 
+// ---- screens ----
+// Several Modern screens can be alive at once (the Options overlay over the main menu, a dialog over a browser). Every screen owns its registered windows and its own effective scale:
+// a screen calls beginScreen() before it builds / lays out / skins, and clearRegistry(screen) only drops ITS windows - an overlay closing never wipes the screen below it.
+enum class Screen : unsigned char { Main, Options, MatchSetup, Browser, Credits, Dialog, Count };
+void beginScreen(Screen screen);
+
 // ---- theme state ----
 void setTitle(ModernTheme::Title title);
 ModernTheme::Title title();
 const ModernTheme::Palette &palette();
-int scalePercent();                        // the effective UI scale the screen was laid out with
-void setScalePercent(int percent);         // re-resolves fonts of every registered window and decor item
+int scalePercent();                        // the effective UI scale the current screen (beginScreen) was laid out with
+void setScalePercent(int percent);         // sets it and re-resolves the fonts of the current screen's registered windows
 
 // ---- typography ----
 const char *resolvedFamily(TypeRole role);          // the installed family the role really uses ("" before the first resolve)
@@ -50,7 +56,8 @@ void skinSlider(GameWindow *window);
 void setSelected(GameWindow *window, bool selected);   // the "selected" state of a skinned button (the active tab)
 void setFocusWindow(GameWindow *window);               // keyboard focus indicator (navigation model)
 GameWindow *focusWindow();
-void clearRegistry();
+void clearRegistry();                      // every screen (process-level reset)
+void clearRegistry(Screen screen);         // only the windows registered by `screen`
 unsigned registeredCount();
 
 // ---- cost instrumentation (read by the audit; two timer reads per draw, no allocation) ----
@@ -72,7 +79,7 @@ struct DecorItem
 	int cutTL = 0, cutTR = 0, cutBR = 0, cutBL = 0;
 	TypeRole role = TypeRole::Body;
 	int align = 0;                                  // Text: 0 left, 1 centre, 2 right
-	ModernTheme::Color color = {};                  // Text / Rule / Tick colour (alpha 0 = the role's default)
+	ModernTheme::Color color = { 0, 0, 0, 0 };      // Scrim / Text / Rule / Tick colour (alpha 0 = the palette's default for the kind)
 	wchar_t text[96] = {};
 	bool accent = false;                            // Panel / Raised: accent edge instead of the neutral edge
 };
@@ -86,12 +93,14 @@ public:
 	int count() const { return m_count; }
 	DecorItem &item(int i) { return m_items[i]; }
 	void refreshFonts();
+	void setOwner(unsigned char screen) { m_owner = screen; }
 	void draw(int originX, int originY);   // item coordinates are relative to the backdrop window's top-left
 private:
 	static constexpr int kMax = 96;
 	DecorItem m_items[kMax];
 	void *m_strings[kMax] = {};       // DisplayString*
 	int m_count = 0;
+	unsigned char m_owner = 0;       // the Screen whose scale the chrome is drawn at
 };
 
 // The backdrop window of a screen: a window below every other child that draws a Decor.

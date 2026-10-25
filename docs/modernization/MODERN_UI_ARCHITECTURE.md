@@ -1,13 +1,13 @@
 # Modern Experience UI - architecture and roadmap (UI.1)
 
-Status: **UI.1 (architecture) and UI.2 (Modern main menu / navigation shell, [MODERN_UI_2_MAIN_MENU.md](MODERN_UI_2_MAIN_MENU.md)) delivered; native acceptance of UI.2 pending. Match Setup, Options and the HUD are not redesigned yet.** Evidence base: [MODERN_UI_ARCHAEOLOGY.md](MODERN_UI_ARCHAEOLOGY.md). Read with
+Status: **UI.1 (architecture), UI.2 (Modern main menu / navigation shell, [MODERN_UI_2_MAIN_MENU.md](MODERN_UI_2_MAIN_MENU.md)) and UI.3 (design system + Options, Match Setup, browsers, dialogs, credits, [MODERN_UI_3_FRONTEND.md](MODERN_UI_3_FRONTEND.md)) delivered; native acceptance of UI.2 / UI.3 pending. Match Setup, Options and the HUD are not redesigned yet.** Evidence base: [MODERN_UI_ARCHAEOLOGY.md](MODERN_UI_ARCHAEOLOGY.md). Read with
 [ENHANCED_HUD_FRAMEWORK_V1.md](ENHANCED_HUD_FRAMEWORK_V1.md) (frozen in-match HUD) and [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## 1. Goal and principle
 
 Preserve the identity, atmosphere, content and functionality of Generals / Zero Hour; replace the *structural* limits of the 800x600-era UI (absolute rectangles, one centred canvas,
-per-screen hard-coded geometry) with a responsive, extensible interface for modern PCs. **Not** a generic desktop skin: the look stays the Generals console language (the retail button art,
-gold/blue chrome, faction emblems, the shell map behind the menu, the sounds and transitions), reinterpreted where the layout needs more room.
+per-screen hard-coded geometry) with a responsive, extensible interface for modern PCs. **Not** a generic desktop skin: the look is a Generals command-terminal language (chamfered hairline components, the title accent colour, faction emblems and the logo, the shell map behind the menu,
+the sounds and transitions). UI.3 decided that the retail button *art* is not part of that language: the Modern components are procedural; the retail gadgets underneath keep their behaviour.
 
 Two paths, one codebase: **Classic / Original** = preservation; **Modern Experience** = the expandable path.
 
@@ -204,3 +204,8 @@ Explicitly **not** in UI.2: Match Setup, Options, HUD, movies.
 * Recommended, not performed: a `docs/README.md` index (the `docs/modernization` folder has 100+ milestone files); screenshots / a short capture in the README; an issues label set (`area:ui`, `area:ai`, `native-test`) and an
   issue template for native-test reports (attach `generals64.log`, `Options.ini`, the real-input camera harness output); repository topics; pinning a pre-release with the overlay ZIPs once the owner is satisfied; a
   badge only for a workflow that is actually green on this fork (inherited upstream workflows are not all relevant); a CODEOWNERS or MAINTAINERS note. Legal / non-affiliation wording already exists in the README and must be preserved.
+
+## UI.3 - the Modern frontend system (implemented)
+UI.3 replaced the "retail art in a new layout" approach of UI.2 with a design system (`Common/ModernTheme.h`, `ModernComponents.h`, `GameClient/ModernDraw.{h,cpp}`) and a screen kit: `Common/ModernScreenLayout.h` (settings screen, modal dialog, list browser),
+`Common/ModernMatchSetupLayout.h` (Map | Players | Match Rules), `Common/ModernSettingsModel.h` (pending-changes model). Screens skin and re-place the RETAIL gadgets (callbacks untouched) and draw their chrome with one backdrop window per screen (`ModernDraw::Decor`).
+Full description, migration table, responsive rules, how to add a setting / rule / list screen, limitations and the visual checklist: [MODERN_UI_3_FRONTEND.md](MODERN_UI_3_FRONTEND.md). The contract rules of section 2 hold for every new entry point (`test_modern_frontend.py`).

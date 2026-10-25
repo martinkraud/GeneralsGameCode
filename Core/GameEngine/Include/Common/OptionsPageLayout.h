@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// X64.33 FIX2: geometry of the Modern Experience Options categories (pure, testable).
+// X64.33 FIX2: the Modern Experience Options categories: the page TABLES (which retail control lives on which page - still the source of truth) and, from FIX2 / FIX4, a hand-written panel
+// geometry. UI.3 laid the screen out with Common/ModernScreenLayout.h instead; computePanel / computePage / computeTabStrip below are the retired X64.33 geometry, kept only because their tests pin
+// the table contract (and as a reference for the older native evidence).
 //
 // The retail Options screen is one dense 800x600 page. Modern settings do not fit it: native review of FIX1 showed
 // text leaving its controls and a crowded Video block. Options is now organised in categories; every category is a

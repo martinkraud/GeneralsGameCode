@@ -71,6 +71,8 @@ void apply(GameWindow *trueParent, GameWindow *parent, const char *menuName, con
 	int percent = static_cast<int>(DisplayRuntime::uiScale() * 100.0 + 0.5);
 	if (percent <= 0) percent = 100;
 	const int scale = ModernScreen::dialogScale(surfaceW, surfaceH, percent);
+	ModernDraw::beginScreen(ModernDraw::Screen::Dialog);   // a dialog has its own scale; the screen below keeps its own
+	ModernDraw::setScalePercent(scale);
 
 	// measure the wrapped body at its final width
 	int bodyH = 0;

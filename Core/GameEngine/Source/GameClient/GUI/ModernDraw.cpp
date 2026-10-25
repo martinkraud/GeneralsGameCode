@@ -37,7 +37,9 @@ using ModernTheme::Color;
 
 ModernTheme::Title g_title = ModernTheme::Title::Generals;
 Stats g_stats;
-int g_scale = 100;
+int g_scale = 100;                              // the scale of the window being drawn (set by activate() at the start of every draw callback)
+int g_scales[static_cast<int>(Screen::Count)] = { 100, 100, 100, 100, 100, 100 };   // the effective scale of each screen
+Screen g_owner = Screen::Main;                  // the screen that is building / laying out / skinning right now
 GameWindow *g_focus = nullptr;
 char g_family[static_cast<int>(TypeRole::Count)][32] = {};
 bool g_resolved[static_cast<int>(TypeRole::Count)] = {};
@@ -49,6 +51,7 @@ struct Entry
 	TypeRole role = TypeRole::MenuSecondary;
 	bool selected = false;
 	char arrow = 0;          // 'u' / 'd' chevron button, 0 = a text button
+	Screen owner = Screen::Main;
 };
 std::vector<Entry> g_entries;
 
@@ -60,11 +63,19 @@ Entry *find(GameWindow *w)
 	return nullptr;
 }
 
+// draw-time scale helpers: a draw callback runs for any screen at any time, so it first adopts the scale of the screen that owns its window
+int dpx(int ref) { return (ref * g_scale + 50) / 100; }
+void activate(GameWindow *w)
+{
+	if (const Entry *e = find(w)) g_scale = g_scales[static_cast<int>(e->owner)];
+}
+
 Entry &entryFor(GameWindow *w)
 {
 	if (Entry *e = find(w)) return *e;
 	g_entries.push_back(Entry());
 	g_entries.back().window = w;
+	g_entries.back().owner = g_owner;
 	return g_entries.back();
 }
 
@@ -113,6 +124,7 @@ void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e);
 
 void buttonDraw(GameWindow *w, WinInstanceData *inst)
 {
+	activate(w);
 	LARGE_INTEGER t0, t1, freq;
 	QueryPerformanceCounter(&t0);
 	drawButton(w, inst, find(w));
@@ -125,6 +137,7 @@ void buttonDraw(GameWindow *w, WinInstanceData *inst)
 // Dialog buttons are not in the registry (a dialog is created and destroyed independently of the screen below it): the component kind rides in the gadget's data pointer.
 void dialogButtonDraw(GameWindow *w, WinInstanceData *inst)
 {
+	g_scale = g_scales[static_cast<int>(Screen::Dialog)];
 	Entry e;
 	e.window = w;
 	e.kind = static_cast<Kind>(reinterpret_cast<intptr_t>(GadgetButtonGetData(w)));
@@ -143,7 +156,7 @@ void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e)
 	const Flags f = flagsOf(w, inst, e, true);
 	const State st = ModernComponents::resolve(f);
 	const ModernComponents::Style s = ModernComponents::style(e->kind, st, p);
-	const int cut = px(m.chamferSmall);
+	const int cut = dpx(m.chamferSmall);
 	const bool nav = e->kind == Kind::Nav || e->kind == Kind::NavMinor || e->kind == Kind::NavDanger;
 	const bool tab = e->kind == Kind::Tab;
 
@@ -159,7 +172,7 @@ void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e)
 	}
 
 	int tcut = cut;
-	if (nav) { tcut = px(m.chamferSmall); }
+	if (nav) { tcut = dpx(m.chamferSmall); }
 	if (s.fill.a)
 	{
 		if (nav || tab) fillChamfer(x, y, sw, sh, 0, tcut, 0, tcut, s.fill);
@@ -172,12 +185,12 @@ void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e)
 	}
 	if (s.tick.a)
 	{
-		const int tw = px(m.accentTick);
+		const int tw = dpx(m.accentTick);
 		fillRect(x, y, tw, sh, s.tick);
 	}
 	const Color shadow = { 0, 0, 0, 150 };
 	if (nav || tab || e->kind == Kind::Row)
-		drawText(w, inst, s.text, 0, px(m.accentTick) + px(nav ? 16 : 12), shadow);
+		drawText(w, inst, s.text, 0, dpx(m.accentTick) + dpx(nav ? 16 : 12), shadow);
 	else
 		drawText(w, inst, s.text, 1, 0, shadow);
 }
@@ -185,6 +198,7 @@ void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e)
 // ---- check box ----
 void checkDraw(GameWindow *w, WinInstanceData *inst)
 {
+	activate(w);
 	const ModernTheme::Palette &p = ModernTheme::variant(g_title).palette;
 	int x = 0, y = 0, sw = 0, sh = 0;
 	w->winGetScreenPosition(&x, &y);
@@ -194,7 +208,7 @@ void checkDraw(GameWindow *w, WinInstanceData *inst)
 	f.hover = BitIsSet(inst->getState(), WIN_STATE_HILITED) != 0;
 	f.focus = g_focus == w;
 	const bool checked = BitIsSet(inst->getState(), WIN_STATE_SELECTED) != 0;
-	const int box = (sh * 7) / 10 < px(26) ? (sh * 7) / 10 : px(26);
+	const int box = (sh * 7) / 10 < dpx(26) ? (sh * 7) / 10 : dpx(26);
 	const int by = y + (sh - box) / 2;
 	const Color edge = !f.enabled ? p.hairline : (f.focus ? p.focus : (f.hover ? p.accent : p.edge));
 	fillRect(x, by, box, box, f.enabled ? p.field : p.field.withAlpha(110));
@@ -205,18 +219,19 @@ void checkDraw(GameWindow *w, WinInstanceData *inst)
 		fillRect(x + in, by + in, box - 2 * in, box - 2 * in, f.enabled ? p.accent : p.textDisabled);
 	}
 	const Color shadow = { 0, 0, 0, 150 };
-	drawText(w, inst, f.enabled ? (f.hover ? p.text : p.textSecondary) : p.textDisabled, 0, box + px(10), shadow);
+	drawText(w, inst, f.enabled ? (f.hover ? p.text : p.textSecondary) : p.textDisabled, 0, box + dpx(10), shadow);
 }
 
 // ---- horizontal slider track (the thumb is a child push button skinned as a handle) ----
 void sliderDraw(GameWindow *w, WinInstanceData *inst)
 {
+	activate(w);
 	const ModernTheme::Palette &p = ModernTheme::variant(g_title).palette;
 	int x = 0, y = 0, sw = 0, sh = 0;
 	w->winGetScreenPosition(&x, &y);
 	w->winGetSize(&sw, &sh);
 	const bool enabled = BitIsSet(w->winGetStatus(), WIN_STATUS_ENABLED) != 0;
-	const int th = px(4), ty = y + (sh - th) / 2;
+	const int th = dpx(4), ty = y + (sh - th) / 2;
 	fillRect(x, ty, sw, th, enabled ? p.hairline : p.hairline.withAlpha(90));
 	Int mn = 0, mx = 0;
 	GadgetSliderGetMinMax(w, &mn, &mx);
@@ -231,36 +246,39 @@ void sliderDraw(GameWindow *w, WinInstanceData *inst)
 
 void thumbDraw(GameWindow *w, WinInstanceData *inst)
 {
+	activate(w);
 	const ModernTheme::Palette &p = ModernTheme::variant(g_title).palette;
 	int x = 0, y = 0, sw = 0, sh = 0;
 	w->winGetScreenPosition(&x, &y);
 	w->winGetSize(&sw, &sh);
 	const bool enabled = BitIsSet(w->winGetStatus(), WIN_STATUS_ENABLED) != 0;
 	const bool hot = BitIsSet(inst->getState(), WIN_STATE_HILITED) != 0 || BitIsSet(inst->getState(), WIN_STATE_SELECTED) != 0;
-	const int tw = px(10) < sw ? px(10) : sw;
+	const int tw = dpx(10) < sw ? dpx(10) : sw;
 	const int tx = x + (sw - tw) / 2;
-	fillChamfer(tx, y, tw, sh, 0, px(3), 0, px(3), !enabled ? p.textDisabled : (hot ? p.text : p.accent));
+	fillChamfer(tx, y, tw, sh, 0, dpx(3), 0, dpx(3), !enabled ? p.textDisabled : (hot ? p.text : p.accent));
 }
 
 void verticalTrackDraw(GameWindow *w, WinInstanceData *inst)
 {
+	activate(w);
 	const ModernTheme::Palette &p = ModernTheme::variant(g_title).palette;
 	int x = 0, y = 0, sw = 0, sh = 0;
 	w->winGetScreenPosition(&x, &y);
 	w->winGetSize(&sw, &sh);
-	fillRect(x + sw / 2 - px(2), y, px(4), sh, p.hairline);
+	fillRect(x + sw / 2 - dpx(2), y, dpx(4), sh, p.hairline);
 	(void)inst;
 }
 
 void verticalThumbDraw(GameWindow *w, WinInstanceData *inst)
 {
+	activate(w);
 	const ModernTheme::Palette &p = ModernTheme::variant(g_title).palette;
 	int x = 0, y = 0, sw = 0, sh = 0;
 	w->winGetScreenPosition(&x, &y);
 	w->winGetSize(&sw, &sh);
 	const bool hot = BitIsSet(inst->getState(), WIN_STATE_HILITED) != 0 || BitIsSet(inst->getState(), WIN_STATE_SELECTED) != 0;
-	const int tw = px(6) < sw ? px(6) : sw;
-	fillChamfer(x + (sw - tw) / 2, y, tw, sh, 0, px(2), 0, px(2), hot ? p.text : p.accent);
+	const int tw = dpx(6) < sw ? dpx(6) : sw;
+	fillChamfer(x + (sw - tw) / 2, y, tw, sh, 0, dpx(2), 0, dpx(2), hot ? p.text : p.accent);
 }
 
 void applyTextColors(GameWindow *w, const ModernTheme::Palette &p)
@@ -279,8 +297,9 @@ ModernTheme::Title title() { return g_title; }
 const Stats &stats() { return g_stats; }
 void resetStats() { g_stats = Stats(); }
 const ModernTheme::Palette &palette() { return ModernTheme::variant(g_title).palette; }
-int scalePercent() { return g_scale; }
-int px(int ref) { return (ref * g_scale + 50) / 100; }
+int scalePercent() { return g_scales[static_cast<int>(g_owner)]; }
+int px(int ref) { return (ref * g_scales[static_cast<int>(g_owner)] + 50) / 100; }
+void beginScreen(Screen screen) { g_owner = screen; g_scale = g_scales[static_cast<int>(screen)]; }
 
 bool familyInstalled(const char *family)
 {
@@ -312,7 +331,7 @@ const char *resolvedFamily(TypeRole role)
 	return g_family[i];
 }
 
-GameFont *font(TypeRole role) { return fontAt(role, g_scale); }
+GameFont *font(TypeRole role) { return fontAt(role, g_scales[static_cast<int>(g_owner)]); }
 
 GameFont *fontAt(TypeRole role, int scalePercent)
 {
@@ -362,9 +381,10 @@ void bracket(int x, int y, int w, int h, int arm, int width, const Color &c)
 void setScalePercent(int percent)
 {
 	if (percent <= 0) percent = 100;
+	g_scales[static_cast<int>(g_owner)] = percent;
 	g_scale = percent;
 	for (Entry &e : g_entries)
-		if (e.window) e.window->winSetFont(font(e.role));
+		if (e.window && e.owner == g_owner) e.window->winSetFont(font(e.role));
 }
 
 void skinButton(GameWindow *window, Kind kind, TypeRole role)
@@ -383,6 +403,7 @@ void skinButton(GameWindow *window, Kind kind, TypeRole role)
 void skinDialogButton(GameWindow *window, Kind kind, TypeRole role, int scalePercent)
 {
 	if (!window) return;
+	g_scales[static_cast<int>(Screen::Dialog)] = scalePercent > 0 ? scalePercent : 100;   // the dialog's own scale for the draw callback (px() of the layout scale is not used)
 	GadgetButtonSetData(window, reinterpret_cast<void *>(static_cast<intptr_t>(kind)));
 	window->winSetDrawFunc(dialogButtonDraw);
 	window->winClearStatus(WIN_STATUS_IMAGE);
@@ -415,6 +436,7 @@ void skinCheck(GameWindow *window)
 void skinSlider(GameWindow *window)
 {
 	if (!window) return;
+	entryFor(window).role = TypeRole::Value;
 	window->winSetDrawFunc(sliderDraw);
 	window->winClearStatus(WIN_STATUS_IMAGE);
 	if (GameWindow *thumb = GadgetSliderGetThumb(window))
@@ -431,10 +453,12 @@ namespace
 void skinVerticalSlider(GameWindow *slider)
 {
 	if (!slider) return;
+	entryFor(slider).role = TypeRole::Value;
 	slider->winSetDrawFunc(verticalTrackDraw);
 	slider->winClearStatus(WIN_STATUS_IMAGE);
 	if (GameWindow *thumb = GadgetSliderGetThumb(slider))
 	{
+		entryFor(thumb).role = TypeRole::Value;
 		thumb->winSetDrawFunc(verticalThumbDraw);
 		thumb->winClearStatus(WIN_STATUS_IMAGE);
 	}
@@ -521,6 +545,11 @@ void setSelected(GameWindow *window, bool selected)
 void setFocusWindow(GameWindow *window) { g_focus = window; }
 GameWindow *focusWindow() { return g_focus; }
 void clearRegistry() { g_entries.clear(); g_focus = nullptr; }
+void clearRegistry(Screen screen)
+{
+	for (size_t i = g_entries.size(); i-- > 0;)
+		if (g_entries[i].owner == screen) g_entries.erase(g_entries.begin() + static_cast<std::ptrdiff_t>(i));
+}
 unsigned registeredCount() { return static_cast<unsigned>(g_entries.size()); }
 
 // ---- decor ----
@@ -559,6 +588,7 @@ void Decor::refreshFonts()
 void Decor::draw(int ox, int oy)
 {
 	if (!TheDisplay) return;
+	g_scale = g_scales[m_owner];
 	LARGE_INTEGER t0, t1, freq;
 	QueryPerformanceCounter(&t0);
 	const ModernTheme::Palette &p = palette();
@@ -570,7 +600,7 @@ void Decor::draw(int ox, int oy)
 		d.x += ox; d.y += oy;
 		switch (d.kind)
 		{
-		case DecorKind::Scrim:  fillRect(d.x, d.y, d.w, d.h, p.scrim); break;
+		case DecorKind::Scrim:  fillRect(d.x, d.y, d.w, d.h, d.color.a ? d.color : p.scrim); break;
 		case DecorKind::Panel:
 		case DecorKind::Raised:
 			fillChamfer(d.x, d.y, d.w, d.h, d.cutTL, d.cutTR, d.cutBR, d.cutBL, d.kind == DecorKind::Panel ? p.panel : p.panelRaised);
@@ -582,7 +612,7 @@ void Decor::draw(int ox, int oy)
 			break;
 		case DecorKind::Rule:   fillRect(d.x, d.y, d.w, d.h, d.color.a ? d.color : p.hairline); break;
 		case DecorKind::Tick:   fillRect(d.x, d.y, d.w, d.h, d.color.a ? d.color : p.accent); break;
-		case DecorKind::Bracket: bracket(d.x, d.y, d.w, d.h, px(m.bracketLength), thin + 1, d.color.a ? d.color : p.accent); break;
+		case DecorKind::Bracket: bracket(d.x, d.y, d.w, d.h, dpx(m.bracketLength), thin + 1, d.color.a ? d.color : p.accent); break;
 		case DecorKind::Text:
 		{
 			if (!m_strings[i]) break;
@@ -631,6 +661,7 @@ GameWindow *createBackdrop(GameWindow *parent, const char *name, Decor *decor, b
 		if (!w) return nullptr;
 		w->winSetDrawFunc(backdropDraw);
 	}
+	if (decor) decor->setOwner(static_cast<unsigned char>(g_owner));
 	w->winSetUserData(decor);
 	return w;
 }

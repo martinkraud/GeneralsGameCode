@@ -42,6 +42,8 @@ void relayout()
 	s.surfaceH = TheDisplay->getHeight();
 	s.uiPercent = static_cast<int>(DisplayRuntime::uiScale() * 100.0 + 0.5);
 	if (s.uiPercent <= 0) s.uiPercent = 100;
+	ModernDraw::beginScreen(ModernDraw::Screen::Credits);
+	ModernDraw::setScalePercent(s.uiPercent);
 	const ModernTheme::Palette &p = ModernDraw::palette();
 	// the text column is centred (CreditsManager centres every line on the surface); the scrim band is as wide as a comfortable reading column of the 16:9 composition box
 	int compW = static_cast<int>(s.surfaceH * ModernTheme::kCompositionMaxAspect + 0.5);

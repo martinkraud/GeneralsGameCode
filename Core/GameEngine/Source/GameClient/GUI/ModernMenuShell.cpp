@@ -168,8 +168,9 @@ void build()
 {
 	if (!g.parent) return;
 	ModernDraw::setTitle(g.title);
+	ModernDraw::beginScreen(ModernDraw::Screen::Main);
 	const ModernTheme::Variant &v = ModernTheme::variant(g.title);
-	ModernDraw::clearRegistry();
+	ModernDraw::clearRegistry(ModernDraw::Screen::Main);
 	g.decor.clear();
 	g.logo = nullptr;
 	g.buttonCount = 0;
@@ -226,6 +227,7 @@ void positionPanel(int xOffset)
 // The static chrome of the band: scrim, edge hairline, accent block, page heading, rules, footnote. Coordinates are relative to the band window.
 void rebuildDecor()
 {
+	ModernDraw::beginScreen(ModernDraw::Screen::Main);
 	const ModernTheme::Metrics &m = ModernTheme::metrics();
 	const ModernTheme::Palette &p = ModernTheme::variant(g.title).palette;
 	const PageDef &d = pageDef(g.title, g.state.page());
@@ -275,11 +277,15 @@ void relayout()
 	g.uiPercent = static_cast<int>(DisplayRuntime::uiScale() * 100.0 + 0.5);
 	if (g.uiPercent <= 0) g.uiPercent = 100;
 	g.geo = compute(g.surfaceW, g.surfaceH, g.uiPercent, g.title);
+	ModernDraw::beginScreen(ModernDraw::Screen::Main);
 	ModernDraw::setScalePercent(g.geo.effectiveScale);
 	// The retail MainMenuParent is the 800x600 canvas, uniformly scaled and centred (it draws nothing). A child is hit only inside EVERY ancestor's rectangle, so on a wide surface a band
 	// docked outside that canvas could not be clicked: the parent becomes the whole surface (all its retail children are hidden while the Modern shell is active).
 	g.parent->winSetPosition(0, 0);
 	g.parent->winSetSize(g.surfaceW, g.surfaceH);
+	// Generals' retail main menu parent carries a full-window backdrop image (a black frame around the 3D scene): stretched over the whole surface it would black out the shell map the Modern composition keeps prominent
+	g.parent->winClearStatus(WIN_STATUS_IMAGE);
+	g.parent->winSetEnabledImage(0, nullptr);
 	g.panel->winSetSize(g.geo.panel.w, g.geo.panel.h);
 	positionPanel(g.sliding ? g.geo.slideFrom : 0);
 	g.logo->winSetPosition(g.geo.logo.x, g.geo.logo.y);

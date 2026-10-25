@@ -18,6 +18,7 @@
 #include "Common/DisplayRuntime.h"
 #include "Common/ModernBranding.h"
 #include "Common/ModernExperience.h"
+#include "Common/ModernSettingsModel.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionsPageLayout.h"
 #include "Common/StartupDiagnostics.h"
@@ -65,8 +66,8 @@ bool s_advancedOpen = false;
 ModernDraw::Decor s_decor;
 std::vector<GameWindow *> s_initiallyHidden;
 
-struct Snapshot { NameKeyType id; GameWindow *window; int value; };
-std::vector<Snapshot> s_snapshot;
+ModernSettings::Tracker s_tracker;                       // the pending-changes model (pure)
+GameWindow *s_tracked[ModernSettings::kMaxControls] = {};   // the gadget behind each tracker slot
 bool s_dirty = false;
 int s_lastSliderSum = -1;
 void (*s_discard)() = nullptr;
@@ -227,31 +228,34 @@ int controlValue(GameWindow *w)
 
 void takeSnapshot()
 {
-	s_snapshot.clear();
+	s_tracker.clear();
+	for (GameWindow *&w : s_tracked) w = nullptr;
 	for (int c = 0; c < static_cast<int>(Category::Network); ++c)
 	{
 		const PageTable t = pageItems(static_cast<Category>(c));
 		for (int i = 0; i < t.count; ++i)
 			if (GameWindow *w = byName(t.items[i].control))
-				s_snapshot.push_back({ static_cast<NameKeyType>(w->winGetWindowId()), w, controlValue(w) });
+			{
+				const int slot = s_tracker.add(static_cast<int>(w->winGetWindowId()), controlValue(w));
+				if (slot >= 0) s_tracked[slot] = w;
+			}
 	}
 	s_dirty = false;
 }
 
 bool computeDirty()
 {
-	for (const Snapshot &s : s_snapshot)
-		if (controlValue(s.window) != s.value)
-			return true;
-	return false;
+	for (int i = 0; i < s_tracker.count; ++i)
+		if (s_tracked[i]) s_tracker.current[i] = controlValue(s_tracked[i]);
+	return s_tracker.dirty();
 }
 
 int sliderSum()
 {
 	int sum = 0;
-	for (const Snapshot &s : s_snapshot)
-		if (BitIsSet(s.window->winGetStyle(), GWS_HORZ_SLIDER))
-			sum = sum * 31 + GadgetSliderGetPosition(s.window) + 1;
+	for (int i = 0; i < s_tracker.count; ++i)
+		if (s_tracked[i] && BitIsSet(s_tracked[i]->winGetStyle(), GWS_HORZ_SLIDER))
+			sum = sum * 31 + GadgetSliderGetPosition(s_tracked[i]) + 1;
 	return sum;
 }
 
@@ -263,6 +267,7 @@ UnicodeString captionOf(int category)
 
 void rebuildDecor()
 {
+	ModernDraw::beginScreen(ModernDraw::Screen::Options);
 	const ModernTheme::Metrics &m = ModernTheme::metrics();
 	const ModernTheme::Palette &p = ModernDraw::palette();
 	const ModernScreen::Layout &L = s_layout;
@@ -271,6 +276,11 @@ void rebuildDecor()
 	auto relY = [&](int y) { return y - P.y; };
 	s_decor.clear();
 
+	// the Options screen is an overlay (above the main menu or the game): dim everything below it so the screen underneath never shows through the panel
+	ModernDraw::DecorItem &dim = s_decor.add(ModernDraw::DecorKind::Scrim);
+	dim.x = -P.x; dim.y = -P.y; dim.w = s_surfaceW; dim.h = s_surfaceH; dim.color = ModernTheme::Color{ 3, 6, 10, 186 };
+	ModernDraw::DecorItem &under = s_decor.add(ModernDraw::DecorKind::Scrim);   // the panel itself is translucent over the shot map; an overlay must not show the screen below through it
+	under.x = 0; under.y = 0; under.w = P.w; under.h = P.h; under.color = ModernTheme::Color{ 3, 6, 10, 205 };
 	const int cut = ModernDraw::px(m.chamfer);
 	ModernDraw::DecorItem &panel = s_decor.add(ModernDraw::DecorKind::Panel);
 	panel.x = 0; panel.y = 0; panel.w = P.w; panel.h = P.h; panel.cutTL = cut; panel.cutBR = cut;
@@ -348,6 +358,7 @@ void rebuildDecor()
 
 void styleControls()
 {
+	ModernDraw::beginScreen(ModernDraw::Screen::Options);
 	// the retail hosting panels are filled black with a blue border: they only host, the Modern backdrop is the surface
 	for (const char *name : { "VideoParent", "AudioParent", "ScrollParent", "NetworkParent" })
 		if (GameWindow *panel = byName(name))
@@ -382,6 +393,7 @@ void styleControls()
 
 void computeLayout()
 {
+	ModernDraw::beginScreen(ModernDraw::Screen::Options);
 	s_surfaceW = TheDisplay->getWidth();
 	s_surfaceH = TheDisplay->getHeight();
 	s_uiPercent = static_cast<int>(DisplayRuntime::uiScale() * 100.0 + 0.5);
@@ -537,7 +549,8 @@ bool create()
 			control->winSetParent(host);
 	}
 
-	ModernDraw::clearRegistry();   // the title variant was set by the Modern main menu that opened this screen
+	ModernDraw::beginScreen(ModernDraw::Screen::Options);
+	ModernDraw::clearRegistry(ModernDraw::Screen::Options);   // the title variant was set by the Modern main menu that opened this screen
 	s_decor.clear();
 	recordHidden(s_root);
 	// the retail layout root dims the shell behind the old 800x600 frame; the Modern panel brings its own surface
@@ -703,7 +716,8 @@ void forget()
 		s_tabKeys[i] = NAMEKEY_INVALID;
 	}
 	s_initiallyHidden.clear();
-	s_snapshot.clear();
+	s_tracker.clear();
+	for (GameWindow *&w : s_tracked) w = nullptr;
 	s_decor.clear();
 	s_canvas = s_root = s_popup = s_network = s_backdrop = nullptr;
 	s_active = -1;
@@ -711,7 +725,7 @@ void forget()
 	s_advancedOpen = false;
 	s_dirty = false;
 	s_discard = nullptr;
-	ModernDraw::clearRegistry();
+	ModernDraw::clearRegistry(ModernDraw::Screen::Options);
 }
 
 int activeCategory() { return s_active; }

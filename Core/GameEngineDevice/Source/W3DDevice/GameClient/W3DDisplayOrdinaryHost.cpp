@@ -1876,8 +1876,8 @@ void NativeAutoShot()
                     }
                 }
             } else if (step.kind == MAIN_UI) {
-                static unsigned op = 0, opWait = 0, costBaseUpdates = 0, costBaseDraws = 0;
-                static unsigned long long costBaseUpdateUs = 0, costBaseDrawUs = 0;
+                static unsigned op = 0, opWait = 0, costBaseUpdates = 0;
+                static unsigned long long costBaseUpdateUs = 0;
                 auto rectOf = [](GameWindow *w, int &x, int &y, int &ww, int &hh) { w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh); };
                 auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("mainmenu", ok ? "ok" : "defect", what); };
                 const bool modern = ModernMenuShell::active() && ModernMenuShell::built();
@@ -1946,14 +1946,28 @@ void NativeAutoShot()
                         check(ModernMenuShell::focusedActionId() != -1, "a focused entry exists");
                         shoot(label);
                     };
+                    bool repeatOp = false;   // run the same step again after the wait (the cursor was parked first)
                     switch (op) {
                     case 0: {   // park the real cursor in the top-left corner of the client area: a hover must not move the focus under the keyboard checks
                         static bool parked = false;
                         if (!parked) {   // park first and let a few frames pass: the capture must not show the hover state of wherever the real cursor was
                             POINT corner = { 2, 2 };
                             if (ApplicationHWnd && ClientToScreen(ApplicationHWnd, &corner)) SetCursorPos(corner.x, corner.y);
-                            parked = true; opWait = 25; --op;
+                            parked = true; opWait = 25; repeatOp = true;
                             break;
+                        }
+                        {   // every visible large window of the screen stack: leftover retail chrome (a black curtain, a frame) would show up here
+                            std::vector<GameWindow *> all;
+                            for (GameWindow *top = TheWindowManager->winGetWindowList(); top; top = top->winGetNext()) all.push_back(top);
+                            for (size_t i = 0; i < all.size(); ++i) {
+                                GameWindow *w = all[i]; int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                                if (!w->winIsHidden() && ww > 250 && hh > 250 && ww < TheDisplay->getWidth() * 3) {
+                                    sprintf_s(flowText, "%s [%d,%d %dx%d] status=0x%x image0=%s", w->winGetInstanceData() ? w->winGetInstanceData()->m_decoratedNameString.str() : "?", x, y, ww, hh, (unsigned)w->winGetStatus(),
+                                              w->winGetEnabledImage(0) ? w->winGetEnabledImage(0)->getName().str() : "-");
+                                    StartupDiagnostics::checkpoint("mainmenu", "window", flowText);
+                                }
+                                for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext()) all.push_back(c);
+                            }
                         }
                         audit("mainmenu-root");
                         break;
@@ -1979,22 +1993,37 @@ void NativeAutoShot()
                     case 19: expectFocus(Action::GoLoad, "Down moves the focus to Load"); key(KEY_ENTER); break;
                     case 20: expectPage(Page::Load, "Load page opened"); audit("mainmenu-load"); break;
                     case 21: press(Action::Back); break;
-                    case 22: expectPage(Page::Root, "the Back button returns to the root"); expectFocus(Action::GoLoad, "focus restored to Load");
-                             { const ModernMenuShell::Stats &st = ModernMenuShell::stats(); costBaseUpdates = st.updates; costBaseUpdateUs = st.updateMicros; costBaseDraws = st.draws; costBaseDrawUs = st.drawMicros; }
-                             opWait = 240; break;   // 240 idle frames of the finished menu: the cost of the shell
+                    case 22: expectPage(Page::Root, "the Back button returns to the root"); expectFocus(Action::GoLoad, "focus restored to Load"); press(Action::Options); break;
+                    case 23: {   // the Options overlay opens ABOVE the main menu (the main menu stays alive underneath): its skin must survive the overlay
+                        check(OptionsTabs::activeCategory() >= 0, "the Options overlay opened over the main menu");
+                        shoot("mainmenu-options-open");
+                        break;
+                    }
+                    case 24: {   // leave through Cancel (nothing was changed, so no confirmation): the main menu is drawn exactly as before
+                        GameWindow *back = find("OptionsMenu.wnd:ButtonBack");
+                        if (back) TheWindowManager->winSendSystemMsg(back->winGetOwner() ? back->winGetOwner() : back->winGetParent(), GBM_SELECTED, (WindowMsgData)back, back->winGetWindowId());
+                        break;
+                    }
+                    case 25: {
+                        check(OptionsTabs::activeCategory() < 0, "Cancel closed the Options overlay");
+                        check(ModernMenuShell::visibleButtonCount() == 6, "the main menu still shows its six buttons after the overlay closed");
+                        expectPage(Page::Root, "the main menu is back at the root page");
+                        shoot("mainmenu-after-options");
+                        { const ModernMenuShell::Stats &st = ModernMenuShell::stats(); costBaseUpdates = st.updates; costBaseUpdateUs = st.updateMicros; }
+                        opWait = 240; break;   // 240 idle frames of the finished menu: the cost of the shell
+                    }
                     default: {
                         const ModernMenuShell::Stats &st = ModernMenuShell::stats();
-                        const unsigned du = st.updates - costBaseUpdates, dd = st.draws - costBaseDraws;
-                        sprintf_s(flowText, "idle frames=%u avg_update_us=%.3f worst_update_us=%llu panel_draws=%u avg_panel_draw_us=%.3f relayouts_total=%u relayout_total_us=%llu page_changes=%u",
-                                  du, du ? (double)(st.updateMicros - costBaseUpdateUs) / du : 0.0, st.worstUpdateMicros, dd, dd ? (double)(st.drawMicros - costBaseDrawUs) / dd : 0.0,
-                                  st.relayouts, st.relayoutMicros, st.pageChanges);
+                        const unsigned du = st.updates - costBaseUpdates;
+                        sprintf_s(flowText, "idle frames=%u avg_update_us=%.3f worst_update_us=%llu relayouts_total=%u relayout_total_us=%llu page_changes=%u",
+                                  du, du ? (double)(st.updateMicros - costBaseUpdateUs) / du : 0.0, st.worstUpdateMicros, st.relayouts, st.relayoutMicros, st.pageChanges);
                         StartupDiagnostics::checkpoint("mainmenu", "cost", flowText);
                         check(st.relayouts <= 3, "the layout was recomputed only for the surface / first show, not per frame");
                         modernCost("main"); advance("main menu audited", nullptr); done = true;
                         break;
                     }
                     }
-                    if (!done && op <= 22) { ++op; if (opWait == 0) opWait = 12; }
+                    if (!done && op <= 25) { if (!repeatOp) ++op; if (opWait == 0) opWait = 12; }
                 }
             } else if (step.kind == WAIT_INPUT) {
                 if (TheInGameUI && TheInGameUI->getInputEnabled()) { advance("the player has input control", nullptr); done = true; }
@@ -2072,6 +2101,18 @@ void NativeAutoShot()
                         sprintf_s(flowText, "category %d %s [%d,%d %dx%d] inside_content=%d mouse_hit=%d label_fits=%d", cat, t.items[i].control, x, y, ww, hh, inside ? 1 : 0, hit ? 1 : 0, fits ? 1 : 0);
                         StartupDiagnostics::checkpoint("options", (inside && hit && fits && ww >= 40 && hh >= 18) ? "ok" : "defect", flowText);
                         if (!(inside && hit && fits)) ++defects;
+                    }
+                    if (cat == static_cast<int>(Category::Network)) {   // the retail Network block is kept whole: everything it shows must lie inside the content viewport
+                        int total = 0, outside = 0;
+                        if (GameWindow *net = find("OptionsMenu.wnd:NetworkParent"))
+                            for (GameWindow *w = net->winGetChild(); w; w = w->winGetNext()) {
+                                if (w->winIsHidden()) continue;
+                                int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                                ++total;
+                                if (x < L.content.x || y < L.content.y || x + ww > L.content.right() || y + hh > L.content.bottom()) ++outside;
+                            }
+                        sprintf_s(flowText, "network block: %d visible windows, %d outside the content viewport", total, outside);
+                        check(total > 0 && outside == 0, flowText);
                     }
                     for (int c = 0; c < kCategoryCount; ++c) {
                         if (c == cat) continue;

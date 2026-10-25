@@ -14,6 +14,9 @@ param([Parameter(Mandatory)][ValidateSet('Generals', 'ZeroHour')][string]$Title,
       [string]$Out = '',
       [switch]$Classic)
 $ErrorActionPreference = 'Stop'
+# `pwsh -File` passes a comma list as one string
+$Flows = @($Flows | ForEach-Object { $_ -split ',' } | Where-Object { $_ }); $ClientSizes = @($ClientSizes | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$UiScales = @($UiScales | ForEach-Object { $_ -split ',' } | Where-Object { $_ }); $KeepShots = @($KeepShots | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $diag = Join-Path $repo 'build\diag'
 $filterOf = @{ MainMenu = 'mainmenu|cost'; Options = 'options|cost'; MatchSetup = 'matchsetup|matchopts|cost'; Replay = 'browser|cost'; LoadGame = 'browser|cost'; Credits = 'credits|cost' }
@@ -37,7 +40,7 @@ foreach ($flow in $Flows) {
                 $interesting = @($lines | Where-Object { $_ -match $filterOf[$flow] })
                 $record.Defects = @($interesting | Where-Object { $_ -match '\bdefect\b' }).Count
                 $record.Completed = [bool]($lines | Where-Object { $_ -match 'autoflow\s+observed' } | Select-Object -Last 1) -and [bool]($lines | Where-Object { $_ -match 'WinMain\s+complete' })
-                $geometry = $interesting | Where-Object { $_ -match 'effective_scale=(\d+)' } | Select-Object -First 1
+                $geometry = $lines | Where-Object { $_ -match 'effective_scale=(\d+)' } | Select-Object -First 1
                 if ($geometry -and $geometry -match 'effective_scale=(\d+)') { $record.EffectiveScale = $Matches[1] }
                 $cost = $interesting | Where-Object { $_ -match '\bcost\b.*frontend|idle frames=' } | Select-Object -Last 1
                 if ($cost) { $record.Cost = (($cost -split "`t")[-1]).Trim() }

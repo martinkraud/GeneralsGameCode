@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// UI.2 Modern Experience main menu: the binding layer between the pure model (Common/ModernMainMenuModel.h, ModernFocus.h, ModernTheme.h, ModernUiLayout.h) and real Generals windows.
+// Modern Experience main menu: the binding layer between the pure model (Common/ModernMainMenuModel.h, ModernFocus.h, ModernTheme.h, ModernComponents.h, ModernUiLayout.h) and real Generals windows.
+// UI.2 built the shell; the Modern Frontend milestone (UI.3) redrew it with the design system (GameClient/ModernDraw.h): a full-height navigation band with text-forward items, no retail button art.
 //
 // Ownership and lifetime
-//   * The shell owns NO window outright: every window it creates (panel, logo, heading, footnote, one push button per action) is a CHILD of the retail MainMenuParent, so it is destroyed
+//   * The shell owns NO window outright: every window it creates (the band, which also draws the chrome, the logo, one push button per action) is a CHILD of the retail MainMenuParent, so it is destroyed
 //     with the retail layout and never outlives it. init() is idempotent: it finds its windows by name and creates them only when missing (the layout is re-initialised every time a
 //     child screen is popped, and re-created after a match).
 //   * The retail main-menu windows keep existing (callbacks, automation and transitions look them up by name) but are hidden while the Modern shell is active.
@@ -32,8 +33,6 @@ struct Stats
 	unsigned updates = 0;                    // update() calls
 	unsigned long long updateMicros = 0;     // time spent in update() in total
 	unsigned long long worstUpdateMicros = 0;
-	unsigned draws = 0;                      // panel draw callbacks
-	unsigned long long drawMicros = 0;       // CPU time spent in them in total
 };
 
 // True when the Modern frontend is in use for this process: the modern display (normal native launch), not -classic, the feature enabled, and not switched off for comparison with

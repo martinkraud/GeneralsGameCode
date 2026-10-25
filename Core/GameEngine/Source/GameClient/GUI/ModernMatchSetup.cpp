@@ -246,6 +246,7 @@ void relayout()
 	in.honors = s.honorLabel[0] && s.honorValue[0];
 	s.layout = ModernMatchSetup::compute(in);
 	const ModernMatchSetup::Layout &L = s.layout;
+	ModernDraw::beginScreen(ModernDraw::Screen::MatchSetup);
 	ModernDraw::setScalePercent(L.effectiveScale);
 
 	// containers first (a child is hit only inside every ancestor's rectangle): the layout parent covers the surface, SubParent the panel
@@ -319,7 +320,8 @@ bool create(GameWindow *menuParent, const Hooks &hooks)
 		if (s.honorLabel[i] && s.honorLabel[i]->winGetParent() != s.sub) s.honorLabel[i]->winSetParent(s.sub);
 		if (s.honorValue[i] && s.honorValue[i]->winGetParent() != s.sub) s.honorValue[i]->winSetParent(s.sub);
 	}
-	ModernDraw::clearRegistry();
+	ModernDraw::beginScreen(ModernDraw::Screen::MatchSetup);
+	ModernDraw::clearRegistry(ModernDraw::Screen::MatchSetup);
 	s.backdrop = ModernDraw::createBackdrop(s.sub, "SkirmishGameOptionsMenu.wnd:ModernBackdrop", &s.decor);
 	skinAll();
 	relayout();
@@ -349,7 +351,7 @@ void forget()
 	for (auto &row : s.cell) for (GameWindow *&w : row) w = nullptr;
 	for (int i = 0; i < kHonorRows; ++i) s.honorLabel[i] = s.honorValue[i] = nullptr;
 	s.decor.clear();
-	ModernDraw::clearRegistry();
+	ModernDraw::clearRegistry(ModernDraw::Screen::MatchSetup);
 }
 
 bool active() { return s.built; }

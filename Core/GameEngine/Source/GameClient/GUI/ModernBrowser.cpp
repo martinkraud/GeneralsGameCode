@@ -200,6 +200,7 @@ void relayout()
 	in.surfaceW = s.surfaceW; in.surfaceH = s.surfaceH; in.uiPercent = s.uiPercent; in.actionCount = s.spec.actionCount;
 	s.layout = ModernScreen::computeBrowser(in);
 	const ModernScreen::BrowserLayout &L = s.layout;
+	ModernDraw::beginScreen(ModernDraw::Screen::Browser);
 	ModernDraw::setScalePercent(L.effectiveScale);
 
 	// the ancestors: the outermost covers the surface, the others the panel (a child is hit only inside every ancestor)
@@ -295,9 +296,8 @@ bool create(const Spec &spec)
 	for (GameWindow *w = s.host; w; w = w->winGetParent()) s.chain.insert(s.chain.begin(), w);
 	s.outer = s.chain.front();
 	s.actionContainer = spec.actionContainer ? byName(spec.actionContainer) : nullptr;
-	const ModernTheme::Palette &p = ModernDraw::palette();
-	(void)p;
-	ModernDraw::clearRegistry();
+	ModernDraw::beginScreen(ModernDraw::Screen::Browser);
+	ModernDraw::clearRegistry(ModernDraw::Screen::Browser);
 	for (int i = 0; i < spec.actionCount; ++i)
 	{
 		s.action[i] = byName(spec.actions[i].window);
@@ -341,7 +341,7 @@ void forget()
 	s.chain.clear();
 	for (DialogState &d : s.dialog) { d.decor.clear(); d.container = d.body = d.confirm = d.cancel = d.entry = d.backdrop = nullptr; }
 	s.decor.clear();
-	ModernDraw::clearRegistry();
+	ModernDraw::clearRegistry(ModernDraw::Screen::Browser);
 }
 
 bool active() { return s.built; }

@@ -1,7 +1,7 @@
 # MKRaudstein Modern Engine - project status
 
 One-page, evidence-linked status. Updated at every milestone closeout together with `README.md` and `AGENT_HANDOFF.md` (rule since UI.1: a milestone that changes what is true updates this file in the same milestone).
-Last updated: 2026-10-25 (UI.2). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
+Last updated: 2026-10-25 (UI.3). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Current direction
 Performance optimization and Enhanced AI development are **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
@@ -25,13 +25,14 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | AI archaeology and bug audit | delivered (X64.50) |
 | UI archaeology + responsive layout foundation + Classic/Modern contract test (UI.1) | delivered |
 | Modern main menu / navigation shell for Generals and Zero Hour: left-docked panel over the shell map, pure focus/navigation model, design-system tokens (UI.2) | implemented and automatically validated (layout matrix, real-window audit, Classic isolation, golden gates); **native visual acceptance pending** ([MODERN_UI_2_MAIN_MENU.md](MODERN_UI_2_MAIN_MENU.md)) |
+| Modern Frontend system (UI.3): procedural design system, redrawn main menu, Options (rail, generated rows, dirty state), Skirmish Match Setup (Map / Players / Rules from specs), Load Game / Replays, dialogs, Credits - both titles, 5 surfaces x 5 UI scales | implemented and automatically validated (gtest, Python, native audit matrix, Classic isolation, golden gates); **native visual acceptance pending** ([MODERN_UI_3_FRONTEND.md](MODERN_UI_3_FRONTEND.md)) |
 
 ## In progress
-* Modern Experience UI phase: UI.2 (main frontend shell) is implemented and **waiting for the owner's native visual review**; UI.3 (Match Setup) starts only after that review.
+* Modern Experience UI phase: UI.2 (shell) and UI.3 (design system + Options, Match Setup, Load / Replay, dialogs, Credits) are implemented and **waiting for the owner's native visual review**. If the look is disliked the next step is a visual revision, not HUD work.
 * Native human verification of X64.52B (edge scrolling, camera smoothness at 120 FPS) - the real-input camera gate on the final clean executables is still to be run on an unlocked desktop.
 
 ## Planned
-UI.2 shell / main menu -> UI.3 Match Setup -> UI.4 Options + secondary screens -> UI.5 Modern HUD -> UI.6 polish/acceptance; parallel UI.V (movie playback via FFmpeg). After the UI phase: a new performance
+UI.2 shell / main menu (done) -> UI.3 frontend system, Options, Match Setup, browsers (done) -> owner review -> UI.4 remaining retail screens (LAN lobby, Online, Challenge / Map select) -> UI.5 Modern HUD -> UI.6 polish/acceptance; parallel UI.V (movie playback via FFmpeg). After the UI phase: a new performance
 baseline, then deeper performance / endurance work; later Enhanced AI phase 2 (combat coordination) and the long-term extended-game ideas listed in the README roadmap.
 
 ## Known issues and limitations
@@ -46,7 +47,7 @@ Classification: **C** = correctness defect (belongs to a regression gate), **F**
 | 5 | Command/build UI takes about 1 - 2 s to appear at the start of a match (not recurring) | F | Likely first-use asset loads of the control bar scheme / command images; candidate for prefetch at match load in UI.5/6; measure first |
 | 6 | Modern USA HUD still shows a legacy-looking "Command Menu" button | F | Control not yet identified (candidates: the four 30x22 procedural plates); UI.5 |
 | 7 | Possible camera judder at ~120 FPS reported on X64.52A | U | Not reproduced with real input at 60/120/240 FPS; camera integration unchanged since X64.49; render/present pacing item open. See [X64_52B](X64_52B_CAMERA_INPUT_REGRESSION.md). |
-| 8 | Multiplayer / LAN and long-session endurance not fully validated; LAN lobby has no Modern match-option controls | F | Planned validation; UI.3/UI.4 |
+| 8 | Multiplayer / LAN and long-session endurance not fully validated; the LAN lobby and Online screens are still the retail screens (no Modern match-option controls) | F | Planned validation; UI.4 |
 | 9 | Native real-input gates need an unlocked desktop | tooling | Exit code 3 = inconclusive |
 | 10 | Campaign progression, cross-version replays, some renderer/shadow fidelity cases | F | README "Known Incomplete Areas" |
 
