@@ -548,7 +548,7 @@ TEST(ModernSettingsPages, EveryPageHasOneParentPerControlGroupAndDropdownsComeLa
 	{
 		const int page = ownerOf(h.control);
 		ASSERT_GE(page, 0) << h.control;
-		const char *expected = page == static_cast<int>(Category::Gameplay) ? "VideoParent" : "ScrollParent";
+		const char *expected = (page == static_cast<int>(Category::Gameplay) || page == static_cast<int>(Category::Modern)) ? "VideoParent" : "ScrollParent";
 		EXPECT_STREQ(h.hostPanel, expected) << h.control;
 	}
 	// the language filter has no Generals vocabulary and no consumer: it is on no page

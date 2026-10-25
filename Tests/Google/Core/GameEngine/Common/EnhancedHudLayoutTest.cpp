@@ -364,9 +364,9 @@ TEST(EnhancedHudLayout, TheInterfaceChoiceIsPersistedAndDefaultsToOriginal)
 TEST(EnhancedHudLayout, TheInterfaceChoiceLivesOnTheGameplayPage)
 {
 	using namespace OptionsPageLayout;
-	EXPECT_EQ(ownerOf("ModernInterface"), static_cast<int>(Category::Gameplay));
-	EXPECT_EQ(ownerOf("ModernInterfaceLabel"), static_cast<int>(Category::Gameplay));
-	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("ModernInterface"), static_cast<int>(Category::Modern));
+	EXPECT_EQ(ownerOf("ModernInterfaceLabel"), static_cast<int>(Category::Modern));
+	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Modern));
 }
 
 TEST(EnhancedHudLayout, WindowTableCoversTheOriginalFunctionalSurface)

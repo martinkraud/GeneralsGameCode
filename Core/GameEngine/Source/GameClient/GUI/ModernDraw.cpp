@@ -17,6 +17,7 @@
 #include "GameClient/GadgetCheckBox.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetListBox.h"
+#include "GameClient/GadgetPushButton.h"
 #include "GameClient/GadgetSlider.h"
 #include "GameClient/GadgetStaticText.h"
 #include "GameClient/GadgetTextEntry.h"
@@ -85,7 +86,7 @@ Flags flagsOf(GameWindow *w, WinInstanceData *inst, const Entry *e, bool pressed
 	f.hover = BitIsSet(inst->getState(), WIN_STATE_HILITED) != 0;
 	const bool stateSelected = BitIsSet(inst->getState(), WIN_STATE_SELECTED) != 0;
 	f.pressed = pressedFromSelected && stateSelected && f.hover;
-	f.focus = g_focus == w;
+	f.focus = g_focus == w || (TheWindowManager && TheWindowManager->winGetFocus() == w);
 	f.selected = (e && e->selected) || (!pressedFromSelected && stateSelected);
 	return f;
 }
@@ -107,9 +108,25 @@ void drawText(GameWindow *w, WinInstanceData *inst, const Color &color, int alig
 }
 
 // ---- buttons ----
+void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e);
+
 void buttonDraw(GameWindow *w, WinInstanceData *inst)
 {
-	const Entry *e = find(w);
+	drawButton(w, inst, find(w));
+}
+
+// Dialog buttons are not in the registry (a dialog is created and destroyed independently of the screen below it): the component kind rides in the gadget's data pointer.
+void dialogButtonDraw(GameWindow *w, WinInstanceData *inst)
+{
+	Entry e;
+	e.window = w;
+	e.kind = static_cast<Kind>(reinterpret_cast<intptr_t>(GadgetButtonGetData(w)));
+	e.role = TypeRole::MenuSecondary;
+	drawButton(w, inst, &e);
+}
+
+void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e)
+{
 	if (!e) return;
 	const ModernTheme::Palette &p = ModernTheme::variant(g_title).palette;
 	const ModernTheme::Metrics &m = ModernTheme::metrics();
@@ -286,11 +303,13 @@ const char *resolvedFamily(TypeRole role)
 	return g_family[i];
 }
 
-GameFont *font(TypeRole role)
+GameFont *font(TypeRole role) { return fontAt(role, g_scale); }
+
+GameFont *fontAt(TypeRole role, int scalePercent)
 {
 	if (!TheFontLibrary) return nullptr;
 	const ModernTheme::TypeStyle &t = ModernTheme::type(role);
-	int pt = (t.referenceSize * g_scale + 50) / 100;
+	int pt = (t.referenceSize * (scalePercent > 0 ? scalePercent : 100) + 50) / 100;
 	if (pt < 7) pt = 7;
 	return TheFontLibrary->getFont(AsciiString(resolvedFamily(role)), pt, t.bold);
 }
@@ -349,6 +368,16 @@ void skinButton(GameWindow *window, Kind kind, TypeRole role)
 	window->winSetDrawFunc(buttonDraw);
 	window->winClearStatus(WIN_STATUS_IMAGE);
 	window->winSetFont(font(role));
+	applyTextColors(window, palette());
+}
+
+void skinDialogButton(GameWindow *window, Kind kind, TypeRole role, int scalePercent)
+{
+	if (!window) return;
+	GadgetButtonSetData(window, reinterpret_cast<void *>(static_cast<intptr_t>(kind)));
+	window->winSetDrawFunc(dialogButtonDraw);
+	window->winClearStatus(WIN_STATUS_IMAGE);
+	window->winSetFont(fontAt(role, scalePercent));
 	applyTextColors(window, palette());
 }
 
@@ -486,7 +515,8 @@ void clearRegistry() { g_entries.clear(); g_focus = nullptr; }
 unsigned registeredCount() { return static_cast<unsigned>(g_entries.size()); }
 
 // ---- decor ----
-Decor::~Decor() { clear(); }
+// Intentionally empty: a Decor is a process-wide static and the display string manager that owns its strings is already gone when static destructors run (screens call clear() on teardown).
+Decor::~Decor() {}
 
 void Decor::clear()
 {
@@ -517,7 +547,7 @@ void Decor::refreshFonts()
 	}
 }
 
-void Decor::draw()
+void Decor::draw(int ox, int oy)
 {
 	if (!TheDisplay) return;
 	const ModernTheme::Palette &p = palette();
@@ -525,7 +555,8 @@ void Decor::draw()
 	const int thin = g_scale >= 200 ? 2 : 1;
 	for (int i = 0; i < m_count; ++i)
 	{
-		const DecorItem &d = m_items[i];
+		DecorItem d = m_items[i];
+		d.x += ox; d.y += oy;
 		switch (d.kind)
 		{
 		case DecorKind::Scrim:  fillRect(d.x, d.y, d.w, d.h, p.scrim); break;
@@ -561,11 +592,16 @@ namespace
 {
 void backdropDraw(GameWindow *window, WinInstanceData *)
 {
-	if (Decor *d = static_cast<Decor *>(window->winGetUserData())) d->draw();
+	if (Decor *d = static_cast<Decor *>(window->winGetUserData()))
+	{
+		int x = 0, y = 0;
+		window->winGetScreenPosition(&x, &y);
+		d->draw(x, y);
+	}
 }
 }
 
-GameWindow *createBackdrop(GameWindow *parent, const char *name, Decor *decor)
+GameWindow *createBackdrop(GameWindow *parent, const char *name, Decor *decor, bool container)
 {
 	const NameKeyType id = TheNameKeyGenerator->nameToKey(AsciiString(name));
 	GameWindow *w = TheWindowManager->winGetWindowFromId(parent, id);
@@ -573,7 +609,8 @@ GameWindow *createBackdrop(GameWindow *parent, const char *name, Decor *decor)
 	{
 		WinInstanceData inst;
 		inst.m_id = id;
-		w = TheWindowManager->winCreate(parent, WIN_STATUS_ENABLED | WIN_STATUS_NO_INPUT, 0, 0, 10, 10, GameWinDefaultSystem, &inst);
+		// a pure backdrop is DISABLED as well as no-input: the hit test returns the topmost enabled window under the mouse and a no-input window loses the click instead of passing it on
+		w = TheWindowManager->winCreate(parent, (container ? WIN_STATUS_ENABLED : WIN_STATUS_NONE) | WIN_STATUS_NO_INPUT, 0, 0, 10, 10, GameWinDefaultSystem, &inst);
 		if (!w) return nullptr;
 		w->winSetDrawFunc(backdropDraw);
 	}

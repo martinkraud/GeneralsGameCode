@@ -35,6 +35,7 @@
 #include "Common/ModernExperience.h"
 #include "GameClient/AIBehaviorOptions.h"
 #include "GameClient/MatchOptionControls.h"
+#include "GameClient/ModernMatchSetup.h"
 #include "Common/SuperweaponLimit.h"
 #include "Common/FileSystem.h"
 #include "Common/GameEngine.h"
@@ -1458,6 +1459,13 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 		comboBoxTeam[i]->winEnable(TRUE);
 	}
 
+	// Modern Experience: Map | Players | Match Rules composition over the retail gadgets (no-op in Classic)
+	{
+		ModernMatchSetupScreen::Hooks hooks = {};
+		hooks.repositionStartSpots = skirmishPositionStartSpots;
+		ModernMatchSetupScreen::create( parentSkirmishGameOptions, hooks );
+	}
+
 	// Show the Menu
 	layout->hide( FALSE );
 
@@ -1482,6 +1490,7 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 static void shutdownComplete( WindowLayout *layout )
 {
+	ModernMatchSetupScreen::forget();
 
 	// hide the layout
 	layout->hide( TRUE );
@@ -1536,6 +1545,7 @@ void SkirmishGameOptionsMenuShutdown( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void SkirmishGameOptionsMenuUpdate( WindowLayout * layout, void *userData)
 {
+	ModernMatchSetupScreen::update();      // Modern Experience: follows the surface / UI scale (no-op in Classic)
 	if (TheGameLogic->isInShellGame() && TheGameLogic->getFrame() == 1)
 	{
 		SignalUIInteraction(SHELL_SCRIPT_HOOK_SKIRMISH_ENTERED_FROM_GAME);

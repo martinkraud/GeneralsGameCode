@@ -15,7 +15,7 @@
 namespace OptionsPageLayout
 {
 
-enum class Category { Display, Graphics, Audio, Controls, Gameplay, Network, Count };
+enum class Category { Display, Graphics, Audio, Controls, Gameplay, Modern, Network, Count };   // Modern: the Modern Experience features (UI.3 category)
 constexpr int kCategoryCount = static_cast<int>(Category::Count);
 constexpr int kMaxRows = 10;
 
@@ -80,7 +80,6 @@ constexpr PageItem kDisplayItems[] = {
 	{"ModernModeLabel", "ModernMode", ControlKind::Combo},
 	{"ModernMonitorLabel", "ModernMonitor", ControlKind::Combo},
 	{"ResolutionLabel", "ComboBoxResolution", ControlKind::Combo},
-	{"ModernRenderScaleLabel", "ModernRenderScale", ControlKind::Combo},      // X64.37 v3: internal 3D resolution, live everywhere
 	{"ModernUiScaleLabel", "ModernUiScale", ControlKind::Combo},
 	{"ModernVsyncLabel", "ModernVsync", ControlKind::Combo},
 	{"FrameRateLimitLabel", "ComboBoxFrameRateLimit", ControlKind::Combo},
@@ -89,6 +88,7 @@ constexpr PageItem kDisplayItems[] = {
 // path never touches the desktop in windowed presentation, so the slider would change nothing (SETTINGS_COMPLETION_AUDIT.md, F).
 constexpr PageItem kGraphicsItems[] = {
 	{"DetailLabel", "ComboBoxDetail", ControlKind::Combo},
+	{"ModernRenderScaleLabel", "ModernRenderScale", ControlKind::Combo},      // X64.37 v3: internal 3D resolution, live everywhere
 };
 constexpr PageItem kAudioItems[] = {
 	{"SFXVolumeLabel", "SliderSFXVolume", ControlKind::Slider},
@@ -106,6 +106,9 @@ constexpr PageItem kControlsItems[] = {
 constexpr PageItem kGameplayItems[] = {
 	{nullptr, "CheckBoxUseCamera", ControlKind::Check},
 	{nullptr, "CheckBoxSaveCamera", ControlKind::Check},
+};
+// Modern Experience: what the Modern Engine adds on top of the retail game (UI.3 groups it in its own category).
+constexpr PageItem kModernItems[] = {
 	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
 	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA, China, GLA)
 };
@@ -160,6 +163,7 @@ inline PageTable pageItems(Category c)
 	case Category::Audio: return {kAudioItems, static_cast<int>(sizeof(kAudioItems) / sizeof(kAudioItems[0]))};
 	case Category::Controls: return {kControlsItems, static_cast<int>(sizeof(kControlsItems) / sizeof(kControlsItems[0]))};
 	case Category::Gameplay: return {kGameplayItems, static_cast<int>(sizeof(kGameplayItems) / sizeof(kGameplayItems[0]))};
+	case Category::Modern: return {kModernItems, static_cast<int>(sizeof(kModernItems) / sizeof(kModernItems[0]))};
 	default: return {nullptr, 0};    // Network: the retail block, kept whole
 	}
 }
@@ -287,6 +291,7 @@ inline const char *categoryTextKey(Category c)
 	case Category::Audio: return "GUI:OptionsTabAudio";
 	case Category::Controls: return "GUI:OptionsTabControls";
 	case Category::Gameplay: return "GUI:OptionsTabGameplay";
+	case Category::Modern: return "GUI:OptionsTabModern";
 	default: return "GUI:OptionsTabNetwork";
 	}
 }

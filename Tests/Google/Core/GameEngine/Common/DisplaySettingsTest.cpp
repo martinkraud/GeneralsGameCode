@@ -545,14 +545,14 @@ TEST(OptionsPageLayout, EveryControlIsOwnedByExactlyOnePage)
 	EXPECT_EQ(ownerOf("CheckBoxMoveAnchor"), static_cast<int>(Category::Controls));
 	EXPECT_EQ(ownerOf("SliderSFXVolume"), static_cast<int>(Category::Audio));
 	EXPECT_EQ(ownerOf("SliderScrollSpeed"), static_cast<int>(Category::Controls));
-	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Gameplay));
+	EXPECT_EQ(ownerOf("ModernMotion"), static_cast<int>(Category::Modern));
 	EXPECT_EQ(ownerOf("NotAnOptionsControl"), -1);
 }
 
 TEST(OptionsPageLayout, SlidersOnlyLiveOnTheirOwnPages)
 {
 	using namespace OptionsPageLayout;
-	for (Category c : {Category::Display, Category::Gameplay, Category::Network})
+	for (Category c : {Category::Display, Category::Gameplay, Category::Modern, Category::Network})
 	{
 		const PageTable t = pageItems(c);
 		for (int i = 0; i < t.count; ++i)

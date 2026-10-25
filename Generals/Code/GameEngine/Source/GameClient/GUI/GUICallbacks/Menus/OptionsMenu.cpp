@@ -892,6 +892,23 @@ static void DestroyOptionsLayout() {
 	OptionsLayout = nullptr;
 }
 
+// Cancel / Back: the pending changes are dropped (nothing is written), the layout closes. Shared by the plain Back press and the Modern "discard changes?" confirmation.
+static void leaveWithoutSaving()
+{
+	delete pref;
+	pref = nullptr;
+
+	comboBoxLANIP = nullptr;
+	comboBoxOnlineIP = nullptr;
+
+	if(GameSpyIsOverlayOpen(GSOVERLAY_OPTIONS))
+		GameSpyCloseOverlay(GSOVERLAY_OPTIONS);
+	else
+	{
+		DestroyOptionsLayout();
+	}
+}
+
 static void showAdvancedOptions()
 {
 	WinAdvancedDisplay->winHide(FALSE);
@@ -1468,7 +1485,7 @@ void OptionsMenuShutdown( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void OptionsMenuUpdate( WindowLayout *layout, void *userData )
 {
-
+	OptionsTabs::update();      // Modern Experience: layout follows the surface / UI scale, dirty line (no-op in Classic)
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1482,10 +1499,19 @@ WindowMsgHandledType OptionsMenuInput( GameWindow *window, UnsignedInt msg,
 	{
 
 		// --------------------------------------------------------------------------------------------
+		case GWM_WHEEL_UP:
+		case GWM_WHEEL_DOWN:
+			if( OptionsTabs::onWheel( msg == GWM_WHEEL_UP ) )
+				return MSG_HANDLED;
+			break;
+
 		case GWM_CHAR:
 		{
 			UnsignedByte key = mData1;
 			UnsignedByte state = mData2;
+
+			if( OptionsTabs::onKey( key, state ) )
+				return MSG_HANDLED;
 
 			switch( key )
 			{
@@ -1604,22 +1630,9 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 
 			if( controlID == buttonBack )
 			{
-				// go back one screen
-				//TheShell->pop();
-
-				delete pref;
-				pref = nullptr;
-
-				comboBoxLANIP = nullptr;
-				comboBoxOnlineIP = nullptr;
-
-				if(GameSpyIsOverlayOpen(GSOVERLAY_OPTIONS))
-					GameSpyCloseOverlay(GSOVERLAY_OPTIONS);
-				else
-				{
-					DestroyOptionsLayout();
-				}
-
+				// go back one screen; the Modern Options asks first when something was changed (no-op in Classic)
+				if( OptionsTabs::requestLeave( leaveWithoutSaving ) )
+					leaveWithoutSaving();
 			}
 			else if (controlID == buttonAccept )
 			{

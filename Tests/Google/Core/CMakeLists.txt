@@ -16,6 +16,8 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/ModernFocusTest.cpp
     GameEngine/Common/ModernMainMenuTest.cpp
     GameEngine/Common/ModernComponentsTest.cpp
+    GameEngine/Common/ModernScreenLayoutTest.cpp
+    GameEngine/Common/ModernMatchSetupLayoutTest.cpp
     GameEngine/Common/AIBehaviorTest.cpp
     GameEngine/Common/AIEnhancedBaseTest.cpp
     GameEngine/Common/SuperweaponLimitTest.cpp

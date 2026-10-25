@@ -174,7 +174,7 @@ void build()
 	g.logo = nullptr;
 	g.buttonCount = 0;
 	// the band: one window below its children that draws the chrome (the decor); it takes input so the whole band is a click target
-	g.panel = ModernDraw::createBackdrop(g.parent, "MainMenu.wnd:ModernPanel", &g.decor);
+	g.panel = ModernDraw::createBackdrop(g.parent, "MainMenu.wnd:ModernPanel", &g.decor, true);
 	if (!g.panel) return;
 	g.panel->winSetOwner(g.parent);
 

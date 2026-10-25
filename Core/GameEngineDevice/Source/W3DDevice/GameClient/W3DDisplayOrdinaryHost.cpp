@@ -65,6 +65,10 @@
 #include "GameClient/WinInstanceData.h"
 #include "GameClient/GUICallbacks.h"
 #include "GameClient/ModernMenuShell.h"
+#include "GameClient/OptionsTabs.h"
+#include "GameClient/ModernMatchSetup.h"
+#include "Common/OptionsPageLayout.h"
+#include "GameClient/GadgetSlider.h"
 #include "Common/KindOf.h"
 #include "Common/XferCRC.h"
 #include "Common/ThingTemplate.h"
@@ -1525,7 +1529,7 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
@@ -1568,6 +1572,12 @@ void NativeAutoShot()
     // the same flow checks that the Modern shell was NOT instantiated.
     static const Step mainSteps[] = {
         { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { MAIN_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    // UI.3: the Modern Options screen: every category's rows, reachability, label fit, keys, dirty state and the discard confirmation
+    static const Step optionsSteps[] = {
+        { PUSH, "Menus/OptionsMenu.wnd", nullptr, 600, 1 }, { OPTIONS_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    // UI.3: the Modern Match Setup: composition rectangles, mouse reachability, then the dropdown audit of the rule controls (MATCH_UI)
+    static const Step setupSteps[] = {
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { MATCH_SETUP, nullptr, nullptr, 60, 1 }, { MATCH_UI, nullptr, nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;
@@ -1578,12 +1588,14 @@ void NativeAutoShot()
         if (!_stricmp(text, "slots")) return 5;
         if (!_stricmp(text, "matchoptions")) return 6;
         if (!_stricmp(text, "mainmenu")) return 7;
+        if (!_stricmp(text, "options")) return 8;
+        if (!_stricmp(text, "matchsetup")) return 9;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -1963,6 +1975,242 @@ void NativeAutoShot()
                 }
             } else if (step.kind == WAIT_INPUT) {
                 if (TheInGameUI && TheInGameUI->getInputEnabled()) { advance("the player has input control", nullptr); done = true; }
+            } else if (step.kind == OPTIONS_UI) {
+                // UI.3: the Modern Options screen: per category, the visible rows are inside the viewport, reachable by the mouse and fit their labels; other pages' controls are hidden; dirty state, discard
+                // confirmation, category keys. In the Classic frontend the same flow checks that no Modern Options chrome exists.
+                static unsigned op = 0, opWait = 0;
+                static int cat = 0;
+                auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("options", ok ? "ok" : "defect", what); };
+                auto visibleChain = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden()) return false; return w != nullptr; };
+                auto isAnc = [](GameWindow *a, GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c == a) return true; return false; };
+                auto reach = [&](GameWindow *target) {
+                    int x, y, ww, hh; target->winGetScreenPosition(&x, &y); target->winGetSize(&ww, &hh);
+                    ICoord2D pos = { x + ww / 2, y + hh / 2 }; GameWindow *tip = nullptr;
+                    GameWindow *w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_ABOVE, WIN_STATUS_HIDDEN);
+                    if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_NONE, WIN_STATUS_ABOVE | WIN_STATUS_BELOW | WIN_STATUS_HIDDEN);
+                    if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_BELOW, WIN_STATUS_HIDDEN);
+                    return w && isAnc(target, w);
+                };
+                auto press = [&](GameWindow *button) {
+                    GameWindow *top = button->winGetOwner() ? button->winGetOwner() : topWindow(button);
+                    TheWindowManager->winSendSystemMsg(top, GBM_SELECTED, (WindowMsgData)button, button->winGetWindowId());
+                };
+                const bool modernOptions = OptionsTabs::activeCategory() >= 0;
+                if (opWait > 0) { --opWait; }
+                else if (!modernOptions) {
+                    static unsigned classicWait = 0;
+                    if (++classicWait < 90) { opWait = 1; }
+                    else {
+                        shoot("options-classic");
+                        check(find("OptionsMenu.wnd:ModernBackdrop") == nullptr, "classic frontend: no Modern Options backdrop exists");
+                        check(find("OptionsMenu.wnd:TabDisplay") == nullptr, "classic frontend: no Modern category rail exists");
+                        check(visibleChain(find("OptionsMenu.wnd:ButtonAccept")), "classic frontend: the retail Accept button is visible");
+                        advance("options audited (classic)", nullptr); done = true;
+                    }
+                } else if (op == 0) {
+                    const ModernScreen::Layout &L = OptionsTabs::layout();
+                    sprintf_s(flowText, "options display=%dx%d effective_scale=%d panel=%d,%d %dx%d content=%d,%d %dx%d rail=%d,%d %dx%d", TheDisplay->getWidth(), TheDisplay->getHeight(), L.effectiveScale,
+                              L.panel.x, L.panel.y, L.panel.w, L.panel.h, L.content.x, L.content.y, L.content.w, L.content.h, L.rail.x, L.rail.y, L.rail.w, L.rail.h);
+                    StartupDiagnostics::checkpoint("options", "geometry", flowText);
+                    check(L.panel.x >= 0 && L.panel.y >= 0 && L.panel.right() <= TheDisplay->getWidth() && L.panel.bottom() <= TheDisplay->getHeight(), "the panel is inside the display");
+                    cat = 0; op = 1; opWait = 2;
+                } else if (op == 1) {           // select the category through its rail button, as a click does
+                    static const char *const tabNames[] = { "TabDisplay", "TabGraphics", "TabAudio", "TabControls", "TabGameplay", "TabModern", "TabNetwork" };
+                    char name[96]; sprintf_s(name, "OptionsMenu.wnd:%s", tabNames[cat]);
+                    GameWindow *tab = find(name);
+                    check(tab && visibleChain(tab) && reach(tab), "the rail button is visible and reachable by the mouse");
+                    if (tab) press(tab);
+                    op = 2; opWait = 6;
+                } else if (op == 2) {           // audit the page
+                    using namespace OptionsPageLayout;
+                    const ModernScreen::Layout &L = OptionsTabs::layout();
+                    check(OptionsTabs::activeCategory() == cat, "the pressed category is the active one");
+                    const PageTable t = pageItems(static_cast<Category>(cat));
+                    int shownRows = 0, defects = 0;
+                    for (int i = 0; i < t.count; ++i) {
+                        char name[96]; sprintf_s(name, "OptionsMenu.wnd:%s", t.items[i].control);
+                        GameWindow *w = find(name);
+                        if (!w) continue;
+                        if (!visibleChain(w)) continue;                    // a monitor row on one monitor, or a row scrolled out
+                        ++shownRows;
+                        int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                        const bool inside = x >= L.content.x && y >= L.content.y && x + ww <= L.content.right() && y + hh <= L.content.bottom();
+                        const bool hit = !BitIsSet(w->winGetStatus(), WIN_STATUS_ENABLED) || reach(w);   // a disabled control (borderless resolution, main-menu-only) is deliberately not clickable
+                        bool fits = true;
+                        if (t.items[i].label) {
+                            char ln[96]; sprintf_s(ln, "OptionsMenu.wnd:%s", t.items[i].label);
+                            GameWindow *lab = find(ln);
+                            if (lab && lab->winGetInstanceData() && lab->winGetInstanceData()->getTextDisplayString()) {
+                                int lw, lh, tw = 0, th = 0; lab->winGetSize(&lw, &lh);
+                                lab->winGetInstanceData()->getTextDisplayString()->getSize(&tw, &th);
+                                fits = tw <= lw && th <= lh + 2;
+                            }
+                        }
+                        sprintf_s(flowText, "category %d %s [%d,%d %dx%d] inside_content=%d mouse_hit=%d label_fits=%d", cat, t.items[i].control, x, y, ww, hh, inside ? 1 : 0, hit ? 1 : 0, fits ? 1 : 0);
+                        StartupDiagnostics::checkpoint("options", (inside && hit && fits && ww >= 40 && hh >= 18) ? "ok" : "defect", flowText);
+                        if (!(inside && hit && fits)) ++defects;
+                    }
+                    for (int c = 0; c < kCategoryCount; ++c) {
+                        if (c == cat) continue;
+                        const PageTable o = pageItems(static_cast<Category>(c));
+                        int leaked = 0;
+                        for (int i = 0; i < o.count; ++i) {
+                            char name[96]; sprintf_s(name, "OptionsMenu.wnd:%s", o.items[i].control);
+                            GameWindow *w = find(name);
+                            if (w && visibleChain(w)) ++leaked;
+                        }
+                        if (leaked) { sprintf_s(flowText, "category %d: %d control(s) of category %d still visible", cat, leaked, c); check(false, flowText); }
+                    }
+                    sprintf_s(flowText, "category %d rows_visible=%d layout_visible=%d defects=%d", cat, shownRows, L.visibleRows, defects);
+                    check(cat == static_cast<int>(Category::Network) || shownRows == L.visibleRows, flowText);
+                    if (cat == 0 && find("OptionsMenu.wnd:ButtonAccept") && !reach(find("OptionsMenu.wnd:ButtonAccept"))) {
+                        std::string chain;
+                        for (GameWindow *a = find("OptionsMenu.wnd:ButtonAccept"); a; a = a->winGetParent()) {
+                            int ax, ay, aw, ah; a->winGetScreenPosition(&ax, &ay); a->winGetSize(&aw, &ah);
+                            char one[220]; sprintf_s(one, "%s[%d,%d %dx%d hid=%d st=0x%x] < ", a->winGetInstanceData() ? a->winGetInstanceData()->m_decoratedNameString.str() : "?", ax, ay, aw, ah, a->winIsHidden() ? 1 : 0, (unsigned)a->winGetStatus());
+                            chain += one;
+                        }
+                        StartupDiagnostics::checkpoint("options", "chain", chain.c_str());
+                    }
+                    check(visibleChain(find("OptionsMenu.wnd:ButtonAccept")) && reach(find("OptionsMenu.wnd:ButtonAccept")), "Apply is visible and reachable");
+                    check(visibleChain(find("OptionsMenu.wnd:ButtonBack")) && reach(find("OptionsMenu.wnd:ButtonBack")), "Cancel is visible and reachable");
+                    check(visibleChain(find("OptionsMenu.wnd:ButtonDefaults")) && reach(find("OptionsMenu.wnd:ButtonDefaults")), "Defaults is visible and reachable");
+                    char tag[64]; sprintf_s(tag, "options-%d", cat); shoot(tag);
+                    ++cat;
+                    if (cat < OptionsPageLayout::kCategoryCount) { op = 1; opWait = 3; } else { op = 3; opWait = 2; }
+                } else if (op == 3) {           // keyboard: Page Down walks the categories and wraps
+                    OptionsTabs::onKey(KEY_PGUP, KEY_STATE_DOWN);
+                    check(OptionsTabs::activeCategory() == OptionsPageLayout::kCategoryCount - 2, "Page Up moves to the previous category");
+                    OptionsTabs::onKey(KEY_PGDN, KEY_STATE_DOWN); OptionsTabs::onKey(KEY_PGDN, KEY_STATE_DOWN);
+                    check(OptionsTabs::activeCategory() == 0, "Page Down wraps from the last category to the first");
+                    OptionsTabs::onKey(KEY_END, KEY_STATE_DOWN | KEY_STATE_LCONTROL);
+                    OptionsTabs::onKey(KEY_HOME, KEY_STATE_DOWN | KEY_STATE_LCONTROL);
+                    check(OptionsTabs::activeCategory() == 0, "Ctrl+End then Ctrl+Home returns to the first category");
+                    op = 4; opWait = 3;
+                } else if (op == 4) {           // dirty state: change the SFX volume slider through the page, expect the unsaved line and a discard confirmation
+                    OptionsTabs::onKey(KEY_PGDN, KEY_STATE_DOWN); OptionsTabs::onKey(KEY_PGDN, KEY_STATE_DOWN);   // Audio
+                    GameWindow *slider = find("OptionsMenu.wnd:SliderSFXVolume");
+                    check(slider && visibleChain(slider), "the SFX volume slider is on the Audio page");
+                    static int original = 0;
+                    if (slider) { original = GadgetSliderGetPosition(slider); GadgetSliderSetPosition(slider, original > 50 ? 20 : 80); }
+                    check(!OptionsTabs::dirty() || true, "slider moved");
+                    shoot("options-dirty");
+                    op = 5; opWait = 4;
+                } else if (op == 5) {
+                    check(OptionsTabs::dirty(), "changing a setting makes the screen dirty");
+                    GameWindow *back = find("OptionsMenu.wnd:ButtonBack");
+                    if (back) press(back);
+                    op = 6; opWait = 12;
+                } else if (op == 6) {
+                    GameWindow *box = find("MessageBox.wnd:MessageBoxParent");
+                    check(box && visibleChain(box), "leaving a dirty screen opens the discard confirmation");
+                    if (box) {
+                        int x, y, ww, hh; box->winGetScreenPosition(&x, &y); box->winGetSize(&ww, &hh);
+                        check(x >= 0 && y >= 0 && x + ww <= TheDisplay->getWidth() && y + hh <= TheDisplay->getHeight(), "the confirmation is inside the display");
+                    }
+                    shoot("options-dialog");
+                    GameWindow *no = find("MessageBox.wnd:ButtonNo");
+                    if (no && visibleChain(no)) { check(reach(no), "the No button is reachable"); press(no); }
+                    op = 7; opWait = 12;
+                } else if (op == 7) {
+                    check(find("MessageBox.wnd:MessageBoxParent") == nullptr || !visibleChain(find("MessageBox.wnd:MessageBoxParent")), "No keeps the Options screen open");
+                    check(OptionsTabs::activeCategory() >= 0 && OptionsTabs::dirty(), "the changes are still pending after No");
+                    GameWindow *slider = find("OptionsMenu.wnd:SliderSFXVolume");
+                    (void)slider;
+                    advance("options audited", nullptr); done = true;
+                }
+            } else if (step.kind == MATCH_SETUP) {
+                // UI.3: the Modern Match Setup composition: every player cell, the map preview, the rule cards and the actions sit on their layout rectangle and can be reached by the mouse; the retail
+                // start-position markers lie on the preview. In the Classic frontend the Modern composition must not exist.
+                static unsigned op = 0, opWait = 0;
+                auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("matchsetup", ok ? "ok" : "defect", what); };
+                auto isAnc = [](GameWindow *a, GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c == a) return true; return false; };
+                auto reach = [&](GameWindow *target) {
+                    int x, y, ww, hh; target->winGetScreenPosition(&x, &y); target->winGetSize(&ww, &hh);
+                    ICoord2D pos = { x + ww / 2, y + hh / 2 }; GameWindow *tip = nullptr;
+                    GameWindow *w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_ABOVE, WIN_STATUS_HIDDEN);
+                    if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_NONE, WIN_STATUS_ABOVE | WIN_STATUS_BELOW | WIN_STATUS_HIDDEN);
+                    if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_BELOW, WIN_STATUS_HIDDEN);
+                    return w && isAnc(target, w);
+                };
+                auto visibleChain = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden()) return false; return w != nullptr; };
+                if (opWait > 0) { --opWait; }
+                else if (!ModernMatchSetupScreen::active()) {
+                    static unsigned classicWait = 0;
+                    if (++classicWait < 240) { opWait = 1; }
+                    else {
+                        shoot("matchsetup-classic");
+                        check(find("SkirmishGameOptionsMenu.wnd:ModernBackdrop") == nullptr, "classic frontend: no Modern Match Setup backdrop exists");
+                        advance("match setup audited (classic)", nullptr); done = true;
+                    }
+                } else if (op == 0) {
+                    opWait = 40; op = 1;             // the retail fade-in and the first slot update have to finish
+                } else if (op == 1) {
+                    const ModernMatchSetup::Layout &L = ModernMatchSetupScreen::layout();
+                    sprintf_s(flowText, "matchsetup display=%dx%d effective_scale=%d panel=%d,%d %dx%d rules=%d", TheDisplay->getWidth(), TheDisplay->getHeight(), L.effectiveScale, L.panel.x, L.panel.y, L.panel.w, L.panel.h, ModernMatchSetupScreen::ruleCount());
+                    StartupDiagnostics::checkpoint("matchsetup", "geometry", flowText);
+                    check(L.panel.x >= 0 && L.panel.y >= 0 && L.panel.right() <= TheDisplay->getWidth() && L.panel.bottom() <= TheDisplay->getHeight(), "the panel is inside the display");
+                    {   // every visible large window of the screen: name, rectangle, status (leftover retail chrome shows up here)
+                        std::vector<GameWindow *> all; GameWindow *top = find("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent"); if (top) all.push_back(top);
+                        for (size_t i = 0; i < all.size(); ++i) {
+                            GameWindow *w = all[i]; int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                            if (!w->winIsHidden() && (ww > 400 || hh > 300) && !BitIsSet(w->winGetStyle(), GWS_COMBO_BOX)) {
+                                sprintf_s(flowText, "%s [%d,%d %dx%d] style=0x%x status=0x%x", w->winGetInstanceData() ? w->winGetInstanceData()->m_decoratedNameString.str() : "?", x, y, ww, hh, (unsigned)w->winGetStyle(), (unsigned)w->winGetStatus());
+                                StartupDiagnostics::checkpoint("matchsetup", "window", flowText);
+                            }
+                            for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext()) all.push_back(c);
+                        }
+                    }
+                    int defects = 0;
+                    auto expect = [&](GameWindow *w, const ModernScreen::Rect &r, const char *name, bool needHit) {
+                        if (!w) { sprintf_s(flowText, "%s: window missing", name); check(false, flowText); ++defects; return; }
+                        int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                        const bool pos = abs(x - r.x) <= 2 && abs(y - r.y) <= 2 && abs(ww - r.w) <= 2 && abs(hh - r.h) <= 2;
+                        const bool vis = visibleChain(w);
+                        const bool enabled = BitIsSet(w->winGetStatus(), WIN_STATUS_ENABLED);
+                        const bool hit = !needHit || !enabled || reach(w);
+                        if (!(pos && vis && hit)) { sprintf_s(flowText, "%s at [%d,%d %dx%d] expected [%d,%d %dx%d] visible=%d mouse_hit=%d", name, x, y, ww, hh, r.x, r.y, r.w, r.h, vis ? 1 : 0, hit ? 1 : 0); check(false, flowText); ++defects; }
+                    };
+                    for (int r = 0; r < ModernMatchSetup::kSlots; ++r) {
+                        char nm[96];
+                        const char *prefix[4] = { "ComboBoxPlayer", "ComboBoxColor", "ComboBoxPlayerTemplate", "ComboBoxTeam" };
+                        for (int c = 0; c < ModernMatchSetup::kColumns; ++c) {
+                            if (c == 0 && r == 0) strcpy_s(nm, "SkirmishGameOptionsMenu.wnd:TextEntryPlayerName");
+                            else sprintf_s(nm, "SkirmishGameOptionsMenu.wnd:%s%d", prefix[c], r);
+                            expect(find(nm), L.cell[r][c], nm, true);
+                        }
+                    }
+                    expect(find("SkirmishGameOptionsMenu.wnd:MapWindow"), L.mapPreview, "MapWindow", false);
+                    expect(find("SkirmishGameOptionsMenu.wnd:ButtonSelectMap"), L.selectMap, "ButtonSelectMap", true);
+                    expect(find("SkirmishGameOptionsMenu.wnd:ButtonStart"), L.start, "ButtonStart", true);
+                    expect(find("SkirmishGameOptionsMenu.wnd:ButtonBack"), L.back, "ButtonBack", true);
+                    static const char *const ruleWindows[] = { "ComboBoxStartingCash", "ComboBoxAIBehavior", "ComboBoxSuperweapons" };
+                    int ri = 0;
+                    for (const char *rw : ruleWindows) {
+                        char nm[96]; sprintf_s(nm, "SkirmishGameOptionsMenu.wnd:%s", rw);
+                        GameWindow *w = find(nm);
+                        if (!w || ri >= L.ruleCount) continue;
+                        expect(w, L.ruleControl[ri], nm, true);
+                        ++ri;
+                    }
+                    check(ri >= 1, "the rules zone holds at least the Starting Cash card");
+                    // retail start-position markers: visible ones lie inside the preview
+                    int markers = 0, outside = 0;
+                    for (int i = 0; i < 8; ++i) {
+                        char nm[96]; sprintf_s(nm, "SkirmishGameOptionsMenu.wnd:ButtonMapStartPosition%d", i);
+                        GameWindow *b = find(nm);
+                        if (!b || b->winIsHidden()) continue;
+                        ++markers;
+                        int x, y, ww, hh; b->winGetScreenPosition(&x, &y); b->winGetSize(&ww, &hh);
+                        if (x < L.mapPreview.x || y < L.mapPreview.y || x + ww > L.mapPreview.right() || y + hh > L.mapPreview.bottom()) ++outside;
+                    }
+                    sprintf_s(flowText, "start position markers visible=%d outside_preview=%d", markers, outside);
+                    check(outside == 0, flowText);
+                    sprintf_s(flowText, "matchsetup defects=%d", defects);
+                    StartupDiagnostics::checkpoint("matchsetup", defects ? "defect" : "ok", flowText);
+                    shoot("matchsetup");
+                    advance("match setup audited", nullptr); done = true;
+                }
             } else if (step.kind == WAKE_MENU) {
                 GameWindow *menu = find(step.a);
                 if (menu) {

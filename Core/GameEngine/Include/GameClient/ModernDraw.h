@@ -30,6 +30,7 @@ void setScalePercent(int percent);         // re-resolves fonts of every registe
 const char *resolvedFamily(TypeRole role);          // the installed family the role really uses ("" before the first resolve)
 bool familyInstalled(const char *family);
 GameFont *font(TypeRole role);                      // at the current scale
+GameFont *fontAt(TypeRole role, int scalePercent);  // at an explicit scale (dialogs lay themselves out at their own effective scale)
 
 // ---- primitives (screen coordinates) ----
 void fillChamfer(int x, int y, int w, int h, int cutTL, int cutTR, int cutBR, int cutBL, const ModernTheme::Color &c);
@@ -39,6 +40,7 @@ int px(int referenceUnits);                // reference units -> pixels at the c
 
 // ---- skinning of retail windows ----
 void skinButton(GameWindow *window, Kind kind, TypeRole role);
+void skinDialogButton(GameWindow *window, Kind kind, TypeRole role, int scalePercent);   // not registered: a dialog's windows are destroyed independently of the screen below it
 void skinText(GameWindow *window, TypeRole role, const ModernTheme::Color &color);
 void skinCombo(GameWindow *window);
 void skinList(GameWindow *window);
@@ -56,7 +58,7 @@ enum class DecorKind : unsigned char { Panel, Raised, Scrim, Rule, Tick, Text, B
 struct DecorItem
 {
 	DecorKind kind = DecorKind::Panel;
-	int x = 0, y = 0, w = 0, h = 0;                 // screen coordinates
+	int x = 0, y = 0, w = 0, h = 0;                 // relative to the backdrop window
 	int cutTL = 0, cutTR = 0, cutBR = 0, cutBL = 0;
 	TypeRole role = TypeRole::Body;
 	int align = 0;                                  // Text: 0 left, 1 centre, 2 right
@@ -74,7 +76,7 @@ public:
 	int count() const { return m_count; }
 	DecorItem &item(int i) { return m_items[i]; }
 	void refreshFonts();
-	void draw();
+	void draw(int originX, int originY);   // item coordinates are relative to the backdrop window's top-left
 private:
 	static constexpr int kMax = 96;
 	DecorItem m_items[kMax];
@@ -83,5 +85,6 @@ private:
 };
 
 // The backdrop window of a screen: a window below every other child that draws a Decor.
-GameWindow *createBackdrop(GameWindow *parent, const char *name, Decor *decor);
+// `container` = the backdrop also hosts child controls (it must stay enabled so the hit test descends into it); otherwise it is disabled and never takes a click.
+GameWindow *createBackdrop(GameWindow *parent, const char *name, Decor *decor, bool container = false);
 }

@@ -626,6 +626,8 @@ set(GAMEENGINE_SRC
     Source/GameClient/GUI/FrameRateOptions.cpp
     Source/GameClient/GUI/AIBehaviorOptions.cpp
     Source/GameClient/GUI/MatchOptionControls.cpp
+    Source/GameClient/GUI/ModernDialog.cpp
+    Source/GameClient/GUI/ModernMatchSetup.cpp
     Source/GameClient/GUI/ModernDraw.cpp
     Source/GameClient/GUI/ModernMenuShell.cpp
     Source/GameLogic/AI/AIEnhancedBase.cpp

@@ -34,6 +34,7 @@
 #include "Common/Debug.h"
 #include "Common/Language.h"
 #include "GameClient/Display.h"
+#include "GameClient/ModernDialog.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/Mouse.h"
@@ -1782,6 +1783,9 @@ GameWindow *GameWindowManager::gogoMessageBox(Int x, Int y, Int width, Int heigh
 	//make sure the dialog is showing and bring it to the top
 	parent->winHide(FALSE);
 	parent->winBringToTop();
+
+	// Modern Experience: the same dialog, composed as a Modern panel over a scrim (no-op in Classic)
+	ModernDialog::apply( trueParent, parent, menuName.str(), ModernDialog::Buttons{ (buttonFlags & MSG_BOX_OK) != 0, (buttonFlags & MSG_BOX_YES) != 0, (buttonFlags & MSG_BOX_NO) != 0, (buttonFlags & MSG_BOX_CANCEL) != 0 }, titleString, bodyString );
 
 	//Changed By Chris
 	return trueParent;
