@@ -4,7 +4,7 @@
 # preflighted with Stage-NativeOrdinaryPlay.ps1 -Title ZeroHour. The Steam installation is only ever read (by the stager).
 # The game process is never touched by this script; end the run in the game (Exit Game) or by closing the window.
 [CmdletBinding()]
-param([string]$Name = 'dist-4f5e092c1-zh',
+param([string]$Name = 'dist-a885d798f-zh',
       [switch]$Endurance,
       [switch]$BackupUserData,            # verified full copy of the Zero Hour data folder first (about 525 MB); this is the default
       [switch]$AcknowledgeSharedUserData, # skip the full copy: the game may change shared preferences, saves, maps, replays and logs

@@ -141,4 +141,15 @@ The same system is the base for the in-match HUD: the tokens, the type roles, th
 10. Any screen that **still falls back to the retail look** unexpectedly (a list is in section 4).
 11. In-match: nothing should have changed (HUD, camera, input) - report anything that did.
 
-@@PACKAGES@@
+## 14. Native-test packages (source commit `a885d798f`, one `New-MKRaudsteinDistribution.ps1` run, 26 of 26 validator checks per title)
+
+| file | size (B) | SHA-256 |
+|---|---:|---|
+| `MKRaudstein-Generals-x64-Preview-a885d798f.zip` | 4 118 676 | `FD074FD838D676CEBBAE832E40F2D35BE47E59C359ABFC7BBD7F215911627371` |
+| `MKRaudstein-ZeroHour-x64-Preview-a885d798f.zip` | 4 224 600 | `A2A642FCDC4B5C63C626D044606722DE150490233B0C58779855C7322A9ED179` |
+| `MKRaudstein-Generals-x64-Preview-a885d798f-Symbols.zip` | 21 891 935 | (manifest) |
+| `MKRaudstein-ZeroHour-x64-Preview-a885d798f-Symbols.zip` | 22 416 808 | (manifest) |
+
+Staged candidates: `build\dev-runtimes
+ative\ZeroHour\dist-a885d798f-zh\game\generalszh.exe` (also the default of `Run-ZeroHourCandidate.ps1`) and `...\Generals\dist-a885d798f-gen`. `-classic` shows the retail frontend for comparison. The retention policy of the distribution tool kept this distribution and the previous one (`4f5e092c1`) and removed the older `f38ba6418` (its commit and the tag-less history remain in git).
+
