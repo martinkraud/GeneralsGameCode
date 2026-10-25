@@ -123,7 +123,9 @@ class ModernMainMenuShell(unittest.TestCase):
     def test_shell_creates_only_its_own_windows_and_is_idempotent(self):
         cpp = read("Core/GameEngine/Source/GameClient/GUI/ModernMenuShell.cpp")
         self.assertNotIn("winDestroy", cpp)
-        self.assertIn("TheWindowManager->winGetWindowFromId(g.parent, panelId)", cpp)
+        self.assertIn("ModernDraw::createBackdrop(g.parent,", cpp)      # finds its band by name before creating it
+        self.assertIn("TheWindowManager->winGetWindowFromId(g.panel, ", cpp)   # buttons and logo likewise
+        self.assertNotIn("copyAppearance", cpp)                          # no retail button art is borrowed any more
 
     def test_audit_tooling_and_automation_hook(self):
         host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")

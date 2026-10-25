@@ -206,7 +206,8 @@ TEST(ModernMainMenuGeometry, NoDefectAtTheResolutionAndScaleMatrix)
 				ASSERT_GT(g.panel.w, 0) << what;
 				EXPECT_TRUE(inside(surface, g.panel)) << what;
 				EXPECT_TRUE(inside(surface, g.footnote)) << what;
-				EXPECT_FALSE(overlap(g.panel, g.footnote)) << what;
+				EXPECT_TRUE(inside(g.panel, g.footnote)) << what;   // the band is full height: the footnote is part of it
+				EXPECT_EQ(g.panel.h, sf.h) << what;
 				const Rect local{ 0, 0, g.panel.w, g.panel.h };
 				const Rect *children[] = { &g.logo, &g.heading, &g.headingRule, &g.slot[0], &g.slot[1], &g.slot[2], &g.slot[3], &g.slot[4], &g.footerRule, &g.footer };
 				for (int i = 0; i < 10; ++i)
@@ -270,7 +271,7 @@ TEST(ModernMainMenuGeometry, PanelIsASidebarNotACanvasAtEveryResolutionAndScale)
 			for (int scale : kScales)
 			{
 				const Geometry g = compute(sf.w, sf.h, scale, t);
-				EXPECT_LE(g.panel.h, sf.h * m.panelMaxHeightPercent / 100 + 1) << sf.w << "x" << sf.h << " @" << scale;
+				EXPECT_LE(g.stackBottom - g.logo.y, sf.h * m.panelMaxHeightPercent / 100 + 1) << sf.w << "x" << sf.h << " @" << scale;   // the navigation stack, not the full-height band
 				EXPECT_LE(g.panel.w * 100, g.composition.w * 60) << sf.w << "x" << sf.h << " @" << scale;
 			}
 	// a 1080p surface at the 175 % that Auto picks for it: reduced so the panel stays about a quarter of the width
@@ -307,17 +308,21 @@ TEST(ModernTheme, TypographyRolesAreCompleteAndOrdered)
 	for (int r = 0; r < (int)TypeRole::Count; ++r)
 	{
 		const ModernTheme::TypeStyle &s = ModernTheme::type((TypeRole)r);
-		EXPECT_NE(s.family, nullptr);
-		EXPECT_GT(std::strlen(s.family), 0u);
+		ASSERT_NE(s.families[0], nullptr);
+		EXPECT_GT(std::strlen(s.families[0]), 0u);
 		EXPECT_GT(s.referenceSize, 0);
 	}
-	EXPECT_GE(ModernTheme::type(TypeRole::Title).referenceSize, ModernTheme::type(TypeRole::SectionHeading).referenceSize);
-	EXPECT_GE(ModernTheme::type(TypeRole::SectionHeading).referenceSize, ModernTheme::type(TypeRole::MenuPrimary).referenceSize);
+	EXPECT_GE(ModernTheme::type(TypeRole::Title).referenceSize, ModernTheme::type(TypeRole::MajorHeading).referenceSize);
+	EXPECT_GE(ModernTheme::type(TypeRole::MajorHeading).referenceSize, ModernTheme::type(TypeRole::MenuPrimary).referenceSize);
 	EXPECT_GE(ModernTheme::type(TypeRole::MenuPrimary).referenceSize, ModernTheme::type(TypeRole::Body).referenceSize);
 	EXPECT_GE(ModernTheme::type(TypeRole::Body).referenceSize, ModernTheme::type(TypeRole::Helper).referenceSize);
-	// the recognizable character: the menu roles use the retail "Generals" family
-	EXPECT_STREQ(ModernTheme::type(TypeRole::MenuPrimary).family, "Generals");
-	EXPECT_STREQ(ModernTheme::type(TypeRole::Title).family, "Generals");
+	// the retail "Generals" family is not installed anywhere: the roles name real fonts only, in an ordered list that ends in a font every Windows has
+	for (int r = 0; r < (int)TypeRole::Count; ++r)
+	{
+		const ModernTheme::TypeStyle &s = ModernTheme::type((TypeRole)r);
+		for (int i = 0; i < ModernTheme::kFontCandidates && s.families[i]; ++i) EXPECT_STRNE(s.families[i], "Generals");
+		EXPECT_STREQ(s.families[ModernTheme::kFontCandidates - 1], "Arial");
+	}
 }
 
 TEST(ModernTheme, TitleVariantsAreDataNotDuplicatedLogic)
@@ -325,15 +330,16 @@ TEST(ModernTheme, TitleVariantsAreDataNotDuplicatedLogic)
 	const ModernTheme::Variant &g = ModernTheme::variant(Title::Generals);
 	const ModernTheme::Variant &z = ModernTheme::variant(Title::ZeroHour);
 	// shared base language
-	EXPECT_EQ(g.palette.panelFill.argb(), z.palette.panelFill.argb());
-	EXPECT_EQ(g.palette.panelEdge.argb(), z.palette.panelEdge.argb());
-	EXPECT_EQ(g.palette.textPrimary.argb(), z.palette.textPrimary.argb());
-	EXPECT_EQ(g.palette.textHilite.argb(), z.palette.textHilite.argb());      // the retail lime hilite is shared
-	// controlled differences
+	EXPECT_EQ(g.palette.scrim.argb(), z.palette.scrim.argb());
+	EXPECT_EQ(g.palette.panel.argb(), z.palette.panel.argb());
+	EXPECT_EQ(g.palette.text.argb(), z.palette.text.argb());
+	EXPECT_EQ(g.palette.hairline.argb(), z.palette.hairline.argb());
+	// controlled differences: the accent (and what derives from it)
 	EXPECT_NE(g.palette.accent.argb(), z.palette.accent.argb());
+	EXPECT_NE(g.palette.accentSoft.argb(), z.palette.accentSoft.argb());
 	EXPECT_STRNE(g.name, z.name);
-	// the translucent surface keeps the shell map readable
-	EXPECT_GT(g.palette.panelFill.a, 100); EXPECT_LT(g.palette.panelFill.a, 250);
+	// the translucent surfaces keep the shell map readable
+	EXPECT_GT(g.palette.scrim.a, 100); EXPECT_LT(g.palette.scrim.a, 250);
 	EXPECT_NE(g.logoImage, nullptr);
 	EXPECT_GT(g.logoWidth, g.logoHeight);
 }

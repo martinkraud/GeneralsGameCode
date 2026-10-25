@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// UI.2 Modern Experience main menu binding layer. See GameClient/ModernMenuShell.h for ownership, lifetime and behaviour.
+// Modern Experience main menu binding layer (UI.2, visual system revised by the Modern Frontend milestone). See GameClient/ModernMenuShell.h for ownership, lifetime and behaviour.
 #include "PreRTS.h"
 
 #include "GameClient/ModernMenuShell.h"
 
 #include <cstdlib>
 #include <cstring>
+#include <cwchar>
+#include <cwctype>
 #include <windows.h>
 
 #include "Common/AudioEventRTS.h"
@@ -25,15 +27,17 @@
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/Image.h"
 #include "GameClient/KeyDefs.h"
+#include "GameClient/ModernDraw.h"
 #include "GameClient/WinInstanceData.h"
 
 namespace
 {
 using namespace ModernMainMenu;
 using ModernFocus::Direction;
+using ModernTheme::TypeRole;
 
 constexpr int kMaxButtons = 24;
-constexpr int kSlideMs = 260;
+constexpr int kSlideMs = 240;
 
 struct ButtonSlot
 {
@@ -45,9 +49,7 @@ struct Shell
 {
 	bool built = false;
 	bool revealed = false;
-	bool instantReveal = false;
-	bool pageDirty = true;
-	GameWindow *parent = nullptr, *panel = nullptr, *logo = nullptr, *heading = nullptr, *footnote = nullptr;
+	GameWindow *parent = nullptr, *panel = nullptr, *logo = nullptr;
 	ButtonSlot buttons[kMaxButtons];
 	int buttonCount = 0;
 	State state;
@@ -59,12 +61,10 @@ struct Shell
 	int surfaceW = 0, surfaceH = 0, uiPercent = 0;
 	DWORD slideStart = 0;
 	bool sliding = false;
-	GameFont *fontPrimary = nullptr, *fontSecondary = nullptr, *fontHeading = nullptr, *fontHelper = nullptr;
-	GameWindow *buttonDonor = nullptr;
+	wchar_t footnote[96] = {};
+	ModernDraw::Decor decor;
 	ModernMenuShell::Stats stats;
 } g;
-
-bool g_feature = true;
 
 NameKeyType keyFor(const char *name) { return TheNameKeyGenerator->nameToKey(AsciiString(name)); }
 
@@ -90,30 +90,6 @@ AsciiString buttonName(Action a)
 	return s;
 }
 
-GameFont *fontFor(ModernTheme::TypeRole role, int effectivePercent)
-{
-	const ModernTheme::TypeStyle &style = ModernTheme::type(role);
-	int pt = (style.referenceSize * effectivePercent + 50) / 100;
-	if (pt < 6) pt = 6;
-	return TheFontLibrary ? TheFontLibrary->getFont(AsciiString(style.family), pt, style.bold) : nullptr;
-}
-
-Color toColor(const ModernTheme::Color &c) { return GameMakeColor(c.r, c.g, c.b, c.a); }
-
-void copyAppearance(GameWindow *target, GameWindow *source)
-{
-	WinInstanceData *to = target->winGetInstanceData();
-	const WinInstanceData *from = source->winGetInstanceData();
-	memcpy(to->m_enabledDrawData, from->m_enabledDrawData, sizeof(to->m_enabledDrawData));
-	memcpy(to->m_disabledDrawData, from->m_disabledDrawData, sizeof(to->m_disabledDrawData));
-	memcpy(to->m_hiliteDrawData, from->m_hiliteDrawData, sizeof(to->m_hiliteDrawData));
-	to->m_enabledText = from->m_enabledText;
-	to->m_disabledText = from->m_disabledText;
-	to->m_hiliteText = from->m_hiliteText;
-	target->winSetStatus(source->winGetStatus() & WIN_STATUS_IMAGE);
-	target->winSetDrawFunc(source->winGetDrawFunc());
-}
-
 int focusItemId(Action a) { return static_cast<int>(a); }
 
 ButtonSlot *slotFor(Action a)
@@ -135,100 +111,31 @@ void playClick()
 	TheAudio->addAudioEvent(&click);
 }
 
-// ---- drawing: the panel chrome, the heading rule, the focus bracket ----
-void line(int x1, int y1, int x2, int y2, int width, UnsignedInt color)
+UnicodeString upper(const UnicodeString &s)
 {
-	TheDisplay->drawLine(x1, y1, x2, y2, static_cast<Real>(width), color);
+	UnicodeString u;
+	for (const WideChar *p = s.str(); p && *p; ++p) u.concat(static_cast<WideChar>(towupper(*p)));
+	return u;
 }
 
-void corner(int x, int y, int dx, int dy, int len, int width, UnsignedInt color)
+ModernComponents::Kind kindOf(Action a)
 {
-	line(x, y, x + dx * len, y, width, color);
-	line(x, y, x, y + dy * len, width, color);
+	if (a == Action::Back) return ModernComponents::Kind::NavMinor;
+	if (a == Action::Exit) return ModernComponents::Kind::NavDanger;
+	return ModernComponents::Kind::Nav;
 }
 
-void panelDraw(GameWindow *window, WinInstanceData *)
-{
-	if (!g.built || !TheDisplay) return;
-	LARGE_INTEGER drawStart, drawEnd, drawFreq;
-	QueryPerformanceFrequency(&drawFreq);
-	QueryPerformanceCounter(&drawStart);
-	const ModernTheme::Variant &v = ModernTheme::variant(g.title);
-	const ModernTheme::Metrics &m = ModernTheme::metrics();
-	int x = 0, y = 0, w = 0, h = 0;
-	window->winGetScreenPosition(&x, &y);
-	window->winGetSize(&w, &h);
-	const int s = g.geo.effectiveScale;
-	const int thin = s >= 200 ? 2 : 1;
-	TheDisplay->drawFillRect(x, y, w, h, toColor(v.palette.panelFill));
-	TheDisplay->drawOpenRect(x, y, w, h, static_cast<Real>(thin), toColor(v.palette.panelEdge));
-	const int bl = (m.bracketLength * s + 50) / 100;
-	const UnsignedInt accent = toColor(v.palette.accent);
-	const int bw = thin + 1;
-	corner(x, y, +1, +1, bl, bw, accent);
-	corner(x + w - 1, y, -1, +1, bl, bw, accent);
-	corner(x, y + h - 1, +1, -1, bl, bw, accent);
-	corner(x + w - 1, y + h - 1, -1, -1, bl, bw, accent);
-	// rules
-	if (g.state.page() != Page::Root)
-	{
-		const Rect &r = g.geo.headingRule;
-		TheDisplay->drawFillRect(x + r.x, y + r.y, r.w, r.h, accent);
-	}
-	const Rect &fr = g.geo.footerRule;
-	TheDisplay->drawFillRect(x + fr.x, y + fr.y, fr.w, fr.h, toColor(v.palette.rule));
-	// focus bracket around the focused entry (keyboard focus and hover focus look the same)
-	if (g.revealed && g.state.nav.ring.hasFocus())
-	{
-		const ModernFocus::Item &it = g.state.nav.ring.item(g.state.nav.ring.focusedIndex());
-		const int pad = (3 * s + 50) / 100;
-		const int fx = x + it.rect.x - pad, fy = y + it.rect.y - pad, fw = it.rect.w + 2 * pad, fh = it.rect.h + 2 * pad;
-		const UnsignedInt fc = toColor(v.palette.focus);
-		const int arm = (m.bracketLength * s + 50) / 100;
-		corner(fx, fy, +1, +1, arm, bw, fc);
-		corner(fx + fw - 1, fy, -1, +1, arm, bw, fc);
-		corner(fx, fy + fh - 1, +1, -1, arm, bw, fc);
-		corner(fx + fw - 1, fy + fh - 1, -1, -1, arm, bw, fc);
-	}
-	QueryPerformanceCounter(&drawEnd);
-	++g.stats.draws;
-	g.stats.drawMicros += static_cast<unsigned long long>((drawEnd.QuadPart - drawStart.QuadPart) * 1000000LL / drawFreq.QuadPart);
-}
+TypeRole roleOf(Action a) { return (a == Action::Back || a == Action::Exit) ? TypeRole::MenuSecondary : TypeRole::MenuPrimary; }
 
-// ---- window creation ----
-GameWindow *createText(GameWindow *parent, NameKeyType id, GameFont *font, const ModernTheme::Color &color, bool centeredV)
+GameWindow *createButton(GameWindow *parent, GameWindow *owner, Action a)
 {
 	WinInstanceData inst;
-	inst.m_font = font;
-	inst.m_style = GWS_STATIC_TEXT;
-	inst.m_id = id;
-	TextData text = {};
-	text.centered = FALSE;
-	text.centeredVertically = centeredV ? TRUE : FALSE;
-	GameWindow *w = TheWindowManager->gogoGadgetStaticText(parent, WIN_STATUS_ENABLED | WIN_STATUS_NO_INPUT, 0, 0, 10, 10, &inst, &text, font, FALSE);
-	if (w)
-	{
-		w->winSetFont(font);
-		w->winSetEnabledTextColors(toColor(color), GameMakeColor(0, 0, 0, 255));
-		if (TextData *d = static_cast<TextData *>(w->winGetUserData()))
-		{
-			d->centered = FALSE;
-			d->centeredVertically = centeredV ? TRUE : FALSE;
-		}
-	}
-	return w;
-}
-
-GameWindow *createButton(GameWindow *parent, GameWindow *owner, GameWindow *donor, Action a, GameFont *font)
-{
-	WinInstanceData inst;
-	inst.m_font = font;
+	inst.m_font = ModernDraw::font(roleOf(a));
 	inst.m_id = keyFor(buttonName(a).str());
 	inst.m_style = GWS_PUSH_BUTTON | GWS_MOUSE_TRACK;
-	GameWindow *b = TheWindowManager->gogoGadgetPushButton(parent, WIN_STATUS_ENABLED | WIN_STATUS_IMAGE, 0, 0, 10, 10, &inst, font, FALSE);
+	GameWindow *b = TheWindowManager->gogoGadgetPushButton(parent, WIN_STATUS_ENABLED, 0, 0, 10, 10, &inst, inst.m_font, FALSE);
 	if (!b) return nullptr;
-	if (donor) copyAppearance(b, donor);
-	b->winSetFont(font);
+	ModernDraw::skinButton(b, kindOf(a), roleOf(a));
 	b->winSetOwner(owner);   // the gadget sends its click / hover to the retail main menu callback
 	return b;
 }
@@ -236,7 +143,7 @@ GameWindow *createButton(GameWindow *parent, GameWindow *owner, GameWindow *dono
 void hideRetailVisuals()
 {
 	for (GameWindow *c = g.parent->winGetChild(); c; c = c->winGetNext())
-		if (c != g.panel && c != g.footnote)
+		if (c != g.panel)
 			c->winHide(TRUE);
 }
 
@@ -257,38 +164,20 @@ void collectActions(Action *out, int &count)
 	}
 }
 
-void applyFonts()
-{
-	g.fontPrimary = fontFor(ModernTheme::TypeRole::MenuPrimary, g.geo.effectiveScale);
-	g.fontSecondary = fontFor(ModernTheme::TypeRole::MenuSecondary, g.geo.effectiveScale);
-	g.fontHeading = fontFor(ModernTheme::TypeRole::SectionHeading, g.geo.effectiveScale);
-	g.fontHelper = fontFor(ModernTheme::TypeRole::Helper, g.geo.effectiveScale);
-	for (int i = 0; i < g.buttonCount; ++i)
-		if (g.buttons[i].window) g.buttons[i].window->winSetFont(g.buttons[i].action == Action::Back || g.buttons[i].action == Action::Exit ? g.fontSecondary : g.fontPrimary);
-	if (g.heading && g.fontHeading) g.heading->winSetFont(g.fontHeading);
-	if (g.footnote && g.fontHelper) g.footnote->winSetFont(g.fontHelper);
-}
-
 void build()
 {
 	if (!g.parent) return;
+	ModernDraw::setTitle(g.title);
 	const ModernTheme::Variant &v = ModernTheme::variant(g.title);
-	const NameKeyType panelId = keyFor("MainMenu.wnd:ModernPanel");
-	g.panel = TheWindowManager->winGetWindowFromId(g.parent, panelId);
-	g.logo = g.heading = g.footnote = nullptr;
+	ModernDraw::clearRegistry();
+	g.decor.clear();
+	g.logo = nullptr;
 	g.buttonCount = 0;
-	if (!g.panel)
-	{
-		WinInstanceData inst;
-		inst.m_id = panelId;
-		g.panel = TheWindowManager->winCreate(g.parent, WIN_STATUS_ENABLED, 0, 0, 10, 10, GameWinDefaultSystem, &inst);
-		if (!g.panel) return;
-		g.panel->winSetDrawFunc(panelDraw);
-	}
-	g.panel->winSetDrawFunc(panelDraw);
+	// the band: one window below its children that draws the chrome (the decor); it takes input so the whole band is a click target
+	g.panel = ModernDraw::createBackdrop(g.parent, "MainMenu.wnd:ModernPanel", &g.decor);
+	if (!g.panel) return;
 	g.panel->winSetOwner(g.parent);
 
-	// logo (a mapped image, no fill)
 	const NameKeyType logoId = keyFor("MainMenu.wnd:ModernLogo");
 	g.logo = TheWindowManager->winGetWindowFromId(g.panel, logoId);
 	if (!g.logo)
@@ -305,18 +194,14 @@ void build()
 		}
 	}
 
-	g.heading = TheWindowManager->winGetWindowFromId(g.panel, keyFor("MainMenu.wnd:ModernHeading"));
-	if (!g.heading) { g.heading = createText(g.panel, keyFor("MainMenu.wnd:ModernHeading"), fontFor(ModernTheme::TypeRole::SectionHeading, 100), v.palette.accent, true); }
-	g.footnote = TheWindowManager->winGetWindowFromId(g.parent, keyFor("MainMenu.wnd:ModernFootnote"));
-	if (!g.footnote) { g.footnote = createText(g.parent, keyFor("MainMenu.wnd:ModernFootnote"), fontFor(ModernTheme::TypeRole::Helper, 100), v.palette.textMuted, true); }
-
 	Action actions[kMaxButtons];
 	int n = 0;
 	collectActions(actions, n);
 	for (int i = 0; i < n; ++i)
 	{
 		GameWindow *b = TheWindowManager->winGetWindowFromId(g.panel, keyFor(buttonName(actions[i]).str()));
-		if (!b) b = createButton(g.panel, g.parent, g.buttonDonor, actions[i], fontFor(ModernTheme::TypeRole::MenuPrimary, 100));
+		if (b) ModernDraw::skinButton(b, kindOf(actions[i]), roleOf(actions[i]));
+		else b = createButton(g.panel, g.parent, actions[i]);
 		if (b)
 		{
 			g.buttons[g.buttonCount].action = actions[i];
@@ -324,18 +209,59 @@ void build()
 			++g.buttonCount;
 		}
 	}
-	g.built = g.panel && g.logo && g.heading && g.footnote && g.buttonCount > 0;
+	g.built = g.panel && g.logo && g.buttonCount > 0;
 }
 
 void setLabel(GameWindow *button, const Entry &e)
 {
-	button->winSetText(TheGameText->FETCH_OR_SUBSTITUTE(e.labelKey, e.fallback));
+	button->winSetText(upper(TheGameText->FETCH_OR_SUBSTITUTE(e.labelKey, e.fallback)));   // the navigation roles are set in capitals
 }
 
 void positionPanel(int xOffset)
 {
 	if (!g.panel) return;
 	g.panel->winSetPosition(g.geo.panel.x + xOffset, g.geo.panel.y);
+}
+
+// The static chrome of the band: scrim, edge hairline, accent block, page heading, rules, footnote. Coordinates are relative to the band window.
+void rebuildDecor()
+{
+	const ModernTheme::Metrics &m = ModernTheme::metrics();
+	const ModernTheme::Palette &p = ModernTheme::variant(g.title).palette;
+	const PageDef &d = pageDef(g.title, g.state.page());
+	const bool root = g.state.page() == Page::Root;
+	const Rect &pn = g.geo.panel;
+	g.decor.clear();
+
+	ModernDraw::DecorItem &scrim = g.decor.add(ModernDraw::DecorKind::Scrim);
+	scrim.x = 0; scrim.y = 0; scrim.w = pn.w; scrim.h = pn.h;
+
+	const int edge = ModernDraw::px(2);
+	ModernDraw::DecorItem &line = g.decor.add(ModernDraw::DecorKind::Rule);
+	line.x = pn.w - edge; line.y = 0; line.w = edge; line.h = pn.h; line.color = p.hairline;
+	ModernDraw::DecorItem &tick = g.decor.add(ModernDraw::DecorKind::Tick);
+	tick.w = ModernDraw::px(m.accentTick) + edge; tick.x = pn.w - tick.w; tick.y = g.geo.stackTop; tick.h = g.geo.stackBottom - g.geo.stackTop;
+
+	if (!root)
+	{
+		ModernDraw::DecorItem &head = g.decor.add(ModernDraw::DecorKind::Text);
+		head.x = g.geo.heading.x; head.y = g.geo.heading.y; head.w = g.geo.heading.w; head.h = g.geo.heading.h;
+		head.role = TypeRole::MajorHeading; head.color = p.accent;
+		const UnicodeString t = upper(TheGameText->FETCH_OR_SUBSTITUTE(d.headingKey, d.headingFallback));
+		wcsncpy(head.text, t.str(), 95);
+		ModernDraw::DecorItem &rule = g.decor.add(ModernDraw::DecorKind::Rule);
+		rule.x = g.geo.headingRule.x; rule.y = g.geo.headingRule.y; rule.w = g.geo.headingRule.w * 38 / 100; rule.h = g.geo.headingRule.h; rule.color = p.accent;
+		ModernDraw::DecorItem &rest = g.decor.add(ModernDraw::DecorKind::Rule);
+		rest.x = rule.x + rule.w; rest.y = g.geo.headingRule.y; rest.w = g.geo.headingRule.w - rule.w; rest.h = g.geo.headingRule.h; rest.color = p.hairline;
+	}
+	ModernDraw::DecorItem &foot = g.decor.add(ModernDraw::DecorKind::Rule);
+	foot.x = g.geo.footerRule.x; foot.y = g.geo.footerRule.y; foot.w = g.geo.footerRule.w; foot.h = g.geo.footerRule.h; foot.color = p.hairline;
+
+	ModernDraw::DecorItem &note = g.decor.add(ModernDraw::DecorKind::Text);
+	note.x = g.geo.footnote.x - pn.x; note.y = g.geo.footnote.y - pn.y; note.w = g.geo.footnote.w; note.h = g.geo.footnote.h;
+	note.role = TypeRole::Helper; note.color = p.textMuted;
+	wcsncpy(note.text, g.footnote, 95);
+	g.decor.refreshFonts();
 }
 
 // Recompute the geometry (surface / scale changed or first show) and place the static parts.
@@ -349,7 +275,8 @@ void relayout()
 	g.uiPercent = static_cast<int>(DisplayRuntime::uiScale() * 100.0 + 0.5);
 	if (g.uiPercent <= 0) g.uiPercent = 100;
 	g.geo = compute(g.surfaceW, g.surfaceH, g.uiPercent, g.title);
-	// The retail MainMenuParent is the 800x600 canvas, uniformly scaled and centred (it draws nothing). A child is hit only inside EVERY ancestor's rectangle, so on a wide surface a panel
+	ModernDraw::setScalePercent(g.geo.effectiveScale);
+	// The retail MainMenuParent is the 800x600 canvas, uniformly scaled and centred (it draws nothing). A child is hit only inside EVERY ancestor's rectangle, so on a wide surface a band
 	// docked outside that canvas could not be clicked: the parent becomes the whole surface (all its retail children are hidden while the Modern shell is active).
 	g.parent->winSetPosition(0, 0);
 	g.parent->winSetSize(g.surfaceW, g.surfaceH);
@@ -357,12 +284,6 @@ void relayout()
 	positionPanel(g.sliding ? g.geo.slideFrom : 0);
 	g.logo->winSetPosition(g.geo.logo.x, g.geo.logo.y);
 	g.logo->winSetSize(g.geo.logo.w, g.geo.logo.h);
-	g.heading->winSetPosition(g.geo.heading.x, g.geo.heading.y);
-	g.heading->winSetSize(g.geo.heading.w, g.geo.heading.h);
-	g.footnote->winSetPosition(g.geo.footnote.x, g.geo.footnote.y);
-	g.footnote->winSetSize(g.geo.footnote.w, g.geo.footnote.h);
-	applyFonts();
-	g.pageDirty = true;
 	QueryPerformanceCounter(&t1);
 	++g.stats.relayouts;
 	g.stats.relayoutMicros += static_cast<unsigned long long>((t1.QuadPart - t0.QuadPart) * 1000000LL / f.QuadPart);
@@ -418,11 +339,14 @@ void applyPage()
 		const int y = g.state.page() == Page::Root ? top + (bottom - top - g.geo.logo.h) / 2 : top;
 		g.logo->winSetPosition(g.geo.logo.x, y);
 	}
-	if (g.state.page() == Page::Root) GadgetStaticTextSetText(g.heading, UnicodeString::TheEmptyString);
-	else GadgetStaticTextSetText(g.heading, TheGameText->FETCH_OR_SUBSTITUTE(d.headingKey, d.headingFallback));
-	g.heading->winHide(g.state.page() == Page::Root);
-	g.pageDirty = false;
+	rebuildDecor();
 	++g.stats.pageChanges;
+}
+
+void syncFocusWindow()
+{
+	ButtonSlot *s = g.state.nav.ring.hasFocus() ? slotFor(static_cast<Action>(g.state.nav.ring.focusedId())) : nullptr;
+	ModernDraw::setFocusWindow(s ? s->window : nullptr);
 }
 
 void defaultDifficultyFocus()
@@ -441,16 +365,19 @@ void performAction(Action a)
 		return;
 	case EffectKind::PageChanged:
 		applyPage();
+		syncFocusWindow();
 		return;
 	case EffectKind::SelectCampaign:
 	case EffectKind::SelectChallenge:
 		if (g.hooks.perform) g.hooks.perform(e);
 		applyPage();
 		defaultDifficultyFocus();
+		syncFocusWindow();
 		return;
 	case EffectKind::CancelSelection:
 		if (g.hooks.perform) g.hooks.perform(e);
 		applyPage();
+		syncFocusWindow();
 		return;
 	case EffectKind::StartSelected:
 	case EffectKind::Engine:
@@ -482,22 +409,24 @@ void init(GameWindow *menuParent, ModernTheme::Title title, const Hooks &hooks)
 	g.parent = menuParent;
 	g.title = title;
 	g.hooks = hooks;
-	g.buttonDonor = TheWindowManager->winGetWindowFromId(menuParent, keyFor("MainMenu.wnd:ButtonSinglePlayer"));
 	if (!g.stateValid || g.state.title != title || g.forget) { g.state.reset(title); g.stateValid = true; g.forget = false; }
 	g.state.busy = false;
 	build();
 	if (!g.built) return;
 	// the retail version label text becomes the footnote
 	GameWindow *retailVersion = TheWindowManager->winGetWindowFromId(menuParent, keyFor("MainMenu.wnd:LabelVersion"));
-	if (retailVersion) GadgetStaticTextSetText(g.footnote, GadgetStaticTextGetText(retailVersion));
-	else if (ModernBranding::useModernFooter()) GadgetStaticTextSetText(g.footnote, UnicodeString(ModernBranding::footerText()));
+	UnicodeString note = retailVersion ? GadgetStaticTextGetText(retailVersion) : UnicodeString(ModernBranding::footerText());
+	wcsncpy(g.footnote, note.str(), 95);
 	hideRetailVisuals();
 	relayout();
 	applyPage();
+	syncFocusWindow();
 	g.sliding = false;
 	g.panel->winHide(!g.revealed);
-	g.footnote->winHide(!g.revealed);
 	StartupDiagnostics::checkpoint("modernmenu", "init", title == Title::ZeroHour ? "ZeroHour" : "Generals");
+	char face[160];
+	sprintf_s(face, "nav=%s heading=%s body=%s", ModernDraw::resolvedFamily(TypeRole::MenuPrimary), ModernDraw::resolvedFamily(TypeRole::MajorHeading), ModernDraw::resolvedFamily(TypeRole::Body));
+	StartupDiagnostics::checkpoint("modernmenu", "fonts", face);
 }
 
 void reveal(bool instant)
@@ -506,7 +435,6 @@ void reveal(bool instant)
 	if (g.revealed && !g.sliding) return;
 	g.revealed = true;
 	g.panel->winHide(FALSE);
-	g.footnote->winHide(FALSE);
 	if (instant) { g.sliding = false; positionPanel(0); return; }
 	g.sliding = true;
 	g.slideStart = timeGetTime();
@@ -525,6 +453,7 @@ void update(bool leaving)
 	{
 		relayout();
 		applyPage();
+		syncFocusWindow();
 	}
 	if (g.sliding)
 	{
@@ -549,13 +478,14 @@ bool onKey(int key, int state)
 {
 	if (!g.built || !g.revealed || !(state & KEY_STATE_DOWN)) return false;
 	ModernFocus::Ring &ring = g.state.nav.ring;
+	bool moved = false;
 	switch (key)
 	{
-	case KEY_DOWN:  return ring.move(Direction::Down);
-	case KEY_UP:    return ring.move(Direction::Up);
-	case KEY_LEFT:  return ring.move(Direction::Left);
-	case KEY_RIGHT: return ring.move(Direction::Right);
-	case KEY_TAB:   return (state & KEY_STATE_SHIFT) ? ring.previous() : ring.next();
+	case KEY_DOWN:  moved = ring.move(Direction::Down); break;
+	case KEY_UP:    moved = ring.move(Direction::Up); break;
+	case KEY_LEFT:  moved = ring.move(Direction::Left); break;
+	case KEY_RIGHT: moved = ring.move(Direction::Right); break;
+	case KEY_TAB:   moved = (state & KEY_STATE_SHIFT) ? ring.previous() : ring.next(); break;
 	case KEY_ENTER:
 	case KEY_KPENTER:
 	{
@@ -570,6 +500,8 @@ bool onKey(int key, int state)
 		return true;
 	default: return false;
 	}
+	if (moved) syncFocusWindow();
+	return moved;
 }
 
 bool onSelected(GameWindow *control)
@@ -586,6 +518,7 @@ bool onHover(GameWindow *control)
 	ButtonSlot *s = slotFor(control);
 	if (!s) return false;
 	g.state.nav.ring.focusId(focusItemId(s->action));
+	syncFocusWindow();
 	return true;
 }
 

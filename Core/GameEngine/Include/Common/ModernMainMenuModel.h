@@ -166,13 +166,14 @@ struct Rect { int x = 0, y = 0, w = 0, h = 0; };
 struct Geometry
 {
 	Rect composition;          // the centred box the menu is composed in (never wider than the composition aspect cap)
-	Rect panel;                // absolute
-	// children, relative to the panel's top-left
+	Rect panel;                // absolute: the navigation band (full surface height, docked at the left edge of the composition box)
+	// children, relative to the band's top-left (the band starts at y = 0, so y is also the absolute y)
 	Rect logo, heading, headingRule, slot[kSlots], footerRule, footer;
-	Rect footnote;             // absolute: version / branding line at the bottom-left, aligned to the panel
-	int effectiveScale = 100;  // the UI scale actually used (<= requested): the menu never scrolls, so it is reduced until it fits the surface
+	Rect footnote;             // absolute: version / branding line at the bottom of the band
+	int stackTop = 0, stackBottom = 0;   // the vertical extent of the navigation stack (logo .. footer), absolute
+	int effectiveScale = 100;  // the UI scale actually used (<= requested): the stack never scrolls, so it is reduced until it fits the surface
 	bool compact = false;      // true when the requested scale had to be reduced
-	int slideFrom = 0;         // x offset (negative) the panel starts at for the reveal animation
+	int slideFrom = 0;         // x offset (negative) the band starts at for the reveal animation
 };
 
 namespace detail
@@ -194,55 +195,61 @@ inline Geometry compute(int surfaceW, int surfaceH, int uiScalePercent, Title ti
 	if (compW > surfaceW) compW = surfaceW;
 	g.composition = Rect{ (surfaceW - compW) / 2, 0, compW, surfaceH };
 
-	// Fit loop: reduce the effective scale until the panel (logo + heading + slots + footer) fits the surface height.
+	// Fit loop: reduce the effective scale until the navigation stack (logo + heading + slots + footer) fits the surface height.
 	for (int attempt = 0; attempt < 64; ++attempt)
 	{
 		const int pad = sc(m.panelPadding, scale), gap = sc(m.itemGap, scale);
-		int panelW = sc(m.panelPreferredWidth, scale);
+		int bandW = sc(m.panelPreferredWidth, scale);
 		const int minW = sc(m.panelMinWidth, scale), maxW = sc(m.panelMaxWidth, scale);
-		if (panelW < minW) panelW = minW;
-		if (panelW > maxW) panelW = maxW;
-		if (panelW > compW * 6 / 10) panelW = compW * 6 / 10;   // never more than 60 % of the composition box
-		const int innerW = panelW - 2 * pad;
-		const int logoH = innerW * v.logoHeight / v.logoWidth;
+		if (bandW < minW) bandW = minW;
+		if (bandW > maxW) bandW = maxW;
+		if (bandW > compW * 4 / 10) bandW = compW * 4 / 10;   // never more than 40 % of the composition box
+		const int innerW = bandW - 2 * pad;
+		int logoW = innerW * 88 / 100;                          // the logo is a little narrower than the items: it is a mark, not a bar
+		const int logoH = logoW * v.logoHeight / v.logoWidth;
 
 		ModernUi::Tree tree;
-		ModernUi::Node root; root.axis = ModernUi::Axis::Column; root.padding = { pad, pad, pad, pad }; root.gap = gap; root.prefW = panelW;
+		ModernUi::Node root; root.axis = ModernUi::Axis::Column; root.gap = gap; root.prefW = innerW;
 		const int r = tree.add(ModernUi::kNone, root);
 		auto leaf = [&](int h) { ModernUi::Node n; n.prefH = h; return tree.add(r, n); };
 		const int iLogo = leaf(logoH);
+		leaf(sc(18, scale));
 		const int iHeading = leaf(sc(m.headingHeight, scale));
 		const int iHeadRule = leaf(sc(m.ruleThickness, scale) > 0 ? sc(m.ruleThickness, scale) : 1);
+		leaf(sc(6, scale));
 		int iSlot[kSlots];
 		for (int i = 0; i < kSlots; ++i) iSlot[i] = leaf(sc(m.itemHeight, scale));
+		leaf(sc(14, scale));
 		const int iFootRule = leaf(sc(m.ruleThickness, scale) > 0 ? sc(m.ruleThickness, scale) : 1);
+		leaf(sc(6, scale));
 		const int iFooter = leaf(sc(m.itemHeight, scale));
 
 		ModernUi::Result probe;
-		ModernUi::solve(tree, ModernUi::Rect{ 0, 0, panelW, 1 << 20 }, 100, probe);
-		const int panelH = probe.content[r].h + 2 * pad;
+		ModernUi::solve(tree, ModernUi::Rect{ 0, 0, innerW, 1 << 20 }, 100, probe);
+		const int stackH = probe.content[r].h;
 		const int marginV = sc(m.edgeMargin, scale);
 		const int footnoteH = sc(m.footnoteHeight, scale);
 		int limitH = surfaceH * m.panelMaxHeightPercent / 100;
 		if (limitH > surfaceH - 2 * marginV - footnoteH) limitH = surfaceH - 2 * marginV - footnoteH;
-		if (panelH <= limitH || scale <= 30)
+		if (stackH <= limitH || scale <= 30)
 		{
 			ModernUi::Result out;
-			ModernUi::solve(tree, ModernUi::Rect{ 0, 0, panelW, panelH }, 100, out);
-			auto rel = [&](int i) { return Rect{ out.rect[i].x, out.rect[i].y, out.rect[i].w, out.rect[i].h }; };
-			g.logo = rel(iLogo); g.heading = rel(iHeading); g.headingRule = rel(iHeadRule);
+			ModernUi::solve(tree, ModernUi::Rect{ 0, 0, innerW, stackH }, 100, out);
+			int top = (surfaceH - stackH) / 2 - surfaceH / 20;
+			if (top < marginV) top = marginV;
+			auto rel = [&](int i) { return Rect{ pad + out.rect[i].x, top + out.rect[i].y, out.rect[i].w, out.rect[i].h }; };
+			g.logo = rel(iLogo);
+			g.logo.w = logoW; g.logo.h = logoH;
+			g.heading = rel(iHeading); g.headingRule = rel(iHeadRule);
 			for (int i = 0; i < kSlots; ++i) g.slot[i] = rel(iSlot[i]);
 			g.footerRule = rel(iFootRule); g.footer = rel(iFooter);
-			const int minX = g.composition.x + marginV;
-			int px = g.composition.x + (g.composition.w * 4) / 100;
-			if (px < minX) px = minX;
-			int py = (surfaceH - panelH) / 2 - surfaceH / 50;
-			if (py < marginV) py = marginV;
-			g.panel = Rect{ px, py, panelW, panelH };
-			g.footnote = Rect{ px, surfaceH - marginV / 2 - footnoteH, panelW, footnoteH };
+			int bandX = g.composition.x;
+			g.panel = Rect{ bandX, 0, bandW, surfaceH };
+			g.footnote = Rect{ bandX + pad, surfaceH - marginV / 2 - footnoteH, innerW, footnoteH };
+			g.stackTop = top; g.stackBottom = top + stackH;
 			g.effectiveScale = scale;
 			g.compact = scale < (uiScalePercent > 0 ? uiScalePercent : 100);
-			g.slideFrom = -(px + panelW);
+			g.slideFrom = -(bandX + bandW);
 			return g;
 		}
 		scale = scale * 92 / 100;   // reduce and try again
