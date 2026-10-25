@@ -105,3 +105,15 @@ Not run: the real-input camera gate (UI.2 does not touch the in-match camera or 
 5. Zero Hour: Solo Play shows Challenge; Generals: Campaign shows Training.
 6. Sounds and transitions: click sounds, the entrance sound, the screen fade into a campaign.
 7. Anything that looks un-Generals: tell us what (panel opacity, accent, fonts, spacing).
+
+## 12. Native-test packages (source commit `4f5e092c1`, one `New-MKRaudsteinDistribution.ps1` run, 26 of 26 validator checks per title)
+
+| file | size (B) | SHA-256 |
+|---|---:|---|
+| `MKRaudstein-Generals-x64-Preview-4f5e092c1.zip` | 4 071 538 | `4CEA7E8FC9581E5AB6F7CE9AA8AF9C231E17D794476E978406CC061AA5FC34D8` |
+| `MKRaudstein-ZeroHour-x64-Preview-4f5e092c1.zip` | 4 177 016 | `7EF1438B48C9E83C3DC24FB7059B2793BB2DA3B73308A50B9C4313E5031EFEB2` |
+| `MKRaudstein-Generals-x64-Preview-4f5e092c1-Symbols.zip` | 22 197 882 | (manifest) |
+| `MKRaudstein-ZeroHour-x64-Preview-4f5e092c1-Symbols.zip` | 22 638 073 | (manifest) |
+
+The `Generals.exe` inside each ZIP is byte-identical to the freshly built executable of that title; no PDB in the player ZIPs. Retention kept this distribution and the previous one (`f38ba6418`).
+Launch the staged Zero Hour candidate: `build\dev-runtimes\native\ZeroHour\dist-4f5e092c1-zh\game\generalszh.exe` or `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-4f5e092c1-zh` (Generals: `build\dev-runtimes\native\Generals\dist-4f5e092c1-gen`), or install the two ZIPs over the Steam installations as before; `-classic` shows the retail frontend for comparison.

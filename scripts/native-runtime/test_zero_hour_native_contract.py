@@ -209,7 +209,7 @@ class ZeroHourNativeContract(unittest.TestCase):
         # The .cmd double-click passes no -Name: the default must be the candidate the handoff documents (a stale default once pointed at v1).
         ps1 = read("scripts/native-runtime/Run-ZeroHourCandidate.ps1")
         default = re.search(r"\[string\]\$Name = '([^']+)'", ps1).group(1)
-        doc = read("docs/modernization/X64_52B_CAMERA_INPUT_REGRESSION.md")   # the milestone that stages the current candidate
+        doc = read("docs/modernization/MODERN_UI_2_MAIN_MENU.md")   # the milestone that stages the current candidate
         self.assertIn("ZeroHour\\" + default + "\game\generalszh.exe", doc)
         self.assertIn("-Name " + default, doc)
         self.assertEqual(sorted(set(re.findall(r"(?:x64-\d+[a-z]?-zh-(?:[a-z]+-)*v\d+|dist-[0-9a-f]+-zh)", ps1))), [default])
