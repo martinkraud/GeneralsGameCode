@@ -57,7 +57,7 @@ PARITY = {
     G + "GameEngine/Source/Common/GameEngine.cpp": (),
     G + "GameEngine/Source/GameClient/InGameUI.cpp": (),
     G + "GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/OptionsMenu.cpp": (),
-    G + "GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp": (),
+    G + "GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp": ("Generals has no Challenge menu", "ModernTheme::Title::Generals"),   # UI.2: the two title-specific lines of the Modern main menu glue
     # Zero Hour's road buffer culls with per-segment visibility (visibilityChanged), so its native traversal is its own function
     # (the bounds / loadRoadsInVertexAndIndexBuffers lines are Generals' drawRoads shape); the rest is identical.
     GD + "Source/W3DDevice/GameClient/W3DRoadBuffer.cpp": (
@@ -199,7 +199,7 @@ class ZeroHourNativeContract(unittest.TestCase):
         self.assertNotIn("TheGameLogic->setFrame", body)
         script = read("scripts/native-runtime/Invoke-NativeAutoCapture.ps1")
         self.assertIn("$env:GENERALS_AUTOFLOW = $Flow.ToLowerInvariant()", script)
-        self.assertIn("'Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','QuickGame'", script)
+        self.assertIn("'Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','MainMenu','QuickGame'", script)
 
     def test_the_native_screenshot_path_keeps_its_separator(self):
         host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")

@@ -66,6 +66,74 @@ class ClassicContract(unittest.TestCase):
         self.assertIn("Real xScale = (Real)TheDisplay->getWidth() / (Real)createRes.x;", script[i:i + 3500])
 
 
+MENUS = ("Generals/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp", "GeneralsMD/Code/GameEngine/Source/GameClient/GUI/GUICallbacks/Menus/MainMenu.cpp")
+
+
+class ModernMainMenuShell(unittest.TestCase):
+    """UI.2: the Modern main menu shell must stay isolated from Classic and wired to the retail behaviour."""
+
+    def test_pure_layers_are_engine_free(self):
+        allowed = ("cstdint", "type_traits", "Common/ModernFocus.h", "Common/ModernTheme.h", "Common/ModernUiLayout.h")
+        for name in ("ModernFocus.h", "ModernTheme.h", "ModernMainMenuModel.h"):
+            code = re.sub(r"//[^\n]*", "", read("Core/GameEngine/Include/Common/" + name))
+            for inc in re.findall(r'#include\s+[<"]([^>"]+)[>"]', code):
+                self.assertIn(inc, allowed, (name, inc))
+            for forbidden in ("GameWindow", "TheDisplay", "TheWindowManager", "std::vector", "malloc", "DisplayRuntime"):
+                self.assertNotIn(forbidden, code, (name, forbidden))
+
+    def test_shell_is_registered_and_gated_by_a_feature(self):
+        self.assertIn("Source/GameClient/GUI/ModernMenuShell.cpp", read("Core/GameEngine/CMakeLists.txt"))
+        self.assertIn("FEATURE_MODERN_FRONTEND", read("Core/GameEngine/Include/Common/ModernExperience.h"))
+        cpp = read("Core/GameEngine/Source/GameClient/GUI/ModernMenuShell.cpp")
+        self.assertIn("DisplayRuntime::modern() && ModernExperience::enabled(ModernExperience::FEATURE_MODERN_FRONTEND)", cpp)
+        self.assertIn("GENERALS_MODERN_FRONTEND", cpp)
+
+    def test_every_shell_call_in_both_titles_is_behind_the_gate(self):
+        pattern = re.compile(r"ModernMenuShell::(init|reveal|update|onKey|onSelected|onHover)\(")
+        for path in MENUS:
+            lines = read(path).split("\n")
+            calls = [i for i, l in enumerate(lines) if pattern.search(l)]
+            self.assertGreaterEqual(len(calls), 6, path)
+            for i in calls:
+                window = "\n".join(lines[max(0, i - 8):i + 1])
+                self.assertTrue(re.search(r"ModernMenuShell::(active|built)\(\)|modernMenu|revealMainMenu", window), (path, i + 1, lines[i].strip()))
+
+    def test_retail_flow_is_untouched_behind_the_else_branches(self):
+        guard = "if(buttonPushed)\n\t\t\t\tbreak;"
+        for path in MENUS:
+            text = read(path)
+            self.assertIn('TheTransitionHandler->setGroup("MainMenuDefaultMenu");', text)
+            reveal = text[text.index("static void revealMainMenu()"):][:700]
+            self.assertIn("else", reveal)
+            self.assertIn(guard, text)
+            self.assertLess(text.index("ModernMenuShell::onSelected( control )"), text.index(guard))
+
+    def test_title_specific_actions(self):
+        gen, zh = (read(p) for p in MENUS)
+        self.assertIn("launchChallengeMenu = TRUE;", zh)
+        self.assertIn("ModernTheme::Title::ZeroHour", zh)
+        self.assertNotIn("launchChallengeMenu", gen)
+        self.assertIn("ModernTheme::Title::Generals", gen)
+        for text in (gen, zh):
+            for action in ("Skirmish", "Network", "Online", "LoadGame", "LoadReplay", "Credits", "Options", "Exit"):
+                self.assertIn("case Action::%s:" % action, text, action)
+            self.assertIn('"Menus/SkirmishGameOptionsMenu.wnd"', text)
+            self.assertIn("QuitMessageBoxYesNo(", text[text.index("static Bool modernPerform"):])
+
+    def test_shell_creates_only_its_own_windows_and_is_idempotent(self):
+        cpp = read("Core/GameEngine/Source/GameClient/GUI/ModernMenuShell.cpp")
+        self.assertNotIn("winDestroy", cpp)
+        self.assertIn("TheWindowManager->winGetWindowFromId(g.parent, panelId)", cpp)
+
+    def test_audit_tooling_and_automation_hook(self):
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        self.assertIn('"mainmenu"', host)
+        self.assertIn("ModernMenuShell::performRetail(button)", host)
+        self.assertIn("classic frontend: the Modern shell was not instantiated", host)
+        self.assertIn("$Classic", read("scripts/native-runtime/Invoke-UiAudit.ps1"))
+        self.assertIn("MainMenu", read("scripts/native-runtime/Invoke-NativeAutoCapture.ps1"))
+
+
 class Documentation(unittest.TestCase):
     def test_modern_ui_documents_exist_and_cover_the_required_sections(self):
         arch = read("docs/modernization/MODERN_UI_ARCHITECTURE.md")

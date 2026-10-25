@@ -8,14 +8,15 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
-      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','QuickGame')][string]$Flow = 'Skirmish',
+      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','MainMenu','QuickGame')][string]$Flow = 'Skirmish',
       [ValidateRange(0,11)][int]$General = 0,
       [switch]$LookAtCenter,              # developer aid: camera over the map centre before the match frame (GENERALS_AUTOSHOT_LOOKAT)
       [string]$UiScale = '',              # developer override 75..300 (GENERALS_FORCE_UI_SCALE): layout audits at every UI scale
       [string]$ClientSize = '',           # developer override WxH (GENERALS_FORCE_CLIENT_SIZE), e.g. 5120x1440 on a smaller screen
       [ValidateRange(120,20000)][int]$MatchFrames = 1500,
       [ValidateRange(60,600)][int]$TimeoutSeconds = 240,
-      [string]$Disable = '')
+      [string]$Disable = '',
+      [switch]$Classic)                   # UI.2: start the retail frontend (-classic) to compare / to prove the Modern shell is absent
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if (@(Get-Process -Name generals,generalsv,generalszh -ErrorAction SilentlyContinue).Count) { throw 'Exit all existing games first' }
@@ -33,7 +34,8 @@ if ($Disable) { $env:GENERALS_NATIVE_DISABLE = $Disable }
 if ($ClientSize) { $env:GENERALS_FORCE_CLIENT_SIZE = $ClientSize }
 if ($UiScale) { $env:GENERALS_FORCE_UI_SCALE = $UiScale }
 if ($LookAtCenter) { $env:GENERALS_AUTOSHOT_LOOKAT = 'center' }
-$arguments = if ($Flow -eq 'QuickGame') { @('-devMode', '-quickGame', '-noaudio') } else { @('-noaudio') }
+[string[]]$arguments = if ($Flow -eq 'QuickGame') { @('-devMode', '-quickGame', '-noaudio') } else { @('-noaudio') }
+if ($Classic) { $arguments += '-classic' }
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $manifest.GamePath -PassThru
 try {
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Write-Warning 'Timed out; the game is terminated.'; $process.Kill() }
