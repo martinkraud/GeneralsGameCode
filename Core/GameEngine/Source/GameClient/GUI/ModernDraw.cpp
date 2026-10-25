@@ -36,6 +36,7 @@ using ModernComponents::State;
 using ModernTheme::Color;
 
 ModernTheme::Title g_title = ModernTheme::Title::Generals;
+Stats g_stats;
 int g_scale = 100;
 GameWindow *g_focus = nullptr;
 char g_family[static_cast<int>(TypeRole::Count)][32] = {};
@@ -112,7 +113,13 @@ void drawButton(GameWindow *w, WinInstanceData *inst, const Entry *e);
 
 void buttonDraw(GameWindow *w, WinInstanceData *inst)
 {
+	LARGE_INTEGER t0, t1, freq;
+	QueryPerformanceCounter(&t0);
 	drawButton(w, inst, find(w));
+	QueryPerformanceCounter(&t1);
+	QueryPerformanceFrequency(&freq);
+	++g_stats.buttonDraws;
+	g_stats.buttonMicros += static_cast<unsigned long long>((t1.QuadPart - t0.QuadPart) * 1000000LL / freq.QuadPart);
 }
 
 // Dialog buttons are not in the registry (a dialog is created and destroyed independently of the screen below it): the component kind rides in the gadget's data pointer.
@@ -269,6 +276,8 @@ void skinChildTree(GameWindow *w);
 // ---- theme state ----
 void setTitle(ModernTheme::Title title) { g_title = title; }
 ModernTheme::Title title() { return g_title; }
+const Stats &stats() { return g_stats; }
+void resetStats() { g_stats = Stats(); }
 const ModernTheme::Palette &palette() { return ModernTheme::variant(g_title).palette; }
 int scalePercent() { return g_scale; }
 int px(int ref) { return (ref * g_scale + 50) / 100; }
@@ -540,7 +549,7 @@ void Decor::refreshFonts()
 	for (int i = 0; i < m_count; ++i)
 	{
 		if (m_items[i].kind != DecorKind::Text) continue;
-		if (!m_strings[i]) m_strings[i] = TheDisplayStringManager->newDisplayString();
+		if (!m_strings[i]) { m_strings[i] = TheDisplayStringManager->newDisplayString(); ++g_stats.stringAllocations; }
 		DisplayString *ds = static_cast<DisplayString *>(m_strings[i]);
 		ds->setFont(font(m_items[i].role));
 		ds->setText(UnicodeString(m_items[i].text));
@@ -550,6 +559,8 @@ void Decor::refreshFonts()
 void Decor::draw(int ox, int oy)
 {
 	if (!TheDisplay) return;
+	LARGE_INTEGER t0, t1, freq;
+	QueryPerformanceCounter(&t0);
 	const ModernTheme::Palette &p = palette();
 	const ModernTheme::Metrics &m = ModernTheme::metrics();
 	const int thin = g_scale >= 200 ? 2 : 1;
@@ -586,6 +597,12 @@ void Decor::draw(int ox, int oy)
 		}
 		}
 	}
+	QueryPerformanceCounter(&t1);
+	QueryPerformanceFrequency(&freq);
+	const unsigned long long us = static_cast<unsigned long long>((t1.QuadPart - t0.QuadPart) * 1000000LL / freq.QuadPart);
+	++g_stats.decorDraws;
+	g_stats.decorMicros += us;
+	if (us > g_stats.worstDecorMicros) g_stats.worstDecorMicros = us;
 }
 
 namespace

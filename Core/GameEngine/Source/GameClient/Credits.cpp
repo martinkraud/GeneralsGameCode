@@ -56,6 +56,10 @@
 #include "GameClient/Display.h"
 #include "GameClient/GameText.h"
 #include "GameClient/GlobalLanguage.h"
+#include "Common/DisplayRuntime.h"
+#include "GameClient/GameFont.h"
+#include "GameClient/ModernDraw.h"
+#include "GameClient/ModernMenuShell.h"
 
 
 //-----------------------------------------------------------------------------
@@ -151,6 +155,19 @@ void CreditsManager::init()
 	m_framesSinceStarted = 0;
 }
 
+// Modern Experience: the credits are set in the Modern type roles (the retail credits fonts name the "Generals" family, which is not installed) and the colours come from the title palette.
+static GameFont *creditsFont(const FontDesc &retail, ModernTheme::TypeRole role)
+{
+	if (ModernMenuShell::active())
+	{
+		int percent = static_cast<int>(DisplayRuntime::uiScale() * 100.0 + 0.5);
+		if (percent <= 0) percent = 100;
+		if (GameFont *font = ModernDraw::fontAt(role, percent))
+			return font;
+	}
+	return TheFontLibrary->getFont(retail.name, TheGlobalLanguageData->adjustFontSize(retail.size), retail.bold);
+}
+
 void CreditsManager::load()
 {
 	INI ini;
@@ -162,11 +179,16 @@ void CreditsManager::load()
 	if(m_scrollRate <=0)
 		m_scrollRate = 1;
 
-	GameFont *font = TheFontLibrary->getFont(TheGlobalLanguageData->m_creditsNormalFont.name,
-														TheGlobalLanguageData->adjustFontSize(TheGlobalLanguageData->m_creditsNormalFont.size),
-														TheGlobalLanguageData->m_creditsNormalFont.bold);
+	GameFont *font = creditsFont(TheGlobalLanguageData->m_creditsNormalFont, ModernTheme::TypeRole::Body);
 
 	m_normalFontHeight = font ? font->height : 0;
+	if (ModernMenuShell::active())
+	{
+		const ModernTheme::Palette &p = ModernDraw::palette();
+		m_titleColor = GameMakeColor(p.accent.r, p.accent.g, p.accent.b, 255);
+		m_positionColor = GameMakeColor(p.text.r, p.text.g, p.text.b, 255);
+		m_normalColor = GameMakeColor(p.textSecondary.r, p.textSecondary.g, p.textSecondary.b, 255);
+	}
 }
 
 void CreditsManager::reset()
@@ -240,9 +262,7 @@ void CreditsManager::update()
 				DisplayString *ds = TheDisplayStringManager->newDisplayString();
 				if(!ds)
 					return;
-				ds->setFont(TheFontLibrary->getFont(TheGlobalLanguageData->m_creditsTitleFont.name,
-														TheGlobalLanguageData->adjustFontSize(TheGlobalLanguageData->m_creditsTitleFont.size),
-														TheGlobalLanguageData->m_creditsTitleFont.bold));
+				ds->setFont(creditsFont(TheGlobalLanguageData->m_creditsTitleFont, ModernTheme::TypeRole::MajorHeading));
 				ds->setText(cLine->m_text);
 				ds->getSize(&pos.x,&pos.y);
 				cLine->m_height = pos.y;
@@ -261,9 +281,7 @@ void CreditsManager::update()
 				DisplayString *ds = TheDisplayStringManager->newDisplayString();
 				if(!ds)
 					return;
-				ds->setFont(TheFontLibrary->getFont(TheGlobalLanguageData->m_creditsPositionFont.name,
-														TheGlobalLanguageData->adjustFontSize(TheGlobalLanguageData->m_creditsPositionFont.size),
-														TheGlobalLanguageData->m_creditsPositionFont.bold));
+				ds->setFont(creditsFont(TheGlobalLanguageData->m_creditsPositionFont, ModernTheme::TypeRole::SectionHeading));
 				ds->setText(cLine->m_text);
 				ds->getSize(&pos.x,&pos.y);
 				cLine->m_height = pos.y;
@@ -282,9 +300,7 @@ void CreditsManager::update()
 				DisplayString *ds = TheDisplayStringManager->newDisplayString();
 				if(!ds)
 					return;
-				ds->setFont(TheFontLibrary->getFont(TheGlobalLanguageData->m_creditsNormalFont.name,
-														TheGlobalLanguageData->adjustFontSize(TheGlobalLanguageData->m_creditsNormalFont.size),
-														TheGlobalLanguageData->m_creditsNormalFont.bold));
+				ds->setFont(creditsFont(TheGlobalLanguageData->m_creditsNormalFont, ModernTheme::TypeRole::Body));
 				ds->setText(cLine->m_text);
 				ds->getSize(&pos.x,&pos.y);
 				cLine->m_height = pos.y;
@@ -303,9 +319,7 @@ void CreditsManager::update()
 				DisplayString *ds = TheDisplayStringManager->newDisplayString();
 				if(!ds)
 					return;
-				ds->setFont(TheFontLibrary->getFont(TheGlobalLanguageData->m_creditsNormalFont.name,
-														TheGlobalLanguageData->adjustFontSize(TheGlobalLanguageData->m_creditsNormalFont.size),
-														TheGlobalLanguageData->m_creditsNormalFont.bold));
+				ds->setFont(creditsFont(TheGlobalLanguageData->m_creditsNormalFont, ModernTheme::TypeRole::Body));
 				ds->setText(cLine->m_text);
 				ds->getSize(&pos.x,&pos.y);
 				cLine->m_height = pos.y;
@@ -318,9 +332,7 @@ void CreditsManager::update()
 				DisplayString *ds = TheDisplayStringManager->newDisplayString();
 				if(!ds)
 					return;
-				ds->setFont(TheFontLibrary->getFont(TheGlobalLanguageData->m_creditsNormalFont.name,
-														TheGlobalLanguageData->adjustFontSize(TheGlobalLanguageData->m_creditsNormalFont.size),
-														TheGlobalLanguageData->m_creditsNormalFont.bold));
+				ds->setFont(creditsFont(TheGlobalLanguageData->m_creditsNormalFont, ModernTheme::TypeRole::Body));
 				ds->setText(cLine->m_secondText);
 				ds->getSize(&pos.x,&pos.y);
 				cLine->m_height = pos.y;

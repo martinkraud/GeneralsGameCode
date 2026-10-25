@@ -54,6 +54,7 @@ inline int sc(int ref, int percent) { return (ref * percent + 50) / 100; }
 inline Layout compute(const Input &in)
 {
 	using namespace detail;
+	++ModernScreen::detail::computeCounter();
 	const ModernTheme::Metrics &m = ModernTheme::metrics();
 	Layout L;
 	if (in.surfaceW <= 0 || in.surfaceH <= 0) return L;

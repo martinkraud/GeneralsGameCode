@@ -53,6 +53,16 @@ GameWindow *focusWindow();
 void clearRegistry();
 unsigned registeredCount();
 
+// ---- cost instrumentation (read by the audit; two timer reads per draw, no allocation) ----
+struct Stats
+{
+	unsigned decorDraws = 0, buttonDraws = 0;
+	unsigned long long decorMicros = 0, buttonMicros = 0, worstDecorMicros = 0;
+	unsigned stringAllocations = 0;        // display strings created by Decor::refreshFonts (layout time only, never per frame)
+};
+const Stats &stats();
+void resetStats();
+
 // ---- decor ----
 enum class DecorKind : unsigned char { Panel, Raised, Scrim, Rule, Tick, Text, Bracket, Field };
 struct DecorItem

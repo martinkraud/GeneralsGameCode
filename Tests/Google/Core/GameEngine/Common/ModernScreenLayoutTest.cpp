@@ -162,3 +162,42 @@ TEST(ModernDialogLayout, GrowsWithTheBodyAndStaysCentred)
 	EXPECT_EQ(la.panel.w, lb.panel.w);
 	EXPECT_LE(std::abs((la.panel.y + la.panel.h / 2) - (lb.panel.y + lb.panel.h / 2)), 1);
 }
+
+TEST(ModernBrowserLayout, ListAndActionColumnFitEverySurfaceAtEveryScale)
+{
+	for (const Surface &s : kSurfaces) for (int scale : kScales) for (int actions = 1; actions <= kMaxBrowserActions; ++actions)
+	{
+		BrowserInput in; in.surfaceW = s.w; in.surfaceH = s.h; in.uiPercent = scale; in.actionCount = actions;
+		const BrowserLayout L = computeBrowser(in);
+		const std::string what = std::to_string(s.w) + "x" + std::to_string(s.h) + " @" + std::to_string(scale) + " actions " + std::to_string(actions);
+		ASSERT_GT(L.panel.w, 0) << what;
+		const Rect surface{ 0, 0, s.w, s.h };
+		EXPECT_TRUE(surface.contains(L.panel)) << what;
+		EXPECT_TRUE(L.composition.contains(L.panel)) << what;
+		EXPECT_TRUE(L.panel.contains(L.title) && L.panel.contains(L.list) && L.panel.contains(L.actionColumn)) << what;
+		EXPECT_FALSE(L.list.overlaps(L.actionColumn)) << what;
+		EXPECT_FALSE(L.title.overlaps(L.list)) << what;
+		EXPECT_GE(L.list.h, 4 * 20) << what;
+		for (int i = 0; i < actions; ++i)
+		{
+			EXPECT_TRUE(L.actionColumn.contains(L.action[i])) << what << " action " << i;
+			EXPECT_GE(L.action[i].h, 20) << what;
+			EXPECT_FALSE(L.action[i].overlaps(L.list)) << what;
+			if (i) EXPECT_FALSE(L.action[i].overlaps(L.action[i - 1])) << what << " actions " << i - 1 << "," << i;
+		}
+		if (actions > 1) EXPECT_EQ(L.action[actions - 1].bottom(), L.actionColumn.bottom()) << what;   // Back is anchored to the bottom of the column
+		EXPECT_LE(L.effectiveScale, scale) << what;
+	}
+}
+
+TEST(ModernDialogLayout, AnEntryRowMakesTheDialogTallerAndStaysInsideItAboveTheButtons)
+{
+	DialogInput a; a.surfaceW = 1920; a.surfaceH = 1080; a.uiPercent = 100; a.buttonCount = 2; a.bodyHeight = 40;
+	DialogInput b = a; b.extraHeight = 36;
+	const DialogLayout la = computeDialog(a), lb = computeDialog(b);
+	EXPECT_GT(lb.panel.h, la.panel.h);
+	EXPECT_EQ(la.extra.h, 0);
+	EXPECT_TRUE(lb.panel.contains(lb.extra));
+	EXPECT_FALSE(lb.extra.overlaps(lb.body));
+	EXPECT_FALSE(lb.extra.overlaps(lb.button[0]) || lb.extra.overlaps(lb.button[1]));
+}

@@ -62,6 +62,8 @@
 #include "GameClient/Shell.h"
 #include "GameClient/KeyDefs.h"
 #include "GameClient/GameWindowManager.h"
+#include "GameClient/ModernCredits.h"
+#include "GameClient/ModernMenuShell.h"
 
 //-----------------------------------------------------------------------------
 // DEFINES ////////////////////////////////////////////////////////////////////
@@ -79,7 +81,7 @@ static GameWindow *parentMainMenu = nullptr;
 //-------------------------------------------------------------------------------------------------
 void CreditsMenuInit( WindowLayout *layout, void *userData )
 {
-	TheShell->showShellMap(FALSE);
+	TheShell->showShellMap(ModernMenuShell::active() ? TRUE : FALSE);   // Modern Experience: the credits roll over the 3D shell map
 
 	delete TheCredits;
 	TheCredits = new CreditsManager;
@@ -89,6 +91,8 @@ void CreditsMenuInit( WindowLayout *layout, void *userData )
 	parentMainMenuID = TheNameKeyGenerator->nameToKey( "CreditsMenu.wnd:ParentCreditsWindow" );
 	parentMainMenu = TheWindowManager->winGetWindowFromId( nullptr, parentMainMenuID );
 
+
+	ModernCredits::attach( parentMainMenu );     // Modern Experience: scrim band + type roles (no-op in Classic)
 
 	// show menu
 	layout->hide( FALSE );
@@ -111,6 +115,7 @@ void CreditsMenuInit( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void CreditsMenuShutdown( WindowLayout *layout, void *userData )
 {
+	ModernCredits::forget();
 	TheCredits->reset();
 	delete TheCredits;
 	TheCredits = nullptr;
@@ -131,6 +136,7 @@ void CreditsMenuShutdown( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void CreditsMenuUpdate( WindowLayout *layout, void *userData )
 {
+	ModernCredits::update();
 
 	if(TheCredits)
 	{

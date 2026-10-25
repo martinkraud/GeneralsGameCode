@@ -42,6 +42,7 @@
 #include "GameClient/Shell.h"
 #include "GameClient/KeyDefs.h"
 #include "GameClient/GameWindowManager.h"
+#include "GameClient/ModernBrowser.h"
 #include "GameClient/MessageBox.h"
 #include "GameClient/MapUtil.h"
 #include "GameClient/Mouse.h"
@@ -431,6 +432,8 @@ void ReplayMenuInit( WindowLayout *layout, void *userData )
 																									 &instData, nullptr, TRUE );
 #endif
 
+	ModernBrowser::create( ModernBrowser::replaySpec() );      // Modern Experience: list + action column composition (no-op in Classic)
+
 	// show menu
 	layout->hide( FALSE );
 
@@ -450,6 +453,7 @@ void ReplayMenuInit( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void ReplayMenuShutdown( WindowLayout *layout, void *userData )
 {
+	ModernBrowser::forget();
 
 	Bool popImmediate = *(Bool *)userData;
 	if( popImmediate )
@@ -471,6 +475,7 @@ void ReplayMenuShutdown( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void ReplayMenuUpdate( WindowLayout *layout, void *userData )
 {
+	ModernBrowser::update();
 	if(justEntered)
 	{
 		if(initialGadgetDelay == 1)

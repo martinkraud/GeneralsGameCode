@@ -55,6 +55,7 @@
 #include "GameClient/GadgetTextEntry.h"
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindowManager.h"
+#include "GameClient/ModernBrowser.h"
 #include "GameClient/GUICallbacks.h"
 #include "GameClient/SaveLoadFeedback.h"
 #include "GameClient/Shell.h"
@@ -181,6 +182,8 @@ void SaveLoadMenuInit( WindowLayout *layout, void *userData )
 	// update the availability of the menu buttons
 	updateMenuActions();
 
+	ModernBrowser::create( ModernBrowser::saveLoadSpec( "PopupSaveLoad.wnd:" ) );   // Modern Experience (no-op in Classic)
+
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -244,6 +247,8 @@ void SaveLoadMenuFullScreenInit( WindowLayout *layout, void *userData )
 	// update the availability of the menu buttons
 	updateMenuActions();
 
+	ModernBrowser::create( ModernBrowser::saveLoadSpec( "SaveLoad.wnd:" ) );        // Modern Experience (no-op in Classic)
+
 	layout->hide(FALSE);
 	justEntered = TRUE;
 	initialGadgetDelay = 2;
@@ -257,6 +262,7 @@ void SaveLoadMenuFullScreenInit( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void SaveLoadMenuShutdown( WindowLayout *layout, void *userData )
 {
+	ModernBrowser::forget();
 
 	Bool popImmediate = *(Bool *)userData;
 	if( popImmediate )
@@ -278,6 +284,7 @@ void SaveLoadMenuShutdown( WindowLayout *layout, void *userData )
 //-------------------------------------------------------------------------------------------------
 void SaveLoadMenuUpdate( WindowLayout *layout, void *userData )
 {
+	ModernBrowser::update();
 
 	if(DontShowMainMenu && justEntered)
 		justEntered = FALSE;

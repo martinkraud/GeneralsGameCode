@@ -67,6 +67,9 @@
 #include "GameClient/ModernMenuShell.h"
 #include "GameClient/OptionsTabs.h"
 #include "GameClient/ModernMatchSetup.h"
+#include "GameClient/ModernBrowser.h"
+#include "GameClient/ModernDraw.h"
+#include "GameClient/ModernCredits.h"
 #include "Common/OptionsPageLayout.h"
 #include "GameClient/GadgetSlider.h"
 #include "Common/KindOf.h"
@@ -1477,6 +1480,14 @@ void NativeAutoShot()
     }();
     static unsigned shellFrames = 0, gameFrames = 0;
     static bool shellDone = false, gameDone = false;
+    // UI.3: the cost of the Modern frontend drawing (components + chrome); the screens' own layout counters are reported with their flows
+    auto modernCost = [&](const char *system) {
+        const ModernDraw::Stats &ds = ModernDraw::stats();
+        char buf[420];
+        sprintf_s(buf, "%s decor_draws=%u avg_decor_us=%.2f worst_decor_us=%llu button_draws=%u avg_button_us=%.2f string_allocations=%u layout_solves_total=%u", system, ds.decorDraws, ds.decorDraws ? (double)ds.decorMicros / ds.decorDraws : 0.0,
+                  ds.worstDecorMicros, ds.buttonDraws, ds.buttonDraws ? (double)ds.buttonMicros / ds.buttonDraws : 0.0, ds.stringAllocations, ModernScreen::computeCount());
+        StartupDiagnostics::checkpoint("cost", "frontend", buf);
+    };
     auto shoot = [&](const char *tag) {
         if (!strcmp(tag, "game") && TheTacticalView && TheTerrainLogic) {
             // where the view lands on the ground compared with the map: separates "the map is narrower than the view" from a render fault
@@ -1529,7 +1540,7 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
@@ -1578,6 +1589,10 @@ void NativeAutoShot()
     // UI.3: the Modern Match Setup: composition rectangles, mouse reachability, then the dropdown audit of the rule controls (MATCH_UI)
     static const Step setupSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { MATCH_SETUP, nullptr, nullptr, 60, 1 }, { MATCH_UI, nullptr, nullptr, 120, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    // UI.3: the Modern list browsers
+    static const Step replaySteps[] = { { PUSH, "Menus/ReplayMenu.wnd", nullptr, 600, 1 }, { BROWSER_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step loadGameSteps[] = { { PUSH, "Menus/SaveLoad.wnd", nullptr, 600, 1 }, { BROWSER_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step creditsSteps[] = { { PUSH, "Menus/CreditsMenu.wnd", nullptr, 600, 1 }, { CREDITS_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;
@@ -1590,12 +1605,15 @@ void NativeAutoShot()
         if (!_stricmp(text, "mainmenu")) return 7;
         if (!_stricmp(text, "options")) return 8;
         if (!_stricmp(text, "matchsetup")) return 9;
+        if (!_stricmp(text, "replay")) return 10;
+        if (!_stricmp(text, "loadgame")) return 11;
+        if (!_stricmp(text, "credits")) return 12;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -1930,8 +1948,13 @@ void NativeAutoShot()
                     };
                     switch (op) {
                     case 0: {   // park the real cursor in the top-left corner of the client area: a hover must not move the focus under the keyboard checks
-                        POINT corner = { 2, 2 };
-                        if (ApplicationHWnd && ClientToScreen(ApplicationHWnd, &corner)) SetCursorPos(corner.x, corner.y);
+                        static bool parked = false;
+                        if (!parked) {   // park first and let a few frames pass: the capture must not show the hover state of wherever the real cursor was
+                            POINT corner = { 2, 2 };
+                            if (ApplicationHWnd && ClientToScreen(ApplicationHWnd, &corner)) SetCursorPos(corner.x, corner.y);
+                            parked = true; opWait = 25; --op;
+                            break;
+                        }
                         audit("mainmenu-root");
                         break;
                     }
@@ -1967,7 +1990,7 @@ void NativeAutoShot()
                                   st.relayouts, st.relayoutMicros, st.pageChanges);
                         StartupDiagnostics::checkpoint("mainmenu", "cost", flowText);
                         check(st.relayouts <= 3, "the layout was recomputed only for the surface / first show, not per frame");
-                        advance("main menu audited", nullptr); done = true;
+                        modernCost("main"); advance("main menu audited", nullptr); done = true;
                         break;
                     }
                     }
@@ -2117,7 +2140,7 @@ void NativeAutoShot()
                     check(OptionsTabs::activeCategory() >= 0 && OptionsTabs::dirty(), "the changes are still pending after No");
                     GameWindow *slider = find("OptionsMenu.wnd:SliderSFXVolume");
                     (void)slider;
-                    advance("options audited", nullptr); done = true;
+                    modernCost("options"); advance("options audited", nullptr); done = true;
                 }
             } else if (step.kind == MATCH_SETUP) {
                 // UI.3: the Modern Match Setup composition: every player cell, the map preview, the rule cards and the actions sit on their layout rectangle and can be reached by the mouse; the retail
@@ -2209,7 +2232,86 @@ void NativeAutoShot()
                     sprintf_s(flowText, "matchsetup defects=%d", defects);
                     StartupDiagnostics::checkpoint("matchsetup", defects ? "defect" : "ok", flowText);
                     shoot("matchsetup");
-                    advance("match setup audited", nullptr); done = true;
+                    modernCost("match"); advance("match setup audited", nullptr); done = true;
+                }
+            } else if (step.kind == BROWSER_UI) {
+                // UI.3: the Modern list browsers (Load Game, Replays): composition rectangles, mouse reachability of the list and the actions, the retail inline confirmation panels re-skinned.
+                static unsigned op = 0, opWait = 0, classicWait = 0;
+                auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("browser", ok ? "ok" : "defect", what); };
+                auto isAnc = [](GameWindow *a, GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c == a) return true; return false; };
+                auto reach = [&](GameWindow *target) {
+                    int x, y, ww, hh; target->winGetScreenPosition(&x, &y); target->winGetSize(&ww, &hh);
+                    ICoord2D pos = { x + ww / 2, y + hh / 2 }; GameWindow *tip = nullptr;
+                    GameWindow *w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_ABOVE, WIN_STATUS_HIDDEN);
+                    if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_NONE, WIN_STATUS_ABOVE | WIN_STATUS_BELOW | WIN_STATUS_HIDDEN);
+                    if (!w) w = TheWindowManager->findWindowUnderMouse(tip, &pos, WIN_STATUS_BELOW, WIN_STATUS_HIDDEN);
+                    return w && isAnc(target, w);
+                };
+                auto visibleChain = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden()) return false; return w != nullptr; };
+                if (opWait > 0) { --opWait; }
+                else if (!ModernBrowser::active()) {
+                    if (++classicWait < 240) { opWait = 1; }
+                    else { shoot("browser-classic"); check(find("ReplayMenu.wnd:ModernBackdrop") == nullptr && find("SaveLoad.wnd:ModernBackdrop") == nullptr, "classic frontend: no Modern browser backdrop exists"); advance("browser audited (classic)", nullptr); done = true; }
+                } else if (op == 0) { opWait = 40; op = 1;
+                } else if (op == 1) {
+                    const ModernScreen::BrowserLayout &L = ModernBrowser::layout();
+                    sprintf_s(flowText, "browser display=%dx%d effective_scale=%d panel=%d,%d %dx%d list=%d,%d %dx%d", TheDisplay->getWidth(), TheDisplay->getHeight(), L.effectiveScale, L.panel.x, L.panel.y, L.panel.w, L.panel.h, L.list.x, L.list.y, L.list.w, L.list.h);
+                    StartupDiagnostics::checkpoint("browser", "geometry", flowText);
+                    check(L.panel.x >= 0 && L.panel.y >= 0 && L.panel.right() <= TheDisplay->getWidth() && L.panel.bottom() <= TheDisplay->getHeight(), "the panel is inside the display");
+                    int defects = 0;
+                    auto expect = [&](GameWindow *w, const ModernScreen::Rect &r, const char *name) {
+                        if (!w) { sprintf_s(flowText, "%s: window missing", name); check(false, flowText); ++defects; return; }
+                        int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                        const bool pos = abs(x - r.x) <= 2 && abs(y - r.y) <= 2 && abs(ww - r.w) <= 2 && abs(hh - r.h) <= 2;
+                        const bool vis = visibleChain(w);
+                        const bool hit = !BitIsSet(w->winGetStatus(), WIN_STATUS_ENABLED) || reach(w);
+                        sprintf_s(flowText, "%s [%d,%d %dx%d] expected [%d,%d %dx%d] visible=%d mouse_hit=%d", name, x, y, ww, hh, r.x, r.y, r.w, r.h, vis ? 1 : 0, hit ? 1 : 0);
+                        check(pos && vis && hit, flowText);
+                        if (!(pos && vis && hit)) ++defects;
+                    };
+                    expect(ModernBrowser::listWindow(), L.list, "list");
+                    for (int i = 0; i < L.actionCount; ++i) { char nm[32]; sprintf_s(nm, "action %d", i); expect(ModernBrowser::actionWindow(i), L.action[i], nm); }
+                    for (int i = 0; i < L.actionCount; ++i) if (L.action[i].overlaps(L.list)) { check(false, "an action overlaps the list"); ++defects; }
+                    shoot("browser");
+                    // the retail inline confirmation panels: show each in turn, capture the description panel, check it lies inside the browser panel
+                    for (int i = 0; i < 4; ++i) {
+                        GameWindow *d = ModernBrowser::dialogWindow(i);
+                        if (!d) continue;
+                        d->winHide(FALSE); d->winBringToTop();
+                        int x, y, ww, hh; d->winGetScreenPosition(&x, &y); d->winGetSize(&ww, &hh);
+                        const bool inside = x >= L.panel.x && y >= L.panel.y && x + ww <= L.panel.right() && y + hh <= L.panel.bottom();
+                        sprintf_s(flowText, "inline dialog %d [%d,%d %dx%d] inside the panel=%d", i, x, y, ww, hh, inside ? 1 : 0);
+                        check(inside, flowText);
+                        if (i != 2) d->winHide(TRUE);   // the description panel (with its text entry) stays up for the capture
+                    }
+                    sprintf_s(flowText, "browser defects=%d", defects);
+                    StartupDiagnostics::checkpoint("browser", defects ? "defect" : "ok", flowText);
+                    op = 2; opWait = 8;
+                } else if (op == 2) {
+                    if (ModernBrowser::dialogWindow(2)) { shoot("browser-dialog"); ModernBrowser::dialogWindow(2)->winHide(TRUE); }
+                    modernCost("browser"); advance("browser audited", nullptr); done = true;
+                }
+            } else if (step.kind == CREDITS_UI) {
+                // UI.3: the credits roll over the shell map with the Modern scrim band (Classic keeps the retail black screen)
+                static unsigned creditsWait = 0;
+                if (++creditsWait >= 160) {
+                    {   // every visible window of the screen stack that is large: the retail background art would show up here
+                        std::vector<GameWindow *> all;
+                        for (GameWindow *top = TheWindowManager->winGetWindowList(); top; top = top->winGetNext()) all.push_back(top);
+                        for (size_t i = 0; i < all.size(); ++i) {
+                            GameWindow *w = all[i]; int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                            if (!w->winIsHidden() && ww > 300 && hh > 300) {
+                                sprintf_s(flowText, "%s [%d,%d %dx%d] status=0x%x image0=%s", w->winGetInstanceData() ? w->winGetInstanceData()->m_decoratedNameString.str() : "?", x, y, ww, hh, (unsigned)w->winGetStatus(),
+                                          w->winGetEnabledImage(0) ? w->winGetEnabledImage(0)->getName().str() : "-");
+                                StartupDiagnostics::checkpoint("credits", "window", flowText);
+                            }
+                            for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext()) all.push_back(c);
+                        }
+                    }
+                    const bool band = ModernCredits::active();
+                    StartupDiagnostics::checkpoint("credits", band == ModernMenuShell::active() ? "ok" : "defect", band ? "the Modern credits scrim band is present" : "no Modern credits band (Classic: the retail black screen)");
+                    shoot("credits");
+                    modernCost("credits"); advance("credits audited", nullptr); done = true;
                 }
             } else if (step.kind == WAKE_MENU) {
                 GameWindow *menu = find(step.a);

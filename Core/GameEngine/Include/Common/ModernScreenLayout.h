@@ -54,9 +54,12 @@ struct Layout
 
 namespace detail
 {
+inline unsigned &computeCounter() { static unsigned n = 0; return n; }   // instrumentation: how many times any screen geometry was solved (it must grow with layout events, not with frames)
 inline int sc(int ref, int percent) { return (ref * percent + 50) / 100; }
 inline int clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 }
+
+inline unsigned computeCount() { return detail::computeCounter(); }
 
 inline int maxFirstRow(int rowCount, int visibleRows) { return rowCount > visibleRows ? rowCount - visibleRows : 0; }
 inline int clampFirstRow(int firstRow, int rowCount, int visibleRows) { return detail::clampi(firstRow, 0, maxFirstRow(rowCount, visibleRows)); }
@@ -72,6 +75,7 @@ inline int firstRowToReveal(int row, int firstRow, int rowCount, int visibleRows
 inline Layout compute(const Input &in)
 {
 	using namespace detail;
+	++computeCounter();
 	const ModernTheme::Metrics &m = ModernTheme::metrics();
 	Layout L;
 	if (in.surfaceW <= 0 || in.surfaceH <= 0) return L;
@@ -179,11 +183,12 @@ struct DialogInput
 	int surfaceW = 0, surfaceH = 0, uiPercent = 100;
 	int buttonCount = 1;
 	int bodyHeight = 0;        // measured height of the wrapped body text (pixels, at the effective scale the caller got from dialogScale())
+	int extraHeight = 0;       // an extra row under the body (a text entry), reference units; 0 = none
 };
 
 struct DialogLayout
 {
-	Rect panel, title, titleRule, body, button[kMaxDialogButtons];
+	Rect panel, title, titleRule, body, extra, button[kMaxDialogButtons];
 	int effectiveScale = 100;
 };
 
@@ -209,6 +214,7 @@ inline int dialogInnerWidth(int surfaceW, int uiPercent) { return dialogPanelWid
 inline DialogLayout computeDialog(const DialogInput &in)
 {
 	using namespace detail;
+	++computeCounter();
 	DialogLayout L;
 	if (in.surfaceW <= 0 || in.surfaceH <= 0) return L;
 	const int scale = dialogScale(in.surfaceW, in.surfaceH, in.uiPercent);
@@ -220,16 +226,86 @@ inline DialogLayout computeDialog(const DialogInput &in)
 	const int minW = buttons * btnW + (buttons - 1) * gap + 2 * pad;
 	if (w < minW && minW <= in.surfaceW) w = minW;
 	int bodyH = in.bodyHeight > sc(24, scale) ? in.bodyHeight : sc(24, scale);
-	int h = pad + titleH + gap / 2 + ruleH + gap + bodyH + gap * 3 / 2 + btnH + pad;
+	const int extraH = in.extraHeight > 0 ? sc(in.extraHeight, scale) : 0;
+	int h = pad + titleH + gap / 2 + ruleH + gap + bodyH + (extraH ? gap / 2 + extraH : 0) + gap * 3 / 2 + btnH + pad;
 	const int maxH = in.surfaceH - 2 * sc(24, scale);
 	if (h > maxH) { bodyH -= h - maxH; h = maxH; if (bodyH < sc(24, scale)) bodyH = sc(24, scale); }
 	L.panel = Rect{ (in.surfaceW - w) / 2, (in.surfaceH - h) / 2, w, h };
 	L.title = Rect{ L.panel.x + pad, L.panel.y + pad, w - 2 * pad, titleH };
 	L.titleRule = Rect{ L.title.x, L.title.bottom() + gap / 2, w - 2 * pad, ruleH };
 	L.body = Rect{ L.title.x, L.titleRule.bottom() + gap, w - 2 * pad, bodyH };
+	if (extraH) L.extra = Rect{ L.title.x, L.body.bottom() + gap / 2, w - 2 * pad, extraH };
 	const int by = L.panel.bottom() - pad - btnH;
 	for (int i = 0; i < buttons; ++i)   // index 0 is the leftmost; the primary action is the last
 		L.button[i] = Rect{ L.panel.right() - pad - (buttons - i) * btnW - (buttons - 1 - i) * gap, by, btnW, btnH };
+	return L;
+}
+// ---- list browser (Load Game, Replays): a title, a list on the left, a column of actions on the right (the last action - Back - sits at the bottom of the column) -----------------------
+constexpr int kMaxBrowserActions = 6;
+
+struct BrowserInput
+{
+	int surfaceW = 0, surfaceH = 0, uiPercent = 100;
+	int actionCount = 1;
+};
+
+struct BrowserLayout
+{
+	Rect composition, panel, title, titleRule, list, actionColumn, action[kMaxBrowserActions], separator;
+	int actionCount = 0;
+	int effectiveScale = 100;
+	bool compact = false;
+};
+
+inline BrowserLayout computeBrowser(const BrowserInput &in)
+{
+	using namespace detail;
+	++computeCounter();
+	const ModernTheme::Metrics &m = ModernTheme::metrics();
+	BrowserLayout L;
+	if (in.surfaceW <= 0 || in.surfaceH <= 0) return L;
+	int scale = in.uiPercent > 0 ? in.uiPercent : 100;
+	int compW = static_cast<int>(in.surfaceH * ModernTheme::kCompositionMaxAspect + 0.5);
+	if (compW > in.surfaceW) compW = in.surfaceW;
+	L.composition = Rect{ (in.surfaceW - compW) / 2, 0, compW, in.surfaceH };
+	const int actions = clampi(in.actionCount, 1, kMaxBrowserActions);
+	for (int attempt = 0; attempt < 64; ++attempt)
+	{
+		const int pad = sc(24, scale), gap = sc(16, scale), edge = sc(m.edgeMargin, scale);
+		const int titleH = sc(34, scale), ruleH = sc(m.ruleThickness, scale) > 0 ? sc(m.ruleThickness, scale) : 1;
+		const int btnH = sc(m.actionHeight + 6, scale), btnGap = sc(10, scale), colW = sc(232, scale);
+		const int listMinH = sc(5 * 36, scale);
+		const int columnNeed = actions * btnH + (actions - 1) * btnGap;
+		const int bodyNeed = columnNeed > listMinH ? columnNeed : listMinH;
+		const int needH = pad + titleH + gap / 2 + ruleH + gap + bodyNeed + pad;
+		const int availH = in.surfaceH - 2 * edge;
+		int panelH = sc(600, scale);
+		if (panelH > availH) panelH = availH;
+		if (panelH < needH) panelH = needH;
+		int panelW = sc(980, scale);
+		if (panelW > compW - 2 * edge) panelW = compW - 2 * edge;
+		const int minW = colW + sc(360, scale) + 2 * pad + gap;
+		if ((needH > availH || minW > compW - 2 * edge) && scale > 30) { scale = scale * 92 / 100; continue; }
+		if (panelW < minW) panelW = minW;
+		L.panel = Rect{ L.composition.x + (compW - panelW) / 2, (in.surfaceH - panelH) / 2, panelW, panelH };
+		const Rect &P = L.panel;
+		L.title = Rect{ P.x + pad, P.y + pad, P.w - 2 * pad, titleH };
+		L.titleRule = Rect{ L.title.x, L.title.bottom() + gap / 2, L.title.w, ruleH };
+		const int top = L.titleRule.bottom() + gap, bottom = P.bottom() - pad;
+		L.actionColumn = Rect{ P.right() - pad - colW, top, colW, bottom - top };
+		L.separator = Rect{ L.actionColumn.x - gap / 2 - 1, top, 1, bottom - top };
+		L.list = Rect{ P.x + pad, top, L.actionColumn.x - gap - (P.x + pad), bottom - top };
+		L.actionCount = actions;
+		for (int i = 0; i < actions; ++i)
+		{
+			const bool last = i == actions - 1 && actions > 1;   // Back: anchored to the bottom of the column
+			const int y = last ? bottom - btnH : top + i * (btnH + btnGap);
+			L.action[i] = Rect{ L.actionColumn.x, y, colW, btnH };
+		}
+		L.effectiveScale = scale;
+		L.compact = scale < (in.uiPercent > 0 ? in.uiPercent : 100);
+		return L;
+	}
 	return L;
 }
 } // namespace ModernScreen

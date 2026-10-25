@@ -8,7 +8,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
-      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','MainMenu','Options','MatchSetup','QuickGame')][string]$Flow = 'Skirmish',
+      [ValidateSet('Skirmish','Campaign','Challenge','SaveLoad','Slots','MatchOptions','MainMenu','Options','MatchSetup','Replay','LoadGame','Credits','QuickGame')][string]$Flow = 'Skirmish',
       [ValidateRange(0,11)][int]$General = 0,
       [switch]$LookAtCenter,              # developer aid: camera over the map centre before the match frame (GENERALS_AUTOSHOT_LOOKAT)
       [string]$UiScale = '',              # developer override 75..300 (GENERALS_FORCE_UI_SCALE): layout audits at every UI scale
