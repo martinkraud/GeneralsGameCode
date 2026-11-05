@@ -22,7 +22,14 @@ def original(path):
 
 
 def current(path):
-    return (ROOT / path).read_text()
+    text = (ROOT / path).read_text()
+    if path.endswith("WW3D2/surfaceclass.cpp"):
+        # engine-completion milestone, upstream #3459: one explicit pointer-width cast in the alpha-lock address arithmetic (no behaviour change)
+        text = text.replace("(uintptr_t)lock_rect.pBits", "(unsigned int)lock_rect.pBits")
+    if path.endswith("WW3D2/assetmgr.cpp"):
+        # upstream #3459: the name length is a pointer difference, no longer taken through two truncating (int) casts (same value)
+        text = text.replace("(int)(mesh_name - name) + 1", "((int)mesh_name) - ((int)name) + 1")
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +59,7 @@ REVIEWED_PIN = {
     "Core/Libraries/Source/WWVegas/WW3D2/dx8vertexbuffer.cpp": "00fb1ce2c",
     "Core/Libraries/Source/WWVegas/WW3D2/dx8indexbuffer.cpp": "00fb1ce2c",
     "GeneralsMD/Code/Libraries/Source/WWVegas/WW3D2/render2d.cpp": "fb4381382",
-    "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp": "c74890a7e",
+    "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp": "65fe3976c",   # re-pinned: frame-delivery phase marks (_WIN64 only)
 }
 
 
