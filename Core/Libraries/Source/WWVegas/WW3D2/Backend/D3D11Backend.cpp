@@ -16,6 +16,7 @@
 #include <string>
 #include <map>
 #include <cstdio>
+#include <cstdlib>
 #include <atomic>
 #include <vector>
 #ifndef WIN32_LEAN_AND_MEAN
@@ -282,6 +283,8 @@ struct D3D11Backend::Impl {
     ComPtr<ID3D11Device> device;
     ComPtr<ID3D11DeviceContext> context;
     ComPtr<IDXGISwapChain> swapchain;
+    bool flipModel = false, tearing = false;   // swap-chain model in use (see the creation code); tearing = DXGI_PRESENT_ALLOW_TEARING is usable when vsync is off
+    UINT swapFlags = 0;                        // flags the swap chain was created with (ResizeBuffers must repeat them)
     ComPtr<ID3D11Texture2D> target;
     ComPtr<ID3D11RenderTargetView> rtv;
     ComPtr<ID3D11VertexShader> vs;
@@ -650,11 +653,36 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
     swap.BufferDesc.Width = config.width; swap.BufferDesc.Height = config.height;
     swap.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swap.SampleDesc.Count = 1; swap.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swap.BufferCount = 1; swap.OutputWindow = static_cast<HWND>(config.window);
-    swap.Windowed = TRUE; swap.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-    Check(D3D11CreateDeviceAndSwapChain(nullptr, driver, nullptr, 0, levels, 3, D3D11_SDK_VERSION,
-        config.window ? &swap : nullptr, config.window ? impl->swapchain.GetAddressOf() : nullptr,
-        &impl->device, &impl->level, &impl->context), "D3D11CreateDeviceAndSwapChain");
+    swap.OutputWindow = static_cast<HWND>(config.window);
+    swap.Windowed = TRUE;
+    // Presentation model (frame pacing): the flip model (FLIP_DISCARD, two buffers) lets DXGI/DWM present without the extra blit copy of the legacy bit-block-transfer
+    // model, gives an even cadence, allows independent flip for a borderless window that covers the monitor, and - with VSync off - tearing presentation instead of a
+    // queued, DWM-throttled one. Tried in this order: flip + tearing, flip, legacy DISCARD (the original behaviour; also GENERALS_D3D11_BLT=1 for A/B comparison).
+    // The back buffer is re-bound by every submission, so the flip model's unbinding after Present changes nothing.
+    struct Attempt { bool flip, tearing; };
+    Attempt attempts[3] = {{true, true}, {true, false}, {false, false}};
+    const char *forceBlt = std::getenv("GENERALS_D3D11_BLT");
+    const unsigned firstAttempt = (forceBlt && *forceBlt == '1') ? 2u : 0u;
+    HRESULT created = E_FAIL;
+    for (unsigned a = firstAttempt; a < 3 && FAILED(created); ++a) {
+        swap.BufferCount = attempts[a].flip ? 2 : 1;
+        swap.SwapEffect = attempts[a].flip ? DXGI_SWAP_EFFECT_FLIP_DISCARD : DXGI_SWAP_EFFECT_DISCARD;
+        swap.Flags = attempts[a].tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+        impl->device.Reset(); impl->context.Reset(); impl->swapchain.Reset();
+        created = D3D11CreateDeviceAndSwapChain(nullptr, driver, nullptr, 0, levels, 3, D3D11_SDK_VERSION,
+            config.window ? &swap : nullptr, config.window ? impl->swapchain.GetAddressOf() : nullptr,
+            &impl->device, &impl->level, &impl->context);
+        if (SUCCEEDED(created)) { impl->flipModel = attempts[a].flip; impl->tearing = attempts[a].tearing; impl->swapFlags = swap.Flags; }
+        if (!config.window) break;   // an offscreen target has no swap chain to retry
+    }
+    Check(created, "D3D11CreateDeviceAndSwapChain");
+    if (config.window) {
+        // DXGI's default allows three queued frames; the cap is a pacing experiment only (GENERALS_FRAME_LATENCY=1..3, unset keeps the DXGI default)
+        const char *latency = std::getenv("GENERALS_FRAME_LATENCY");
+        ComPtr<IDXGIDevice1> dxgiDevice1;
+        if (latency && *latency >= '1' && *latency <= '3' && SUCCEEDED(impl->device.As(&dxgiDevice1)))
+            dxgiDevice1->SetMaximumFrameLatency(static_cast<UINT>(*latency - '0'));
+    }
     if (config.diagnostic || config.diagnostic_windowed) {
         ComPtr<IDXGIDevice> dxgiDevice; ComPtr<IDXGIAdapter> adapter;
         Check(impl->device.As(&dxgiDevice), "Query DXGI device");
@@ -664,14 +692,16 @@ D3D11Backend::D3D11Backend(const Configuration &config, TextureBridge bridge) : 
         if (!WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name, sizeof(name), nullptr, nullptr))
             throw std::runtime_error("Adapter name conversion failed");
         char detail[512]; std::snprintf(detail, sizeof(detail),
-            "driver=%s feature=0x%X vendor=0x%X device=0x%X adapter=%s size=%ux%u",
+            "driver=%s feature=0x%X vendor=0x%X device=0x%X adapter=%s size=%ux%u swap=%s",
             config.software ? "WARP" : "hardware", static_cast<unsigned>(impl->level),
-            desc.VendorId, desc.DeviceId, name, config.width, config.height);
+            desc.VendorId, desc.DeviceId, name, config.width, config.height,
+            impl->flipModel ? (impl->tearing ? "flip+tearing" : "flip") : "blt");
         {
             char hw[400]; std::snprintf(hw, sizeof(hw), "%s; vendor=0x%X device=0x%X; feature_level=0x%X; dedicated_vram_mb=%llu shared_mb=%llu",
                 name, desc.VendorId, desc.DeviceId, static_cast<unsigned>(impl->level),
                 static_cast<unsigned long long>(desc.DedicatedVideoMemory >> 20), static_cast<unsigned long long>(desc.SharedSystemMemory >> 20));
             impl->adapterDescription = hw;
+            impl->adapterDescription += impl->flipModel ? (impl->tearing ? "; swap=flip+tearing" : "; swap=flip") : "; swap=blt";
         }
         report("complete", detail);
         if (config.diagnostic_windowed) {
@@ -994,7 +1024,7 @@ void D3D11Backend::Flip_To_Primary() {
     HRESULT result;
     {
         Impl::ScopedTicks timing(impl->stats.present_ticks);
-        result = impl->swapchain->Present(impl->config.vsync ? 1 : 0, 0);
+        result = impl->swapchain->Present(impl->config.vsync ? 1 : 0, (!impl->config.vsync && impl->tearing) ? DXGI_PRESENT_ALLOW_TEARING : 0);
     }
     ++impl->stats.present_calls;
     impl->GpuPoll();
@@ -1035,7 +1065,7 @@ void D3D11Backend::Resize(unsigned width, unsigned height)
     impl->context->OMSetRenderTargets(0, nullptr, nullptr);
     impl->ReleaseLow();     // recreated at the new size by the next world submission
     impl->rtv.Reset(); impl->target.Reset(); impl->dsv.Reset(); impl->depthTexture.Reset();
-    if (impl->swapchain) Check(impl->swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0), "ResizeBuffers");
+    if (impl->swapchain) Check(impl->swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, impl->swapFlags), "ResizeBuffers");
     impl->config.width = width; impl->config.height = height; impl->Target();
     Set_Viewport({0, 0, width, height, 0, 1});
 }

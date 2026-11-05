@@ -87,7 +87,7 @@ class ModernDisplayContracts(unittest.TestCase):
 
     def test_one_frame_limiter_and_vsync_is_a_present_interval(self):
         backend = read("Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp")
-        self.assertIn("Present(impl->config.vsync ? 1 : 0, 0)", backend)
+        self.assertIn("Present(impl->config.vsync ? 1 : 0, (!impl->config.vsync && impl->tearing) ? DXGI_PRESENT_ALLOW_TEARING : 0)", backend)   # the sync interval is still the VSync switch; tearing only with VSync off on a flip-model chain
         popup = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
         for forbidden in ("FrameRateLimit", "Sleep(", "QueryPerformanceCounter", "setFramesPerSecondLimit"):
             self.assertNotIn(forbidden, popup)

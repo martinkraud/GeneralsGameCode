@@ -153,7 +153,9 @@ class EnhancedHudContracts(unittest.TestCase):
         # X64.35 attribution/instrumentation lives before 4a8641178; nothing after it may touch the guarded trees - except the one
         # reviewed X64.37 v3 change: Render Scale (the intermediate world target, its composite, and its pure arithmetic header).
         reviewed = ["Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.cpp", "Core/Libraries/Source/WWVegas/WW3D2/Backend/D3D11Backend.h",
-                    "Core/Libraries/Source/WWVegas/WW3D2/Backend/WorldRenderScale.h"]
+                    "Core/Libraries/Source/WWVegas/WW3D2/Backend/WorldRenderScale.h",
+                    # engine-completion milestone: upstream #3459 pointer-truncation port (explicit intptr casts; no behaviour change)
+                    "Core/Libraries/Source/WWVegas/WW3D2/dx8webbrowser.cpp", "Core/Libraries/Source/WWVegas/WW3D2/surfaceclass.cpp"]
         self.assertEqual(sorted(post), sorted(reviewed), post)
 
     def test_image_fitting_is_enhanced_only_and_hit_regions_are_untouched(self):

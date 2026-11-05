@@ -31,7 +31,7 @@ class Baseline2Contracts(unittest.TestCase):
 
     def test_present_and_submit_are_only_timed_not_changed(self):
         s = text(BACKEND)
-        self.assertIn("swapchain->Present(impl->config.vsync ? 1 : 0, 0)", s)   # arguments unchanged
+        self.assertIn("swapchain->Present(impl->config.vsync ? 1 : 0, (!impl->config.vsync && impl->tearing) ? DXGI_PRESENT_ALLOW_TEARING : 0)", s)   # sync interval unchanged; ALLOW_TEARING only with VSync off on a flip chain (engine-completion milestone)
         self.assertIn("ScopedTicks timing(impl->stats.present_ticks)", s)
         self.assertIn("ScopedTicks timing(impl->stats.submit_ticks)", s)
 
