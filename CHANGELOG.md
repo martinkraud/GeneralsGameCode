@@ -7,6 +7,12 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-05 - Multiplayer smoothness and frame pacing audit
+
+* **Network games now interpolate unit/vehicle/turret presentation like offline games.** The presentation clock was disabled whenever `TheNetwork` existed (0 % of render iterations interpolated at 120 Hz, offline 99.8 %): units advanced in 30 Hz steps while the camera ran at the render rate. The lock-step schedule now feeds the clock (read after the limiter wait, never changed); the authoritative 30 ticks/s, commands, RNG and ordering are untouched (golden gates of both titles identical to the X64.51 baseline).
+* LAN matches no longer lift the render FPS limit; the negotiated network logic rate can no longer be asked above 30 ticks/s by a high render cap (`NetworkPacing`); a 10 % self-slug no longer resets interpolation history.
+* New opt-in measurement: `GENERALS_FRAMEDELIVERY=<dir>` (render interval percentiles, tick spacing, interpolation validity, stalls, negotiated rate), `Invoke-FrameDeliveryRun.ps1` (offline and single-PC LAN autoflow `lan`), `Summarize-FrameDelivery.py`, `Start-GameWithFrameDelivery.ps1`. See `docs/modernization/MULTIPLAYER_SMOOTHNESS_AUDIT.md`.
+
 ## 2026-10-25 - Modern Frontend system: full visual redesign and frontend migration (UI.3)
 
 * **A real Generals Modern design system**, not the retail art rearranged: procedural chamfered / hairline / accent-tick components (navigation items, primary / secondary / danger buttons, tabs, dropdowns, sliders with value labels, check boxes, list rows with scroll bars, text entries, dialogs, status line) driven by one component-style table, title accents (Generals sand-gold, Zero Hour orange), typography roles that name real installed fonts (the retail "Generals" family is not installed anywhere; Bahnschrift with Segoe UI / Arial fallbacks, nothing shipped), contrast checked by unit tests. Retail gadgets keep every callback, message and sound.
