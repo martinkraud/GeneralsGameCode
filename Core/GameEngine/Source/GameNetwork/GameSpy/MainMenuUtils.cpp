@@ -754,7 +754,6 @@ int asyncGethostbyname(char * szName)
 			/* Thread finished */
 			stat = 0;
 			s_asyncDNSLookupInProgress = FALSE;
-			CloseHandle(s_asyncDNSThreadHandle);
 			s_asyncDNSThreadHandle = nullptr;
 			return( (s_asyncDNSThreadSucceeded)?LOOKUP_SUCCEEDED:LOOKUP_FAILED );
 		}
@@ -812,7 +811,6 @@ void StopAsyncDNSCheck()
 		MAYBE_UNUSED Int res = TerminateThread(s_asyncDNSThreadHandle, 0);
 		(void)res;
 		DEBUG_ASSERTCRASH(res, ("Could not terminate the Async DNS Lookup thread!"));	// Thread still not killed!
-		CloseHandle(s_asyncDNSThreadHandle);
 	}
 	s_asyncDNSThreadHandle = nullptr;
 	s_asyncDNSLookupInProgress = FALSE;
