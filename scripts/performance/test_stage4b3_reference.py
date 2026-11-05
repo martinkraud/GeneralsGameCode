@@ -28,7 +28,11 @@ def contains(haystack, needle):
 ALLOWED={
     'PathfindCell.h':[('friend class PathfindCellList;',''),
                       ('inline Bool hasLineVerdict(UnsignedInt generation, Int layer) const { return m_info && m_info->m_lineGeneration == generation && m_info->m_lineLayer == layer; } inline void setLineVerdict(UnsignedInt generation, Int layer) { if (m_info) { m_info->m_lineGeneration = generation; m_info->m_lineLayer = static_cast<UnsignedByte>(layer); } }','')],
-    'PathfindCellInfo.h':[('friend class PathfindCellList;',''),('UnsignedShort m_openKey;',''),('UnsignedInt m_indexed:1;',''),('UnsignedInt m_lineGeneration;',''),('UnsignedByte m_lineLayer;','')],
+    'PathfindCellInfo.h':[('friend class PathfindCellList;',''),('UnsignedShort m_openKey;',''),('UnsignedInt m_indexed:1;',''),('UnsignedInt m_lineGeneration;',''),('UnsignedByte m_lineLayer;',''),
+                         # X64.pf: the hot fields were moved to the front of the record (cache locality); restoring the baseline order is a move of two groups
+                         ('UnsignedShort m_totalCost, m_costSoFar; UnsignedInt m_isFree:1; UnsignedInt m_blockedByAlly:1; UnsignedInt m_obstacleIsFence:1; UnsignedInt m_obstacleIsTransparent:1; UnsignedInt m_open:1; UnsignedInt m_closed:1;',''),
+                         ('PathfindCell *m_cell;','PathfindCell *m_cell; UnsignedShort m_totalCost, m_costSoFar;'),
+                         ('ObjectID m_obstacleID;','ObjectID m_obstacleID; UnsignedInt m_isFree:1; UnsignedInt m_blockedByAlly:1; UnsignedInt m_obstacleIsFence:1; UnsignedInt m_obstacleIsTransparent:1; UnsignedInt m_open:1; UnsignedInt m_closed:1;')],
     'PathfindCellList.h':[('#include "GameLogic/Pathfinder/OpenListIndex.h"',''),
                           ('PathfindCellList() : m_head(nullptr), m_tail(nullptr), m_index(nullptr), m_generation(1) {}','PathfindCellList() : m_head(nullptr), m_tail(nullptr) {}'),
                           ('void reset(PathfindCell* newHead = nullptr); void attachIndex(OpenListIndex<PathfindCell>* index) { m_index = index; }','void reset(PathfindCell* newHead = nullptr) { m_head = newHead; m_tail = nullptr; }'),

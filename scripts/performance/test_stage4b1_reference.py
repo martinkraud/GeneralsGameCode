@@ -37,8 +37,8 @@ CHANGED = {
     'PathfindCell::removeFromOpenList': 'X64.40: maintains the open-list index; OpenListIndexTest, GENERALS_PATH_VERIFY, open-list evolution digest',
     'PathfindCell::forwardInsertionSortRetailCompatible': 'X64.40: insertion point from OpenListIndex, original walk + linking kept; test_stage4b3_reference.py, OpenListIndexTest, GENERALS_PATH_VERIFY',
     'Pathfinder::Pathfinder': 'X64.40: attaches the open-list index (GENERALS_PATH_LEGACY disables it)',
-    'Pathfinder::examineNeighboringCells': 'X64.41: initialises the per-walk memo generation / modes and flushes the line counters; GENERALS_LINE_VERIFY, line decision digest',
-    'Pathfinder::examineCellsCallback': 'X64.41: per-search passability memo for cells that already passed (80 percent of callbacks); GENERALS_LINE_VERIFY (72 M hits re-verified), line decision digest',
+    'Pathfinder::examineNeighboringCells': 'X64.41: initialises the per-walk memo generation / modes and flushes the line counters; GENERALS_LINE_VERIFY, line decision digest. X64.pf: calls the inlined walk; the parent cell height is read lazily and the zone-passable test is evaluated where its cost is added (pure reads, same values); golden gates, line / open-list digests, fingerprints',
+    'Pathfinder::examineCellsCallback': 'X64.41: per-search passability memo for cells that already passed (80 percent of callbacks); GENERALS_LINE_VERIFY (72 M hits re-verified), line decision digest. X64.pf: a memo hit skips the no-op allocateInfo and the verdict write, costToGoal is computed on the update path only, the half step is an integer add; same digests',
     'block:struct ExamineCellsStruct': 'X64.41: carries the memo generation / mode flags and the walk counters; the Stage4B.1 hoist is asserted separately below',
 }
 ADDED = {
@@ -48,7 +48,7 @@ ADDED = {
     'PathfindZoneManager::captureState': 'X64.39 verify mode', 'ZoneBlock::captureState': 'X64.39 verify mode',
     'PathfindZoneManager::verify': 'X64.39 verify statistics', 'currentZoneMode': 'X64.39 mode switch', 'block:enum ZoneMode': 'X64.39 mode switch', 'block:struct ZoneSnapshot': 'X64.39 verify mode',
     'Pathfinder::openList': 'X64.40 statistics', 'currentOpenListMode': 'X64.40 mode switch', 'openListTraceEnabled': 'X64.40 trace', 'openListTraceMix': 'X64.40 trace', 'block:enum OpenListMode': 'X64.40 mode switch',
-    'Pathfinder::line': 'X64.41 statistics', 'currentLineMode': 'X64.41 mode switch', 'lineTimingEnabled': 'X64.41 attribution', 'lineTraceEnabled': 'X64.41 trace', 'lineTraceMix': 'X64.41 trace',
+    'Pathfinder::line': 'X64.41 statistics', 'Pathfinder::iterateCellsAlongLineInline': 'X64.pf: iterateCellsAlongLine with the callback inlined (same statements, same cell order, same lookups)', 'currentLineMode': 'X64.41 mode switch', 'lineTimingEnabled': 'X64.41 attribution', 'lineTraceEnabled': 'X64.41 trace', 'lineTraceMix': 'X64.41 trace',
     'block:enum LineMode': 'X64.41 mode switch', 'block:struct ExamineLineStats': 'X64.41 attribution',
 }
 REMOVED = {

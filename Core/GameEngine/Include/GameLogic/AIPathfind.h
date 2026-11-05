@@ -326,6 +326,7 @@ protected:
 
 	Int iterateCellsAlongLine(const ICoord2D &start, const ICoord2D &end,
 		PathfindLayerEnum layer, CellAlongLineProc proc, void* userData);
+	template <CellAlongLineProc kProc> Int iterateCellsAlongLineInline(const ICoord2D &start, const ICoord2D &end, PathfindLayerEnum layer, void* userData);   // X64.pf: same walk, callback inlined
 
 	static Int linePassableCallback(Pathfinder* pathfinder, PathfindCell* from, PathfindCell* to, Int to_x, Int to_y, void* userData);
 	static Int groundPathPassableCallback(Pathfinder* pathfinder, PathfindCell* from, PathfindCell* to, Int to_x, Int to_y, void* userData);

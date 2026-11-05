@@ -6552,22 +6552,24 @@ struct ExamineCellsStruct
 			++d->stats.memoHits;
 		}
 
-			UnsignedInt newCostSoFar = from->getCostSoFar() + 0.5f*COST_ORTHOGONAL;
+			static_assert(0.5f*COST_ORTHOGONAL == static_cast<Real>(static_cast<UnsignedInt>(0.5f*COST_ORTHOGONAL)), "the half step must be an integer for the exact integer form below");
+			UnsignedInt newCostSoFar = from->getCostSoFar() + static_cast<UnsignedInt>(0.5f*COST_ORTHOGONAL);   // costs are 16-bit: the former float sum was exact
 
 			ICoord2D newCellCoord;
 			newCellCoord.x = to_x;
 			newCellCoord.y = to_y;
 
-			if (!to->allocateInfo(newCellCoord)) {
-				++d->stats.stopAlloc;
-				// Out of cells for pathing...
-				if (d->trace) lineTraceMix(to_x, to_y, 8);
- 				return 1;
+			// X64.pf: the memo lives in the cell's info record, so a memo hit already has one (allocateInfo is a no-op) and the verdict is already set.
+			if (!memoHit) {
+				if (!to->allocateInfo(newCellCoord)) {
+					++d->stats.stopAlloc;
+					// Out of cells for pathing...
+					if (d->trace) lineTraceMix(to_x, to_y, 8);
+ 					return 1;
+				}
+				if (d->useMemo) to->setLineVerdict(d->generation, fromLayer);
 			}
-			if (!memoHit && d->useMemo) to->setLineVerdict(d->generation, fromLayer);
 			to->setBlockedByAlly(false);
-			Int costRemaining = 0;
-			costRemaining = to->costToGoal( d->goalCell );
 
 			// check if this neighbor cell is already on the open (waiting to be tried)
 			// or closed (already tried) lists
@@ -6583,6 +6585,7 @@ struct ExamineCellsStruct
 			}
 			++d->stats.updated;
 			if (d->trace) lineTraceMix(to_x, to_y, 9);
+			const Int costRemaining = to->costToGoal( d->goalCell );   // X64.pf: pure; only the update path needs it (it used to be computed before the kept test)
 
 			to->setCostSoFar(newCostSoFar);
 			// keep track of path we're building - point back to cell we moved here from
@@ -6605,6 +6608,92 @@ struct ExamineCellsStruct
 	return 0;	// keep going
 }
 
+
+// X64.pf: the line walk of the A* expansion with the callback known at compile time (the callback is inlined into the walk; the compiler cannot do that through the function pointer of
+// iterateCellsAlongLine). The body is that function's, statement for statement; nothing about the order of the cells, the callbacks or the stop rule differs. (A variant that skipped getCell() on the ground layer changed the line decision digest on twilight4H, unexplained, and was dropped; one that prefetched cells ahead measured slower.)
+template <Pathfinder::CellAlongLineProc kProc>
+Int Pathfinder::iterateCellsAlongLineInline( const ICoord2D &start, const ICoord2D &end, PathfindLayerEnum layer, void* userData )
+{
+	Int delta_x = abs(end.x - start.x);			// The difference between the x's
+	Int delta_y = abs(end.y - start.y);			// The difference between the y's
+	Int x = start.x;												// Start x off at the first pixel
+	Int y = start.y;												// Start y off at the first pixel
+
+	Int xinc1, xinc2;
+	if (end.x >= start.x)								// The x-values are increasing
+	{
+		xinc1 = 1;
+		xinc2 = 1;
+	}
+	else																// The x-values are decreasing
+	{
+		xinc1 = -1;
+		xinc2 = -1;
+	}
+
+	Int yinc1, yinc2;
+	if (end.y >= start.y)               // The y-values are increasing
+	{
+		yinc1 = 1;
+		yinc2 = 1;
+	}
+	else																// The y-values are decreasing
+	{
+		yinc1 = -1;
+		yinc2 = -1;
+	}
+
+	Int den, num, numadd, numpixels;
+	if (delta_x >= delta_y)							// There is at least one x-value for every y-value
+	{
+		xinc1 = 0;												// Don't change the x when numerator >= denominator
+		yinc2 = 0;												// Don't change the y for every iteration
+		den = delta_x;
+		num = delta_x / 2;
+		numadd = delta_y;
+		numpixels = delta_x;							// There are more x-values than y-values
+	}
+	else																// There is at least one y-value for every x-value
+	{
+		xinc2 = 0;												// Don't change the x for every iteration
+		yinc1 = 0;												// Don't change the y when numerator >= denominator
+		den = delta_y;
+		num = delta_y / 2;
+		numadd = delta_x;
+		numpixels = delta_y;							// There are more y-values than x-values
+	}
+
+	PathfindCell* from = nullptr;
+	for (Int curpixel = 0; curpixel <= numpixels; curpixel++)
+	{
+		PathfindCell* to = getCell( layer, x, y );
+		if (to==nullptr) return 0;
+
+		Int ret = (*kProc)(this, from, to, x, y, userData);
+		if (ret != 0)
+			return ret;
+
+		num += numadd;										// Increase the numerator by the top of the fraction
+		if (num >= den)										// Check if numerator >= denominator
+		{
+			num -= den;											// Calculate the new numerator value
+			x += xinc1;											// Change the x as appropriate
+			y += yinc1;											// Change the y as appropriate
+			from = to;
+			to = getCell( layer, x, y );
+			if (to==nullptr) return 0;
+			Int ret2 = (*kProc)(this, from, to, x, y, userData);
+			if (ret2 != 0)
+				return ret2;
+		}
+		x += xinc2;												// Change the x as appropriate
+		y += yinc2;												// Change the y as appropriate
+
+		from = to;
+	}
+
+	return 0;
+}
 
 Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *goalCell, const LocomotorSet& locomotorSet,
 																				 Bool isHuman, Bool centerInCell, Int radius, const ICoord2D &startCellNdx,
@@ -6637,7 +6726,7 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 			start.y = parentCell->getYIndex();
 			end.x = goalCell->getXIndex();
 			end.y = goalCell->getYIndex();
-			{ PerformanceProfile::PathPhase linePhase(PerformanceProfile::PathPhaseKind::Line); iterateCellsAlongLine(start, end, parentCell->getLayer(), examineCellsCallback, &info); } // Stage4A.2 observer
+			{ PerformanceProfile::PathPhase linePhase(PerformanceProfile::PathPhaseKind::Line); iterateCellsAlongLineInline<&Pathfinder::examineCellsCallback>(start, end, parentCell->getLayer(), &info); } // Stage4A.2 observer
 			if (PerformanceProfile::activePath)
 			{
 				using PerformanceProfile::PathWork;
@@ -6682,10 +6771,12 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 
 		UnsignedInt newCostSoFar = 0;
 
+		// X64.pf: the terrain height under the parent cell is a pure lookup that only the downhill test and the cliff cost use; it was read for every expansion.
 		Coord3D fromPos;
 		fromPos.x = parentCell->getXIndex() * PATHFIND_CELL_SIZE_F ;
 		fromPos.y = parentCell->getYIndex() * PATHFIND_CELL_SIZE_F ;
-		fromPos.z = TheTerrainLogic->getGroundHeight(fromPos.x , fromPos.y);
+		fromPos.z = 0.0f;
+		Bool fromHeightKnown = false;
 
 		for( int i=0; i<numNeighbors; i++ )
 		{
@@ -6700,11 +6791,6 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 			// check if cell is on the map
 			if (!newCell)
 				continue;
-
-			Bool notZonePassable = false;
-			if ((newCell->getLayer()==LAYER_GROUND) && !m_zoneManager.isPassable(newCellCoord.x, newCellCoord.y)) {
-				notZonePassable = true;
-			}
 
 			// check if new cell is in logical map.	(computer can move off logical map)
 			if (isHuman && checkCellOutsideExtents(newCellCoord))
@@ -6730,6 +6816,7 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 				toPos.y = newCellCoord.y * PATHFIND_CELL_SIZE_F ;
 				toPos.z = TheTerrainLogic->getGroundHeight(toPos.x , toPos.y);
 
+				if (!fromHeightKnown) { fromPos.z = TheTerrainLogic->getGroundHeight(fromPos.x , fromPos.y); fromHeightKnown = true; }
 				if ( fromPos.z < toPos.z )
 					continue;
 			}
@@ -6795,6 +6882,7 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 				toPos.y = newCellCoord.y * PATHFIND_CELL_SIZE_F ;
 				toPos.z = TheTerrainLogic->getGroundHeight(toPos.x , toPos.y);
 
+				if (!fromHeightKnown) { fromPos.z = TheTerrainLogic->getGroundHeight(fromPos.x , fromPos.y); fromHeightKnown = true; }
 				if ( fabs(fromPos.z - toPos.z)<PATHFIND_CELL_SIZE_F) {
 					newCostSoFar += 7*COST_DIAGONAL;
 				}
@@ -6835,7 +6923,8 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
 				}
 			}
 
-			if (notZonePassable) {
+			// X64.pf: evaluated where the cost is built (it was evaluated for every neighbour, listed or not, before the tests that skip most of them)
+			if ((newCell->getLayer()==LAYER_GROUND) && !m_zoneManager.isPassable(newCellCoord.x, newCellCoord.y)) {
 				newCostSoFar += 100*COST_ORTHOGONAL;
 			}
 
