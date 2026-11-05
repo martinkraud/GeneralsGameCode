@@ -32,6 +32,7 @@
 #include "Common/DeterminismFingerprint.h"
 #include "Common/ScriptProfile.h"
 #include "Common/EnduranceTelemetry.h"
+#include "Common/SimSampler.h"
 #include "GameLogic/Pathfinder/PathFailureDiag.h"
 
 #include <algorithm>
@@ -98,6 +99,7 @@ public:
 		if (envText("GENERALS_SIM_SCRIPTS")) ScriptProfile::enable();   // X64.42: script attribution (adds clock reads; keep apart from timing runs)
 		m_recorder.start(PerformanceProfile::now());
 		m_wallStart = PerformanceProfile::now();
+		SimSampler::start(envText("GENERALS_SIM_SAMPLE"));   // opt-in statistical profile of the simulation thread
 	}
 
 	// One timed, attributed simulation tick followed (outside the measured region) by the fingerprint checkpoint when due.
@@ -127,6 +129,7 @@ public:
 
 	void finish(int errors)
 	{
+		SimSampler::stopAndReport();
 		harvest();
 		PerformanceProfile::activeRecorder = m_previous;
 		report(errors);
