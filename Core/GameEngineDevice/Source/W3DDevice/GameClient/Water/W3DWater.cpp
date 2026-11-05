@@ -2698,17 +2698,10 @@ void WaterRenderObjClass::drawRiverWater(PolygonTrigger *pTrig)
 	static Bool doWobble = true;
 
 	if (m_disableRiver) return;
-
-	//allocate 2 triangles per side with 3 indices per triangle
-	const Int indexCount = (rectangleCount+1)*2*3;
-	// TheSuperHackers @bugfix arcticdolphin 12/10/2026 Skip rivers that do not fit the 16 bit dynamic buffers.
-	DEBUG_ASSERTCRASH(indexCount <= DynamicIBAccessClass::MAX_INDEX_COUNT, ("River has too many points to draw"));
-	if (indexCount > DynamicIBAccessClass::MAX_INDEX_COUNT)
-		return;
-
 	m_drawingRiver = true;
 
-	DynamicIBAccessClass ib_access(BUFFER_TYPE_DYNAMIC_DX8,indexCount);
+	//allocate 2 triangles per side with 3 indices per triangle
+	DynamicIBAccessClass ib_access(BUFFER_TYPE_DYNAMIC_DX8,(rectangleCount+1)*2*3);
 	{
 		DynamicIBAccessClass::WriteLockClass lockib(&ib_access);
  		UnsignedShort *curIb = lockib.Get_Index_Array();
