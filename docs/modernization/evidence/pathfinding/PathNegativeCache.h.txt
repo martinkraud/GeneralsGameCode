@@ -1,0 +1,115 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Exact negative cache for failed A* searches (pure data structure; the integration and its exactness argument live in AIPathfind.cpp).
+//
+// A failed search is stored together with everything that determined it: the request signature, the navigation (static map) version it ran in, the digest of the hierarchical
+// corridor it was restricted to, the budget it consumed (cells cleaned), the cells it wrote and the footprint cells whose unit state it read. The Pathfinder replays a
+// stored failure only when all of that is provably unchanged; otherwise it runs the real search. Nothing here decides gameplay.
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <list>
+#include <unordered_map>
+#include <vector>
+
+namespace PathNegCache
+{
+struct Key
+{
+	int startX = 0, startY = 0, goalX = 0, goalY = 0;
+	int layer = 0, destLayer = 0;
+	unsigned surfaces = 0;
+	int radius = 0;
+	unsigned ignoreObstacle = 0;
+	unsigned objectId = 0;   ///< the requesting object: every unit-dependent decision of the search is made from its point of view
+	bool center = false, crusher = false, human = false, downhill = false;
+
+	bool operator==(const Key &o) const
+	{
+		return startX == o.startX && startY == o.startY && goalX == o.goalX && goalY == o.goalY && layer == o.layer && destLayer == o.destLayer && surfaces == o.surfaces
+			&& radius == o.radius && ignoreObstacle == o.ignoreObstacle && objectId == o.objectId && center == o.center && crusher == o.crusher && human == o.human && downhill == o.downhill;
+	}
+
+	std::uint64_t hash() const
+	{
+		std::uint64_t h = 1469598103934665603ull;
+		auto mix = [&h](std::uint64_t v) { h ^= v; h *= 1099511628211ull; };
+		mix(static_cast<std::uint32_t>(startX)); mix(static_cast<std::uint32_t>(startY)); mix(static_cast<std::uint32_t>(goalX)); mix(static_cast<std::uint32_t>(goalY));
+		mix(static_cast<std::uint32_t>(layer)); mix(static_cast<std::uint32_t>(destLayer)); mix(surfaces); mix(static_cast<std::uint32_t>(radius)); mix(ignoreObstacle); mix(objectId);
+		mix((center ? 1u : 0u) | (crusher ? 2u : 0u) | (human ? 4u : 0u) | (downhill ? 8u : 0u));
+		return h;
+	}
+};
+
+template <class CellPtr>
+struct Entry
+{
+	Key key;
+	std::uint32_t navigationVersion = 0;   ///< static map version the failing search ran in
+	std::uint64_t corridor = 0;            ///< digest of the hierarchical corridor flags it was restricted to
+	bool fixedMode = false;                ///< Pathfinder fixed-allocation failover flag at record time
+	int cleaned = 0;                       ///< what the search added to the per-frame cell budget (cleanOpenAndClosedLists)
+	std::uint32_t newInfos = 0;            ///< info records the search needed from the pool at its peak
+	std::vector<CellPtr> touched;          ///< every cell the search wrote setBlockedByAlly(false) on
+	std::vector<CellPtr> footprint;        ///< every distinct cell whose unit flags the search read (checkForMovement footprints)
+	std::uint32_t freeAtStart = 0;         ///< info records free in the pool when it started (an exhausted pool truncates the search at exactly this many allocations)
+	std::vector<std::uint8_t> footprintDyn; ///< per footprint cell (same order): flags | has-info | aircraft-goal at the time
+	std::vector<CellPtr> fixedCells;       ///< the footprint cells that held any unit (stationary, moving or a goal), and what the search decided about each ...
+	std::vector<std::uint64_t> fixedState; ///< ... (unit id << 8 | verdict category), in the same order
+	std::vector<std::uint32_t> fixedGoal;  ///< the goal unit registered in that cell
+};
+
+// Small LRU store keyed by the request signature. Capacity counts entries, not bytes (an entry holds ~2 x 25 000 cell pointers for a full-map failure).
+template <class CellPtr>
+class Store
+{
+public:
+	explicit Store(std::size_t capacity = 24) : m_capacity(capacity) {}
+
+	Entry<CellPtr> *find(const Key &key)
+	{
+		auto it = m_index.find(key.hash());
+		if (it == m_index.end() || !(it->second->key == key)) return nullptr;
+		m_order.splice(m_order.begin(), m_order, it->second);   // most recently used first
+		return &*it->second;
+	}
+
+	void insert(Entry<CellPtr> &&entry)
+	{
+		const std::uint64_t h = entry.key.hash();
+		auto it = m_index.find(h);
+		if (it != m_index.end()) { m_order.erase(it->second); m_index.erase(it); }
+		m_order.push_front(std::move(entry));
+		m_index[h] = m_order.begin();
+		while (m_order.size() > m_capacity)
+		{
+			m_index.erase(m_order.back().key.hash());
+			m_order.pop_back();
+		}
+	}
+
+	void erase(const Key &key)
+	{
+		auto it = m_index.find(key.hash());
+		if (it == m_index.end()) return;
+		m_order.erase(it->second);
+		m_index.erase(it);
+	}
+
+	void clear() { m_order.clear(); m_index.clear(); }
+	std::size_t size() const { return m_order.size(); }
+
+private:
+	std::size_t m_capacity;
+	std::list<Entry<CellPtr>> m_order;
+	std::unordered_map<std::uint64_t, typename std::list<Entry<CellPtr>>::iterator> m_index;
+};
+
+// Digest of a flag sequence (the hierarchical corridor): order-sensitive FNV-1a over the flags.
+inline std::uint64_t digestFlags(const unsigned char *flags, std::size_t count)
+{
+	std::uint64_t h = 1469598103934665603ull;
+	for (std::size_t i = 0; i < count; ++i) { h ^= flags[i]; h *= 1099511628211ull; }
+	return h;
+}
+}

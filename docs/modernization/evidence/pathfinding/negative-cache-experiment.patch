@@ -1,0 +1,722 @@
+diff --git a/Core/GameEngine/Include/GameLogic/AIPathfind.h b/Core/GameEngine/Include/GameLogic/AIPathfind.h
+index 9ee6344a8..67cc304fb 100644
+--- a/Core/GameEngine/Include/GameLogic/AIPathfind.h
++++ b/Core/GameEngine/Include/GameLogic/AIPathfind.h
+@@ -39,6 +39,8 @@
+ #include "Pathfinder/PathfindCellList.h"
+ #include "Pathfinder/PathfindLayer.h"
+ #include "Pathfinder/PathfindZoneManager.h"
++#include <unordered_set>
++#include "Pathfinder/PathNegativeCache.h"
+ #include "Pathfinder/PathNode.h"
+ #include "Pathfinder/ZoneBlock.h"
+ 
+@@ -133,6 +135,14 @@ public:
+ 	static unsigned long long lineMemoHits();
+ 	static unsigned long long lineMemoVerified();
+ 	static unsigned long long lineTraceDigest();
++	// Failed-search negative cache (GENERALS_PATH_NEGCACHE=0 disables, =verify runs the real search on every replayable hit and compares everything, default on).
++	static const char *negCacheModeName();
++	static unsigned long long negCacheHits();         ///< failed searches replayed from the cache (real search skipped)
++	static unsigned long long negCacheRecorded();     ///< failed searches stored
++	static unsigned long long negCacheVerified();     ///< verify mode: hits compared with the real search
++	static unsigned long long negCacheMismatches();   ///< verify mode: differences found (the process exits 3 on the first)
++	static unsigned long long negCacheRejected();
++	static void negCacheCounts(unsigned long long &failures, unsigned long long &ineligible, unsigned long long &skippedUnit, unsigned long long &skippedUnsafe);     ///< lookups that matched a signature but failed a validity condition
+ // The following routines are private, but available through the doPathfind callback to aiInterface. jba.
+ private:
+ 	virtual Path *findPath( Object *obj, const LocomotorSet& locomotorSet, const Coord3D *from, const Coord3D *to) override;	///< Find a short, valid path between given locations
+@@ -415,6 +425,23 @@ private:
+ 	Int						m_queuePRTail;
+ 	Int						m_cumulativeCellsAllocated;
+ 
++	// Failed-search negative cache (not serialised, not part of any state or CRC: it only lets the pathfinder skip a search whose result is proven identical).
++	struct NegRecorder
++	{
++		bool active = false, unsafe = false, unitSeen = false; int why = 0;
++		std::vector<PathfindCell *> touched, footprint;   // cells written with setBlockedByAlly(false) / cells whose unit flags checkForMovement read
++	};
++	NegRecorder m_negRec;
++	PathNegCache::Store<PathfindCell *> m_negCache;
++	std::vector<UnsignedInt> m_negTouchedStamp, m_negFootprintStamp;
++	std::unordered_set<PathfindCell *> m_negLayerTouched, m_negLayerFootprint;   // off-ground-layer cells (bridges, walls): deduplicated by address
++	UnsignedInt m_negGeneration = 0;
++	void negBegin();
++	void negNoteTouched(PathfindCell *cell, Int x, Int y);
++	void negNoteFootprint(PathfindCell *cell, Int x, Int y, PathfindLayerEnum layer);
++	Bool negUnitStateMatches(const Object *obj, const PathNegCache::Entry<PathfindCell *> &entry, const PathfindCell *start, const PathfindCell *goal) const;
++	void negClear();
++
+ #if RTS_ZEROHOUR && RETAIL_COMPATIBLE_CRC
+ public:
+ 	Bool					m_classifyFenceZeroInit;
+diff --git a/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCell.h b/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCell.h
+index d28593c13..062dc7385 100644
+--- a/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCell.h
++++ b/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCell.h
+@@ -64,6 +64,11 @@ public:
+ 	/// reset the cell
+ 	void reset();
+ 
++	// Path-search negative cache: a counter of every write to the STATIC navigation data of any cell (type, obstacle, pinched, zone, layer, connect layer, reset) and of the
++	// zone / layer / extent structures. It never decreases and a failed search recorded at version N proves nothing for version N+1. Unit flags and goals do not count.
++	static UnsignedInt navigationVersion() { return s_navigationVersion; }
++	static void noteNavigationChange() { ++s_navigationVersion; }
++
+ 	PathfindCell();
+ 	~PathfindCell();
+ 
+@@ -78,7 +83,7 @@ public:
+ #if RETAIL_COMPATIBLE_PATHFINDING_ALLOCATION
+ 	// TheSuperHackers @info isObstructionInvalid() and clearObstruction() only used during retail compatible pathfinding failover cleanup
+ 	Bool isObstructionInvalid() const { return m_obstacleID != INVALID_ID && m_info == nullptr && (m_type == CELL_OBSTACLE || m_type == CELL_IMPASSABLE); }
+-	void clearObstruction() { m_type = CELL_CLEAR; m_obstacleID = INVALID_ID; m_obstacleIsFence = false; m_obstacleIsTransparent = false; }
++	void clearObstruction() { noteNavigationChange(); m_type = CELL_CLEAR; m_obstacleID = INVALID_ID; m_obstacleIsFence = false; m_obstacleIsTransparent = false; }
+ #endif
+ 
+ 	inline Bool isObstacleTransparent() const;
+@@ -149,13 +154,13 @@ public:
+ 
+ 	Bool startPathfind( PathfindCell *goalCell );
+ 	Bool getPinched() const {return m_pinched;}
+-	void setPinched(Bool pinch) {m_pinched = pinch;	}
++	void setPinched(Bool pinch) {noteNavigationChange(); m_pinched = pinch;	}
+ 
+ 	Bool allocateInfo(const ICoord2D &pos);
+ 	void releaseInfo();
+ 	Bool hasInfo() const {return m_info!=nullptr;}
+ 	zoneStorageType getZone() const {return m_zone;}
+-	void setZone(zoneStorageType zone) {m_zone = zone;}
++	void setZone(zoneStorageType zone) {noteNavigationChange(); m_zone = zone;}
+ 	void setGoalUnit(ObjectID unit, const ICoord2D &pos );
+ 	void setGoalAircraft(ObjectID unit, const ICoord2D &pos );
+ 	void setPosUnit(ObjectID unit, const ICoord2D &pos );
+@@ -165,13 +170,14 @@ public:
+ 
+ 	inline ObjectID getObstacleID() const;
+ 
+-	void setLayer( PathfindLayerEnum layer ) { m_layer = layer; }	///< set the cell layer
++	void setLayer( PathfindLayerEnum layer ) { noteNavigationChange(); m_layer = layer; }	///< set the cell layer
+ 	PathfindLayerEnum getLayer() const { return (PathfindLayerEnum)m_layer; }				///< get the cell layer
+ 
+-	void setConnectLayer( PathfindLayerEnum layer ) { m_connectsToLayer = layer; }	///< set the cell layer	connect id
++	void setConnectLayer( PathfindLayerEnum layer ) { noteNavigationChange(); m_connectsToLayer = layer; }	///< set the cell layer	connect id
+ 	PathfindLayerEnum getConnectLayer() const { return (PathfindLayerEnum)m_connectsToLayer; }				///< get the cell layer connect id
+ 
+ private:
++	static UnsignedInt s_navigationVersion;
+ 	PathfindCellInfo *m_info;
+ 	ObjectID m_obstacleID;	                  ///< the object ID who overlaps this cell
+ 	UnsignedInt m_blockedByAlly : 1;          ///< True if this cell is blocked by an allied unit.
+diff --git a/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCellInfo.h b/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCellInfo.h
+index 06d79c63e..9903b6c6f 100644
+--- a/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCellInfo.h
++++ b/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindCellInfo.h
+@@ -33,11 +33,13 @@ public:
+ 	static void releaseCellInfos();
+ 
+ 	static PathfindCellInfo * getACellInfo(PathfindCell *cell, const ICoord2D &pos);
++	static UnsignedInt infosInUse() { return s_infosInUse; }   ///< pool records currently handed out (path-search negative cache: the pool-exhaustion guard)
+ 	static void releaseACellInfo(PathfindCellInfo *theInfo);
+ 
+ protected:
+ 	static PathfindCellInfo *s_infoArray;
+-	static PathfindCellInfo *s_firstFree;							///<
++	static PathfindCellInfo *s_firstFree;
++	static UnsignedInt s_infosInUse;							///<
+ 
+ 
+ 	PathfindCellInfo *m_nextOpen, *m_prevOpen;						///< for A* "open" list, shared by closed list
+diff --git a/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindZoneManager.h b/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindZoneManager.h
+index 455172f1d..f0a9025b0 100644
+--- a/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindZoneManager.h
++++ b/Core/GameEngine/Include/GameLogic/Pathfinder/PathfindZoneManager.h
+@@ -70,6 +70,7 @@ public:
+ 	void setPassable(Int cellX, Int cellY, Bool passable);
+ 
+ 	void setAllPassable();
++	unsigned long long passableDigest();   ///< order-sensitive digest of every block's passable flag (the hierarchical corridor of the current request)
+ 
+ 	void setBridge(Int cellX, Int cellY, Bool bridge);
+ 	Bool interactsWithBridge(Int cellX, Int cellY) const;
+diff --git a/Core/GameEngine/Source/Common/ReplaySimulation.cpp b/Core/GameEngine/Source/Common/ReplaySimulation.cpp
+index e05977c87..f167032ac 100644
+--- a/Core/GameEngine/Source/Common/ReplaySimulation.cpp
++++ b/Core/GameEngine/Source/Common/ReplaySimulation.cpp
+@@ -275,6 +275,9 @@ private:
+ 			if (envText("GENERALS_LINE_VERIFY")) line(f, " | %llu memo hits re-verified with the full checks", Pathfinder::lineMemoVerified());
+ 			line(f, "\n");
+ 			if (envText("GENERALS_LINE_TRACE_HASH")) line(f, "line decision digest: %016llX\n", Pathfinder::lineTraceDigest());
++			line(f, "failed-search negative cache: %s | replayed %llu | recorded %llu | rejected %llu | verified %llu | mismatches %llu\n", Pathfinder::negCacheModeName(), Pathfinder::negCacheHits(),
++				Pathfinder::negCacheRecorded(), Pathfinder::negCacheRejected(), Pathfinder::negCacheVerified(), Pathfinder::negCacheMismatches());
++			{ unsigned long long failures, ineligible, skippedUnit, skippedUnsafe; Pathfinder::negCacheCounts(failures, ineligible, skippedUnit, skippedUnsafe); line(f, "  failed searches %llu | ineligible %llu | not recorded: stationary unit seen %llu, unsafe %llu\n", failures, ineligible, skippedUnit, skippedUnsafe); }
+ 		}
+ 		if (m_recorder.deepPaths()) reportPaths(out, base);
+ 		if (PathFailureDiag::enabled())
+diff --git a/Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp b/Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp
+index 24b7c3300..bf55c8a44 100644
+--- a/Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp
++++ b/Core/GameEngine/Source/GameLogic/AI/AIPathfind.cpp
+@@ -34,6 +34,7 @@
+ #include <string>
+ #include <utility>
+ #include <vector>
++#include <algorithm>
+ #include <cstdio>
+ #include <cstdlib>
+ #if defined(_MSC_VER)
+@@ -1090,6 +1091,8 @@ PathfindCellInfo *PathfindCellInfo::s_firstFree = nullptr;
+ // TheSuperHackers @info This variable is here so the code will run down the retail compatible path till a failure mode is hit
+ // The pathfinding will then switch over to the corrected pathfinding code for SH clients
+ Bool s_useFixedPathfinding = false;
++UnsignedInt PathfindCell::s_navigationVersion = 1;
++UnsignedInt PathfindCellInfo::s_infosInUse = 0;
+ Bool s_forceCleanCells = false;
+ 
+ void PathfindCellInfo::forceCleanPathFindCellInfos()
+@@ -1144,6 +1147,7 @@ void PathfindCellInfo::allocateCellInfos()
+ 	s_infoArray[CELL_INFOS_TO_ALLOCATE-1].m_pathParent = nullptr;
+ 	s_infoArray[CELL_INFOS_TO_ALLOCATE-1].m_isFree = true;
+ 	s_firstFree = s_infoArray;
++	s_infosInUse = 0;
+ 	for (Int i=0; i<CELL_INFOS_TO_ALLOCATE-1; i++) {
+ 		s_infoArray[i].m_pathParent = &s_infoArray[i+1];
+ 		s_infoArray[i].m_isFree = true;
+@@ -1179,6 +1183,7 @@ PathfindCellInfo *PathfindCellInfo::getACellInfo(PathfindCell *cell,const ICoord
+ 	if (s_firstFree) {
+ 		DEBUG_ASSERTCRASH(s_firstFree->m_isFree, ("Should be freed."));
+ 		s_firstFree = s_firstFree->m_pathParent;
++		++s_infosInUse;
+ 		info->m_isFree = false;  // Just allocated it.
+ 		info->m_cell = cell;
+ 		info->m_pos = pos;
+@@ -1216,6 +1221,7 @@ void PathfindCellInfo::releaseACellInfo(PathfindCellInfo *theInfo)
+ 	theInfo->m_pathParent = s_firstFree;
+ 	s_firstFree = theInfo;
+ 	s_firstFree->m_isFree = true;
++	--s_infosInUse;
+ }
+ 
+ //-----------------------------------------------------------------------------------
+@@ -1257,6 +1263,7 @@ PathfindCell::~PathfindCell()
+  */
+ void PathfindCell::reset()
+ {
++	noteNavigationChange();
+ 	m_type = PathfindCell::CELL_CLEAR;
+ 	m_flags = PathfindCell::NO_UNITS;
+ 	m_zone = 0;
+@@ -1575,6 +1582,7 @@ inline ObjectID PathfindCell::getObstacleID() const
+  */
+ Bool PathfindCell::setTypeAsObstacle( Object *obstacle, Bool isFence, const ICoord2D &pos )
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
+ 	if (m_type!=PathfindCell::CELL_CLEAR && m_type != PathfindCell::CELL_IMPASSABLE) {
+ 		return false;
+@@ -1634,6 +1642,7 @@ Bool PathfindCell::setTypeAsObstacle( Object *obstacle, Bool isFence, const ICoo
+  */
+ void PathfindCell::setType( CellType type )
+ {
++	noteNavigationChange();
+ 	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
+ #if RETAIL_COMPATIBLE_PATHFINDING_ALLOCATION
+ 	if (s_useFixedPathfinding) {
+@@ -1665,6 +1674,7 @@ void PathfindCell::setType( CellType type )
+  */
+ Bool PathfindCell::removeObstacle( Object *obstacle )
+ {
++	noteNavigationChange();
+ 	PathFailureDiag::noteMapMutation();   // X64.43 diagnostic counter
+ 	if (m_type == PathfindCell::CELL_RUBBLE) {
+ 		m_type = PathfindCell::CELL_CLEAR;
+@@ -2767,6 +2777,7 @@ void PathfindZoneManager::allocateZones()
+ /* Allocate zone blocks for hierarchical pathfinding.   */
+ void PathfindZoneManager::allocateBlocks(const IRegion2D &globalBounds)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	freeBlocks();
+ 
+ 	m_zoneBlockExtent.x = (globalBounds.hi.x-globalBounds.lo.x+1+ZONE_BLOCK_SIZE-1)/ZONE_BLOCK_SIZE;
+@@ -2782,6 +2793,7 @@ void PathfindZoneManager::allocateBlocks(const IRegion2D &globalBounds)
+ 
+ void PathfindZoneManager::reset()  ///< Called when the map is reset.
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	freeZones();
+ 	freeBlocks();
+ }
+@@ -2789,6 +2801,7 @@ void PathfindZoneManager::reset()  ///< Called when the map is reset.
+ 
+ void PathfindZoneManager::markZonesDirty()  ///< Called when the zones need to be recalculated.
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ #if RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING
+ 	m_nextFrameToCalculateZones = TheGameLogic->getFrame();
+ #else
+@@ -3216,6 +3229,7 @@ void PathfindZoneManager::captureState(PathfindCell **map, PathfindLayer layers[
+ 
+ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer layers[], const IRegion2D &globalBounds )
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	const ZoneMode mode = currentZoneMode();
+ 	if (mode == ZONE_MODE_LEGACY) {
+ 		calculateZonesImpl<true>(map, layers, globalBounds);
+@@ -3268,6 +3282,7 @@ void PathfindZoneManager::calculateZones( PathfindCell **map, PathfindLayer laye
+  */
+ void PathfindZoneManager::updateZonesForModify(PathfindCell **map, PathfindLayer layers[], const IRegion2D &structureBounds, const IRegion2D &globalBounds )
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 
+ #ifdef DEBUG_QPF
+ #if defined(DEBUG_LOGGING)
+@@ -3477,6 +3492,7 @@ Bool PathfindZoneManager::clipIsPassable(Int cellX, Int cellY) const
+ //
+ void PathfindZoneManager::setBridge(Int cellX, Int cellY, Bool bridge)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	Int blockX = cellX/ZONE_BLOCK_SIZE;
+ 	Int blockY = cellY/ZONE_BLOCK_SIZE;
+ 
+@@ -3633,6 +3649,7 @@ PathfindLayer::~PathfindLayer()
+  */
+ void PathfindLayer::reset()
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	m_bridge = nullptr;
+ 	if (m_layerCells) {
+ 		Int i, j;
+@@ -3769,6 +3786,7 @@ void PathfindLayer::doDebugIcons() {
+  */
+ Bool PathfindLayer::init(Bridge *theBridge, PathfindLayerEnum layer)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	if (m_bridge!=nullptr) return false;
+ 	m_bridge = theBridge;
+ 	m_layer = layer;
+@@ -3781,6 +3799,7 @@ Bool PathfindLayer::init(Bridge *theBridge, PathfindLayerEnum layer)
+  */
+ void PathfindLayer::allocateCells(const IRegion2D *extent)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	if (m_bridge == nullptr) return;
+ 	Region2D bridgeBounds = *m_bridge->getBounds();
+ 	Int maxX, maxY;
+@@ -3820,6 +3839,7 @@ void PathfindLayer::allocateCells(const IRegion2D *extent)
+  */
+ void PathfindLayer::allocateCellsForWallLayer(const IRegion2D *extent, ObjectID *wallPieces, Int numPieces)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	DEBUG_ASSERTCRASH(m_layer==LAYER_WALL, ("Wrong layer for wall."));
+ 	if (m_layer != LAYER_WALL) return;
+ 	Region2D bridgeBounds;
+@@ -3906,6 +3926,7 @@ Bool PathfindLayer::connectsZones(PathfindZoneManager *zm, const LocomotorSet& l
+  */
+ void PathfindLayer::classifyCells()
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	m_startCell.x = -1;
+ 	m_startCell.y = -1;
+ 	m_endCell.x = -1;
+@@ -3961,6 +3982,7 @@ void PathfindLayer::classifyCells()
+  */
+ void PathfindLayer::classifyWallCells(ObjectID *wallPieces, Int numPieces)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	DEBUG_ASSERTCRASH(m_layer==LAYER_WALL, ("Wrong layer for wall."));
+ 	if (m_layer != LAYER_WALL) return;
+ 	if (m_layerCells == nullptr) return;
+@@ -4024,6 +4046,7 @@ void PathfindLayer::classifyWallCells(ObjectID *wallPieces, Int numPieces)
+  */
+ Bool PathfindLayer::setDestroyed(Bool destroyed)
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	if (destroyed == m_destroyed) return false;
+ 
+ 	m_destroyed = destroyed;
+@@ -4037,6 +4060,7 @@ Bool PathfindLayer::setDestroyed(Bool destroyed)
+  */
+ void PathfindLayer::applyZone()
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	Int i, j;
+ 	for (i=0; i<m_width; i++) {
+ 		for (j=0; j<m_height; j++) {
+@@ -4261,6 +4285,196 @@ void PathfindLayer::classifyWallMapCell( Int i, Int j , PathfindCell *cell, Obje
+ 
+ //----------------------- Pathfinder ---------------------------------------
+ 
++//----------------------- failed-search negative cache ---------------------------------------
++// WHY THIS IS EXACT. A search that fails ("exhausted the open list") is a pure function of: the request signature (start / goal cell, layers, locomotor surfaces, crusher, radius,
++// centre flag, human rules, ignored obstacle, downhill), the STATIC navigation data (cell type / obstacle / pinched / zone / layer / extents / the info-pool mode - every write to
++// them bumps PathfindCell::navigationVersion()), the hierarchical corridor flags of the request (digested), and the UNIT state of the footprint cells checkForMovement reads.
++// Moving units, unit goals and the transient cost terms do not decide feasibility (considerTransient is false in every search call site); only a stationary unit does. The cache stores
++// only failures during which NO footprint cell held a stationary unit, so unit state could only ever add blockers: with the static version, the corridor and the info-pool headroom
++// unchanged and no stationary unit in any footprint cell now, the closure the search explores, the cells it writes, the budget it adds and the "no path" result are the same
++// as before. The replay reproduces every persistent effect of the real search: m_cumulativeCellsAllocated (a serialised, CRC'd budget counter) and setBlockedByAlly(false) on every
++// cell it wrote, and releases the start and goal infos exactly like the failure tail. Anything unusual (tunnelling, dozers, layers, allocation failures, failover) is not recorded.
++// GENERALS_PATH_NEGCACHE=verify runs the real search on every replayable hit and compares the budget, the pool use, the written cells and the footprint (first difference: _exit(3)).
++static std::uint64_t negUnitState(const Object *obj, PathfindCell *cell);
++static inline std::uint8_t negDynWord(const PathfindCell *cell, const PathfindCell *start, const PathfindCell *goal);
++enum NegMode { NEG_OFF = 0, NEG_ON = 1, NEG_VERIFY = 2 };
++static NegMode currentNegMode()
++{
++	static const NegMode mode = [] {
++		const char *text = getenv("GENERALS_PATH_NEGCACHE");
++		if (!text || !*text) return NEG_ON;
++		if (text[0] == '0') return NEG_OFF;
++		if (text[0] == 'v' || text[0] == 'V') return NEG_VERIFY;
++		return NEG_ON;
++	}();
++	return mode;
++}
++static unsigned long long g_negHits = 0, g_negRecorded = 0, g_negVerified = 0, g_negMismatches = 0, g_negRejected = 0;
++static unsigned long long g_negWhy[3] = {0,0,0};
++static unsigned long long g_negFailures = 0, g_negIneligible = 0, g_negSkipUnit = 0, g_negSkipUnsafe = 0;
++const char *Pathfinder::negCacheModeName()
++{
++	switch (currentNegMode()) {
++		case NEG_OFF: return "OFF (every failed search runs)";
++		case NEG_VERIFY: return "VERIFY (replayable hits run the real search and are compared)";
++		default: return "default (proven-identical failed searches are replayed)";
++	}
++}
++unsigned long long Pathfinder::negCacheHits() { return g_negHits; }
++unsigned long long Pathfinder::negCacheRecorded() { return g_negRecorded; }
++unsigned long long Pathfinder::negCacheVerified() { return g_negVerified; }
++unsigned long long Pathfinder::negCacheMismatches() { return g_negMismatches; }
++unsigned long long Pathfinder::negCacheRejected() { return g_negRejected; }
++void Pathfinder::negCacheCounts(unsigned long long &failures, unsigned long long &ineligible, unsigned long long &skippedUnit, unsigned long long &skippedUnsafe) { failures = g_negFailures; ineligible = g_negIneligible; skippedUnit = g_negWhy[0] * 1000000000ull + g_negWhy[1] * 1000000ull + g_negWhy[2]; skippedUnsafe = g_negSkipUnsafe; }
++
++unsigned long long PathfindZoneManager::passableDigest()
++{
++	unsigned long long h = 1469598103934665603ull;
++	for (Int blockX = 0; blockX < m_zoneBlockExtent.x; blockX++) {
++		for (Int blockY = 0; blockY < m_zoneBlockExtent.y; blockY++) {
++			h ^= m_zoneBlocks[blockX][blockY].isPassable() ? 1u : 0u;
++			h *= 1099511628211ull;
++		}
++	}
++	return h;
++}
++
++void Pathfinder::negClear()
++{
++	m_negCache.clear();
++	m_negRec.active = false;
++	m_negRec.touched.clear();
++	m_negRec.footprint.clear();
++}
++
++void Pathfinder::negBegin()
++{
++	m_negRec.active = true;
++	m_negRec.unsafe = false;
++	m_negRec.unitSeen = false;
++	m_negRec.why = 0;
++	m_negLayerTouched.clear();
++	m_negLayerFootprint.clear();
++	m_negRec.touched.clear();
++	m_negRec.footprint.clear();
++	const size_t cells = static_cast<size_t>(m_extent.hi.x + 1) * static_cast<size_t>(m_extent.hi.y + 1);
++	if (m_negTouchedStamp.size() != cells) {
++		m_negTouchedStamp.assign(cells, 0);
++		m_negFootprintStamp.assign(cells, 0);
++		m_negGeneration = 0;
++	}
++	if (++m_negGeneration == 0) {
++		std::fill(m_negTouchedStamp.begin(), m_negTouchedStamp.end(), 0u);
++		std::fill(m_negFootprintStamp.begin(), m_negFootprintStamp.end(), 0u);
++		m_negGeneration = 1;
++	}
++}
++
++void Pathfinder::negNoteTouched(PathfindCell *cell, Int x, Int y)
++{
++	if (cell->getLayer() != LAYER_GROUND) {   // bridge / wall layer cells: few, deduplicated by address
++		if (m_negLayerTouched.insert(cell).second) m_negRec.touched.push_back(cell);
++		return;
++	}
++	if (x < 0 || y < 0 || x > m_extent.hi.x || y > m_extent.hi.y) { m_negRec.unsafe = true; m_negRec.why |= 4; return; }
++	UnsignedInt &stamp = m_negTouchedStamp[static_cast<size_t>(y) * static_cast<size_t>(m_extent.hi.x + 1) + static_cast<size_t>(x)];
++	if (stamp == m_negGeneration) return;
++	stamp = m_negGeneration;
++	m_negRec.touched.push_back(cell);
++}
++
++void Pathfinder::negNoteFootprint(PathfindCell *cell, Int x, Int y, PathfindLayerEnum layer)
++{
++	if (layer != LAYER_GROUND) {
++		if (m_negLayerFootprint.insert(cell).second) m_negRec.footprint.push_back(cell);
++		return;
++	}
++	if (x < 0 || y < 0 || x > m_extent.hi.x || y > m_extent.hi.y) { m_negRec.unsafe = true; m_negRec.why |= 4; return; }
++	UnsignedInt &stamp = m_negFootprintStamp[static_cast<size_t>(y) * static_cast<size_t>(m_extent.hi.x + 1) + static_cast<size_t>(x)];
++	if (stamp == m_negGeneration) return;
++	stamp = m_negGeneration;
++	m_negRec.footprint.push_back(cell);
++}
++
++Bool Pathfinder::negUnitStateMatches(const Object *obj, const PathNegCache::Entry<PathfindCell *> &entry, const PathfindCell *start, const PathfindCell *goal) const
++{
++	// Every footprint cell must still be in the state it was in (flags, info record, aircraft goal): a unit that moved into or out of the explored region changes both the
++	// cost order and what the exhausted pool let the search reach. The cells that hold units must also hold the same unit with the same decision from obj's point of view.
++	const size_t count = entry.footprint.size();
++	for (size_t i = 0; i < count; ++i) {
++		if (negDynWord(entry.footprint[i], start, goal) != entry.footprintDyn[i]) return false;
++	}
++	for (size_t i = 0; i < entry.fixedCells.size(); ++i) {
++		PathfindCell *cell = entry.fixedCells[i];
++		if (negUnitState(obj, cell) != entry.fixedState[i] || cell->getGoalUnit() != entry.fixedGoal[i]) return false;
++	}
++	return true;
++}
++
++// What the search decides about the unit state of a footprint cell, from the point of view of obj (a replica of checkForMovement's per-cell logic; kept next to it on purpose).
++// category: 0 = no effect, 1 = blocks, 2 = passable stationary ally (line walks stop; cost), 3 = stationary enemy that cannot be crushed, 4 = stationary enemy that can be crushed,
++// 5 = moving ally (cost near the start). The unit id is part of the value: another unit in the same cell is another state.
++static std::uint64_t negUnitState(const Object *obj, PathfindCell *cell)
++{
++	const ObjectID posUnit = cell->getPosUnit();
++	std::uint64_t category = 0;
++	const PathfindCell::CellFlags flags = cell->getFlags();
++	if (flags == PathfindCell::UNIT_PRESENT_FIXED || flags == PathfindCell::UNIT_PRESENT_MOVING || flags == PathfindCell::UNIT_GOAL_OTHER_MOVING) {
++		ObjectID ignoreId = INVALID_ID;
++		if (obj->getAIUpdateInterface()) ignoreId = obj->getAIUpdateInterface()->getIgnoredObstacleID();
++		if (posUnit != obj->getID() && posUnit != ignoreId) {
++			Object *unit = TheGameLogic->findObjectByID(posUnit);
++			if (unit) {
++				const bool ally = obj->getRelationship(unit) == ALLIES;
++				if (flags != PathfindCell::UNIT_PRESENT_FIXED) {
++					category = ally ? 5 : 0;
++				} else {
++					bool check = true;
++					if (obj->getAIUpdateInterface() && obj->getAIUpdateInterface()->getIgnoredObstacleID() == unit->getID()) check = false;
++#ifdef INFANTRY_MOVES_THROUGH_INFANTRY
++					if (check && obj->isKindOf(KINDOF_INFANTRY) && unit->isKindOf(KINDOF_INFANTRY)) check = false;
++#endif
++					if (check) {
++						if (ally) {
++							category = 2;
++							if (!unit->getAIUpdateInterface()) category = 1;
++#if RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING
++							else if (!unit->getAIUpdateInterface()->isIdle()) category = 1;
++#endif
++						} else {
++							category = obj->canCrushOrSquish(unit, TEST_CRUSH_OR_SQUISH) ? 4 : 3;
++						}
++					}
++				}
++			}
++		}
++	}
++	return (static_cast<std::uint64_t>(posUnit) << 8) | category;
++}
++
++// The start and goal cells hold an info record only because the search itself allocated it (the tail releases it): their info bit is left out.
++static inline std::uint8_t negDynWord(const PathfindCell *cell, const PathfindCell *start, const PathfindCell *goal)
++{
++	return static_cast<std::uint8_t>(static_cast<unsigned>(cell->getFlags()) | ((cell->hasInfo() && cell != start && cell != goal) ? 16u : 0u) | (cell->isAircraftGoal() ? 32u : 0u));
++}
++
++static bool negFixedMode()
++{
++#if RETAIL_COMPATIBLE_PATHFINDING
++	return s_useFixedPathfinding != 0;
++#else
++	return true;
++#endif
++}
++
++[[noreturn]] static void negVerifyFail(const char *what, const Pathfinder *, Int sx, Int sy, Int gx, Int gy)
++{
++	++g_negMismatches;
++	printf("NEGCACHE VERIFY MISMATCH at frame %u, start (%d,%d) goal (%d,%d): %s\n", static_cast<unsigned>(TheGameLogic->getFrame()), sx, sy, gx, gy, what);
++	fflush(stdout);
++	_exit(3);
++}
++
+ Pathfinder::Pathfinder() :m_map(nullptr)
+ {
+ 	debugPath = nullptr;
+@@ -4278,6 +4492,7 @@ Pathfinder::~Pathfinder()
+ 
+ void Pathfinder::reset()
+ {
++	negClear();
+ 	frameToShowObstacles = 0;
+ 	DEBUG_LOG(("Pathfind cell is %d bytes, PathfindCellInfo is %d bytes", sizeof(PathfindCell), sizeof(PathfindCellInfo)));
+ 
+@@ -4961,6 +5176,8 @@ void Pathfinder::classifyMapCell( Int i, Int j , PathfindCell *cell)
+  */
+ void Pathfinder::newMap()
+ {
++	negClear();
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	m_wallHeight = TheAI->getAiData()->m_wallHeight; // may be updated by map.ini.
+ 	Region3D terrainExtent;
+ 	TheTerrainLogic->getMaximumPathfindExtent( &terrainExtent );
+@@ -5016,6 +5233,7 @@ void Pathfinder::newMap()
+  */
+ void Pathfinder::classifyMap()
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 
+ 	Int i, j;
+ 	// for now, sample cell corners and classify cell accordingly
+@@ -5097,6 +5315,7 @@ void Pathfinder::classifyMap()
+  */
+ void Pathfinder::forceMapRecalculation()
+ {
++	PathfindCell::noteNavigationChange();   // negative-cache version
+ 	classifyMap();
+ }
+ 
+@@ -5407,6 +5626,7 @@ Bool Pathfinder::checkForMovement(const Object *obj, TCheckMovementInfo &info)
+ 			if (!cell) {
+ 				return false; // off the map, so can't move here.
+ 			}
++			if (m_negRec.active) negNoteFootprint(cell, i, j, info.layer);
+ 
+ 			PathfindCell::CellFlags flags = cell->getFlags();
+ 			if ((flags == PathfindCell::UNIT_GOAL) || (flags == PathfindCell::UNIT_GOAL_OTHER_MOVING)) {
+@@ -6313,6 +6533,7 @@ void Pathfinder::processPathfindQueue()
+ 	bounds.hi.y = REAL_TO_INT_FLOOR(terrainExtent.hi.y / PATHFIND_CELL_SIZE_F);
+ 	bounds.hi.x--;
+ 	bounds.hi.y--;
++	if (bounds.lo.x != m_logicalExtent.lo.x || bounds.lo.y != m_logicalExtent.lo.y || bounds.hi.x != m_logicalExtent.hi.x || bounds.hi.y != m_logicalExtent.hi.y) PathfindCell::noteNavigationChange();
+ 	m_logicalExtent = bounds;
+ 
+ 	m_cumulativeCellsAllocated = 0;	// Number of pathfind cells examined.
+@@ -6566,6 +6787,7 @@ struct ExamineCellsStruct
+ 			}
+ 			if (!memoHit && d->useMemo) to->setLineVerdict(d->generation, fromLayer);
+ 			to->setBlockedByAlly(false);
++			if (d->thePathfinder->m_negRec.active) d->thePathfinder->negNoteTouched(to, to_x, to_y);
+ 			Int costRemaining = 0;
+ 			costRemaining = to->costToGoal( d->goalCell );
+ 
+@@ -6803,6 +7025,7 @@ Int Pathfinder::examineNeighboringCells(PathfindCell *parentCell, PathfindCell *
+ 			}
+ 
+ 			newCell->setBlockedByAlly(false);
++			if (m_negRec.active) negNoteTouched(newCell, newCellCoord.x, newCellCoord.y);
+ 			if (info.allyFixedCount>0) {
+ #if RTS_GENERALS && RETAIL_COMPATIBLE_PATHFINDING
+ 				newCostSoFar += 3*COST_DIAGONAL*info.allyFixedCount;
+@@ -7058,6 +7281,47 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
+ 		m_isTunneling = true;
+ 	}
+ 
++	// ---- failed-search negative cache: replay a failure that is provably identical (see the block comment before currentNegMode)
++	const NegMode negMode = currentNegMode();
++	Bool negRecording = false, negVerifyHit = false, negFixedAtStart = negFixedMode();
++	PathNegCache::Key negKey;
++	UnsignedInt negInfosAtStart = 0, negPeakInfos = 0;
++	const Int negBudgetAtStart = m_cumulativeCellsAllocated;
++	PathfindCell *const negStartCell = parentCell;
++	PathNegCache::Entry<PathfindCell *> negVerifyEntry;
++	if (negMode != NEG_OFF && obj && !m_isTunneling && layer == LAYER_GROUND && destinationLayer == LAYER_GROUND && !obj->isKindOf(KINDOF_DOZER)) {
++		negKey.startX = startCellNdx.x; negKey.startY = startCellNdx.y; negKey.goalX = cell.x; negKey.goalY = cell.y;
++		negKey.layer = static_cast<int>(layer); negKey.destLayer = static_cast<int>(destinationLayer);
++		negKey.surfaces = static_cast<unsigned>(locomotorSet.getValidSurfaces()); negKey.radius = radius;
++		negKey.ignoreObstacle = static_cast<unsigned>(m_ignoreObstacleID); negKey.objectId = static_cast<unsigned>(obj->getID());
++		negKey.center = centerInCell != 0; negKey.crusher = isCrusher != 0; negKey.human = isHuman != 0; negKey.downhill = locomotorSet.isDownhillOnly() != 0;
++		negInfosAtStart = PathfindCellInfo::infosInUse();
++		if (PathNegCache::Entry<PathfindCell *> *hit = m_negCache.find(negKey)) {
++			if (hit->navigationVersion != PathfindCell::navigationVersion() || hit->fixedMode != negFixedAtStart) {
++				m_negCache.erase(negKey);   // the static map changed since: can never be valid again
++			} else if ((hit->corridor != m_zoneManager.passableDigest() ? (++g_negWhy[0], (g_negWhy[0] < 12 ? printf("TMPCORR start(%d,%d) goal(%d,%d) obj %u old %016llX new %016llX frame %u\n", negKey.startX, negKey.startY, negKey.goalX, negKey.goalY, negKey.objectId, hit->corridor, m_zoneManager.passableDigest(), static_cast<unsigned>(TheGameLogic->getFrame())) : 0), false) : ((CELL_INFOS_TO_ALLOCATE - negInfosAtStart) != hit->freeAtStart ? (++g_negWhy[1], false) : (negUnitStateMatches(obj, *hit, parentCell, goalCell) ? true : (++g_negWhy[2], false))))) {
++				if (negMode == NEG_ON) {
++					++g_negHits;
++					for (PathfindCell *touchedCell : hit->touched) {
++						if (negFixedAtStart || touchedCell->hasInfo()) touchedCell->setBlockedByAlly(false);
++					}
++					m_cumulativeCellsAllocated += hit->cleaned;
++					m_isTunneling = false;
++					goalCell->releaseInfo();
++					parentCell->releaseInfo();
++					{ pathProfile.result(false); return nullptr; }
++				}
++				negVerifyHit = true;
++				negVerifyEntry = *hit;
++				++g_negVerified;
++			} else {
++				++g_negRejected;
++			}
++		}
++		negRecording = true;
++		negBegin();
++	}
++
+ 	PathFailureDiag::Search failDiag;
+ 	if (PathFailureDiag::enabled()) failDiag.begin(this, obj, &locomotorSet, from, rawTo, to, parentCell, goalCell, zone1, zone2, radius, centerInCell, isHuman, isCrusher, m_isTunneling, layer, destinationLayer, m_ignoreObstacleID);
+ 	parentCell->startPathfind(goalCell);
+@@ -7095,6 +7359,8 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
+ 		if (parentCell == goalCell)
+ 		{
+ 			failDiag.succeeded();
++			if (negRecording) m_negRec.active = false;
++			if (negVerifyHit) negVerifyFail("the cached failure now finds a path", this, startCellNdx.x, startCellNdx.y, cell.x, cell.y);
+ 			// success - found a path to the goal
+ 			Bool show = TheGlobalData->m_debugAI==AI_DEBUG_PATHS;
+ #ifdef INTENSE_DEBUG
+@@ -7206,6 +7472,7 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
+ #endif
+ 
+ 	m_isTunneling = false;
++	negPeakInfos = PathfindCellInfo::infosInUse() - negInfosAtStart;
+ #if RETAIL_COMPATIBLE_PATHFINDING
+ 	if (!s_useFixedPathfinding)
+ 	{
+@@ -7219,6 +7486,50 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
+ 		parentCell->releaseInfo();
+ 		goalCell->releaseInfo();
+ 	}
++	++g_negFailures;
++	if (!negRecording) ++g_negIneligible;
++	if (negRecording) {
++		m_negRec.active = false;
++		if (m_negRec.unsafe) ++g_negSkipUnsafe;
++		g_negWhy[0] += (m_negRec.why & 1) ? 1 : 0; g_negWhy[1] += (m_negRec.why & 2) ? 1 : 0; g_negWhy[2] += (m_negRec.why & 4) ? 1 : 0;
++		if (!m_negRec.unsafe && negFixedAtStart == negFixedMode()) {
++			PathNegCache::Entry<PathfindCell *> entry;
++			entry.key = negKey;
++			entry.navigationVersion = PathfindCell::navigationVersion();
++			entry.fixedMode = negFixedAtStart;
++			entry.corridor = m_zoneManager.passableDigest();
++			entry.cleaned = m_cumulativeCellsAllocated - negBudgetAtStart;
++			entry.newInfos = negPeakInfos;
++			entry.touched = m_negRec.touched;
++			entry.footprint = m_negRec.footprint;
++			entry.freeAtStart = static_cast<std::uint32_t>(CELL_INFOS_TO_ALLOCATE - negInfosAtStart);
++			entry.footprintDyn.reserve(entry.footprint.size());
++			for (PathfindCell *footprintCell : entry.footprint) {
++				entry.footprintDyn.push_back(negDynWord(footprintCell, negStartCell, goalCell));
++				if (footprintCell->getFlags() != PathfindCell::NO_UNITS) { entry.fixedCells.push_back(footprintCell); entry.fixedState.push_back(negUnitState(obj, footprintCell)); entry.fixedGoal.push_back(footprintCell->getGoalUnit()); }
++			}
++			if (negVerifyHit) {
++				std::vector<PathfindCell *> a = negVerifyEntry.touched, b = entry.touched, c = negVerifyEntry.footprint, d = entry.footprint;
++				std::sort(a.begin(), a.end()); std::sort(b.begin(), b.end()); std::sort(c.begin(), c.end()); std::sort(d.begin(), d.end());
++				if (negVerifyEntry.cleaned != entry.cleaned) negVerifyFail("budget (cells cleaned) differs", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++				if (negVerifyEntry.newInfos != entry.newInfos) negVerifyFail("info pool use differs", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++				if (a != b) negVerifyFail("the set of written cells differs", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++				{
++					std::vector<std::pair<PathfindCell *, std::uint64_t> > fa, fb;
++					for (size_t i = 0; i < negVerifyEntry.fixedCells.size(); ++i) fa.push_back(std::make_pair(negVerifyEntry.fixedCells[i], negVerifyEntry.fixedState[i]));
++					for (size_t i = 0; i < entry.fixedCells.size(); ++i) fb.push_back(std::make_pair(entry.fixedCells[i], entry.fixedState[i]));
++					std::sort(fa.begin(), fa.end()); std::sort(fb.begin(), fb.end());
++					if (fa != fb) negVerifyFail("the stationary-unit decisions differ", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++				}
++				if (false) negVerifyFail("the stationary-unit decisions differ", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++				if (c != d) negVerifyFail("the footprint differs", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++			}
++			m_negCache.insert(std::move(entry));
++			++g_negRecorded;
++		} else if (negVerifyHit) {
++			negVerifyFail("the real search met an unsafe condition the cached one did not", this, negKey.startX, negKey.startY, negKey.goalX, negKey.goalY);
++		}
++	}
+ 	{ pathProfile.result(false); return nullptr; }
+ }
+ 
