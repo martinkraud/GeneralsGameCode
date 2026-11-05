@@ -8,7 +8,8 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$Name,
-      [ValidateSet('Skirmish','Lan')][string]$Mode = 'Skirmish',
+      [ValidateSet('Skirmish','Lan','Quick')][string]$Mode = 'Skirmish',   # Quick = -devMode -quickGame (a fixed, repeatable offline match; -DevFps sets its render cap)
+      [string]$DevFps = '',                              # Quick mode: render cap 15..1000 or 'uncapped' (-devFps)
       [ValidateRange(20,1800)][int]$Seconds = 90,
       [ValidateRange(30,1000)][int]$RenderFps = 120,     # engine render cap (-fps); the match lasts Seconds * RenderFps presented frames
       [ValidateRange(1,7)][int]$Ai = 1,                  # LAN mode: AI opponents
@@ -37,12 +38,13 @@ $env:GENERALS_FRAMEDELIVERY = $out
 if ($PerFrame) { $env:GENERALS_FRAMEDELIVERY_FRAMES = '1' }
 $env:GENERALS_AUTOSHOT = $out
 $env:GENERALS_AUTOSHOT_FRAMES = "$($Seconds * $RenderFps)"
-$env:GENERALS_AUTOFLOW = $Mode.ToLowerInvariant()
+if ($Mode -ne 'Quick') { $env:GENERALS_AUTOFLOW = $Mode.ToLowerInvariant() }
 if ($Endurance) { $env:GENERALS_ENDURANCE = $out }
 if ($Vsync) { $env:GENERALS_FORCE_VSYNC = $Vsync }
 if ($ClientSize) { $env:GENERALS_FORCE_CLIENT_SIZE = $ClientSize }
 if ($Mode -eq 'Lan') { $env:GENERALS_AUTOFLOW_AI = "$Ai" }
 $arguments = @('-noaudio', '-fps', "$RenderFps")
+if ($Mode -eq 'Quick') { $arguments = @('-noaudio', '-devMode', '-quickGame'); if ($DevFps) { $arguments += @('-devFps', $DevFps) } }
 $timeout = 300 + $Seconds * 3
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $manifest.GamePath -PassThru
 try {
