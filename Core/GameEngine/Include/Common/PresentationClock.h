@@ -70,7 +70,8 @@ public:
 			return;
 		}
 
-		if (m_continuous && m_period != m_observedPeriod)
+		// A network self-slug stretches one tick interval by 10% without changing the history's meaning; a larger change is a different timescale.
+		if (m_continuous && !(m_observedPeriod >= m_period * 0.85f && m_observedPeriod <= m_period * 1.15f))
 			invalidate();
 		m_continuous = true;
 		m_period = m_observedPeriod;

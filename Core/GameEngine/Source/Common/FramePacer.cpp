@@ -18,6 +18,7 @@
 #include "PreRTS.h"
 
 #include "Common/FramePacer.h"
+#include "Common/FrameDeliveryTelemetry.h"
 
 #include "GameClient/View.h"
 
@@ -80,13 +81,32 @@ void FramePacer::update()
 	// can run while frozen without completing a world tick). Legacy phase above
 	// intentionally retains its existing particle/physics-decoration semantics.
 	const Bool permitted = TheGameLogic != nullptr && TheGameLogic->isInGame()
-		&& !TheGameLogic->isGamePaused() && TheNetwork == nullptr
+		&& !TheGameLogic->isGamePaused()
 		&& !isTimeFrozen() && !isGameHalted()
-		&& getActualLogicTimeScaleFps() == LOGICFRAMES_PER_SECOND
+		&& (TheNetwork != nullptr ? TheNetwork->getFrameRate() > 0 : getActualLogicTimeScaleFps() == LOGICFRAMES_PER_SECOND)
 		&& (TheScriptEngine == nullptr || !TheScriptEngine->isTimeFast())
 		&& (TheTacticalView == nullptr || TheTacticalView->getTimeMultiplier() == 1);
+	Real presentationDelta = m_updateTime;
+	if (TheNetwork != nullptr)
+	{
+		// Network games: the lock-step schedule plays the role of the offline accumulator. The presentation time is read from the schedule's own clock AFTER the
+		// limiter wait, i.e. when the next frame is drawn, not predicted from the last interval: the work before the scheduler decision varies from frame to frame
+		// (the render pass runs first) and used to make the predicted alpha step backwards after a slow frame. The schedule is only read, never changed. A stall
+		// (commands late) or an unusable schedule leaves the conservative (0,0) observation made by GameEngine::canUpdateGameLogic(): invalid, canonical state.
+		NetworkTimingDiagnostics timing;
+		TheNetwork->getTimingDiagnostics(timing);
+		// Like the offline rule, a renderer that is not faster than the tick rate gains nothing from interpolating, it would only delay the picture by a tick.
+		if (timing.scheduleValid && !timing.stalling && timing.schedulePeriod > 0.0f && m_updateTime < timing.schedulePeriod)
+		{
+			// A tick that is due but not yet released (waiting for the next update) holds the last interpolated position instead of extrapolating.
+			const Real remainder = std::min(timing.scheduleRemainder, timing.schedulePeriod * 0.9999f);
+			m_presentationClock.observeScheduler(remainder, timing.schedulePeriod);
+			presentationDelta = 0.0f;
+		}
+	}
 	m_presentationClock.advance(TheGameLogic != nullptr ? TheGameLogic->getFrame() : 0,
-		TheGameLogic != nullptr && TheGameLogic->hasUpdated(), m_updateTime, permitted);
+		TheGameLogic != nullptr && TheGameLogic->hasUpdated(), presentationDelta, permitted);
+	FrameDeliveryTelemetry::frame(m_updateTime);
 }
 
 void FramePacer::reset()

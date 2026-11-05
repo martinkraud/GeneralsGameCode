@@ -56,6 +56,8 @@ set(GAMEENGINE_SRC
     Include/Common/CameraProbe.h
     Include/Common/PresentationScroll.h
     Include/Common/EnduranceTelemetry.h
+    Include/Common/FrameDeliveryStats.h
+    Include/Common/FrameDeliveryTelemetry.h
     Include/Common/PresentationClock.h
     Include/Common/GroundTranslation.h
     Include/Common/GroundTranslationPolicy.h
@@ -586,6 +588,7 @@ set(GAMEENGINE_SRC
     Include/GameNetwork/NetPacketStructs.h
     Include/GameNetwork/NetworkDefs.h
     Include/GameNetwork/NetworkInterface.h
+    Include/GameNetwork/NetworkPacing.h
     Include/GameNetwork/networkutil.h
     Include/GameNetwork/RankPointValue.h
     Include/GameNetwork/Transport.h
@@ -616,6 +619,7 @@ set(GAMEENGINE_SRC
     Source/Common/PerformanceProfile.cpp
     Source/Common/ScriptProfile.cpp
     Source/Common/EnduranceTelemetry.cpp
+    Source/Common/FrameDeliveryTelemetry.cpp
     Source/Common/DeveloperHarness.cpp
     Source/Common/DeveloperToolsRuntime.cpp
     Source/Common/DeveloperInteractive.cpp

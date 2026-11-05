@@ -31,6 +31,7 @@
 #include "Common/StartupDiagnostics.h"
 #include "Common/PerformanceProfile.h"
 #include "Common/EnduranceTelemetry.h"   // X64.44: opt-in endurance time series (inert unless GENERALS_ENDURANCE)
+#include "Common/FrameDeliveryTelemetry.h"   // multiplayer smoothness audit: opt-in frame delivery log (inert unless GENERALS_FRAMEDELIVERY)
 #include "Common/DeveloperHarness.h"
 
 #include "Common/ActionManager.h"
@@ -781,6 +782,7 @@ void GameEngine::update()
 		{
 			{
 				EnduranceTelemetry::LogicTick enduranceTick;
+				FrameDeliveryTelemetry::Tick deliveryTick;
 				TheGameLogic->UPDATE();
 			}
 

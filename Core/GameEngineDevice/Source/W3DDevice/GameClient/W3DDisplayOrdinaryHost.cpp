@@ -397,6 +397,12 @@ void W3DDisplay::initOrdinaryHostPresentation()
                 resolved.layout = DisplayGeometry::computeLayout(resolved.client, settings.uiScalePercent);
                 resolved.notes.push_back("GENERALS_FORCE_CLIENT_SIZE developer override applied");
             }
+            // Multiplayer smoothness audit: GENERALS_FORCE_VSYNC=0|1 for this session only (never written back), to measure high-refresh pacing on a 60 Hz panel.
+            const char *forcedVsync = std::getenv("GENERALS_FORCE_VSYNC");
+            if (forcedVsync && (forcedVsync[0] == '0' || forcedVsync[0] == '1')) {
+                resolved.vsync = forcedVsync[0] == '1';
+                resolved.notes.push_back("GENERALS_FORCE_VSYNC developer override applied");
+            }
         }
         DisplayRuntime::State &state = DisplayRuntime::state();
         state.modern = true;
@@ -1540,7 +1546,7 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { LAN_FILL, SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
@@ -1593,6 +1599,10 @@ void NativeAutoShot()
     static const Step replaySteps[] = { { PUSH, "Menus/ReplayMenu.wnd", nullptr, 600, 1 }, { BROWSER_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const Step loadGameSteps[] = { { PUSH, "Menus/SaveLoad.wnd", nullptr, 600, 1 }, { BROWSER_UI, nullptr, nullptr, 60, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const Step creditsSteps[] = { { PUSH, "Menus/CreditsMenu.wnd", nullptr, 600, 1 }, { CREDITS_UI, nullptr, nullptr, 60, 0 }, { END, nullptr, nullptr, 0, 0 } };
+    // Multiplayer smoothness audit: host a LAN game alone (m_netMinPlayers = 1 allows a sandbox start) with AI opponents, so the real TheNetwork lock-step path runs on one PC
+    static const Step lanSteps[] = {
+        { PUSH, "Menus/LanLobbyMenu.wnd", nullptr, 600, 1 }, { PRESS, "LanLobbyMenu.wnd:ButtonHost", nullptr, 120, 1 }, { LAN_FILL, nullptr, nullptr, 300, 1 },
+        { PRESS, "LanGameOptionsMenu.wnd:ButtonStart", nullptr, 240, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const int autoFlow = [] {
         const char *text = std::getenv("GENERALS_AUTOFLOW");
         if (!text) return 0;
@@ -1608,12 +1618,13 @@ void NativeAutoShot()
         if (!_stricmp(text, "replay")) return 10;
         if (!_stricmp(text, "loadgame")) return 11;
         if (!_stricmp(text, "credits")) return 12;
+        if (!_stricmp(text, "lan")) return 13;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : autoFlow == 13 ? lanSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -1661,6 +1672,23 @@ void NativeAutoShot()
                     GadgetListBoxSetSelected(list, 0);
                     TheWindowManager->winSendSystemMsg(list->winGetOwner() ? list->winGetOwner() : topWindow(list), GLM_SELECTED, (WindowMsgData)list, 0);
                     advance("selected row 0 of", step.a); done = true;
+                }
+            } else if (step.kind == LAN_FILL) {
+                // GENERALS_AUTOFLOW_AI = number of AI opponents (default 1), medium AI, through the real combo boxes
+                GameWindow *parent = find("LanGameOptionsMenu.wnd:LanGameOptionsMenuParent");
+                if (parent) {
+                    const char *countText = std::getenv("GENERALS_AUTOFLOW_AI");
+                    const int count = countText ? std::atoi(countText) : 1;
+                    for (int i = 1; i <= count && i < 8; ++i) {
+                        char name[96];
+                        sprintf_s(name, "LanGameOptionsMenu.wnd:ComboBoxPlayer%d", i);
+                        GameWindow *combo = find(name);
+                        if (!combo) continue;
+                        const int pos = GadgetComboBoxGetLength(combo) > 3 ? 3 : GadgetComboBoxGetLength(combo) - 1;   // Open, Closed, Easy, Medium
+                        GadgetComboBoxSetSelectedPos(combo, pos);
+                        TheWindowManager->winSendSystemMsg(parent, GCM_SELECTED, (WindowMsgData)combo, pos);
+                    }
+                    advance("filled the LAN slots", nullptr); done = true;
                 }
             } else if (step.kind == SLOT_FILL || step.kind == SLOT_PROBE) {
                 GameWindow *parent = find("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent");
@@ -2440,7 +2468,7 @@ void NativeAutoShot()
         } else if (step.kind == END && stepAt != 0xFFFFFFFFu) {
             StartupDiagnostics::checkpoint("autoflow", "observed", "flow complete");
             stepAt = 0xFFFFFFFFu;
-            if (autoFlow >= 4) TheGameEngine->setQuitting(TRUE);
+            if (autoFlow >= 4 && autoFlow != 13) TheGameEngine->setQuitting(TRUE);
         }
     }
     // GENERALS_AUTOSHOT_EVERY=<frames>: a numbered sequence of frames (at most 80) instead of the two single captures; never quits.
@@ -2471,7 +2499,7 @@ void NativeAutoShot()
         if (!gameDone && ++gameFrames >= gameFramesWanted) {
             shoot("game");
             gameDone = true;
-            if (TheGameEngine && autoFlow < 4) TheGameEngine->setQuitting(TRUE);
+            if (TheGameEngine && (autoFlow < 4 || autoFlow == 13)) TheGameEngine->setQuitting(TRUE);
         }
     } else if (!shellDone && ++shellFrames >= 360) {
         shoot("shell");

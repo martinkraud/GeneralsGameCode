@@ -114,6 +114,7 @@ public:
 	virtual void setLocalAddress(UnsignedInt ip, UnsignedInt port) override;
 	virtual UnsignedInt getRunAhead() override { return m_runAhead; }
 	virtual UnsignedInt getFrameRate() override { return m_frameRate; }
+	virtual void getTimingDiagnostics(NetworkTimingDiagnostics &out) override;
 	virtual UnsignedInt getPacketArrivalCushion() override;								///< Returns the smallest packet arrival cushion since this was last called.
 	virtual Bool isFrameDataReady() override;
 	virtual Bool isStalling() override;
@@ -206,6 +207,11 @@ protected:
 
 	__int64 m_nextFrameTime;														///< When did we execute the last frame?  For slugging the GameLogic...
 
+	// Presentation / telemetry view of the QPC schedule below; written only where the schedule itself is written, never read by it.
+	__int64 m_scheduleAnchor;												///< Ideal start of the tick interval that began with the last released tick.
+	__int64 m_scheduleDelay;												///< Length of that tick interval in QPC counts (includes a self-slug extension).
+	UnsignedInt m_selfSlugCount, m_schedulerResetCount, m_releasedCount;
+
 	Bool m_frameDataReady;																		///< Is the frame data for the next frame ready to be executed by TheGameLogic?
 	Bool m_isStalling;
 
@@ -267,6 +273,11 @@ Network::Network()
 {
 	m_checkCRCsThisFrame = FALSE;
 	m_didSelfSlug = FALSE;
+	m_scheduleAnchor = 0;
+	m_scheduleDelay = 0;
+	m_selfSlugCount = 0;
+	m_schedulerResetCount = 0;
+	m_releasedCount = 0;
 	m_frameDataReady = FALSE;
 	m_isStalling = FALSE;
 	m_sawCRCMismatch = FALSE;
@@ -339,6 +350,8 @@ void Network::init()
 
 	QueryPerformanceFrequency((LARGE_INTEGER *)&m_perfCountFreq);
 	m_nextFrameTime = 0;
+	m_scheduleAnchor = 0;
+	m_scheduleDelay = 0;
 	m_sawCRCMismatch = FALSE;
 	m_checkCRCsThisFrame = FALSE;
 
@@ -773,6 +786,7 @@ Bool Network::timeForNewFrame() {
 	__int64 curTime;
 	QueryPerformanceCounter((LARGE_INTEGER *)&curTime);
 	__int64 frameDelay = m_perfCountFreq / m_frameRate;
+	Bool selfSlugged = FALSE;
 
 	/*
 	 * If we're pushing up against the edge of our run ahead, we should slow the framerate down a bit
@@ -787,6 +801,7 @@ Bool Network::timeForNewFrame() {
 			frameDelay += oldFrameDelay / 10; // temporarily decrease the frame rate by 20%.
 //			DEBUG_LOG(("Average cushion = %f, run ahead percentage = %f.  Adjusting frameDelay from %I64d to %I64d", cushion, runAheadPercentage, oldFrameDelay, frameDelay));
 			m_didSelfSlug = TRUE;
+			selfSlugged = TRUE;
 //		} else {
 //			DEBUG_LOG(("Average cushion = %f, run ahead percentage = %f", cushion, runAheadPercentage));
 		}
@@ -800,13 +815,20 @@ Bool Network::timeForNewFrame() {
 		if ((m_nextFrameTime + (2 * frameDelay)) < curTime) {
 			// If we get too far behind on our framerate we need to reset the nextFrameTime thing.
 			m_nextFrameTime = curTime;
+			m_scheduleAnchor = curTime;
+			++m_schedulerResetCount;
 //			DEBUG_LOG(("Initializing m_nextFrameTime to %I64d", m_nextFrameTime));
 		} else {
 			// Set the soonest possible starting time for the next frame.
+			m_scheduleAnchor = m_nextFrameTime;
 			m_nextFrameTime += frameDelay;
 //			DEBUG_LOG(("m_nextFrameTime = %I64d", m_nextFrameTime));
 		}
 
+		m_scheduleDelay = frameDelay;
+		++m_releasedCount;
+		if (selfSlugged)
+			++m_selfSlugCount;
 		return TRUE;
 	}
 //	DEBUG_LOG(("Slowing down frame rate. frame rate = %d, frame delay = %I64d, curTime - m_nextFrameTime = %I64d", m_frameRate, frameDelay, curTime - m_nextFrameTime));
@@ -889,6 +911,29 @@ Real Network::getUnknownPacketsPerSecond()
 		return m_conMgr->getUnknownPacketsPerSecond();
 	else
 	  return 0.0;
+}
+
+void Network::getTimingDiagnostics(NetworkTimingDiagnostics &out)
+{
+	out.frameRate = m_frameRate;
+	out.runAhead = m_runAhead;
+	out.cushion = m_conMgr ? m_conMgr->getMinimumCushion() : 0;
+	out.stalling = m_isStalling;
+	out.selfSlugs = m_selfSlugCount;
+	out.schedulerResets = m_schedulerResetCount;
+	out.released = m_releasedCount;
+	out.scheduleValid = FALSE;
+	out.scheduleRemainder = 0.0f;
+	out.schedulePeriod = 0.0f;
+	if (m_scheduleDelay > 0 && m_perfCountFreq > 0)
+	{
+		__int64 now;
+		QueryPerformanceCounter((LARGE_INTEGER *)&now);
+		const Real freq = (Real)m_perfCountFreq;
+		out.schedulePeriod = (Real)m_scheduleDelay / freq;
+		out.scheduleRemainder = (Real)(now - m_scheduleAnchor) / freq;
+		out.scheduleValid = TRUE;
+	}
 }
 
 /**

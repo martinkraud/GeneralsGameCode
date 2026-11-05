@@ -266,7 +266,8 @@ void LANAPI::OnGameStart()
 		GameMessage *msg = TheMessageStream->appendMessage( GameMessage::MSG_NEW_GAME );
 		msg->appendIntegerArgument(GAME_LAN);
 
-		TheWritableGlobalData->m_useFpsLimit = false;
+		// Multiplayer smoothness audit: the render fps limit is no longer lifted for LAN matches. Retail did so because the logic rate followed the render rate; now the
+		// lock-step schedule is independent of rendering, and an uncapped render only added irregular frame delivery (see docs/modernization/MULTIPLAYER_SMOOTHNESS_AUDIT.md).
 
 		// Set the seeds
 		InitRandom( m_currentGame->getSeed() );

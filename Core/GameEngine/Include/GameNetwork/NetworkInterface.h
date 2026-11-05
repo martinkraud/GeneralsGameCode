@@ -39,6 +39,21 @@ struct CommandPacket;
 class GameMessage;
 class GameInfo;
 
+/// Read-only view of the lock-step scheduler for presentation and telemetry. Never feeds the simulation.
+struct NetworkTimingDiagnostics
+{
+	UnsignedInt frameRate = 0;
+	UnsignedInt runAhead = 0;
+	UnsignedInt cushion = 0;
+	Bool stalling = FALSE;
+	Bool scheduleValid = FALSE;      ///< scheduleRemainder / schedulePeriod describe the current tick interval
+	Real scheduleRemainder = 0.0f;   ///< seconds since the ideal start of the current tick interval
+	Real schedulePeriod = 0.0f;      ///< seconds of the current tick interval (includes a self-slug extension)
+	UnsignedInt selfSlugs = 0;       ///< cumulative: ticks scheduled with the 10% cushion slowdown
+	UnsignedInt schedulerResets = 0; ///< cumulative: schedule re-anchored after falling more than two periods behind
+	UnsignedInt released = 0;        ///< cumulative: ticks released
+};
+
 void ClearCommandPacket(UnsignedInt frame);										///< ClearCommandPacket clears the command packet at the start of the frame.
 CommandPacket *GetCommandPacket();											///< TheNetwork calls GetCommandPacket to get commands to send.
 
@@ -65,6 +80,7 @@ public:
 	virtual void startGame() = 0;																	///< Sets the network game frame counter to -1
 	virtual UnsignedInt getRunAhead() = 0;												///< Get the current RunAhead value
 	virtual UnsignedInt getFrameRate() = 0;												///< Get the current allowed frame rate.
+	virtual void getTimingDiagnostics(NetworkTimingDiagnostics &out) = 0;			///< Scheduler view for telemetry / presentation; no side effects.
 	virtual UnsignedInt getPacketArrivalCushion() = 0;						///< Get the smallest packet arrival cushion since this was last called.
 
 	// Chat functions

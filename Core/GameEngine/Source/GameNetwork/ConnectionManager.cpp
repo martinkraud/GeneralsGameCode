@@ -45,6 +45,7 @@
 #include "GameNetwork/ConnectionManager.h"
 #include "GameNetwork/LANAPICallbacks.h"
 #include "GameNetwork/NAT.h"
+#include "GameNetwork/NetworkPacing.h"
 #include "GameNetwork/NetCommandWrapperList.h"
 #include "GameNetwork/networkutil.h"
 #include "GameLogic/GameLogic.h"
@@ -1372,13 +1373,9 @@ void ConnectionManager::updateRunAhead(Int oldRunAhead, Int frameRate, Bool didS
 			Int minFpsPlayer;
 			getMinimumFps(minFps, minFpsPlayer);
 			DEBUG_LOG_LEVEL(DEBUG_LEVEL_NET, ("ConnectionManager::updateRunAhead - max latency = %f, min fps = %d, min fps player = %d old FPS = %d", getMaximumLatency(), minFps, minFpsPlayer, frameRate));
-			if ((minFps >= ((frameRate * 9) / 10)) && (minFps < frameRate)) {
-				// if the minimum fps is within 10% of the desired framerate, then keep the current minimum fps.
-				minFps = frameRate;
-			}
-
-			// TheSuperHackers @info this clamps the logic time scale fps in network games
-			minFps = clamp<Int>(MIN_LOGIC_FRAMES, minFps, TheGlobalData->m_framesPerSecondLimit);
+			// TheSuperHackers @info this clamps the logic time scale fps in network games. The render fps limit is a presentation setting and no longer raises the
+			// ceiling above the authoritative logic rate (see NetworkPacing.h). Within 10% below the rate in force the rate is kept.
+			minFps = NetworkPacing::negotiatedLogicRate(minFps, frameRate, MIN_LOGIC_FRAMES, min<Int>(TheGlobalData->m_framesPerSecondLimit, LOGICFRAMES_PER_SECOND));
 			DEBUG_LOG_LEVEL(DEBUG_LEVEL_NET, ("ConnectionManager::updateRunAhead - minFps after adjustment is %d", minFps));
 
 			// TheSuperHackers @bugfix Mauller 21/08/2025 calculate the runahead so it always follows the latency

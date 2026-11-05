@@ -52,7 +52,7 @@ def telemetry_problems(source):
 
 def engine_problems(source):
     found = []
-    m = re.search(r"\{\s*EnduranceTelemetry::LogicTick enduranceTick;\s*TheGameLogic->UPDATE\(\);\s*\}", source)
+    m = re.search(r"\{\s*EnduranceTelemetry::LogicTick enduranceTick;\s*(?:FrameDeliveryTelemetry::Tick deliveryTick;\s*)?TheGameLogic->UPDATE\(\);\s*\}", source)   # the multiplayer smoothness audit adds a second measurement-only scope
     if not m:
         found.append("TheGameLogic->UPDATE() is not wrapped by exactly the LogicTick scope")
     if source.count("TheGameLogic->UPDATE();") != 1:
