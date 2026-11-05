@@ -136,4 +136,49 @@ void stopAndReport()
 		fclose(f);
 	}
 }
+
+std::string describeAddress(unsigned long long address)
+{
+	static bool tried = false, symbols = false;
+	static SymFromAddrFn symFromAddr = nullptr;
+	static SymGetLineFn symGetLine = nullptr;
+	const HANDLE process = GetCurrentProcess();
+	if (!tried)
+	{
+		tried = true;
+		HMODULE dbghelp = LoadLibraryA("dbghelp.dll");
+		SymInitializeFn symInitialize = dbghelp ? reinterpret_cast<SymInitializeFn>(GetProcAddress(dbghelp, "SymInitialize")) : nullptr;
+		symFromAddr = dbghelp ? reinterpret_cast<SymFromAddrFn>(GetProcAddress(dbghelp, "SymFromAddr")) : nullptr;
+		SymSetOptionsFn symSetOptions = dbghelp ? reinterpret_cast<SymSetOptionsFn>(GetProcAddress(dbghelp, "SymSetOptions")) : nullptr;
+		symGetLine = dbghelp ? reinterpret_cast<SymGetLineFn>(GetProcAddress(dbghelp, "SymGetLineFromAddr64")) : nullptr;
+		if (symInitialize && symFromAddr)
+		{
+			if (symSetOptions) symSetOptions(0x00000002 | 0x00000004 | 0x00000010);
+			symbols = symInitialize(process, nullptr, TRUE) != FALSE;
+		}
+	}
+	char hex[32];
+	snprintf(hex, sizeof hex, "0x%llx", address);
+	if (!symbols) return hex;
+	char buffer[sizeof(SYMBOL_INFO) + 256] = {};
+	SYMBOL_INFO *symbol = reinterpret_cast<SYMBOL_INFO *>(buffer);
+	symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+	symbol->MaxNameLen = 255;
+	DWORD64 displacement = 0;
+	if (!symFromAddr(process, address, &displacement, symbol)) return hex;
+	std::string text = symbol->Name;
+	if (symGetLine)
+	{
+		IMAGEHLP_LINE64 line = {};
+		line.SizeOfStruct = sizeof(line);
+		DWORD d = 0;
+		if (symGetLine(process, address, &d, &line))
+		{
+			const char *file = line.FileName ? line.FileName : "?";
+			const char *slash = strrchr(file, 92);
+			text += std::string("  ") + (slash ? slash + 1 : file) + ":" + std::to_string(line.LineNumber);
+		}
+	}
+	return text;
+}
 }

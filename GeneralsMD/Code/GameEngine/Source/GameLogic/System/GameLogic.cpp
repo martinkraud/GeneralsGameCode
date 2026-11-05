@@ -40,6 +40,7 @@
 #include "Common/FramePacer.h"
 #include "Common/GameAudio.h"
 #include "Common/GameEngine.h"
+#include "Common/ScalabilityMultiplier.h"
 #include "Common/GameLOD.h"
 #include "Common/GameState.h"
 #include "Common/GameUtility.h"
@@ -3713,6 +3714,8 @@ void GameLogic::update()
 #endif
 
 	setFPMode();
+
+	ScalabilityMultiplier::onLogicUpdate();   // X64.sc diagnostic, inert unless GENERALS_SIM_CLONE is set
 
 	{
 		// X64.40 diagnostic (inert unless GENERALS_AUTOPLAY_REPLAY=<file> is set): start that replay ONCE in the normal native client, a few seconds after the

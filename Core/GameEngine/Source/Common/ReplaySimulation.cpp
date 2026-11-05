@@ -33,8 +33,11 @@
 #include "Common/ScriptProfile.h"
 #include "Common/EnduranceTelemetry.h"
 #include "Common/SimSampler.h"
+#include "Common/SpatialQueryDiag.h"
 #include "GameLogic/Pathfinder/PathFailureDiag.h"
 
+#include <windows.h>
+#include <psapi.h>
 #include <algorithm>
 #include <array>
 #include <cstdarg>
@@ -77,6 +80,8 @@ const char *envText(const char *name)
 // the PerformanceProfile phase categories, and the determinism fingerprint (state CRC + object count at fixed logic frames) is taken
 // between ticks. Options: GENERALS_SIM_FP_INTERVAL (frames between fingerprint checkpoints, default 30; 0 disables),
 // GENERALS_SIM_IGNORE_CRC (keep simulating past a replay CRC mismatch; the mismatch is still reported).
+
+
 class SimulationBench
 {
 public:
@@ -130,6 +135,7 @@ public:
 	void finish(int errors)
 	{
 		SimSampler::stopAndReport();
+		SpatialQueryDiag::report();   // X64.sc: opt-in getClosestObjects characterisation (GENERALS_SIM_GCO)
 		harvest();
 		PerformanceProfile::activeRecorder = m_previous;
 		report(errors);
@@ -206,6 +212,14 @@ private:
 			line(f, "X64.38 simulation benchmark (headless replay; serial reference path)\n");
 			line(f, "replay: %s\n", m_replay.c_str());
 			line(f, "logical processors: %u | ticks measured: %zu | mismatch/errors: %d | harness wall: %.2f s | map-load update (excluded): %.1f ms\n", info.dwNumberOfProcessors, s.count, errors, wallSeconds, m_startupMs);
+			{
+				// X64.sc: process memory at the end of the run (peak working set, private bytes, open handles); the growth over a run is the fingerprint object count's companion.
+				PROCESS_MEMORY_COUNTERS_EX pmc = {};
+				pmc.cb = sizeof(pmc);
+				DWORD handles = 0;
+				if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS *>(&pmc), sizeof(pmc)) && GetProcessHandleCount(GetCurrentProcess(), &handles))
+					line(f, "process memory at end: working set %.1f MB | peak working set %.1f MB | private bytes %.1f MB | open handles %lu\n", pmc.WorkingSetSize / 1048576.0, pmc.PeakWorkingSetSize / 1048576.0, pmc.PrivateUsage / 1048576.0, static_cast<unsigned long>(handles));
+			}
 			line(f, "tick ms: mean %.3f | median %.3f | p90 %.3f | p95 %.3f | p99 %.3f | p99.9 %.3f | worst %.3f | best %.3f\n", s.mean, s.median, s.p90, s.p95, s.p99, s.p999, s.worst, s.best);
 			line(f, "ticks above 16.67 ms: %zu | 25 ms: %zu | 33.333 ms: %zu | 50 ms: %zu | 66.67 ms: %zu\n", s.above[0], s.above[1], s.above[2], s.above[3], s.above[4]);
 			line(f, "uncapped throughput: %.1f ticks/s (%.2fx real time at 30 TPS)\n", s.uncappedTps, s.uncappedTps / 30.0);

@@ -73,6 +73,7 @@
 #include "GameLogic/Module/ContainModule.h"
 #include "GameLogic/Module/StealthUpdate.h"
 #include "GameLogic/PartitionManager.h"
+#include "Common/SpatialQueryDiag.h"
 #include "GameLogic/PolygonTrigger.h"
 #include "GameLogic/Squad.h"
 #include "GameLogic/GhostObject.h"
@@ -3310,6 +3311,9 @@ Object *PartitionManager::getClosestObjects(
 
 	DEBUG_ASSERTCRASH((obj==nullptr) != (pos == nullptr), ("either obj or pos must be null"));
 
+	SpatialQueryDiag::QueryStats dq;   // X64.sc: counts only; reported when GENERALS_SIM_GCO is set
+	const unsigned long long dqStart = SpatialQueryDiag::enabled() ? SpatialQueryDiag::now() : 0;
+
 	DistCalcProc distProc = theDistCalcProcs[dc];
 
 	const Coord3D *objPos;
@@ -3369,14 +3373,17 @@ Object *PartitionManager::getClosestObjects(
     const OffsetVec& offsets = m_radiusVec[curRadius];
 		if (offsets.empty())
 			continue;
+		dq.ringsDone = curRadius;
     for (OffsetVec::const_iterator it = offsets.begin(); it != offsets.end(); ++it)
 		{
 			PartitionCell* thisCell = getCellAt(cellCenterX + it->x, cellCenterY + it->y);
 			if (thisCell == nullptr)
 				continue;
+			++dq.cells;
 
 			for (CellAndObjectIntersection *thisCoi = thisCell->getFirstCoiInCell(); thisCoi; thisCoi = thisCoi->getNextCoi())
 			{
+				++dq.cois;
 				PartitionData *thisMod = thisCoi->getModule();
 				Object *thisObj = thisMod->getObject();
 
@@ -3387,16 +3394,21 @@ Object *PartitionManager::getClosestObjects(
 				// since an object can exist in multiple COIs, we use this to avoid processing
 				// the same one more than once.
 				if (thisMod->friend_getDoneFlag() == theIterFlag)
+				{
+					++dq.doneSkips;
 					continue;
+				}
 				thisMod->friend_setDoneFlag(theIterFlag);
 
 				Real thisDistSqr;
 				Coord3D distVec;
 				if (!(*distProc)(objPos, objToUse, thisObj->getPosition(), thisObj, thisDistSqr, distVec, closestDistSqr))
 					continue;
+				++dq.distPass;
 
 				if (!filtersAllow(filters, thisObj))
 					continue;
+				++dq.filterPass;
 
 				// ok, this is within the range, and the filters allow it.
 				// add it to the iter, if we have one....
@@ -3500,6 +3512,16 @@ Object *PartitionManager::getClosestObjects(
 	}
 
 #endif  // not FASTER_GCO
+
+	if (dqStart != 0)
+	{
+		const void *filterTypes[8];
+		int filterCount = 0;
+		if (filters)
+			for (; filters[filterCount] && filterCount < 8; ++filterCount)
+				filterTypes[filterCount] = *reinterpret_cast<const void *const *>(filters[filterCount]);
+		SpatialQueryDiag::record(TheGameLogic->getFrame(), TheGameLogic->getObjectCount(), obj, objPos->x, objPos->y, maxDist, static_cast<int>(dc), iterArg != nullptr, filterTypes, filterCount, dq, SpatialQueryDiag::now() - dqStart);
+	}
 
 	if (closestVecArg)
 	{

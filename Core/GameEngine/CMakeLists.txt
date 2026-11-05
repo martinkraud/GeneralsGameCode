@@ -122,6 +122,8 @@ set(GAMEENGINE_SRC
 #    Include/Common/Registry.h
     Include/Common/ReplaySimulation.h
     Include/Common/SimSampler.h
+    Include/Common/ScalabilityMultiplier.h
+    Include/Common/SpatialQueryDiag.h
 #    Include/Common/ResourceGatheringManager.h
 #    Include/Common/Science.h
 #    Include/Common/ScopedMutex.h
@@ -686,6 +688,8 @@ set(GAMEENGINE_SRC
 #    Source/Common/Recorder.cpp
     Source/Common/ReplaySimulation.cpp
     Source/Common/SimSampler.cpp
+    Source/Common/ScalabilityMultiplier.cpp
+    Source/Common/SpatialQueryDiag.cpp
     Source/Common/RTS/AcademyStats.cpp
 #    Source/Common/RTS/ActionManager.cpp
 #    Source/Common/RTS/Energy.cpp
