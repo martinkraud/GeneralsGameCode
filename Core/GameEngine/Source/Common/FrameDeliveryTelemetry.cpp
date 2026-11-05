@@ -114,7 +114,7 @@ bool initState()
 	}
 	fprintf(s.windows, "window,start_s,mode,frames,render_fps,int_p50_ms,int_p95_ms,int_p99_ms,int_max_ms,hitches,tick_rate,spacing_p50_ms,spacing_p95_ms,spacing_p99_ms,spacing_max_ms,"
 		"tickdur_p50_ms,tickdur_p95_ms,tickdur_p99_ms,frames_0tick,frames_1tick,frames_2plus,alpha_valid_pct,frozen_frames,epoch_changes,alpha_regressions,stalled_frames,"
-		"net_framerate,net_runahead,net_cushion,net_selfslugs,net_resets,net_released,reserved\n");
+		"net_framerate,net_runahead,net_cushion,net_selfslugs,net_resets,net_released,reserved,ws_mb,private_mb,handles\n");
 	const char *perFrame = getenv("GENERALS_FRAMEDELIVERY_FRAMES");
 	if (perFrame && *perFrame == '1')
 	{

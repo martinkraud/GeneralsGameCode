@@ -1031,6 +1031,12 @@ void D3D11Backend::Flip_To_Primary() {
     impl->lastPresent = {static_cast<unsigned>(result),
         FAILED(result) ? static_cast<unsigned>(impl->device->GetDeviceRemovedReason()) : 0u,
         result == DXGI_STATUS_OCCLUDED};
+    if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET) {
+        // The device is gone (driver reset / TDR, adapter removed). Recreating every texture and buffer is not implemented: fail with the reason recorded, so a crash
+        // dump or log says why (DXGI_ERROR_DEVICE_HUNG 0x887A0006, DRIVER_INTERNAL_ERROR 0x887A0020, INVALID_CALL 0x887A0001 ...).
+        char text[96]; std::snprintf(text, sizeof(text), "Present (device removed, reason=0x%08X)", impl->lastPresent.removed_reason);
+        Check(result, text);
+    }
     Check(result, "Present");
 }
 D3D11Backend::Presentation D3D11Backend::Last_Presentation() const { return impl->lastPresent; }
