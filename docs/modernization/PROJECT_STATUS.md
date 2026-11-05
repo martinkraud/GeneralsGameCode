@@ -1,7 +1,7 @@
 # MKRaudstein Modern Engine - project status
 
 One-page, evidence-linked status. Updated at every milestone closeout together with `README.md` and `AGENT_HANDOFF.md` (rule since UI.1: a milestone that changes what is true updates this file in the same milestone).
-Last updated: 2026-11-05 (engine completion audit, after the MP smoothness audit). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
+Last updated: 2026-11-05 (X64.sc scalability audit, after X64.pf and the engine completion audit). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Current direction
 Performance optimization and Enhanced AI development are **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
@@ -28,6 +28,7 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | Modern Frontend system (UI.3): procedural design system, redrawn main menu, Options (rail, generated rows, dirty state), Skirmish Match Setup (Map / Players / Rules from specs), Load Game / Replays, dialogs, Credits - both titles, 5 surfaces x 5 UI scales | implemented and automatically validated (gtest, Python, native audit matrix, Classic isolation, golden gates); **native visual acceptance pending** ([MODERN_UI_3_FRONTEND.md](MODERN_UI_3_FRONTEND.md)) |
 | Multiplayer smoothness audit (LAN): presentation interpolation in network games, render cap honoured in LAN, logic-rate ceiling = 30, frame-delivery telemetry | implemented and automatically validated (gtest incl. lock-step model, golden gates both titles, A/B on the laptop); **real two-PC re-test pending** ([MULTIPLAYER_SMOOTHNESS_AUDIT.md](MULTIPLAYER_SMOOTHNESS_AUDIT.md)) |
 | Engine completion audit: AMD64 pointer scan + upstream ports, D3D11 flip-model swap chain, render-hitch attribution, CPU tail / long-session measurements | implemented and automatically validated (gtest, golden gates both titles, Python suites); hitches attributed (simulation tail, terrain full update, first-use assets), not all fixed ([ENGINE_COMPLETION_AUDIT.md](ENGINE_COMPLETION_AUDIT.md)); **real two-PC validation of 2071ad765 still pending** |
+| Pathfinding performance (X64.pf) and engine scalability audit (X64.sc): exact A* line-phase optimisations (-17 % path-search CPU), unit-multiplier ladder, `getClosestObjects` characterisation, graphical endurance, multithreading decision (not justified), upstream pathfinding triage | measured and documented ([PATHFINDING_PERFORMANCE_AUDIT.md](PATHFINDING_PERFORMANCE_AUDIT.md), [ENGINE_SCALABILITY_AUDIT.md](ENGINE_SCALABILITY_AUDIT.md)); digests and golden gates unchanged |
 
 ## In progress
 * Modern Experience UI phase: UI.2 (shell) and UI.3 (design system + Options, Match Setup, Load / Replay, dialogs, Credits) are implemented and **waiting for the owner's native visual review**. If the look is disliked the next step is a visual revision, not HUD work.

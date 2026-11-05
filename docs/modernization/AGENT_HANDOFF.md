@@ -345,6 +345,15 @@ Known source facts above are not a completed normal-startup feasibility audit.
 Focus/input, transition timing, optional subsystem reachability, additional assets/
 render states and ordinary cache/device lifetimes remain to be classified/tested.
 
+## X64.pf / X64.sc (pathfinding performance and scalability), 2026-11-05
+
+* Documents: `PATHFINDING_PERFORMANCE_AUDIT.md` (root cause of expensive failing searches, rejected negative cache, accepted exact optimisations) and `ENGINE_SCALABILITY_AUDIT.md` (ladder, scaling per phase, `getClosestObjects`, graphical endurance, multithreading classification A/B/C, upstream triage).
+* Guard digests for any pathfinder edit (Zero Hour `twilight4H`, Enhanced AI, 50 000 cash, `Invoke-PathStress.ps1`, absolute paths): fingerprint `1E5982E5B3A1B86B`, line-decision `6AC45762C1656E3D` (`GENERALS_LINE_TRACE_HASH=1`), open-list `5B85CEF9CC94BCB0` (`GENERALS_PATH_TRACE_HASH=1`); `city5H` fingerprint `FB748B205FB71351`, line `B414DB6B28633F5A`.
+* Diagnostics added (all inert unless their variable is set): `GENERALS_SIM_SAMPLE`, `GENERALS_SIM_GCO`, `GENERALS_SIM_CLONE=<k>@<frame>` (never in multiplayer), memory line in the bench report.
+* Rejected and why: negative-result cache (0 replayable hits), ground-layer `getCell` bypass (changed the line digest), cell prefetch in the line walk and in `getClosestObjects` (no gain), pathfinder multithreading (shared info pool, per-frame budget, request order).
+* Ported from upstream: `28bb4554f` (pending path requests after save load). Deferred: `1abf73d5d`, `8ed77a761`, `a4ac54b83`. Rejected: `21323414f`.
+* Open: guard / hunt query avoidance (needs a partition change model), seeded graphical benchmark, graphical A/B of the X64.pf gain, real two-PC validation of `2071ad765`.
+
 ## Runtime and evidence rules
 
 No native title execution by the coding agent. Every new Generals/Zero Hour run

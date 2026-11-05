@@ -7,6 +7,13 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-05 - Pathfinding performance (X64.pf) and engine scalability audit (X64.sc)
+
+* **Pathfinding (X64.pf, `83cdd966d`):** exact micro-optimisations of the A* line phase (inlined line walk, memo-hit fast path, integer half-step, lazy terrain height / zone test, hot-first `PathfindCellInfo`), about 17 % less path-search CPU time with the established digests unchanged. A negative-result cache was proven infeasible (0 replayable hits) and a ground-layer `getCell` bypass was rejected because it changed the line-decision digest. Details: [PATHFINDING_PERFORMANCE_AUDIT.md](docs/modernization/PATHFINDING_PERFORMANCE_AUDIT.md).
+* **Scalability audit (X64.sc):** deterministic unit-multiplier ladder (`GENERALS_SIM_CLONE`), `getClosestObjects` characterisation (`GENERALS_SIM_GCO`), memory accounting in the bench report, graphical endurance runs. Result: Zero Hour keeps p99 < 25 ms up to about 2 200 objects (6x mobile units) and breaks 30 TPS at about 3 000; Generals stays under 16 ms at 10x. No subsystem is quadratic; the per-unit AI / object update is the first bottleneck. Multithreading is not justified by the measurements. Details: [ENGINE_SCALABILITY_AUDIT.md](docs/modernization/ENGINE_SCALABILITY_AUDIT.md).
+* **Upstream:** `28bb4554f` (restore pending path requests after save load) ported to both titles; `1abf73d5d`, `8ed77a761`, `a4ac54b83` deferred and `21323414f` rejected with reasons in the audit.
+* No gameplay, determinism or multiplayer change. Real two-PC validation of `2071ad765` remains pending.
+
 ## 2026-11-05 - Engine completion audit (AMD64, D3D11, render hitches, CPU tail)
 
 * **AMD64:** full-rebuild pointer-truncation scan (82 sites, 80 benign integer-in-`void*`), upstream #3459 pointer-truncation fixes, 8-byte pool alignment (#3609), UB fixes (#3636, #3635, #3628), key-repeat timing at high frame rates (#3591), recorder range check (#3090) and a set of upstream leak / crash fixes ported with provenance (`cherry picked from` lines).
