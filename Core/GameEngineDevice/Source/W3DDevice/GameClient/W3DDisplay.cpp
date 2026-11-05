@@ -35,7 +35,9 @@ static void drawFramerateBar();
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include "Common/PerformanceProfile.h"
+#if defined(_WIN64)
 #include "Common/FrameDeliveryTelemetry.h"
+#endif
 #if defined(_WIN64)
 #include "Common/StartupDiagnostics.h"
 #include "Common/CameraProbe.h"
@@ -1954,11 +1956,13 @@ void W3DDisplay::step()
 void W3DDisplay::draw()
 {
 	PERFORMANCE_PROFILE_SCOPE(DisplayDraw);
+#if defined(_WIN64)
 	struct DeliveryPhases   // frame-delivery telemetry (inert unless GENERALS_FRAMEDELIVERY): time before / inside the display draw
 	{
 		DeliveryPhases() { FrameDeliveryTelemetry::markIf(FrameDeliveryTelemetry::Phase::PreDraw); }
 		~DeliveryPhases() { FrameDeliveryTelemetry::markIf(FrameDeliveryTelemetry::Phase::Draw); }
 	} deliveryPhases;
+#endif
 #if defined(_WIN64)
 	NativeSampleRenderCounters();   // X64.34: no-op unless a profiler capture is running
 	NativeAutoShot();               // developer capture aid: inert unless GENERALS_AUTOSHOT is set
