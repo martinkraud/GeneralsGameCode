@@ -21,6 +21,9 @@ param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [string]$Tag = '',
       [string]$OutRoot = '')
 $ErrorActionPreference = 'Stop'
+# Disk hygiene: fail early instead of filling the disk (see docs/modernization/DISK_RETENTION.md).
+. (Join-Path $PSScriptRoot 'AssetStore.ps1')
+Assert-FreeDiskSpace (Join-Path $PSScriptRoot '..\..\build') 2 'a frame-delivery run'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if (@(Get-Process -Name generals,generalsv,generalszh -ErrorAction SilentlyContinue).Count) { throw 'Exit all existing games first' }
 $stage = Get-NativeStage $Title $Name

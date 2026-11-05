@@ -20,6 +20,9 @@ param([Parameter(Mandatory)][ValidateSet('Generals', 'ZeroHour')][string]$Title,
       [ValidateRange(0, 3)][int]$Paths = 0,
       [hashtable]$ExtraEnv = @{})
 $ErrorActionPreference = 'Stop'
+# Disk hygiene: fail early instead of filling the disk (see docs/modernization/DISK_RETENTION.md).
+. (Join-Path $PSScriptRoot '..\native-runtime\AssetStore.ps1')
+Assert-FreeDiskSpace (Join-Path $PSScriptRoot '..\..\build') 2 'the path-stress scenarios'
 $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $gen = Join-Path $repo 'scripts\performance\New-SimulationBenchmarkReplay.py'

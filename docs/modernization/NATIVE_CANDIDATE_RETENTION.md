@@ -54,6 +54,8 @@ Safety properties (all covered by `Test-NativeCleanupWorkflow.ps1`):
 4. Periodically review `build/dev-runtimes/zh`, `userdata-backups` and old crash dumps in
    `build/evidence-archive/` by hand; they are intentionally outside the automatic policy.
 
+> **Update 2026-11-05:** the shared asset store described under "Future" below was implemented (hard links to a content-addressed store, free-space guards, store pruning, diagnostic retention). See [DISK_RETENTION.md](DISK_RETENTION.md).
+
 ## 4. Future (not implemented)
 Staging could share one read-only asset directory (hard links or a junction to an immutable copy) so a candidate costs
 ~50 MB instead of 1.5 GB. That must keep candidate isolation and must never point into or write to the Steam folder; it

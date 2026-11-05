@@ -14,6 +14,7 @@ param([Parameter(Mandatory)][string]$OutputDirectory,
       [Parameter(Mandatory)][string]$StageRoot,         # ...\build\dev-runtimes\native
       [Parameter(Mandatory)][string]$CurrentVersion,
       [int]$Keep = 2,
+      [string[]]$RetainVersion = @(),                    # extra versions to keep by explicit decision (e.g. a validated predecessor that has no record); hex only
       [switch]$DryRun)
 $ErrorActionPreference = 'Stop'
 if ($Keep -lt 2) { throw 'The retention policy keeps at least the current and the previous distribution.' }
@@ -36,6 +37,8 @@ if (-not $records.ContainsKey($CurrentVersion)) { Write-Host "cleanup: the curre
 # 2. Retention: the current one plus the most recently written others.
 $ordered = @($records.Values | Where-Object { $_.Version -ne $CurrentVersion } | Sort-Object Time -Descending)
 $keepVersions = @($CurrentVersion) + @($ordered | Select-Object -First ($Keep - 1) | ForEach-Object { $_.Version })
+foreach ($v in $RetainVersion) { if ($v -notmatch '^[0-9a-f]{7,40}$') { throw "-RetainVersion must be a hex commit abbreviation, got '$v'" } }
+$keepVersions = @($keepVersions + $RetainVersion | Select-Object -Unique)
 $obsolete = @($ordered | Where-Object { $keepVersions -notcontains $_.Version })
 # Older distributions that never got a record (pre-record pipeline versions, interrupted runs) are identified by the exact generated file names only.
 $legacy = @(Get-ChildItem -LiteralPath $out -File | ForEach-Object {
@@ -68,7 +71,7 @@ foreach ($r in $obsolete) {
 }
 
 # 4. Staged candidates: those named by obsolete records, plus orphaned dist-<hex>-(gen|zh) stages that are not retained.
-$keepCandidates = @($keepVersions | ForEach-Object { $records[$_].Titles } | ForEach-Object { $_.candidate })
+$keepCandidates = @($keepVersions | ForEach-Object { if ($records.ContainsKey($_)) { $records[$_].Titles } } | ForEach-Object { $_.candidate }) + @($RetainVersion | ForEach-Object { "dist-$_-gen"; "dist-$_-zh" })
 if (Test-Path -LiteralPath $StageRoot -PathType Container) {
     foreach ($t in $titles) {
         $dir = Join-Path $StageRoot $t
@@ -84,3 +87,10 @@ if (Test-Path -LiteralPath $StageRoot -PathType Container) {
     }
 }
 Write-Host "cleanup: $(if ($DryRun) { 'would remove' } else { 'removed' }) $($removed.Count) item(s)."
+# Stage removal only drops links; return the space of store entries that no remaining stage uses.
+$devRuntimes = Split-Path $StageRoot -Parent
+if ((Split-Path $devRuntimes -Leaf) -eq 'dev-runtimes') {
+    $pruneArguments = @('-DevRuntimes', $devRuntimes, '-PruneStore')
+    if (-not $DryRun) { $pruneArguments += '-Execute' }
+    & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Optimize-StageStorage.ps1') @pruneArguments | Out-Host
+}

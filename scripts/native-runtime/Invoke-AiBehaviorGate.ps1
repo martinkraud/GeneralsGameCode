@@ -18,6 +18,9 @@ param([Parameter(Mandatory)][ValidateSet('Generals', 'ZeroHour')][string]$Title,
       [switch]$Quick,
       [string[]]$Only)
 $ErrorActionPreference = 'Stop'
+# Disk hygiene: fail early instead of filling the disk (see docs/modernization/DISK_RETENTION.md).
+. (Join-Path $PSScriptRoot 'AssetStore.ps1')
+Assert-FreeDiskSpace (Join-Path $PSScriptRoot '..\..\build') 2 'the AI behaviour gate'
 # `pwsh -File` passes one string for an array parameter: accept comma separated values (paths must not contain commas)
 $Exe = @($Exe | ForEach-Object { $_ -split ',' } | Where-Object { $_ }); $Modes = @($Modes | ForEach-Object { $_ -split ',' } | Where-Object { $_ }); $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent

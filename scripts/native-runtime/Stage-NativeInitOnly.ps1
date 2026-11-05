@@ -5,6 +5,7 @@ param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [Parameter(Mandatory)][string]$AssetSource,
       [switch]$ModernExtensions)
 . (Join-Path $PSScriptRoot 'Common.ps1')
+. (Join-Path $PSScriptRoot 'AssetStore.ps1')
 $stage=Get-NativeStage $Title $Name
 if (Test-Path -LiteralPath $stage) { throw 'Fresh stage name required; existing evidence is never overwritten' }
 $source=Get-ZHPath $AssetSource; Assert-ZHNoLinks $source
@@ -27,11 +28,23 @@ $assets=@(Get-ZHTree $source | Where-Object {
     [pscustomobject]@{Path=[IO.Path]::GetRelativePath($source,$_.FullName);Length=$_.Length;SHA256=(Get-FileHash -LiteralPath $_.FullName).Hash}
 })
 $game=Join-Path $stage 'game'
+# Disk hygiene: immutable assets (.big / .bik) are shared through the content-addressed store as NTFS hard links (AssetStore.ps1), so a stage costs only what is not yet in the store;
+# the free-space guard fails early instead of filling the disk. If linking is impossible the assets are copied as before.
+$devRuntimes=Split-Path (Split-Path (Split-Path $stage -Parent) -Parent) -Parent
+$useStore=((Split-Path $devRuntimes -Leaf) -eq 'dev-runtimes') -and !(Test-AssetStoreSteamPath $devRuntimes)
+[int64]$needBytes=0
+foreach ($entry in $assets) {
+    if ($useStore -and $entry.Length -ge $script:AssetStoreMinBytes -and ($script:AssetStoreExtensions -contains ([IO.Path]::GetExtension($entry.Path).ToLowerInvariant())) -and (Test-Path -LiteralPath (Join-Path (Get-AssetStoreRoot $devRuntimes) ($entry.SHA256 + '.asset')))) { continue }
+    $needBytes+=$entry.Length
+}
+Assert-FreeDiskSpace (Split-Path $stage -Parent) ([math]::Ceiling($needBytes/1GB)+2) 'staging a runtime'
 New-Item -ItemType Directory -Path $game -Force | Out-Null
 foreach ($entry in $assets) {
     $target=Join-Path $game $entry.Path
     New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $source $entry.Path) -Destination $target
+    $shared=$false
+    if ($useStore) { $shared=New-StoredAssetLink (Join-Path $source $entry.Path) $target $entry.SHA256 $devRuntimes }
+    if (!$shared) { Copy-Item -LiteralPath (Join-Path $source $entry.Path) -Destination $target }
     if ((Get-FileHash -LiteralPath $target).Hash -ne $entry.SHA256) { throw "Asset copy mismatch: $($entry.Path)" }
 }
 if ($ModernExtensions) {

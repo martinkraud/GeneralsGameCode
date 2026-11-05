@@ -1,0 +1,7 @@
+{
+  "_comment": "Retention for build/diag and build/audit-tmp (see docs/modernization/DISK_RETENTION.md). Raw captures are temporary: summarise into docs/ first.",
+  "rawCaptureDays": 7,
+  "rawCapturePatterns": ["autocapture-*", "zh-autoshot*", "*.bmp", "*.png"],
+  "runOutputDays": 30,
+  "protect": []
+}

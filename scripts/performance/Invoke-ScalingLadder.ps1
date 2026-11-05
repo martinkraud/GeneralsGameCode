@@ -14,6 +14,9 @@ param([Parameter(Mandatory)][ValidateSet('Generals', 'ZeroHour')][string]$Title,
       [ValidateSet('O','E')][string]$AiMode = 'E',
       [string[]]$Rungs = @('1x','2x','3x','4x'))
 $ErrorActionPreference = 'Stop'
+# Disk hygiene: fail early instead of filling the disk (see docs/modernization/DISK_RETENTION.md).
+. (Join-Path $PSScriptRoot '..\native-runtime\AssetStore.ps1')
+Assert-FreeDiskSpace (Join-Path $PSScriptRoot '..\..\build') 2 'the scaling ladder'
 $Rungs = @($Rungs | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $stress = Join-Path $PSScriptRoot 'Invoke-PathStress.ps1'
 # rung -> scenario (AI count is part of the scenario), starting cash

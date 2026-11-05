@@ -21,6 +21,9 @@ param([string]$GeneralsCandidate,
       [switch]$NoCleanup,             # keep every older distribution (debugging, archaeology)
       [switch]$CleanupDryRun)         # list what the retention cleanup would remove, delete nothing
 $ErrorActionPreference = 'Stop'
+# Disk hygiene: fail early instead of filling the disk (see docs/modernization/DISK_RETENTION.md).
+. (Join-Path $PSScriptRoot 'AssetStore.ps1')
+Assert-FreeDiskSpace (Join-Path $PSScriptRoot '..\..\build') 6 'building a distribution'
 . (Join-Path $PSScriptRoot 'OrdinaryHostCommon.ps1')
 $repo = $script:ZHRepository
 Add-Type -AssemblyName System.IO.Compression.FileSystem

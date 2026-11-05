@@ -103,6 +103,7 @@ Write-Host ''
 if ($plans.Count -gt 0) { foreach ($k in $plans.Keys) { Write-Host ("PLAN_HASH {0}: {1}" -f $k, $plans[$k]) } }
 
 if (-not $Execute) {
+    Write-Host 'Disk hygiene helpers: scripts\native-runtime\Optimize-StageStorage.ps1 (shares identical stage assets by hard links), scripts\Clean-DiagnosticOutput.ps1 (old raw diagnostics), scripts\native-runtime\Remove-ObsoleteDistributions.ps1 (packages).'
     Write-Host 'Dry run only. To execute exactly these plans add -Execute with -ApprovedNativePlan / -ApprovedZHPlan (the hashes above) for every selected tool.'
     exit 0
 }
@@ -118,5 +119,7 @@ if ($runZH) {
     $r = Invoke-Tool $zhTool ($zhArgs + @('-Execute', '-ApprovedPlan', $ApprovedZHPlan)); Write-Host $r.Text
     if ($r.Code -ne 0) { Fail 'Zero Hour cleanup reported a problem; stopping.' $r.Code }
 }
-Write-Host 'Cleanup complete.'
+# Stage removal only drops hard links to the shared asset store; give the space of store entries nobody links to back.
+& pwsh -NoProfile -File (Join-Path $repoRoot 'scripts\native-runtime\Optimize-StageStorage.ps1') -PruneStore -Execute | Out-Host
+Write-Host 'Cleanup complete. Also consider (each is dry-run by default): scripts\native-runtime\Optimize-StageStorage.ps1 (share identical assets), scripts\Clean-DiagnosticOutput.ps1 (old raw diagnostics).'
 exit 0
