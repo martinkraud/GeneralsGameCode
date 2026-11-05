@@ -15,6 +15,7 @@ param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [ValidateSet('','0','1')][string]$Vsync = '',       # session-only VSync override (GENERALS_FORCE_VSYNC); empty = the stored setting
       [string]$ClientSize = '',                         # session-only client size WxH (GENERALS_FORCE_CLIENT_SIZE), e.g. 1280x800 to make the laptop render faster
       [switch]$Refresh,                                  # copy the freshly built executable into the (disposable) stage first
+      [switch]$Endurance,                                # also record the X64.44 endurance telemetry (per-tick CSV, phase costs, world scale) next to it
       [switch]$PerFrame,                                 # also write every render iteration (GENERALS_FRAMEDELIVERY_FRAMES)
       [string]$Tag = '',
       [string]$OutRoot = '')
@@ -37,6 +38,7 @@ if ($PerFrame) { $env:GENERALS_FRAMEDELIVERY_FRAMES = '1' }
 $env:GENERALS_AUTOSHOT = $out
 $env:GENERALS_AUTOSHOT_FRAMES = "$($Seconds * $RenderFps)"
 $env:GENERALS_AUTOFLOW = $Mode.ToLowerInvariant()
+if ($Endurance) { $env:GENERALS_ENDURANCE = $out }
 if ($Vsync) { $env:GENERALS_FORCE_VSYNC = $Vsync }
 if ($ClientSize) { $env:GENERALS_FORCE_CLIENT_SIZE = $ClientSize }
 if ($Mode -eq 'Lan') { $env:GENERALS_AUTOFLOW_AI = "$Ai" }
@@ -46,7 +48,7 @@ $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirecto
 try {
     if (-not $process.WaitForExit($timeout * 1000)) { Write-Warning 'Timed out; the game is terminated.'; $process.Kill() }
 } finally {
-    foreach ($v in 'GENERALS_FRAMEDELIVERY','GENERALS_FRAMEDELIVERY_FRAMES','GENERALS_AUTOSHOT','GENERALS_AUTOSHOT_FRAMES','GENERALS_AUTOFLOW','GENERALS_AUTOFLOW_AI','GENERALS_FORCE_VSYNC','GENERALS_FORCE_CLIENT_SIZE') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+    foreach ($v in 'GENERALS_FRAMEDELIVERY','GENERALS_FRAMEDELIVERY_FRAMES','GENERALS_AUTOSHOT','GENERALS_AUTOSHOT_FRAMES','GENERALS_AUTOFLOW','GENERALS_AUTOFLOW_AI','GENERALS_ENDURANCE','GENERALS_FORCE_VSYNC','GENERALS_FORCE_CLIENT_SIZE') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
 }
 $log = Join-Path $manifest.GamePath 'generals64.log'
 if (Test-Path -LiteralPath $log) { Copy-Item -LiteralPath $log -Destination (Join-Path $out 'generals64.log') }

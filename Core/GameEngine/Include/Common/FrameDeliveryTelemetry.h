@@ -17,6 +17,22 @@ inline bool enabled() { return g_state > 0 ? true : (g_state == 0 ? false : init
 // Called once at the end of FramePacer::update() with the measured interval. Inert when off.
 void frame(float intervalSeconds);
 
+// Phase marks inside one outer iteration (GameEngine::update / FramePacer::update). Each mark closes the phase that ends there; a hitch row lists the phase
+// durations so a long frame is attributed to a phase. Inert when off.
+enum class Phase : unsigned { PreDraw, Draw, PostDraw, Wait, Count };   // before the display draw (audio, client update, scripts) / the display draw / messages + network + logic / limiter wait
+void mark(Phase endedPhase);
+inline void markIf(Phase p) { if (g_state != 0) mark(p); }
+
+// Cumulative renderer counters, supplied by the display host (the backend lives outside GameEngine). Differences between two frames attribute a hitch
+// to Present (GPU / VSync), resource creation, uploads or draw submission. Measurement only.
+struct BackendCounters
+{
+	unsigned long long presentTicks = 0, submitTicks = 0, uploadTicks = 0, ticksPerSecond = 1;
+	unsigned long long textureCreations = 0, bufferCreations = 0, texturesDestroyed = 0, textureUpdates = 0, draws = 0;
+};
+typedef void (*BackendSampler)(BackendCounters &out);
+void setBackendSampler(BackendSampler sampler);
+
 // RAII around one TheGameLogic->UPDATE() call. Inert when off.
 class Tick
 {

@@ -56,6 +56,7 @@ FramePacer::~FramePacer()
 
 void FramePacer::update()
 {
+	FrameDeliveryTelemetry::markIf(FrameDeliveryTelemetry::Phase::PostDraw);
 	// Uses a high resolution counter to cap the frame rate more accurately to the desired limit than retail did.
 	const UnsignedInt maxFps = getActualFramesPerSecondLimit();
 	m_updateTime = m_frameRateLimit.wait(maxFps);

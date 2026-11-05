@@ -20,6 +20,7 @@
 #include "Common/ModernExperience.h"
 #include "Common/GroundTranslation.h"
 #include "Common/PerformanceProfile.h"
+#include "Common/FrameDeliveryTelemetry.h"
 #include "GameClient/ParticleSys.h"
 #include "Common/OptionPreferences.h"
 #include "Common/GameEngine.h"
@@ -413,6 +414,16 @@ void W3DDisplay::initOrdinaryHostPresentation()
             if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) backend->Set_World_Render_Scale(percent);
         };
         NativeRegisterPerformanceExtensions();
+        FrameDeliveryTelemetry::setBackendSampler([](FrameDeliveryTelemetry::BackendCounters &out) {   // hitch attribution: cumulative renderer counters (measurement only)
+            if (auto *backend = dynamic_cast<D3D11Backend *>(WW3D::Get_Render_Backend())) {
+                const D3D11Backend::RenderStats st = backend->Render_Stats();
+                LARGE_INTEGER f; QueryPerformanceFrequency(&f);
+                out.ticksPerSecond = static_cast<unsigned long long>(f.QuadPart);
+                out.presentTicks = st.present_ticks; out.submitTicks = st.submit_ticks; out.uploadTicks = st.upload_ticks;
+                out.textureCreations = backend->Texture_Creations(); out.bufferCreations = backend->Buffer_Creations();
+                out.texturesDestroyed = st.textures_destroyed; out.textureUpdates = st.texture_updates; out.draws = backend->Draw_Count();
+            }
+        });
         if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
         EnhancedHud::setRequested(settings.enhancedHud);                  // Options > Interface; Original by default
         state.stored = stored;
