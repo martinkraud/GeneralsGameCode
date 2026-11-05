@@ -1,7 +1,8 @@
 """Freeze real UI/loader policy while reversing only the explicit CPU init seam."""
 import subprocess
 import unittest
-from test_render2d_reference import ROOT, CORE, current, tokens, body, restore_resource_calls
+from test_render2d_reference import (ROOT, CORE, current, tokens, body, restore_resource_calls,
+                                     reviewed_reference, strip_native_texture_branches, assert_additive_only)
 
 BASE = "0170ad1adc8594f06e953dad12894818dfa1c683"
 
@@ -20,17 +21,20 @@ class UITextureReference(unittest.TestCase):
             text = current(path)
             if path == CORE + "missingtexture.cpp":
                 text = restore_resource_calls(self, text, (("LoadSurfaceFromSurface", 1),))
-            self.assertEqual(tokens(text), tokens(old(path)), path)
+            self.assertEqual(tokens(text), tokens(reviewed_reference(path, BASE)), path)
 
     def test_exact_init_and_install_seams_only(self):
-        source = current(CORE + "texture.cpp").replace('#include "IRenderBackend.h"', '')
+        source = strip_native_texture_branches(current(CORE + "texture.cpp")).replace('#include "IRenderBackend.h"', '')
         guard = 'if (WW3D::Get_Render_Backend() && WW3D::Get_Render_Backend()->Prepare_File_Texture(*this)) return;'
         self.assertEqual(source.count(guard), 1)
         self.assertEqual(tokens(source.replace(guard, '')), tokens(old(CORE + "texture.cpp")))
-        header = current(CORE + "texture.h").replace('void Install_Render2D_File_Content(const Texture2DCPUContent &content);', '')
-        self.assertEqual(tokens(header), tokens(old(CORE + "texture.h")))
+        # texture.h only gained reviewed native members since the reference (X64.30 dynamic UI
+        # content, X64.35 diagnostic label): every legacy token must survive, nothing is replaced.
+        assert_additive_only(self, current(CORE + "texture.h"), old(CORE + "texture.h"), "texture.h")
         interface = current(CORE + "IRenderBackend.h").replace('virtual bool Prepare_File_Texture(TextureClass &) { return false; }', '')
-        self.assertEqual(tokens(interface), tokens(old(CORE + "IRenderBackend.h")))
+        # X64.30 added only pure-virtual-free optional hooks (Supports_Dynamic_Render2D_Content, ...):
+        # the reference interface must survive token-for-token, insertions only.
+        assert_additive_only(self, interface, old(CORE + "IRenderBackend.h"), "IRenderBackend.h")
         source = current(CORE + "Texture2D.cpp")
         signature = 'void TextureClass::Install_Render2D_File_Content(const Texture2DCPUContent &content)'
         install = body(source, signature)

@@ -2,7 +2,7 @@
 import subprocess
 import re
 import unittest
-from test_render2d_reference import ROOT, CORE, current, tokens, body
+from test_render2d_reference import ROOT, CORE, current, tokens, body, strip_x64_35_sentence_labels
 
 BASE = "4a412d1104763a40a5732f0b7830dc0a56bfbdb9"
 MARKER = "////////////////////////////////////////////////////////////////////////////////////\n//\n//\tFontCharsClass\n"
@@ -13,7 +13,7 @@ def old(name):
 
 
 def restored_sentence():
-    new = current(CORE + "render2dsentence.cpp")
+    new = strip_x64_35_sentence_labels(current(CORE + "render2dsentence.cpp"))
     new = new[:new.index("bool FontCharsClass::Initialize_GDI_Font(")]
     new = new.replace('"Texture2DCPUContent.h"', '"surfaceclass.h"')
     new = new.replace('#include "ww3d.h"', '#include "IRenderBackend.h"\n#include "ww3d.h"')

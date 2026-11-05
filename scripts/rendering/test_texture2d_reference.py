@@ -2,7 +2,8 @@
 import subprocess
 import re
 import unittest
-from test_render2d_reference import ROOT, CORE, current, tokens, body, calls, restore_resource_calls
+from test_render2d_reference import (ROOT, CORE, current, tokens, body, calls, restore_resource_calls,
+                                     reviewed_reference, strip_native_texture_branches, assert_additive_only)
 
 BASE = "4911acc4cc52d75a95a3c6702ca29bea385aba12"
 
@@ -13,7 +14,7 @@ def old(name):
 
 class Texture2DReference(unittest.TestCase):
     def test_only_render2d_branch_and_single_owner_release_hooks_changed(self):
-        new = current(CORE + "texture.cpp")
+        new = strip_native_texture_branches(current(CORE + "texture.cpp"))
         new = new.replace('#include "IRenderBackend.h"', '')
         new = new.replace('if (WW3D::Get_Render_Backend() && WW3D::Get_Render_Backend()->Prepare_File_Texture(*this)) return;', '')
         branch = "if(Render2DUsed){Apply_Render2D_Texture(stage);return;}"
@@ -49,6 +50,11 @@ class Texture2DReference(unittest.TestCase):
             if name in ("surfaceclass.cpp", "missingtexture.cpp"):
                 text = restore_resource_calls(self, text, (
                     ("LoadSurfaceFromSurface", 2 if name == "surfaceclass.cpp" else 1),))
+            if name in ("surfaceclass.cpp", "surfaceclass.h"):
+                # X64.30 added the CPU-content SurfaceClass (radar / native UI textures): the
+                # legacy tokens of the surface wrapper must all survive, only insertions allowed.
+                assert_additive_only(self, text, old(name), name)
+                continue
             self.assertEqual(tokens(text), tokens(old(name)), name)
 
     def test_sentence_copy_preserves_entire_producer_and_surface_lifetime(self):
@@ -112,13 +118,22 @@ class Texture2DReference(unittest.TestCase):
 
     def test_shared_dynamic_ui_and_file_asset_producers_are_unchanged(self):
         paths = ["Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplay.cpp",
-                 "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DVideoBuffer.cpp",
-                 "Core/GameEngineDevice/Source/W3DDevice/Common/System/W3DRadar.cpp"]
+                 "Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DVideoBuffer.cpp"]
         paths += [f"{title}/Code/Libraries/Source/WWVegas/WW3D2/assetmgr.cpp"
                   for title in ("Generals", "GeneralsMD")]
         for path in paths:
-            reference = subprocess.check_output(["git", "show", f"{BASE}:{path}"], cwd=ROOT).decode()
+            reference = reviewed_reference(path, BASE)
             self.assertEqual(tokens(current(path)), tokens(reference), path)
+        # X64.30 moved the radar pixel/shade/shroud arithmetic verbatim into the pure, separately
+        # unit-tested RadarRaster helpers (W3DRadarRaster.h); W3DRadar.cpp now delegates to them and
+        # adds native-only branches.  The legacy constants and delegation points are pinned here.
+        radar = current("Core/GameEngineDevice/Source/W3DDevice/Common/System/W3DRadar.cpp")
+        raster = "".join(tokens(current("Core/GameEngineDevice/Include/W3DDevice/Common/W3DRadarRaster.h")))
+        for call in ("RadarRaster::legalPoint(", "RadarRaster::stealthAlpha(", "RadarRaster::plotMarker(",
+                     "RadarRaster::shadeForHeight(", "RadarRaster::shroudCellRect(", "RadarRaster::shroudAlpha("):
+            self.assertIn(call, "".join(tokens(radar)), call)
+        for constant in ("howBright=0.95f", "howDark=0.60f", "minAlpha=32", "return255;", "return127;"):
+            self.assertIn(constant, raster, constant)
 
 
 if __name__ == "__main__":

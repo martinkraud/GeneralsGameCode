@@ -2,7 +2,7 @@
 import re
 import subprocess
 import unittest
-from test_render2d_reference import ROOT, CORE, current, tokens, body
+from test_render2d_reference import ROOT, CORE, current, tokens, body, strip_x64_35_sentence_labels
 
 BASE = "564787154a13e996dd73002c9db78c4db7c0cefa"
 
@@ -26,7 +26,10 @@ class D3D11Reference(unittest.TestCase):
                  "Backend/DX8Render2D.cpp", "Backend/DX8Texture2D.cpp")
         for name in names:
             old = subprocess.check_output(["git", "show", f"{BASE}:{CORE}{name}"], cwd=ROOT).decode()
-            self.assertEqual(tokens(current(CORE + name)), tokens(old), name)
+            new = current(CORE + name)
+            if name in ("render2dsentence.h", "render2dsentence.cpp"):
+                new = strip_x64_35_sentence_labels(new, header=name.endswith(".h"))
+            self.assertEqual(tokens(new), tokens(old), name)
 
     def test_sampler_culling_and_vertex_writer_use_explicit_reference_semantics(self):
         source = current(CORE + "Backend/D3D11Backend.cpp")

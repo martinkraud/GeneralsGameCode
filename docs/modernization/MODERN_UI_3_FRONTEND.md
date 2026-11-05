@@ -151,5 +151,5 @@ The same system is the base for the in-match HUD: the tokens, the type roles, th
 | `MKRaudstein-ZeroHour-x64-Preview-a885d798f-Symbols.zip` | 22 416 808 | (manifest) |
 
 Staged candidates: `build\dev-runtimes
-ative\ZeroHour\dist-a885d798f-zh\game\generalszh.exe` (also the default of `Run-ZeroHourCandidate.ps1`) and `...\Generals\dist-a885d798f-gen`. `-classic` shows the retail frontend for comparison. The retention policy of the distribution tool kept this distribution and the previous one (`4f5e092c1`) and removed the older `f38ba6418` (its commit and the tag-less history remain in git).
+ative\ZeroHour\dist-a885d798f-zh\game\generalszh.exe` (also the default of `Run-ZeroHourCandidate.ps1`; launch it with `pwsh scripts/native-runtime/Run-ZeroHourCandidate.ps1 -Name dist-a885d798f-zh`) and `...\Generals\dist-a885d798f-gen`. `-classic` shows the retail frontend for comparison. The retention policy of the distribution tool kept this distribution and the previous one (`4f5e092c1`) and removed the older `f38ba6418` (its commit and the tag-less history remain in git).
 
