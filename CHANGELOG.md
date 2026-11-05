@@ -7,6 +7,12 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-05 - Engine completion audit (AMD64, D3D11, render hitches, CPU tail)
+
+* **AMD64:** full-rebuild pointer-truncation scan (82 sites, 80 benign integer-in-`void*`), upstream #3459 pointer-truncation fixes, 8-byte pool alignment (#3609), UB fixes (#3636, #3635, #3628), key-repeat timing at high frame rates (#3591), recorder range check (#3090) and a set of upstream leak / crash fixes ported with provenance (`cherry picked from` lines).
+* **D3D11:** flip-model swap chain (`FLIP_DISCARD`, tearing Present with VSync off) with legacy fallback (`GENERALS_D3D11_BLT=1`); device-removed reason in the failure message.
+* **Render hitches:** `GENERALS_FRAMEDELIVERY` now attributes every >= 40 ms frame to a phase / category (`-hitches.csv`, `GENERALS_FRAMEDELIVERY_PROFILE=1`); large frames are simulation ticks (failing path searches after a pathfinder zone recalculation), the 30 ms recurring ones are the terrain full update on structure height changes, early ones are first-use asset work. See `docs/modernization/ENGINE_COMPLETION_AUDIT.md`.
+
 ## 2026-11-05 - Multiplayer smoothness and frame pacing audit
 
 * **Network games now interpolate unit/vehicle/turret presentation like offline games.** The presentation clock was disabled whenever `TheNetwork` existed (0 % of render iterations interpolated at 120 Hz, offline 99.8 %): units advanced in 30 Hz steps while the camera ran at the render rate. The lock-step schedule now feeds the clock (read after the limiter wait, never changed); the authoritative 30 ticks/s, commands, RNG and ordering are untouched (golden gates of both titles identical to the X64.51 baseline).
