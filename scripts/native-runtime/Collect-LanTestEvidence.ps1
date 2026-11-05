@@ -9,6 +9,7 @@ param([Parameter(Mandatory = $true)][string]$GameDir,
       [ValidateSet('Host', 'Client')][string]$Role = 'Host',
       [Parameter(Mandatory = $true)][string]$Tag,
       [string]$OutDir = '.',
+      [string]$FrameDeliveryDir = '',   # folder that GENERALS_FRAMEDELIVERY pointed to (default: the variable of this shell)
       [int]$LastMinutes = 180)          # only replays / dumps / events newer than this are collected
 $ErrorActionPreference = 'Continue'
 $since = (Get-Date).AddMinutes(-$LastMinutes)
@@ -45,6 +46,11 @@ if (Test-Path -LiteralPath $replays) {
         CopyIf $_.FullName 'replays' $copyName
     }
 } else { Note ("  absent  : {0}" -f $replays) }
+# 2b. frame-delivery telemetry (GENERALS_FRAMEDELIVERY=<dir> was set before the game started): the files of this match, newer than the cut-off
+$fdDir = if ($FrameDeliveryDir) { $FrameDeliveryDir } else { $env:GENERALS_FRAMEDELIVERY }
+if ($fdDir -and (Test-Path -LiteralPath $fdDir)) {
+    Get-ChildItem -LiteralPath $fdDir -Filter 'frame-delivery-*.csv' -File | Where-Object { $_.LastWriteTime -gt $since } | ForEach-Object { CopyIf $_.FullName 'framedelivery' $null }
+} else { Note '  absent  : frame-delivery telemetry (set GENERALS_FRAMEDELIVERY=<dir> before starting the game, or pass -FrameDeliveryDir)' }
 # 3. crash dumps (the engine writes them to <user data>\CrashDumps)
 $dumps = Join-Path $userDir 'CrashDumps'
 if (Test-Path -LiteralPath $dumps) { Get-ChildItem -LiteralPath $dumps -File | Where-Object { $_.LastWriteTime -gt $since } | ForEach-Object { CopyIf $_.FullName 'crashdumps' $null } } else { Note ("  absent  : {0}" -f $dumps) }
