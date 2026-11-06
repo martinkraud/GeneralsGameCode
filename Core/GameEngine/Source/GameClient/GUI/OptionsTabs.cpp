@@ -354,6 +354,8 @@ void rebuildDecor()
 	foot.role = TypeRole::Helper; foot.align = 2; foot.color = p.textMuted.withAlpha(180);
 	wcsncpy(foot.text, ModernBranding::footerText(), 95);
 	s_decor.refreshFonts();
+	// the build footer is secondary: when the status text needs its box (narrow panel, 4:3) the footer yields instead of overprinting it
+	if (s_decor.textWidth(s_decor.count() - 2) > st.w) { foot.text[0] = 0; s_decor.refreshFonts(); }
 }
 
 void styleControls()
@@ -403,6 +405,17 @@ void computeLayout()
 	in.tabCount = kCategoryCount;
 	in.rowCount = s_active >= 0 ? pageRowCount(s_active) : 0;
 	in.firstRow = s_firstRow;
+	if (s_network && s_active == static_cast<int>(Category::Network))   // the retail Network block has a fixed pixel size: the viewport must hold it
+	{
+		int right = 0, bottom = 0;
+		for (GameWindow *c = s_network->winGetChild(); c; c = c->winGetNext())
+		{
+			Int x, y, w, h; c->winGetPosition(&x, &y); c->winGetSize(&w, &h);
+			if (x + w > right) right = x + w;
+			if (y + h > bottom) bottom = y + h;
+		}
+		in.minContentW = right; in.minContentH = bottom;
+	}
 	s_layout = ModernScreen::compute(in);
 	s_firstRow = s_layout.firstRow;
 	ModernDraw::setScalePercent(s_layout.effectiveScale);

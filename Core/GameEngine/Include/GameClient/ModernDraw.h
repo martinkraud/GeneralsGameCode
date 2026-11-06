@@ -93,6 +93,7 @@ public:
 	int count() const { return m_count; }
 	DecorItem &item(int i) { return m_items[i]; }
 	void refreshFonts();
+	int textWidth(int i) const;            // measured width of a Text item after refreshFonts() (0 when unknown)
 	void setOwner(unsigned char screen) { m_owner = screen; }
 	void draw(int originX, int originY);   // item coordinates are relative to the backdrop window's top-left
 private:

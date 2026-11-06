@@ -585,6 +585,14 @@ void Decor::refreshFonts()
 	}
 }
 
+int Decor::textWidth(int i) const
+{
+	if (i < 0 || i >= m_count || !m_strings[i]) return 0;
+	Int w = 0, h = 0;
+	static_cast<DisplayString *>(m_strings[i])->getSize(&w, &h);
+	return w;
+}
+
 void Decor::draw(int ox, int oy)
 {
 	if (!TheDisplay) return;

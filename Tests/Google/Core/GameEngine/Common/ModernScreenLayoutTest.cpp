@@ -79,6 +79,38 @@ TEST(ModernScreenLayout, AnOversizedScaleIsReducedNotClipped)
 	EXPECT_EQ(fit.effectiveScale, 150);
 }
 
+TEST(ModernScreenLayout, FourByThreeSurfacesStayInsideAtEveryScale)
+{
+	const Surface fourThree[] = { { 1024, 768 }, { 1280, 960 }, { 1600, 1200 } };
+	for (const Surface &s : fourThree)
+		for (int scale : kScales)
+			for (int rows : kRowCounts)
+			{
+				const Layout L = make(s, scale, rows);
+				EXPECT_GE(L.panel.x, 0);
+				EXPECT_LE(L.panel.right(), s.w);
+				EXPECT_GE(L.panel.y, 0);
+				EXPECT_LE(L.panel.bottom(), s.h);
+				EXPECT_GE(L.visibleRows, rows < 4 ? rows : 4);
+			}
+}
+
+TEST(ModernScreenLayout, AFixedSizeContentBlockIsHeldWhenSomeScaleCanHoldIt)
+{
+	// the embedded retail Network block cannot scale: when a scale exists that holds it the layout settles there, otherwise it is the unconstrained layout (never a collapsed scale)
+	for (const Surface &s : { Surface{ 1024, 768 }, Surface{ 1920, 1080 }, Surface{ 3440, 1440 } })
+		for (int scale : kScales)
+		{
+			Input in; in.surfaceW = s.w; in.surfaceH = s.h; in.uiPercent = scale; in.tabCount = 7; in.rowCount = 0;
+			Input plain = in;
+			in.minContentW = 380; in.minContentH = 300;
+			const Layout L = compute(in), P = compute(plain);
+			const bool held = L.content.w >= 380 && L.content.h >= 300;
+			if (!held) EXPECT_EQ(L.effectiveScale, P.effectiveScale) << s.w << "x" << s.h << "@" << scale;
+			EXPECT_GE(L.effectiveScale, P.effectiveScale * 60 / 100) << s.w << "x" << s.h << "@" << scale;
+		}
+}
+
 TEST(ModernScreenLayout, UltrawideKeepsAComposedPanelAndTheMapVisible)
 {
 	const Layout w169 = make({ 2560, 1440 }, 100, 7), w219 = make({ 3440, 1440 }, 100, 7), w329 = make({ 5120, 1440 }, 100, 7);

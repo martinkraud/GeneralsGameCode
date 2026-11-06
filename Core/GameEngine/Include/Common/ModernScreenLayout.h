@@ -33,6 +33,7 @@ struct Input
 	int tabCount = 0;
 	int rowCount = 0;                 // rows of the active page
 	int firstRow = 0;                 // scroll position (clamped)
+	int minContentW = 0, minContentH = 0;   // a page that cannot scale (the embedded retail Network block): the scale is reduced until the content viewport is at least this big
 	int minVisibleRows = 4;           // the scale is reduced until at least this many rows (or all of them, if fewer) are visible
 };
 
@@ -72,7 +73,7 @@ inline int firstRowToReveal(int row, int firstRow, int rowCount, int visibleRows
 	return clampFirstRow(firstRow, rowCount, visibleRows);
 }
 
-inline Layout compute(const Input &in)
+inline Layout computeImpl(const Input &in)
 {
 	using namespace detail;
 	++computeCounter();
@@ -128,6 +129,7 @@ inline Layout compute(const Input &in)
 
 		const int contentX = L.rail.right() + gap * 3 / 2;
 		L.content = Rect{ contentX, bodyTop, P.right() - pad - contentX, bodyBottom - bodyTop };
+		if ((L.content.w < in.minContentW || L.content.h < in.minContentH) && scale > 30) { scale = scale * 92 / 100; continue; }
 		int visible = L.content.h / pitch;
 		if (visible < 1) visible = 1;
 		if (visible > kMaxRows) visible = kMaxRows;
@@ -305,6 +307,21 @@ inline BrowserLayout computeBrowser(const BrowserInput &in)
 		L.effectiveScale = scale;
 		L.compact = scale < (in.uiPercent > 0 ? in.uiPercent : 100);
 		return L;
+	}
+	return L;
+}
+
+// A fixed-size block (minContentW/H) is honoured only when some scale can hold it; otherwise the unconstrained layout is used (the scale is never collapsed for an impossible request).
+inline Layout compute(const Input &in)
+{
+	Layout L = computeImpl(in);
+	if (in.minContentW > 0 || in.minContentH > 0)
+	{
+		if (L.content.w < in.minContentW || L.content.h < in.minContentH)
+		{
+			Input plain = in; plain.minContentW = plain.minContentH = 0;
+			return computeImpl(plain);
+		}
 	}
 	return L;
 }
