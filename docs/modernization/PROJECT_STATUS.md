@@ -1,7 +1,7 @@
 # MKRaudstein Modern Engine - project status
 
 One-page, evidence-linked status. Updated at every milestone closeout together with `README.md` and `AGENT_HANDOFF.md` (rule since UI.1: a milestone that changes what is true updates this file in the same milestone).
-Last updated: 2026-11-06 (X64.performance-final: final performance audit and baseline, after X64.aq / X64.dh / X64.sc / X64.pf). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
+Last updated: 2026-11-06 (Modern UI product-completion audit, after X64.performance-final). Product-level plan: [../PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Current direction
 The broad performance phase is **closed** ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md): no remaining exact low-risk optimisation, no performance release blocker) and Enhanced AI development is **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
@@ -31,6 +31,7 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | Pathfinding performance (X64.pf) and engine scalability audit (X64.sc): exact A* line-phase optimisations (-17 % path-search CPU), unit-multiplier ladder, `getClosestObjects` characterisation, graphical endurance, multithreading decision (not justified), upstream pathfinding triage | measured and documented ([PATHFINDING_PERFORMANCE_AUDIT.md](PATHFINDING_PERFORMANCE_AUDIT.md), [ENGINE_SCALABILITY_AUDIT.md](ENGINE_SCALABILITY_AUDIT.md)); digests and golden gates unchanged |
 | AI query / object update audit, seeded graphical benchmark (fingerprint-verified against headless), exact staged HUNT scan, bounded disk use (X64.aq, X64.dh) | measured and documented ([AI_QUERY_AUDIT.md](AI_QUERY_AUDIT.md), [DISK_RETENTION.md](DISK_RETENTION.md)); digests and golden gates unchanged |
 | Final performance audit and baseline (X64.performance-final): failing-search root cause (shared cell-info pool, not congestion), HUNT chain, Present-stall probe, first-use hitch attribution, reference baseline for both titles, phase exit decision | measured and documented ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md)); diagnostics only, digests and gates unchanged |
+| Modern UI product-completion audit: 4:3 / 16:10 added to the validated aspect matrix, Options Network-block and 4:3 footer fixes, ranked remaining UI work, product roadmap | measured and documented ([MODERN_UI_PRODUCT_COMPLETION.md](MODERN_UI_PRODUCT_COMPLETION.md)); UI-only, digests and golden gates unchanged |
 
 ## In progress
 * Modern Experience UI phase: UI.2 (shell) and UI.3 (design system + Options, Match Setup, Load / Replay, dialogs, Credits) are implemented and **waiting for the owner's native visual review**. If the look is disliked the next step is a visual revision, not HUD work.

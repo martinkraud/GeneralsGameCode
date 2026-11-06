@@ -621,3 +621,6 @@ tests); factions differ only through `EnhancedHudTheme`. Native acceptance: USA 
 hover-tooltip flicker was a tooltip window covering the button under the pointer; fixed by `EnhancedHudPanels::tooltipPlacement`),
 GLA `c1cde26c1`. Cross-faction visual polish is intentionally deferred (`ENHANCED_HUD_POLISH_BACKLOG.md`). Full record:
 `X64_36_CP10_CLOSEOUT.md`, `X64_36_ENHANCED_HUD_USA_PROTOTYPE.md`, `X64_36_ENHANCED_HUD_CHINA.md`, `X64_36_ENHANCED_HUD_GLA.md`.
+
+## Modern UI product-completion audit (UI.4 audit, 2026-11-06)
+Read `MODERN_UI_PRODUCT_COMPLETION.md` and `../PRODUCT_ROADMAP.md`. UI.3 is NOT restarted. Added: 4:3 / 16:10 validation (both titles), `ModernScreen::Input::minContentW/H` (fixed-size block held only if some scale can hold it, else unconstrained), `Decor::textWidth` (Options build footer yields to the status text). Still retail: LAN lobby / setup, Challenge select, Map select, Online, keyboard options. Next planned: owner visual review, then Modern Match Options + Game Speed (Skirmish), then Modern LAN setup after real two-PC validation (still pending for `2071ad765`). Tool lessons: `Invoke-FrontendMatrix.ps1 -KeepShots` takes ONE comma string when called through `pwsh -File` from a script (array literals are split); restage after every build; audits cannot see overprinting text, look at screenshots.

@@ -7,6 +7,13 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-06 - Modern Experience UI product-completion audit (UI.4 audit)
+
+* **Audit, not a restart:** the existing Modern UI (UI.1 - UI.3) was measured against the product-completion brief; results, ranked remaining work and the Classic / Modern boundary are in `docs/modernization/MODERN_UI_PRODUCT_COMPLETION.md`.
+* **4:3 and 16:10 validated natively** for both titles (1024x768, 1600x1200, 1920x1200) together with the existing 16:9 / 21:9 / 32:9 / 4K matrix: main menu, Options, Match Setup, Replay, 0 defects after the two fixes below; Classic isolation re-checked on both titles.
+* **Fixes:** the embedded retail Network block of Options could leave the content viewport at small 4:3 surfaces (the layout now holds a fixed-size block when a scale can, `ModernScreen::Input::minContentW/H`); at 4:3 the Options status line overprinted the build footer (the footer now yields when the status text needs its box).
+* **New:** `docs/PRODUCT_ROADMAP.md` (Current -> Developer Preview -> Public Alpha -> Beta -> RC -> 1.0, feature states from the repository); +2 unit tests (559 Generals / 558 Zero Hour). No simulation change: Zero Hour 1x `1E5982E5B3A1B86B`, Generals 1x `1014EE85E384C19C`, golden AI gates PASS.
+
 ## 2026-11-06 - Final performance audit and baseline (X64.performance-final)
 
 * **Failing path searches explained:** in Zero Hour about 1 400 searches per match (a quarter of the 1x simulation time, the whole >10 ms tail) exhaust the shared 30 000-record cell-info pool while flooding a basin on the way to a far HUNT target; the goal is reachable, units block the route in ~1 % of the cases, nothing is statically unreachable. It is an existing engine budget, not congestion, and no exact optimisation exists (repeats are never mutation-free, the outcome depends on the free pool and unit costs), so none was made.
