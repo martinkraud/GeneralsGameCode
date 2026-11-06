@@ -18,6 +18,8 @@ param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [switch]$Refresh,                                  # copy the freshly built executable into the (disposable) stage first
       [switch]$Endurance,                                # also record the X64.44 endurance telemetry (per-tick CSV, phase costs, world scale) next to it
       [switch]$PerFrame,                                 # also write every render iteration (GENERALS_FRAMEDELIVERY_FRAMES)
+      [string]$Replay = '',                              # SEEDED GRAPHICAL BENCHMARK: absolute path of a generated benchmark replay (New-SimulationBenchmarkReplay.py); the normal client plays it (-loadreplay)
+                                                         # (-loadreplay) and writes the authoritative fingerprint (GENERALS_SIM_FINGERPRINT) next to the telemetry; -Seconds must cover the replay plus ~30 s of start-up
       [string]$Tag = '',
       [string]$OutRoot = '')
 $ErrorActionPreference = 'Stop'
@@ -41,19 +43,35 @@ $env:GENERALS_FRAMEDELIVERY = $out
 if ($PerFrame) { $env:GENERALS_FRAMEDELIVERY_FRAMES = '1' }
 $env:GENERALS_AUTOSHOT = $out
 $env:GENERALS_AUTOSHOT_FRAMES = "$($Seconds * $RenderFps)"
-if ($Mode -ne 'Quick') { $env:GENERALS_AUTOFLOW = $Mode.ToLowerInvariant() }
+if ($Replay) {
+    if (-not [IO.Path]::IsPathRooted($Replay) -or -not (Test-Path -LiteralPath $Replay -PathType Leaf)) { throw "-Replay must be an existing absolute path: $Replay" }
+    $env:GENERALS_SIM_IGNORE_CRC = '1'
+    $env:GENERALS_SIM_FINGERPRINT = (Join-Path $out 'fingerprint.txt')
+}
+elseif ($Mode -ne 'Quick') { $env:GENERALS_AUTOFLOW = $Mode.ToLowerInvariant() }
 if ($Endurance) { $env:GENERALS_ENDURANCE = $out }
 if ($Vsync) { $env:GENERALS_FORCE_VSYNC = $Vsync }
 if ($ClientSize) { $env:GENERALS_FORCE_CLIENT_SIZE = $ClientSize }
 if ($Mode -eq 'Lan') { $env:GENERALS_AUTOFLOW_AI = "$Ai" }
 $arguments = @('-noaudio', '-fps', "$RenderFps")
+if ($Replay) { $arguments = @('-noaudio', '-fps', "$RenderFps", '-loadreplay', $Replay) }   # the normal client plays the replay from start-up with the shell map off (no shell-game objects in the simulation)
 if ($Mode -eq 'Quick') { $arguments = @('-noaudio', '-devMode', '-quickGame'); if ($DevFps) { $arguments += @('-devFps', $DevFps) } }
 $timeout = 300 + $Seconds * 3
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $manifest.GamePath -PassThru
 try {
-    if (-not $process.WaitForExit($timeout * 1000)) { Write-Warning 'Timed out; the game is terminated.'; $process.Kill() }
+    if ($Replay) {
+        # A replayed match ends at the end of the replay; the game then idles on its end screen at a very low frame rate and would never reach the presented-frame limit. The endurance telemetry writes
+        # its session summary when the match ends: wait for that (or the normal exit / the time limit), give the files a moment to flush, then end the process.
+        $deadline = [DateTime]::UtcNow.AddSeconds($timeout)
+        while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+            Start-Sleep -Seconds 3
+            if (@(Get-ChildItem -LiteralPath $out -Filter 'endurance-*-summary.txt' -ErrorAction SilentlyContinue).Count) { Start-Sleep -Seconds 4; break }
+        }
+        if (-not $process.HasExited) { $process.Kill() }
+    }
+    elseif (-not $process.WaitForExit($timeout * 1000)) { Write-Warning 'Timed out; the game is terminated.'; $process.Kill() }
 } finally {
-    foreach ($v in 'GENERALS_FRAMEDELIVERY','GENERALS_FRAMEDELIVERY_FRAMES','GENERALS_AUTOSHOT','GENERALS_AUTOSHOT_FRAMES','GENERALS_AUTOFLOW','GENERALS_AUTOFLOW_AI','GENERALS_ENDURANCE','GENERALS_FORCE_VSYNC','GENERALS_FORCE_CLIENT_SIZE') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+    foreach ($v in 'GENERALS_AUTOPLAY_REPLAY','GENERALS_SIM_IGNORE_CRC','GENERALS_SIM_FINGERPRINT','GENERALS_FRAMEDELIVERY','GENERALS_FRAMEDELIVERY_FRAMES','GENERALS_AUTOSHOT','GENERALS_AUTOSHOT_FRAMES','GENERALS_AUTOFLOW','GENERALS_AUTOFLOW_AI','GENERALS_ENDURANCE','GENERALS_FORCE_VSYNC','GENERALS_FORCE_CLIENT_SIZE') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
 }
 $log = Join-Path $manifest.GamePath 'generals64.log'
 if (Test-Path -LiteralPath $log) { Copy-Item -LiteralPath $log -Destination (Join-Path $out 'generals64.log') }

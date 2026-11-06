@@ -41,6 +41,8 @@
 #include "Common/GameAudio.h"
 #include "Common/GameEngine.h"
 #include "Common/ScalabilityMultiplier.h"
+#include "Common/BenchFingerprint.h"
+#include "Common/UpdateProfile.h"
 #include "Common/GameLOD.h"
 #include "Common/GameState.h"
 #include "Common/GameUtility.h"
@@ -3917,7 +3919,9 @@ void GameLogic::update()
 				PerformanceProfile::count(PerformanceProfile::Counter::UpdateModules);
 				m_curUpdateModule = u;
 
+				const unsigned long long updProfT0 = UpdateProfile::enabled() ? UpdateProfile::now() : 0;   // X64.aq diagnostic, inert unless GENERALS_SIM_UPDPROF
 				sleepLen = u->update();
+				if (updProfT0) UpdateProfile::noteModule(*reinterpret_cast<const void *const *>(u), UpdateProfile::now() - updProfT0);
 				DEBUG_ASSERTCRASH(sleepLen > 0, ("you may not return 0 from update"));
 				if (sleepLen < 1)
 					sleepLen = UPDATE_SLEEP_NONE;
@@ -3995,6 +3999,7 @@ void GameLogic::update()
 		if(DeveloperTools::scenarioEnabled() || DeveloperTools::devModeEnabled())DeveloperTools::logicTick(m_frame);
 		PerformanceProfile::count(PerformanceProfile::Counter::CompletedTicks);
 		m_hasUpdated = TRUE;
+		BenchFingerprint::onFrameAdvanced();   // X64.gb diagnostic, inert unless GENERALS_SIM_FINGERPRINT is set
 		// X64.40 diagnostic (off unless GENERALS_AUTOPLAY_REPLAY is set): progress of a native replay playback, so a run can show it passed the frame of interest
 		static int autoplayLog = -1;
 		if (autoplayLog < 0) { const char *v = getenv("GENERALS_AUTOPLAY_REPLAY"); autoplayLog = (v && *v) ? 1 : 0; }

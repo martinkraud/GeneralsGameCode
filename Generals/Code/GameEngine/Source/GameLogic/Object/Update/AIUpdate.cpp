@@ -28,6 +28,7 @@
 // Subsequently : John Ahlquist 2002 and a cast of thousands.
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/UpdateProfile.h"
 #include "Common/PerformanceProfile.h"
 
 #define DEFINE_LOCOMOTORSET_NAMES					// for TheLocomotorSetNames[]
@@ -1005,6 +1006,9 @@ UpdateSleepTime AIUpdateInterface::update()
 
 	USE_PERF_TIMER(AIUpdateInterface_update)
 
+	// X64.aq diagnostic (inert unless GENERALS_SIM_UPDPROF): time of the whole AI update
+	struct AiUpdateProfile { unsigned long long t0; AiUpdateProfile() : t0(UpdateProfile::enabled() ? UpdateProfile::now() : 0) {} ~AiUpdateProfile() { if (t0) UpdateProfile::addAiPart(0, UpdateProfile::now() - t0); } } aiUpdateProfile;
+
 	m_isInUpdate = TRUE;
 
 	m_completedWaypoint = nullptr; // Reset so state machine update can set it if we just completed the path.
@@ -1012,7 +1016,10 @@ UpdateSleepTime AIUpdateInterface::update()
 	// assume we can sleep forever, unless the state machine (or turret, etc) demand otherwise
 	UpdateSleepTime subMachineSleep = UPDATE_SLEEP_FOREVER;
 
+	const unsigned long long smProfT0 = UpdateProfile::enabled() ? UpdateProfile::now() : 0;
+	const int smProfState = smProfT0 ? static_cast<int>(getStateMachine()->getCurrentStateID()) : 0;
 	StateReturnType stRet = getStateMachine()->updateStateMachine();
+	if (smProfT0) { const unsigned long long dt = UpdateProfile::now() - smProfT0; UpdateProfile::addAiPart(1, dt); UpdateProfile::addAiState(smProfState, dt); }
 
 	if (IS_STATE_SLEEP(stRet))
 	{
@@ -1090,7 +1097,9 @@ UpdateSleepTime AIUpdateInterface::update()
 		{
 			if (m_turretAI[i])
 			{
+				const unsigned long long turProfT0 = UpdateProfile::enabled() ? UpdateProfile::now() : 0;
 				UpdateSleepTime tmp = m_turretAI[i]->updateTurretAI();
+				if (turProfT0) UpdateProfile::addAiPart(2, UpdateProfile::now() - turProfT0);
 				if (tmp < subMachineSleep)
 					subMachineSleep = tmp;
 			}
@@ -1110,7 +1119,9 @@ UpdateSleepTime AIUpdateInterface::update()
 	}
 
 	// do this objects movement
+	const unsigned long long locProfT0 = UpdateProfile::enabled() ? UpdateProfile::now() : 0;
 	UpdateSleepTime tmp = doLocomotor();
+	if (locProfT0) UpdateProfile::addAiPart(3, UpdateProfile::now() - locProfT0);
 	if (tmp < subMachineSleep)
 		subMachineSleep = tmp;
 

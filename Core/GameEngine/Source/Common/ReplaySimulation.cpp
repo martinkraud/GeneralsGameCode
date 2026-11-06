@@ -34,6 +34,7 @@
 #include "Common/EnduranceTelemetry.h"
 #include "Common/SimSampler.h"
 #include "Common/SpatialQueryDiag.h"
+#include "Common/UpdateProfile.h"
 #include "GameLogic/Pathfinder/PathFailureDiag.h"
 
 #include <windows.h>
@@ -135,6 +136,7 @@ public:
 	void finish(int errors)
 	{
 		SimSampler::stopAndReport();
+		UpdateProfile::report();   // X64.aq: opt-in update-module / AI-state profile (GENERALS_SIM_UPDPROF)
 		SpatialQueryDiag::report();   // X64.sc: opt-in getClosestObjects characterisation (GENERALS_SIM_GCO)
 		harvest();
 		PerformanceProfile::activeRecorder = m_previous;

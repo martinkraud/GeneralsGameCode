@@ -58,6 +58,15 @@ Int REPLAY_CRC_INTERVAL = 100;
 
 // X64.41 diagnostic: GENERALS_REPLAY_CRC_INTERVAL=<n> makes a release build record (and generate) the replay CRC every n logic frames (the engine only offers
 // -ReplayCRCInterval in DEBUG_CRC builds). Unset = the normal interval.
+// X64.gb diagnostic: GENERALS_SIM_IGNORE_CRC makes the normal client play a generated benchmark replay (which carries no CRC stream) without reporting a mismatch or pausing,
+// exactly as the headless bench already does. Unset = the normal behaviour.
+static bool diagnosticIgnoreReplayCrc()
+{
+	static int ignore = -1;
+	if (ignore < 0) ignore = getenv("GENERALS_SIM_IGNORE_CRC") ? 1 : 0;
+	return ignore == 1;
+}
+
 static Int diagnosticReplayCrcInterval()
 {
 	const char *v = getenv("GENERALS_REPLAY_CRC_INTERVAL");
@@ -1015,7 +1024,7 @@ void RecorderClass::handleCRCMessage(UnsignedInt newCRC, Int playerIndex, Bool f
 		UnsignedInt playbackCRC = m_crcInfo.readCRC();
 		//DEBUG_LOG(("RecorderClass::handleCRCMessage() - Comparing CRCs of InGame:%8.8X Replay:%8.8X Frame:%d from Player %d",
 		//	playbackCRC, newCRC, TheGameLogic->getFrame()-m_crcInfo.GetQueueSize()-1, playerIndex));
-		if (TheGameLogic->getFrame() > 0 && newCRC != playbackCRC && !m_crcInfo.sawCRCMismatch())
+		if (TheGameLogic->getFrame() > 0 && newCRC != playbackCRC && !m_crcInfo.sawCRCMismatch() && !diagnosticIgnoreReplayCrc())
 		{
 			//Kris: Patch 1.01 November 10, 2003 (integrated changes from Matt Campbell)
 			// Since we don't seem to have any *visible* desyncs when replaying games, but get this warning

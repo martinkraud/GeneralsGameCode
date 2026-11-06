@@ -2808,6 +2808,7 @@ void PartitionManager::update()
 
 		PartitionContactList ctList;
 		TheContactList = &ctList;
+		unsigned movedThisFrame = 0;   // X64.aq diagnostic: objects whose cells were updated this frame
 		while (m_dirtyModules)
 		{
 #ifdef INTENSE_DEBUG
@@ -2829,6 +2830,7 @@ void PartitionManager::update()
 
 			if (updateEm)
 			{
+				++movedThisFrame;
 				dirty->friend_updateCellsTouched();
 			}
 
@@ -2839,6 +2841,7 @@ void PartitionManager::update()
 		}
 
 		ctList.processContactList();
+		if (SpatialQueryDiag::enabled()) SpatialQueryDiag::noteMoved(movedThisFrame);
 #ifdef INTENSE_DEBUG
 		DEBUG_ASSERTLOG(cc==0,("updated partition info for %d objects",cc));
 #endif
@@ -3422,6 +3425,7 @@ Object *PartitionManager::getClosestObjects(
 				if (iterArg)
 				{
 					iterArg->insert(thisObj, thisDistSqr);
+					++dq.results;
 				}
 				else
 				{
@@ -3522,6 +3526,7 @@ Object *PartitionManager::getClosestObjects(
 
 	if (dqStart != 0)
 	{
+		if (!iterArg) { dq.results = closestObj ? 1u : 0u; dq.resultId = closestObj ? static_cast<unsigned>(closestObj->getID()) : 0u; }
 		const void *filterTypes[8];
 		int filterCount = 0;
 		if (filters)

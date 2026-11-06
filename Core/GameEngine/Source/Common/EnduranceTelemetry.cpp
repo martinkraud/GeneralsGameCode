@@ -6,6 +6,8 @@
 #include "Common/PerformanceProfile.h"
 #include "Common/SimulationTickStats.h"
 #include "GameLogic/Pathfinder/PathFailureDiag.h"
+#include "Common/SpatialQueryDiag.h"
+#include "Common/UpdateProfile.h"
 
 #include "Common/GlobalData.h"
 #include "Common/FramePacer.h"
@@ -127,6 +129,8 @@ void endSession(const char *reason)
 	PathFailureDiag::drainSampleCsv(rest);
 	writeAll(s.samplesFile, rest);
 	writeSummary(reason);
+	UpdateProfile::report();        // X64.aq: opt-in module / AI-state profile and query characterisation of a graphical match (GENERALS_SIM_UPDPROF / GENERALS_SIM_GCO); no-ops when not set
+	SpatialQueryDiag::report();
 	if (s.intervalsFile != INVALID_HANDLE_VALUE) CloseHandle(s.intervalsFile);
 	if (s.ticksFile != INVALID_HANDLE_VALUE) CloseHandle(s.ticksFile);
 	if (s.samplesFile != INVALID_HANDLE_VALUE) CloseHandle(s.samplesFile);

@@ -23,6 +23,7 @@ std::atomic<bool> s_stop{false};
 HANDLE s_thread = nullptr;
 HANDLE s_target = nullptr;
 std::vector<unsigned long long> s_samples;
+std::vector<std::pair<unsigned long long, unsigned long long>> s_callers;   // the two return addresses above each sample
 std::string s_path;
 
 typedef BOOL (WINAPI *SymInitializeFn)(HANDLE, PCSTR, BOOL);
@@ -39,9 +40,25 @@ DWORD WINAPI samplerMain(LPVOID)
 		if (SuspendThread(s_target) == static_cast<DWORD>(-1))
 			continue;
 		CONTEXT context = {};
-		context.ContextFlags = CONTEXT_CONTROL;
+		context.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
 		if (GetThreadContext(s_target, &context))
+		{
 			s_samples.push_back(context.Rip);
+			// X64.aq: unwind two frames with the x64 unwind data (the thread is suspended, its stack is stable) to learn who calls the hot leaf functions
+			unsigned long long callers[2] = { 0, 0 };
+			CONTEXT walk = context;
+			for (int i = 0; i < 2; ++i)
+			{
+				DWORD64 imageBase = 0;
+				PRUNTIME_FUNCTION fn = RtlLookupFunctionEntry(walk.Rip, &imageBase, nullptr);
+				if (!fn) break;
+				PVOID handlerData = nullptr;
+				DWORD64 frame = 0;
+				RtlVirtualUnwind(UNW_FLAG_NHANDLER, imageBase, walk.Rip, fn, &walk, &handlerData, &frame, nullptr);
+				callers[i] = walk.Rip;
+			}
+			s_callers.push_back(std::make_pair(callers[0], callers[1]));
+		}
 		ResumeThread(s_target);
 	}
 	return 0;
@@ -133,6 +150,37 @@ void stopAndReport()
 		std::sort(lines.begin(), lines.end(), [](const std::pair<unsigned, std::string> &a, const std::pair<unsigned, std::string> &b) { return a.first > b.first; });
 		for (size_t i = 0; i < lines.size() && i < 70; ++i)
 			fprintf(f, "%6.2f%%  %7u  %s\n", 100.0 * lines[i].first / static_cast<double>(s_samples.empty() ? 1 : s_samples.size()), lines[i].first, lines[i].second.c_str());
+		// who calls the hottest functions (two frames up)
+		fprintf(f, "\n--- callers of the hottest functions (two return addresses above each sample) ---\n");
+		std::map<unsigned long long, std::string> nameCache;
+		auto nameOf = [&](unsigned long long a) -> std::string {
+			auto it = nameCache.find(a);
+			if (it != nameCache.end()) return it->second;
+			std::string n = a ? "?" : "-";
+			if (a && symbols)
+			{
+				char buffer[sizeof(SYMBOL_INFO) + 256] = {};
+				SYMBOL_INFO *symbol = reinterpret_cast<SYMBOL_INFO *>(buffer);
+				symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+				symbol->MaxNameLen = 255;
+				DWORD64 displacement = 0;
+				if (symFromAddr(process, a, &displacement, symbol)) n = symbol->Name;
+			}
+			nameCache[a] = n;
+			return n;
+		};
+		std::map<std::string, std::map<std::string, unsigned>> callersOf;
+		for (size_t i = 0; i < s_samples.size() && i < s_callers.size(); ++i)
+			++callersOf[nameOf(s_samples[i])][nameOf(s_callers[i].first) + "  <-  " + nameOf(s_callers[i].second)];
+		for (size_t i = 0; i < ranked.size() && i < 24; ++i)
+		{
+			fprintf(f, "\n%6.2f%%  %s\n", 100.0 * ranked[i].first / static_cast<double>(s_samples.empty() ? 1 : s_samples.size()), ranked[i].second.c_str());
+			std::vector<std::pair<unsigned, std::string>> c;
+			for (const auto &e : callersOf[ranked[i].second]) c.push_back(std::make_pair(e.second, e.first));
+			std::sort(c.begin(), c.end(), [](const std::pair<unsigned, std::string> &a, const std::pair<unsigned, std::string> &b) { return a.first > b.first; });
+			for (size_t j = 0; j < c.size() && j < 5; ++j)
+				fprintf(f, "      %5.1f%%  %s\n", 100.0 * c[j].first / static_cast<double>(ranked[i].first), c[j].second.c_str());
+		}
 		fclose(f);
 	}
 }
