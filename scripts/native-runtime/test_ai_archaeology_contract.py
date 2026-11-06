@@ -154,7 +154,7 @@ class ModePlumbing(unittest.TestCase):
         body = body_of(info, "void SkirmishGameInfo::xfer", "void SkirmishGameInfo::loadPostProcess")
         self.assertIn("const XferVersion retailVersion = 2;", body)
         self.assertIn("const XferVersion retailVersion = 4;", body)
-        self.assertIn("XferVersion version = (xfer->getXferMode() == XFER_SAVE && (m_aiBehavior == AI_BEHAVIOR_ENHANCED || SuperweaponLimit::isActive(m_superweaponLimit))) ? currentVersion : retailVersion;", body)
+        self.assertIn("XferVersion version = (xfer->getXferMode() == XFER_SAVE && (m_aiBehavior == AI_BEHAVIOR_ENHANCED || SuperweaponLimit::isActive(m_superweaponLimit) || GameSpeed::isActive(m_gameSpeed))) ? currentVersion : retailVersion;", body)
         self.assertIn("if ( version >= 5 )", body)
 
     def test_ai_player_save_keeps_version_1_for_original(self):

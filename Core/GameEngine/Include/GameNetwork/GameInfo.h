@@ -32,6 +32,7 @@
 #include "Common/Money.h"
 #include "Common/AIBehavior.h"
 #include "Common/SuperweaponLimit.h"
+#include "Common/GameSpeed.h"
 #include "GameNetwork/NetworkDefs.h"
 #include "GameNetwork/FirewallHelper.h"
 
@@ -240,6 +241,10 @@ public:
   inline UnsignedShort getSuperweaponLimit() const { return m_superweaponLimit; }
   inline void setSuperweaponLimit( UnsignedShort limit ) { m_superweaponLimit = SuperweaponLimit::isValid( limit ) ? limit : SuperweaponLimit::kUnlimited; }
 
+  // Game Speed match rule (Common/GameSpeed.h): percent of the retail logic cadence, 100 = Normal = the original 30 logic frames per second. Pacing only; written to the options string / replay header ("GS=") and saved only when not Normal.
+  inline UnsignedShort getGameSpeed() const { return m_gameSpeed; }
+  inline void setGameSpeed( UnsignedShort percent ) { m_gameSpeed = static_cast<UnsignedShort>( GameSpeed::sanitize( percent ) ); }
+
   inline AIBehaviorMode getAIBehavior() const { return m_aiBehavior; }
   inline void setAIBehavior( AIBehaviorMode mode ) { m_aiBehavior = mode; }
 
@@ -265,6 +270,7 @@ protected:
   UnsignedShort m_superweaponRestriction;
   Bool m_oldFactionsOnly; // Only USA, China, GLA -- not USA Air Force General, GLA Toxic General, et al
   UnsignedShort m_superweaponLimit; // X64.52A: Superweapons match rule, 0 = Unlimited (default)
+  UnsignedShort m_gameSpeed;        // Game Speed match rule in percent, 100 = Normal (default)
   AIBehaviorMode m_aiBehavior; // X64.51: Original (default, retail compatible) or Enhanced AI
 };
 

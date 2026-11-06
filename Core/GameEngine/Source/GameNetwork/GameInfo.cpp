@@ -40,6 +40,7 @@
 #include "GameNetwork/FileTransfer.h"
 #include "GameNetwork/GameInfo.h"
 #include "Common/SuperweaponLimitXfer.h"
+#include "Common/GameSpeedXfer.h"
 #include "GameNetwork/GameSpy/ThreadUtils.h"
 #include "GameNetwork/GameSpy/StagingRoomGameInfo.h"
 #include "GameNetwork/LANAPI.h"						// for testing packet size
@@ -323,6 +324,7 @@ void GameInfo::reset()
   m_oldFactionsOnly = FALSE;
 	m_aiBehavior = AI_BEHAVIOR_ORIGINAL;
 	m_superweaponLimit = SuperweaponLimit::kUnlimited;
+	m_gameSpeed = GameSpeed::kNormal;
 //	m_localIP = 0; // BGC - actually we don't want this to be reset since the m_localIP is
 										// set properly in the constructor of LANGameInfo which uses this as a base class.
 	m_mapCRC = 0;
@@ -1029,6 +1031,19 @@ static AsciiString buildGameInfoAsciiString(const GameInfo& game, const AsciiStr
 		}
 	}
 
+	// Game Speed: written ONLY when not Normal (a default options string / replay header stays byte-identical); an executable that does not know the key refuses the string.
+	if (GameSpeed::isActive(game.getGameSpeed()))
+	{
+		char value[8];
+		if (GameSpeed::formatOptionValue(game.getGameSpeed(), value, sizeof value))
+		{
+			optionsString.concat(GameSpeed::optionKey());
+			optionsString.concat('=');
+			optionsString.concat(value);
+			optionsString.concat(';');
+		}
+	}
+
 	//add player info for each slot
 	optionsString.concat(slotListID);
 	optionsString.concat('=');
@@ -1155,6 +1170,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
   UnsignedShort restriction = 0; // Always the default
   AIBehaviorMode aiBehavior = AI_BEHAVIOR_ORIGINAL; // X64.51: absent key = Original
   uint16_t superweaponLimit = SuperweaponLimit::kUnlimited; // X64.52A: absent key = Unlimited
+  uint16_t gameSpeed = GameSpeed::kNormal; // absent key = Normal
 
 	Bool sawMap = FALSE;
 	Bool sawMapCRC = FALSE;
@@ -1281,6 +1297,16 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
       {
         optionsOk = FALSE;
         DEBUG_LOG(("ParseAsciiStringToGameInfo - unknown superweapon limit value, quitting"));
+        break;
+      }
+    }
+    else if (key.compare(GameSpeed::optionKey()) == 0 )
+    {
+      // only the selectable levels are accepted; anything else rejects the options (never silently plays a different pace)
+      if (!GameSpeed::parseOptionValue(val.str(), gameSpeed))
+      {
+        optionsOk = FALSE;
+        DEBUG_LOG(("ParseAsciiStringToGameInfo - unknown game speed value, quitting"));
         break;
       }
     }
@@ -1664,6 +1690,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
 		game->setOldFactionsOnly(oldFactionsOnly);
 		game->setAIBehavior(aiBehavior);
 		game->setSuperweaponLimit(superweaponLimit);
+		game->setGameSpeed(gameSpeed);
 
 		return true;
 	}
@@ -1698,8 +1725,9 @@ void SkirmishGameInfo::xfer( Xfer *xfer )
 	// X64.51: version 5 adds the AI Behaviour rule. It is written ONLY for an Enhanced game; an Original game still saves the retail version, so its saves
 	// keep the retail layout. A save of an Enhanced game cannot be read by an older executable (its version check rejects it), never played as Original.
 	// X64.52A: version 6 adds the Superweapons match rule and is written when it is not Unlimited (or the game is Enhanced); version 6 also carries the AI Behaviour rule.
-	const XferVersion currentVersion = 6;
-	XferVersion version = (xfer->getXferMode() == XFER_SAVE && (m_aiBehavior == AI_BEHAVIOR_ENHANCED || SuperweaponLimit::isActive(m_superweaponLimit))) ? currentVersion : retailVersion;
+	// Game Speed: version 7 adds the Game Speed rule and is written when it is not Normal (or the game is Enhanced / has a superweapon limit); version 7 also carries the earlier fields.
+	const XferVersion currentVersion = 7;
+	XferVersion version = (xfer->getXferMode() == XFER_SAVE && (m_aiBehavior == AI_BEHAVIOR_ENHANCED || SuperweaponLimit::isActive(m_superweaponLimit) || GameSpeed::isActive(m_gameSpeed))) ? currentVersion : retailVersion;
 	xfer->xferVersion( &version, currentVersion );
 
 
@@ -1808,6 +1836,7 @@ void SkirmishGameInfo::xfer( Xfer *xfer )
   }
 
   SuperweaponLimit::xferLimit( xfer, m_superweaponLimit, version );   // X64.52A: version 6, see Common/SuperweaponLimitXfer.h
+  GameSpeed::xferPercent( xfer, m_gameSpeed, version );               // Game Speed: version 7, see Common/GameSpeedXfer.h
 
 }
 

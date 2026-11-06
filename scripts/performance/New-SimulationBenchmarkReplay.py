@@ -70,6 +70,9 @@ def build_setup(args):
     # X64.52A: --cash N writes the Starting Cash match option (SC=N) for the regression checks of that option; the default writes nothing
     if args.cash:
         behavior += "SC=%d;" % args.cash
+    # Game Speed rule: --game-speed 75|125|150 writes GS=<v> (pacing only); the default (100 = Normal) writes nothing, so default setups stay byte-identical.
+    if args.game_speed and args.game_speed != 100:
+        behavior += "GS=%d;" % args.game_speed
     return "M=03maps/%s;MC=%X;MS=%d;SD=%d;C=%d;%sS=%s;" % (
         args.map.lower(), args.map_crc, args.map_size, args.seed, args.crc_interval, behavior, "".join(slots))
 
@@ -86,6 +89,8 @@ def main():
     p.add_argument("--minutes", type=float, default=10.0, help="length of the simulated game")
     p.add_argument("--seed", type=int, default=12345)
     p.add_argument("--factions", default="", help="comma separated PlayerTemplate indices for the AI slots (default cycles America, China, GLA = 2,3,4)")
+    p.add_argument("--game-speed", type=int, default=100, choices=[75, 100, 125, 150], help="Game Speed rule in percent of Normal (GS=N); 100 = not written")
+    p.add_argument("--fps", type=int, default=0, help="render cap written into the replay header (15..1000); 0 = keep the template value")
     p.add_argument("--cash", type=int, default=0, help="Starting Cash match option (SC=N); 0 = not written (the game default)")
     p.add_argument("--superweapons", choices=["0", "1", "3", "5", "D"], default="0", help="Superweapons match rule: 0 unlimited (default, nothing written), 1/3/5 maximum, D disabled")
     p.add_argument("--ai-mode", choices="OE", default="O", help="AI Behaviour rule: O original (default, nothing written), E enhanced (AI=E2)")
@@ -103,6 +108,8 @@ def main():
     setup = build_setup(args).encode("ascii") + b"\0"
     local = b"0\0"
     tail = bytearray(data[local_end:local_end + 16])          # difficulty, game mode, rank, max fps (copied from the template)
+    if args.fps:
+        struct.pack_into("<i", tail, 12, args.fps)               # render cap stored in the header (last 4 bytes of the tail): presentation only, never the simulation
     # one end marker: type 1000 (MSG_BEGIN_NETWORK_MESSAGES, a CRC message the reader discards), local player, no arguments
     marker = struct.pack("<iiiB", frames, 1000, 0, 0)
     out = bytes(head) + setup + local + bytes(tail) + marker

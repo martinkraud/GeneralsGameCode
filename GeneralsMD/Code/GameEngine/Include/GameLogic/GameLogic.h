@@ -233,6 +233,7 @@ public:
 	Int getRankPointsToAddAtGameStart() const { return m_rankPointsToAddAtGameStart; }
 
   UnsignedShort getSuperweaponRestriction() const; ///< Get any optional limits on superweapons
+  UnsignedShort getGameSpeed() const; ///< Game Speed match rule in percent (100 = Normal): Skirmish and replay games only; network games, Campaign and Challenge always run Normal (pacing only, see Common/GameSpeed.h)
   UnsignedShort getSuperweaponLimit() const; ///< X64.52A: the Superweapons match rule (0 = Unlimited): Skirmish / replay / LAN games only, never Campaign or General's Challenge
   void setSuperweaponRestriction();
 

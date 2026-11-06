@@ -19,6 +19,7 @@
 
 #include "Common/FramePacer.h"
 #include "Common/FrameDeliveryTelemetry.h"
+#include "Common/StartupDiagnostics.h"
 
 #include "GameClient/View.h"
 
@@ -38,6 +39,7 @@ FramePacer::FramePacer()
 
 	m_maxFPS = RenderFpsPreset::DefaultFpsValue;
 	m_logicTimeScaleFPS = LOGICFRAMES_PER_SECOND;
+	m_gameSpeedPercent = 100;
 	m_updateTime = 1.0f / (Real)RenderFpsPreset::DefaultFpsValue; // predict the first render interval
 	m_logicFramePhase = 1.0f;
 	m_enableFpsLimit = FALSE;
@@ -84,7 +86,7 @@ void FramePacer::update()
 	const Bool permitted = TheGameLogic != nullptr && TheGameLogic->isInGame()
 		&& !TheGameLogic->isGamePaused()
 		&& !isTimeFrozen() && !isGameHalted()
-		&& (TheNetwork != nullptr ? TheNetwork->getFrameRate() > 0 : getActualLogicTimeScaleFps() == LOGICFRAMES_PER_SECOND)
+		&& (TheNetwork != nullptr ? TheNetwork->getFrameRate() > 0 : (isLogicTimeScaleEnabled() && getLogicTimeScaleFps() == LOGICFRAMES_PER_SECOND))   // the Game Speed rule only paces the scheduler: the presentation clock reads the real tick period
 		&& (TheScriptEngine == nullptr || !TheScriptEngine->isTimeFast())
 		&& (TheTacticalView == nullptr || TheTacticalView->getTimeMultiplier() == 1);
 	Real presentationDelta = m_updateTime;
@@ -225,7 +227,29 @@ Bool FramePacer::isLogicTimeScaleEnabled() const
 	return m_enableLogicTimeScale;
 }
 
+void FramePacer::setGameSpeedPercent( Int percent )
+{
+	const Int value = percent > 0 ? percent : 100;
+	if (value != m_gameSpeedPercent)
+	{
+		char detail[128];
+		snprintf(detail, sizeof(detail), "percent=%d logic_fps=%.2f render_cap=%d", (int)value, (double)getLogicTimeScaleFps() * value / 100.0, (int)getActualFramesPerSecondLimit());
+		StartupDiagnostics::checkpoint("gamespeed", "pace", detail);   // one line per change: the pace the scheduler runs at (evidence for start / save-load / runtime steps)
+	}
+	m_gameSpeedPercent = value;
+}
+
+Int FramePacer::getGameSpeedPercent() const
+{
+	return m_gameSpeedPercent;
+}
+
 Int FramePacer::getActualLogicTimeScaleFps(LogicTimeQueryFlags flags) const
+{
+	return (Int)(getActualLogicTimeScaleFpsExact(flags) + 0.5f);
+}
+
+Real FramePacer::getActualLogicTimeScaleFpsExact(LogicTimeQueryFlags flags) const
 {
 	if (m_isTimeFrozen && (flags & IgnoreFrozenTime) == 0)
 	{
@@ -239,12 +263,13 @@ Int FramePacer::getActualLogicTimeScaleFps(LogicTimeQueryFlags flags) const
 
 	if (TheNetwork != nullptr)
 	{
-		return TheNetwork->getFrameRate();
+		return (Real)TheNetwork->getFrameRate();
 	}
 
 	if (isLogicTimeScaleEnabled())
 	{
-		return getLogicTimeScaleFps();
+		// 100 % multiplies by exactly 1.0f: Normal is bit-identical to the pre-Game-Speed value
+		return (Real)getLogicTimeScaleFps() * ((Real)m_gameSpeedPercent / 100.0f);
 	}
 
 	// Returns uncapped value to align with the render update as per the original game behavior.
@@ -253,13 +278,13 @@ Int FramePacer::getActualLogicTimeScaleFps(LogicTimeQueryFlags flags) const
 
 Real FramePacer::getActualLogicTimeScaleRatio(LogicTimeQueryFlags flags) const
 {
-	return (Real)getActualLogicTimeScaleFps(flags) / LOGICFRAMES_PER_SECONDS_REAL;
+	return getActualLogicTimeScaleFpsExact(flags) / LOGICFRAMES_PER_SECONDS_REAL;
 }
 
 Real FramePacer::getActualLogicTimeScaleOverFpsRatio(LogicTimeQueryFlags flags) const
 {
 	// Clamps ratio to min 1, because the logic frame rate is currently capped by the render frame rate.
-	return min(1.0f, (Real)getActualLogicTimeScaleFps(flags) / getUpdateFps());
+	return min(1.0f, getActualLogicTimeScaleFpsExact(flags) / getUpdateFps());
 }
 
 Real FramePacer::getLogicTimeStepSeconds(LogicTimeQueryFlags flags) const

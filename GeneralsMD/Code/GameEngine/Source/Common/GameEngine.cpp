@@ -839,6 +839,9 @@ Bool GameEngine::canUpdateGameLogic(UnsignedInt logicTimeQueryFlags)
 	// This updates the paused game status of the game logic.
 	TheGameLogic->preUpdate();
 
+	// Game Speed match rule: the scheduler pace follows the match's rule (Normal outside a Skirmish / replay game); render settings never enter into it.
+	TheFramePacer->setGameSpeedPercent(TheGameLogic->getGameSpeed());
+
 	TheFramePacer->setTimeFrozen(isTimeFrozen());
 	TheFramePacer->setGameHalted(isGameHalted());
 
@@ -871,7 +874,7 @@ Bool GameEngine::canUpdateNetworkGameLogic()
 /// -----------------------------------------------------------------------------------------------
 Bool GameEngine::canUpdateRegularGameLogic(UnsignedInt logicTimeQueryFlags)
 {
-	const Int logicTimeScaleFps = TheFramePacer->getActualLogicTimeScaleFps(logicTimeQueryFlags);
+	const Real logicTimeScaleFps = TheFramePacer->getActualLogicTimeScaleFpsExact(logicTimeQueryFlags);   // exact: Game Speed levels are fractional (22.5 / 37.5 logic frames per second)
 
 	if (logicTimeScaleFps <= 0)
 	{

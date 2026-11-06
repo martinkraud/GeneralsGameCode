@@ -22,6 +22,8 @@ param([Parameter(Mandatory)][ValidateSet('Generals','ZeroHour')][string]$Title,
       [ValidateRange(2,20)][double]$Minutes = 9,
       [ValidateSet('O','E')][string]$AiMode = 'E',
       [int]$Cash = 50000,
+      [ValidateSet(75,100,125,150)][int]$GameSpeed = 100,  # Game Speed rule written into the replay (GS=N); 100 = Normal = nothing written
+      [int]$HeaderFps = 0,                                  # render cap written into the replay header (0 = the template's 120)
       [string]$Label = 'run',
       [int]$RenderFps = 120,                                # replay playback renders at the engine's 120 Hz cap whatever -fps says, and -Seconds is counted in presented frames
       [ValidateSet('0','1')][string]$Vsync = '0',          # VSync off by default: no dependence on the display's refresh state (an idle / locked display stalls Present to ~4 Hz with VSync on)
@@ -38,9 +40,10 @@ $template = Join-Path $repo ('build\x64-51\templates\' + $(if ($Title -eq 'Gener
 if (-not (Test-Path -LiteralPath $template)) { throw "Missing replay template: $template" }
 $benchDir = Join-Path $repo 'build\bench'
 New-Item -ItemType Directory -Force -Path $benchDir | Out-Null
-$replay = Join-Path $benchDir ('{0}-{1}-{2}{3}-{4}m.rep' -f $Title, $Scenario, $AiMode, $Cash, $Minutes)
+$suffix = $(if ($GameSpeed -ne 100) { "-gs$GameSpeed" } else { '' }) + $(if ($HeaderFps) { "-fps$HeaderFps" } else { '' })
+$replay = Join-Path $benchDir ('{0}-{1}-{2}{3}-{4}m{5}.rep' -f $Title, $Scenario, $AiMode, $Cash, $Minutes, $suffix)
 if (-not (Test-Path -LiteralPath $replay)) {
-    & python (Join-Path $repo 'scripts\performance\New-SimulationBenchmarkReplay.py') --template $template --out $replay --map $s.Map --map-size $s.Size --ai $s.Ai --level $s.Level --minutes $Minutes --seed $s.Seed --cash $Cash --ai-mode $AiMode
+    & python (Join-Path $repo 'scripts\performance\New-SimulationBenchmarkReplay.py') --template $template --out $replay --map $s.Map --map-size $s.Size --ai $s.Ai --level $s.Level --minutes $Minutes --seed $s.Seed --cash $Cash --ai-mode $AiMode --game-speed $GameSpeed --fps $HeaderFps
     if ($LASTEXITCODE) { throw 'replay generation failed' }
 }
 $seconds = [int][math]::Ceiling($Minutes * 60 + 40)

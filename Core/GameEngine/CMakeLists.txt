@@ -51,6 +51,8 @@ set(GAMEENGINE_SRC
     Include/Common/AIEnhancedBaseXfer.h
     Include/Common/SuperweaponLimit.h
     Include/Common/SuperweaponLimitXfer.h
+    Include/Common/GameSpeed.h
+    Include/Common/GameSpeedXfer.h
     Include/GameLogic/SuperweaponRule.h
     Include/Common/AIDiagnostics.h
     Include/Common/CameraProbe.h

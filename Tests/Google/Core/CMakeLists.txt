@@ -23,6 +23,7 @@ set(COREI_GOOGLETEST_SRC
     GameEngine/Common/AIBehaviorTest.cpp
     GameEngine/Common/AIEnhancedBaseTest.cpp
     GameEngine/Common/SuperweaponLimitTest.cpp
+    GameEngine/Common/GameSpeedTest.cpp
     GameEngine/Common/DisplayGeometryTest.cpp
     GameEngine/Common/PresentationSmoothnessTest.cpp
     GameEngine/Common/DisplaySettingsTest.cpp

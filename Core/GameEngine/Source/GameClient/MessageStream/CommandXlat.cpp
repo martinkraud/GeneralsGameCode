@@ -35,6 +35,9 @@
 #include "Common/FramePacer.h"
 #include "Common/GameAudio.h"
 #include "Common/GameEngine.h"
+#include "Common/GameSpeed.h"
+#include "Common/ModernExperience.h"
+#include "Common/DisplayRuntime.h"
 #include "Common/GameType.h"
 #include "Common/GameUtility.h"
 #include "Common/GlobalData.h"
@@ -204,10 +207,39 @@ bool changeMaxRenderFps(FpsValueChange change)
 	return true;
 }
 
+// Game Speed runtime control (Speed Up / Speed Down): a live Skirmish game of the Modern Experience steps through the discrete levels of Common/GameSpeed.h. Pacing only: the rule is
+// written to the game info (so a save keeps it), never to the replay (a replay plays at the speed it was started with) and never to the render limit. Everywhere else (Classic, campaign,
+// replays, network games) the key keeps its upstream developer meaning below.
+static bool changeGameSpeed(FpsValueChange change)
+{
+	if (TheNetwork != nullptr || TheGameLogic == nullptr || TheGameInfo == nullptr || TheInGameUI == nullptr)
+		return false;
+	if (!ModernExperience::enabled(ModernExperience::FEATURE_GAME_SPEED) || !DisplayRuntime::modern())
+		return false;
+	if (!TheGameLogic->isInGame() || !TheGameLogic->isInSkirmishGame() || TheGameLogic->isInReplayGame())
+		return false;
+	const unsigned before = GameSpeed::sanitize(TheGameInfo->getGameSpeed());
+	const unsigned after = GameSpeed::step(before, change == FpsValueChange_Increase ? +1 : -1);
+	TheGameInfo->setGameSpeed((UnsignedShort)after);
+	const int index = GameSpeed::levelIndex(after);
+	UnicodeString label = TheGameText->FETCH_OR_SUBSTITUTE(GameSpeed::kLevels[index].labelKey, GameSpeed::kLevels[index].fallback);
+	UnicodeString message;
+	if (after == before)
+		message = TheGameText->FETCH_OR_SUBSTITUTE_FORMAT("GUI:GameSpeedLimit", L"Game Speed: %ls (limit)", label.str());
+	else
+		message = TheGameText->FETCH_OR_SUBSTITUTE_FORMAT("GUI:GameSpeedChanged", L"Game Speed: %ls", label.str());
+	if (GameSpeed::logicFps(after) > (double)TheFramePacer->getActualFramesPerSecondLimit())
+		message.concat(TheGameText->FETCH_OR_SUBSTITUTE("GUI:GameSpeedRenderCap", L" - the render FPS limit is lower than this speed needs"));
+	TheInGameUI->messageNoFormat(message);
+	return true;
+}
+
 bool changeLogicTimeScale(FpsValueChange change)
 {
 	if (TheNetwork != nullptr)
 		return false;
+	if (changeGameSpeed(change))
+		return true;
 
 	const UnsignedInt maxRenderFps = TheFramePacer->getFramesPerSecondLimit();
 	UnsignedInt maxRenderRemainder = LogicTimeScaleFpsPreset::StepFpsValue;

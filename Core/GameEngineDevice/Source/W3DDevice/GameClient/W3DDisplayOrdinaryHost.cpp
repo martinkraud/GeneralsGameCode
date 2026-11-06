@@ -1589,6 +1589,24 @@ void NativeAutoShot()
         { SELECT_ROW, "PopupSaveLoad.wnd:ListboxGames", nullptr, 120, 2 }, { PRESS, "PopupSaveLoad.wnd:ButtonSave", nullptr, 30, 2 },
         { PRESS_EITHER, "PopupSaveLoad.wnd:ButtonSaveDescConfirm", "PopupSaveLoad.wnd:ButtonOverwriteConfirm", 60, 2 },
         { STATE, "saved_again", nullptr, 60, 2 }, { END, nullptr, nullptr, 0, 0 } };
+    static const Step skirmishSaveLoadSteps[] = {
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { PRESS, "SkirmishGameOptionsMenu.wnd:ButtonStart", nullptr, 240, 1 },
+        { WAIT_FRAMES, nullptr, nullptr, 300, 2 }, { WAIT_INPUT, nullptr, nullptr, 1, 2 }, { STATE, "before_save", nullptr, 1, 2 },
+        { QUIT_MENU, nullptr, nullptr, 60, 2 }, { PRESS, "QuitMenu.wnd:ButtonSaveLoad", nullptr, 120, 2 },
+        { SELECT_ROW, "PopupSaveLoad.wnd:ListboxGames", nullptr, 120, 2 }, { PRESS, "PopupSaveLoad.wnd:ButtonSave", nullptr, 30, 2 },
+        { PRESS_EITHER, "PopupSaveLoad.wnd:ButtonSaveDescConfirm", "PopupSaveLoad.wnd:ButtonOverwriteConfirm", 60, 2 },
+        { STATE, "saved", nullptr, 60, 2 },
+        { PRESS, "QuitMenu.wnd:ButtonExit", nullptr, 60, 2 }, { PRESS_EITHER, "QuitMessageBox.wnd:ButtonYes", "MessageBox.wnd:ButtonYes", 120, 2 },
+        { PRESS_OPTIONAL, "ScoreScreen.wnd:ButtonOk", "ScoreScreen.wnd:ButtonContinue", 300, 0 },
+        { PRESS_OPTIONAL, "ChallengeMenu.wnd:ButtonBack", "ChallengeMenu.wnd:ButtonBack", 300, 0 },
+        { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonLoadReplay", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonLoadGame", nullptr, 300, 1 },
+        { SELECT_ROW, "SaveLoad.wnd:ListboxGames", nullptr, 300, 1 }, { PRESS, "SaveLoad.wnd:ButtonLoad", nullptr, 30, 1 },
+        { STATE, "after_load", nullptr, 0, 2 }, { WAIT_FRAMES, nullptr, nullptr, 150, 2 }, { WAIT_INPUT, nullptr, nullptr, 1, 2 },
+        { STATE, "after_load_150_frames", nullptr, 1, 2 },
+        { QUIT_MENU, nullptr, nullptr, 60, 2 }, { PRESS, "QuitMenu.wnd:ButtonSaveLoad", nullptr, 120, 2 },
+        { SELECT_ROW, "PopupSaveLoad.wnd:ListboxGames", nullptr, 120, 2 }, { PRESS, "PopupSaveLoad.wnd:ButtonSave", nullptr, 30, 2 },
+        { PRESS_EITHER, "PopupSaveLoad.wnd:ButtonSaveDescConfirm", "PopupSaveLoad.wnd:ButtonOverwriteConfirm", 60, 2 },
+        { STATE, "saved_again", nullptr, 60, 2 }, { END, nullptr, nullptr, 0, 0 } };
     // X64.48A: fill every Skirmish slot with an AI through the real combo boxes, then probe each slot's controls the way the mouse reaches them
     static const Step slotSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { SLOT_FILL, nullptr, nullptr, 300, 1 },
@@ -1630,12 +1648,13 @@ void NativeAutoShot()
         if (!_stricmp(text, "loadgame")) return 11;
         if (!_stricmp(text, "credits")) return 12;
         if (!_stricmp(text, "lan")) return 13;
+        if (!_stricmp(text, "skirmishsaveload")) return 14;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : autoFlow == 13 ? lanSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 14 ? skirmishSaveLoadSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : autoFlow == 13 ? lanSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -2287,7 +2306,7 @@ void NativeAutoShot()
                     expect(find("SkirmishGameOptionsMenu.wnd:ButtonSelectMap"), L.selectMap, "ButtonSelectMap", true);
                     expect(find("SkirmishGameOptionsMenu.wnd:ButtonStart"), L.start, "ButtonStart", true);
                     expect(find("SkirmishGameOptionsMenu.wnd:ButtonBack"), L.back, "ButtonBack", true);
-                    static const char *const ruleWindows[] = { "ComboBoxStartingCash", "ComboBoxAIBehavior", "ComboBoxSuperweapons" };
+                    static const char *const ruleWindows[] = { "ComboBoxStartingCash", "ComboBoxAIBehavior", "ComboBoxSuperweapons", "ComboBoxGameSpeed" };
                     int ri = 0;
                     for (const char *rw : ruleWindows) {
                         char nm[96]; sprintf_s(nm, "SkirmishGameOptionsMenu.wnd:%s", rw);

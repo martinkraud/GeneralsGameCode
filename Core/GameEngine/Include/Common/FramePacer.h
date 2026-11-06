@@ -62,6 +62,9 @@ public:
 	Int  getLogicTimeScaleFps() const; ///< Get the raw logic time scale fps value.
 	void enableLogicTimeScale( Bool enable ); ///< Enabled by default at 30 ticks/s. Disabling explicitly restores render-bound offline simulation; network pacing is independent.
 	Bool isLogicTimeScaleEnabled() const; ///< Check whether the logic time scale setup is enabled.
+	void setGameSpeedPercent( Int percent ); ///< Game Speed match rule (Common/GameSpeed.h): scales the offline logic rate to 30 x percent / 100 logic frames per second. 100 = Normal = original pacing. Pacing only; never touches the render limit; no effect in network games.
+	Int  getGameSpeedPercent() const;
+	Real getActualLogicTimeScaleFpsExact(LogicTimeQueryFlags flags = 0) const; ///< Exact (fractional) logic rate: 22.5 / 37.5 are not rounded. getActualLogicTimeScaleFps() is this value rounded.
 	Int  getActualLogicTimeScaleFps(LogicTimeQueryFlags flags = 0) const; ///< Get the real logic time scale fps, depending on the max render fps, network state and enabled state.
 	Real getActualLogicTimeScaleRatio(LogicTimeQueryFlags flags = 0) const; ///< Get the real logic time scale ratio, depending on the max render fps, network state and enabled state.
 	Real getActualLogicTimeScaleOverFpsRatio(LogicTimeQueryFlags flags = 0) const; ///< Get the real logic time scale over render fps ratio, used to scale down steps in render updates to match logic updates.
@@ -80,6 +83,7 @@ protected:
 
 	Int m_maxFPS; ///< Maximum frames per second for rendering
 	Int m_logicTimeScaleFPS; ///< Maximum frames per second for logic time scale
+	Int m_gameSpeedPercent; ///< Game Speed match rule in percent of Normal (100 = original 30 logic frames per second)
 
 	Real m_updateTime; ///< Last update delta time in seconds
 	Real m_logicFramePhase; ///< How far the current render step reaches into the current logic frame, ranging 0 to 1.

@@ -91,8 +91,8 @@ class MatchState(unittest.TestCase):
 
     def test_save_version_6_only_when_not_default(self):
         info = read("Core/GameEngine/Source/GameNetwork/GameInfo.cpp")
-        self.assertIn("const XferVersion currentVersion = 6;", info)
-        self.assertIn("SuperweaponLimit::isActive(m_superweaponLimit))) ? currentVersion : retailVersion;", info)
+        self.assertIn("const XferVersion currentVersion = 7;", info)
+        self.assertIn("SuperweaponLimit::isActive(m_superweaponLimit) || GameSpeed::isActive(m_gameSpeed))) ? currentVersion : retailVersion;", info)
         self.assertIn("SuperweaponLimit::xferLimit( xfer, m_superweaponLimit, version );", info)
         self.assertIn("if (version >= 6)", read("Core/GameEngine/Include/Common/SuperweaponLimitXfer.h"))
 
