@@ -1,0 +1,74 @@
+update-module profile: 21835051 update calls, 31652.1 ms inclusive (timer overhead of about 40 ns per call included)
+
+--- update modules by inclusive time ---
+ 47.89%    15158.4 ms     1678741 calls     9.03 us/call  AIUpdateInterface::`vftable'
+  6.63%     2098.9 ms      402264 calls     5.22 us/call  WorkerAIUpdate::`vftable'
+  5.78%     1828.7 ms      193007 calls     9.47 us/call  JetAIUpdate::`vftable'
+  4.92%     1558.0 ms     3931178 calls     0.40 us/call  ObjectWeaponStatusHelper::`vftable'
+  4.76%     1505.1 ms     2041328 calls     0.74 us/call  PhysicsBehavior::`vftable'
+  4.03%     1275.8 ms     2890859 calls     0.44 us/call  ProductionUpdate::`vftable'
+  3.68%     1163.4 ms      191710 calls     6.07 us/call  SupplyTruckAIUpdate::`vftable'
+  3.61%     1143.9 ms     4046132 calls     0.28 us/call  StealthUpdate::`vftable'
+  3.02%      955.2 ms      151624 calls     6.30 us/call  StealthDetectorUpdate::`vftable'
+  2.39%      756.7 ms      275865 calls     2.74 us/call  DozerAIUpdate::`vftable'
+  1.77%      561.5 ms      138719 calls     4.05 us/call  PointDefenseLaserUpdate::`vftable'
+  1.72%      545.8 ms      101526 calls     5.38 us/call  ChinookAIUpdate::`vftable'
+  1.30%      410.8 ms       30298 calls    13.56 us/call  TransportAIUpdate::`vftable'
+  1.28%      404.3 ms       31565 calls    12.81 us/call  DeployStyleAIUpdate::`vftable'
+  1.05%      331.1 ms      422097 calls     0.78 us/call  HordeUpdate::`vftable'
+  0.62%      196.7 ms       64282 calls     3.06 us/call  MissileAIUpdate::`vftable'
+  0.53%      166.9 ms      158494 calls     1.05 us/call  HackInternetAIUpdate::`vftable'
+  0.53%      166.6 ms      190169 calls     0.88 us/call  SlowDeathBehavior::`vftable'
+  0.47%      147.3 ms      193467 calls     0.76 us/call  GarrisonContain::`vftable'
+  0.40%      125.3 ms      887503 calls     0.14 us/call  GenerateMinefieldBehavior::`vftable'
+  0.36%      114.7 ms        3651 calls    31.42 us/call  CommandButtonHuntUpdate::`vftable'
+  0.36%      114.3 ms       64239 calls     1.78 us/call  FireWeaponUpdate::`vftable'
+  0.34%      109.2 ms       66523 calls     1.64 us/call  PropagandaTowerBehavior::`vftable'
+  0.25%       80.1 ms       88864 calls     0.90 us/call  SpecialAbilityUpdate::`vftable'
+  0.25%       78.3 ms       43372 calls     1.80 us/call  HelixContain::`vftable'
+  0.21%       67.7 ms       20952 calls     3.23 us/call  DeliverPayloadAIUpdate::`vftable'
+  0.18%       55.9 ms      139142 calls     0.40 us/call  TunnelContain::`vftable'
+  0.15%       48.6 ms      753835 calls     0.06 us/call  HeightDieUpdate::`vftable'
+  0.14%       45.0 ms       61637 calls     0.73 us/call  SlavedUpdate::`vftable'
+  0.12%       36.8 ms      263092 calls     0.14 us/call  RepairDockUpdate::`vftable'
+  0.12%       36.6 ms      280800 calls     0.13 us/call  SupplyWarehouseDockUpdate::`vftable'
+  0.11%       35.5 ms      383102 calls     0.09 us/call  SpawnBehavior::`vftable'
+  0.09%       30.1 ms      179018 calls     0.17 us/call  HealContain::`vftable'
+  0.09%       27.3 ms       77909 calls     0.35 us/call  OverlordContain::`vftable'
+  0.08%       25.2 ms       60146 calls     0.42 us/call  ParkingPlaceBehavior::`vftable'
+  0.07%       23.0 ms      279279 calls     0.08 us/call  AutoFindHealingUpdate::`vftable'
+  0.06%       20.2 ms       15387 calls     1.31 us/call  DumbProjectileBehavior::`vftable'
+  0.06%       17.4 ms      131525 calls     0.13 us/call  SupplyCenterDockUpdate::`vftable'
+  0.05%       15.2 ms       95290 calls     0.16 us/call  TransportContain::`vftable'
+  0.05%       15.1 ms       51607 calls     0.29 us/call  OCLUpdate::`vftable'
+  0.05%       14.6 ms      187200 calls     0.08 us/call  AutoDepositUpdate::`vftable'
+  0.04%       14.2 ms      112225 calls     0.13 us/call  MinefieldBehavior::`vftable'
+  0.04%       11.5 ms       93291 calls     0.12 us/call  CountermeasuresBehavior::`vftable'
+  0.03%       10.9 ms        5928 calls     1.85 us/call  ParachuteContain::`vftable'
+  0.03%        9.7 ms       11607 calls     0.84 us/call  MissileLauncherBuildingUpdate::`vftable'
+
+--- AIUpdateInterface::update parts ---
+whole update     20250.1 ms    3152785 calls    6.42 us/call
+state machine    16125.9 ms    3152785 calls    5.11 us/call
+turret AI         1672.7 ms    1114851 calls    1.50 us/call
+locomotor         2193.6 ms    3152785 calls    0.70 us/call
+
+--- state machine time by the AI state the object was in (AIStateType id) ---
+state 16     4677.4 ms     320724 calls   14.58 us/call
+state 17     4107.4 ms     248823 calls   16.51 us/call
+state  0     2712.0 ms     890297 calls    3.05 us/call
+state 14     1187.9 ms     427882 calls    2.78 us/call
+state 30     1164.8 ms     283204 calls    4.11 us/call
+state 32      791.3 ms     138512 calls    5.71 us/call
+state 10      556.7 ms     100232 calls    5.55 us/call
+state  1      526.5 ms     322279 calls    1.63 us/call
+state 15      136.7 ms      34376 calls    3.98 us/call
+state 63       89.4 ms     176261 calls    0.51 us/call
+state 21       62.6 ms      19606 calls    3.19 us/call
+state  6       55.9 ms      92579 calls    0.60 us/call
+state  7       27.4 ms      34832 calls    0.79 us/call
+state 13       15.4 ms      53168 calls    0.29 us/call
+state  2       12.4 ms       3798 calls    3.27 us/call
+state 37        1.1 ms         40 calls   26.31 us/call
+state 41        0.9 ms       6129 calls    0.14 us/call
+state 33        0.0 ms         43 calls    0.70 us/call

@@ -315,3 +315,23 @@ Record: `docs/modernization/X64_43_FAILING_PATH_INVESTIGATION.md`.
 
 **Classification: insufficient evidence for a cause.** The preserved 92 656-tick match cost 4.15 ms per tick in the native game and 2.12 ms re-simulated headless (per-tick correlation 0.89); the slowest ticks cost about the same in both (26 of the 30 slowest coincide), so the extra cost is
 roughly uniform rather than a tail effect. Candidate causes (not examined): object-attached client-side modules, cache pressure from rendering on the same thread, memory behaviour. Applies to this run only. Backlog item; not investigated.
+
+---
+
+## P-9. Hunt-state enemy scan collected the whole map to pick one target (X64.aq)
+
+**Classification: exact optimisation, verified.** `AI::findClosestEnemy` with attack-priority info (the HUNT state, every `ENEMY_SCAN_RATE` = 30 frames per hunter, range 9999.9) collected every enemy on the map (14 396 partition cells, ~1 860 objects, 348 us), sorted them near to far and picked the best by `priority - floor(distance / modifier)`.
+No candidate at distance >= R can exceed `max(1, maxPriority - floor(R / modifier))`, so the scan is done in bounded stages (R = 3.5, 7.5, 14.5 modifier steps, query radius + asker radius + 3 cells) over the sorted prefix with the same selection function, and stops when the best modified priority is above the bound; the full scan remains the fallback.
+* Exactness: the smaller query's sorted list is a prefix of the full list (same ring order, stable merge sort); R sits half a step above a step boundary; all filters are `const` queries. `GENERALS_HUNT_VERIFY=1` compared 24 713 staged answers with the full scan: 0 differences; digests unchanged (ZH 1x `1E5982E5B3A1B86B`, 4x units `CF9C9DB782B65644`, Generals `1014EE85E384C19C`); `GENERALS_HUNT_STAGED=0` restores the old behaviour.
+* Effect: 98 % of the wide scans end in a stage; hunt-scan query time 2.85 s -> 0.57 s; headless mean tick -3.1 %, seeded graphical Zero Hour mean tick -17 % and p99 -14 % (2 runs before, 4 after), Generals mean -30 %; the sustainable object count on this CPU rises from ~2 200-2 700 to ~2 700-2 900.
+* Pitfall found on the way: computing the table maximum on every scan (including the 154 000 narrow mood-target scans) cost 0.9 % of the samples and halved the gain.
+* Where: `AI.cpp` (`selectBestEnemy`, `huntStagedMode`), `ScriptEngine` (`AttackPriorityInfo::getMaxPriority`). Commit: see the X64.aq milestone document `docs/modernization/AI_QUERY_AUDIT.md` section 4.
+
+## P-10. Idle-guard and repeated scans cannot be skipped exactly (X64.aq, negative finding)
+
+92 % of the 16 428 idle-guard scans (192 us each, 8 524 cells, 1 478 objects) return nothing and 95 % of re-scans repeat the previous answer, so about 3.7 s of a 66 s Zero Hour run is avoidable *if* a repeat could be proven. It cannot: the answer depends on live positions, partition cell membership (updated once per frame) and per-object state read by the filters
+(team / relationship, alive, stealth, shroud, weapon status, line of sight) that does not announce itself to the partition; 64 % of re-scans see more than 100 cell updates in between. A revision-counter invalidation would need every producer of that state to bump it. Rejected with the measurements in `AI_QUERY_AUDIT.md` section 3. Sleeping the every-frame helper updates (`ProductionUpdate`, `ObjectWeaponStatusHelper`) was rejected for a similar reason (the sleepy-update heap's tie order decides the update order and feeds the RNG).
+
+## P-8 update (X64.aq): where the graphical tick inflation sits
+
+With the seeded benchmark (identical simulation, proven by the fingerprints) the graphical tick costs +72 % (Zero Hour) / +170 % (Generals) over the headless tick for the same frames, and the inflation is in the per-object phases (2-4x: AI update, object update loops, scripts, partition, locomotion) while compute-bound path search is only 1.13x. Client coupling of the logic (drawables, effects, audio requests) and cache pressure from rendering on the same thread fit the pattern; they were not separated. Removing work the tick touches (P-9) helps the graphical tick far more than the headless one.

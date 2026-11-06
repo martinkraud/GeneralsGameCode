@@ -1,0 +1,219 @@
+getClosestObjects characterisation: 22107 simulation frames with queries, 24.3 queries per frame, 0.188 ms per frame (timer overhead included)
+TOTAL              calls    537638 |   4156.0 ms   7.73 us/call | cells    566 cois     93 (skips    53) distOK    34 filterOK   2.5 rings    8 | empty  33.7% | in-frame repeat 12.5% | collect-all  76.6%
+empty answers: 180947 of 537638 queries cost 2446.8 ms (58.9% of the query time)
+
+--- by search radius (world units; 99999 = unbounded) ---
+radius <= 50       calls    326964 |    136.1 ms   0.42 us/call | cells     21 cois     24 (skips    16) distOK     1 filterOK   1.1 rings    1 | empty   3.0% | in-frame repeat  0.1% | collect-all 100.0%
+radius <= 100      calls     19644 |     23.9 ms   1.22 us/call | cells     47 cois     26 (skips    17) distOK     5 filterOK   0.8 rings    2 | empty  59.2% | in-frame repeat  3.3% | collect-all  97.7%
+radius <= 200      calls     30409 |     60.8 ms   2.00 us/call | cells    113 cois     41 (skips    25) distOK    10 filterOK   1.0 rings    5 | empty  90.7% | in-frame repeat  1.0% | collect-all  92.8%
+radius <= 400      calls    113755 |    200.2 ms   1.76 us/call | cells    211 cois     44 (skips    30) distOK    10 filterOK   0.2 rings    7 | empty  83.2% | in-frame repeat 54.8% | collect-all   9.5%
+radius <= 800      calls     20597 |    154.6 ms   7.50 us/call | cells    555 cois    132 (skips    82) distOK    43 filterOK   0.0 rings   12 | empty  99.4% | in-frame repeat  0.1% | collect-all  91.3%
+radius <= 1600     calls     26238 |   3577.8 ms 136.36 us/call | cells   9821 cois   1242 (skips   645) distOK   589 filterOK  34.4 rings   99 | empty  64.7% | in-frame repeat 14.6% | collect-all  30.6%
+radius <= 99999    calls        31 |      2.6 ms  84.46 us/call | cells   6431 cois    836 (skips   441) distOK   393 filterOK   6.1 rings   84 | empty  35.5% | in-frame repeat  0.0% | collect-all  16.1%
+
+--- by game minute ---
+minute 0           calls     15846 |     22.1 ms   1.39 us/call | cells    185 cois     27 (skips    20) distOK     5 filterOK   1.8 rings    6 | empty  73.0% | in-frame repeat 49.7% | collect-all  37.8%
+minute 1           calls     35608 |     53.3 ms   1.50 us/call | cells    134 cois     33 (skips    22) distOK     6 filterOK   2.4 rings    3 | empty  29.4% | in-frame repeat 21.3% | collect-all  73.3%
+minute 2           calls     42377 |     97.7 ms   2.31 us/call | cells    205 cois     43 (skips    27) distOK    10 filterOK   1.1 rings    4 | empty  30.1% | in-frame repeat 17.4% | collect-all  76.3%
+minute 3           calls     44414 |    216.9 ms   4.88 us/call | cells    449 cois     71 (skips    40) distOK    25 filterOK   1.3 rings    6 | empty  32.7% | in-frame repeat 15.5% | collect-all  76.3%
+minute 4           calls     46606 |    225.8 ms   4.84 us/call | cells    399 cois     66 (skips    37) distOK    23 filterOK   1.3 rings    6 | empty  33.5% | in-frame repeat 13.1% | collect-all  77.8%
+minute 5           calls     50443 |    350.2 ms   6.94 us/call | cells    472 cois     78 (skips    44) distOK    29 filterOK   2.3 rings    7 | empty  31.1% | in-frame repeat  9.3% | collect-all  78.6%
+minute 6           calls     56849 |    481.1 ms   8.46 us/call | cells    635 cois     98 (skips    55) distOK    38 filterOK   2.4 rings    8 | empty  28.6% | in-frame repeat  7.1% | collect-all  81.7%
+minute 7           calls     52543 |    508.8 ms   9.68 us/call | cells    670 cois    108 (skips    61) distOK    41 filterOK   4.0 rings    9 | empty  26.3% | in-frame repeat  6.8% | collect-all  84.2%
+minute 8           calls     55440 |    377.4 ms   6.81 us/call | cells    451 cois     84 (skips    50) distOK    28 filterOK   2.0 rings    6 | empty  25.5% | in-frame repeat  6.4% | collect-all  84.5%
+minute 9           calls     43211 |    603.4 ms  13.96 us/call | cells   1007 cois    160 (skips    89) distOK    64 filterOK   4.5 rings   12 | empty  33.7% | in-frame repeat  9.3% | collect-all  79.1%
+minute 10          calls     34124 |    460.2 ms  13.49 us/call | cells    904 cois    142 (skips    79) distOK    58 filterOK   5.3 rings   12 | empty  38.0% | in-frame repeat  8.6% | collect-all  78.1%
+minute 11          calls     29998 |    403.3 ms  13.45 us/call | cells    962 cois    149 (skips    85) distOK    59 filterOK   2.7 rings   12 | empty  43.4% | in-frame repeat 10.3% | collect-all  72.0%
+minute 12          calls     30172 |    355.3 ms  11.78 us/call | cells    865 cois    137 (skips    77) distOK    55 filterOK   1.1 rings   10 | empty  51.7% | in-frame repeat 18.6% | collect-all  59.0%
+minute 13          calls         7 |      0.4 ms  61.80 us/call | cells   4664 cois    614 (skips   323) distOK   284 filterOK   0.0 rings   40 | empty 100.0% | in-frame repeat 14.3% | collect-all  42.9%
+
+--- by world object count (bucket = count / 100) ---
+objects 500..      calls     35494 |     58.1 ms   1.64 us/call | cells    170 cois     30 (skips    21) distOK     6 filterOK   2.9 rings    5 | empty  50.4% | in-frame repeat 35.7% | collect-all  55.6%
+objects 600..      calls    168275 |    713.3 ms   4.24 us/call | cells    364 cois     62 (skips    36) distOK    20 filterOK   1.3 rings    5 | empty  31.7% | in-frame repeat 14.9% | collect-all  76.9%
+objects 700..      calls    326874 |   3293.0 ms  10.07 us/call | cells    709 cois    115 (skips    65) distOK    44 filterOK   3.1 rings    9 | empty  32.7% | in-frame repeat  8.8% | collect-all  78.9%
+objects 800..      calls      6951 |     90.7 ms  13.06 us/call | cells    798 cois    134 (skips    71) distOK    57 filterOK   3.2 rings   10 | empty  42.7% | in-frame repeat 14.6% | collect-all  67.7%
+objects 900..      calls        44 |      0.9 ms  19.77 us/call | cells   1653 cois    244 (skips   117) distOK   120 filterOK   0.6 rings   18 | empty  81.8% | in-frame repeat  2.3% | collect-all  45.5%
+
+--- hunt-state attack-priority selections (AI::findClosestEnemy with attack info) ---
+scans 42415 | candidates per scan 17.2 | winner at 83, farthest candidate at 531 world units (mean) | distance modifier 100.0
+scans whose final effective priority is >= 2 (the only case where a distance bound can end the search): 8238 (19.4%)
+scans with candidates beyond the bound from which none can win: 7712 (18.2%); candidates beyond it: 683249 of 729248 (93.7%); mean bound 114 world units
+final effective priority histogram: 0:34004 1:173 10:5 11:19 12:20 13:22 14:52 15:80 16:89 17:170 18:234 19:219 20:312 21:281 22:302 23:369 24:508 25:668 26:973 27:1047 28:1352 29:1287 30:223 4996:5 4999:1
+table maximum priority histogram: 30:41934 31:142 5000:339
+
+--- by caller (three frames above getClosestObjects), most expensive first ---
+
+#1  39.39% of query time
+                   calls     15567 |   1637.2 ms 105.17 us/call | cells   8292 cois   1069 (skips   559) distOK   499 filterOK   0.0 rings   71 | empty  99.4% | in-frame repeat 19.3% | collect-all   0.0%
+   askers 9 | rescans 15558: identical answer 99.8%, empty-again 99.2% (1633.7 ms) | mean gap 3.5 frames (1:55% 2-10:35% 11-30:9% 31-120:1% >120:0%) | world movers since the previous scan: 0:20.5% <100:38.5% <1000:38.0% more:3.0%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIGuardMachine::lookForInnerTarget  AIGuard.cpp:275
+   <- AIGuardIdleState::update  AIGuard.cpp:685
+
+#2  33.02% of query time
+                   calls      7133 |   1372.2 ms 192.38 us/call | cells  12099 cois   1479 (skips   757) distOK   719 filterOK 100.6 rings  153 | empty   0.0% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 32 | rescans 7101: identical answer 49.1%, empty-again 0.0% (0.0 ms) | mean gap 50.1 frames (1:0% 2-10:1% 11-30:97% 31-120:1% >120:1%) | world movers since the previous scan: 0:0.0% <100:0.1% <1000:0.9% more:99.0%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3717
+   <- AI::findClosestEnemy  AI.cpp:697
+   <- AIHuntState::update  AIStates.cpp:6753
+
+#3  10.09% of query time
+                   calls      5950 |    419.4 ms  70.48 us/call | cells   5402 cois    738 (skips   395) distOK   335 filterOK   0.2 rings   48 | empty  80.3% | in-frame repeat 16.9% | collect-all   0.0%
+   askers 11 | rescans 5939: identical answer 95.4%, empty-again 79.5% (401.7 ms) | mean gap 14.2 frames (1:42% 2-10:47% 11-30:7% 31-120:2% >120:2%) | world movers since the previous scan: 0:18.5% <100:21.5% <1000:50.2% more:9.7%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIGuardMachine::lookForInnerTarget  AIGuard.cpp:275
+   <- AIGuardReturnState::update  AIGuard.cpp:608
+
+#4  4.97% of query time
+                   calls     34762 |    206.8 ms   5.95 us/call | cells    401 cois    108 (skips    66) distOK    35 filterOK   0.1 rings   10 | empty  97.8% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 169 | rescans 34593: identical answer 96.6%, empty-again 96.1% (197.9 ms) | mean gap 41.1 frames (1:0% 2-10:54% 11-30:2% 31-120:43% >120:1%) | world movers since the previous scan: 0:0.1% <100:0.1% <1000:54.8% more:45.0%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3717
+   <- AI::findClosestEnemy  AI.cpp:697
+   <- AIUpdateInterface::getNextMoodTarget  AIUpdate.cpp:4463
+
+#5  2.25% of query time
+                   calls       520 |     93.4 ms 179.66 us/call | cells  12099 cois   1372 (skips   674) distOK   695 filterOK  19.3 rings  153 | empty   0.0% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 0 | rescans 520: identical answer 37.5%, empty-again 0.0% (0.0 ms) | mean gap 24.5 frames (1:0% 2-10:12% 11-30:88% 31-120:1% >120:0%) | world movers since the previous scan: 0:0.0% <100:0.2% <1000:23.1% more:76.7%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3717
+   <- AI::findClosestEnemy  AI.cpp:697
+   <- AIAttackAreaState::update  AIStates.cpp:6925
+
+#6  1.50% of query time
+                   calls       363 |     62.4 ms 171.78 us/call | cells  12099 cois   1183 (skips   554) distOK   629 filterOK 479.9 rings  153 | empty   0.0% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 28 | rescans 335: identical answer 44.2%, empty-again 0.0% (0.0 ms) | mean gap 66.1 frames (1:1% 2-10:0% 11-30:97% 31-120:0% >120:2%) | world movers since the previous scan: 0:0.0% <100:3.0% <1000:79.1% more:17.9%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3737
+   <- CommandButtonHuntUpdate::scanClosestTarget  CommandButtonHuntUpdate.cpp:250
+   <- CommandButtonHuntUpdate::update  CommandButtonHuntUpdate.cpp:162
+
+#7  1.34% of query time
+                   calls    157879 |     55.6 ms   0.35 us/call | cells     21 cois     24 (skips    17) distOK     1 filterOK   1.0 rings    1 | empty   0.7% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 157142 | rescans 737: identical answer 96.9%, empty-again 6.8% (0.0 ms) | mean gap 1833.6 frames (1:2% 2-10:0% 11-30:1% 31-120:22% >120:75%) | world movers since the previous scan: 0:0.9% <100:0.8% <1000:3.1% more:95.1%
+   <- PartitionManager::tryPosition  PartitionManager.cpp:3895
+   <- PartitionManager::findPositionAround  PartitionManager.cpp:4046
+   <- DockUpdate::computeApproachPosition  DockUpdate.cpp:482
+
+#8  1.21% of query time
+                   calls     28581 |     50.4 ms   1.76 us/call | cells     99 cois     39 (skips    24) distOK     9 filterOK   0.0 rings    4 | empty 100.0% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 42 | rescans 28539: identical answer 100.0%, empty-again 100.0% (50.3 ms) | mean gap 15.1 frames (1:0% 2-10:0% 11-30:100% 31-120:0% >120:0%) | world movers since the previous scan: 0:0.0% <100:5.1% <1000:47.9% more:46.9%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3717
+   <- StealthDetectorUpdate::update  StealthDetectorUpdate.cpp:206
+   <- GameLogic::update  GameLogic.cpp:3408
+
+#9  1.21% of query time
+                   calls     15498 |     50.1 ms   3.23 us/call | cells    322 cois     76 (skips    49) distOK    19 filterOK   0.1 rings    9 | empty  88.3% | in-frame repeat  1.3% | collect-all   0.0%
+   askers 80 | rescans 15418: identical answer 98.1%, empty-again 88.0% (47.1 ms) | mean gap 39.1 frames (1:6% 2-10:29% 11-30:22% 31-120:42% >120:0%) | world movers since the previous scan: 0:1.3% <100:6.3% <1000:46.3% more:46.1%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIPlayer::isLocationSafe  AIPlayer.cpp:1085
+   <- AISkirmishPlayer::processBaseBuilding  AISkirmishPlayer.cpp:205
+
+#10  1.15% of query time
+                   calls     15909 |     47.7 ms   3.00 us/call | cells    296 cois     73 (skips    47) distOK    19 filterOK   0.2 rings    8 | empty  80.0% | in-frame repeat  0.0% | collect-all   0.0%
+   askers 2 | rescans 15907: identical answer 94.0%, empty-again 79.0% (42.8 ms) | mean gap 23.8 frames (1:1% 2-10:15% 11-30:84% 31-120:0% >120:0%) | world movers since the previous scan: 0:0.0% <100:0.8% <1000:17.7% more:81.6%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIPlayer::isLocationSafe  AIPlayer.cpp:1085
+   <- AIPlayer::enhancedFillIn  AIEnhancedBase.cpp:181
+
+#11  1.14% of query time
+                   calls    141857 |     47.5 ms   0.34 us/call | cells     21 cois     24 (skips    17) distOK     1 filterOK   1.0 rings    1 | empty   0.7% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 141758 | rescans 99: identical answer 82.8%, empty-again 0.0% (0.0 ms) | mean gap 5788.1 frames (1:1% 2-10:0% 11-30:0% 31-120:1% >120:98%) | world movers since the previous scan: 0:1.0% <100:0.0% <1000:0.0% more:99.0%
+   <- PartitionManager::tryPosition  PartitionManager.cpp:3895
+   <- PartitionManager::findPositionAround  PartitionManager.cpp:4054
+   <- DockUpdate::computeApproachPosition  DockUpdate.cpp:482
+
+#12  1.05% of query time
+                   calls     58856 |     43.5 ms   0.74 us/call | cells    168 cois     26 (skips    20) distOK     4 filterOK   0.1 rings    6 | empty  89.8% | in-frame repeat 91.6% | collect-all   0.0%
+   askers 8 | rescans 58848: identical answer 94.4%, empty-again 87.0% (39.4 ms) | mean gap 11.2 frames (1:92% 2-10:0% 11-30:0% 31-120:8% >120:0%) | world movers since the previous scan: 0:91.6% <100:0.4% <1000:2.6% more:5.4%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIPlayer::findSupplyCenter  AIPlayer.cpp:1968
+   <- AIPlayer::isSupplySourceSafe  AIPlayer.cpp:1038
+
+#13  0.89% of query time
+                   calls     22163 |     36.9 ms   1.67 us/call | cells     26 cois     22 (skips    11) distOK     5 filterOK   2.4 rings    1 | empty  19.9% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 101 | rescans 22062: identical answer 91.2%, empty-again 18.8% (4.2 ms) | mean gap 36.1 frames (1:0% 2-10:0% 11-30:70% 31-120:30% >120:0%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:9.5% more:90.5%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3717
+   <- HordeUpdate::update  HordeUpdate.cpp:267
+   <- GameLogic::update  GameLogic.cpp:3408
+
+#14  0.23% of query time
+                   calls     10436 |      9.6 ms   0.92 us/call | cells    177 cois     20 (skips    13) distOK     5 filterOK   0.5 rings    5 | empty  49.7% | in-frame repeat 76.3% | collect-all   0.0%
+   askers 10 | rescans 10426: identical answer 99.3%, empty-again 49.4% (7.4 ms) | mean gap 10.1 frames (1:76% 2-10:0% 11-30:0% 31-120:23% >120:0%) | world movers since the previous scan: 0:76.4% <100:0.9% <1000:5.9% more:16.8%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIPlayer::isSupplySourceSafe  AIPlayer.cpp:1040
+   <- ScriptConditions::evaluateCondition  ScriptConditions.cpp:2885
+
+#15  0.13% of query time
+                   calls      4679 |      5.2 ms   1.12 us/call | cells     21 cois     23 (skips     8) distOK     3 filterOK   2.9 rings    1 | empty   0.6% | in-frame repeat  4.9% | collect-all 100.0%
+   askers 2146 | rescans 2533: identical answer 73.0%, empty-again 0.0% (0.0 ms) | mean gap 18.8 frames (1:11% 2-10:34% 11-30:37% 31-120:18% >120:0%) | world movers since the previous scan: 0:9.2% <100:2.3% <1000:45.8% more:42.8%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3737
+   <- WeaponTemplate::dealDamageInternal  Weapon.cpp:1321
+   <- WeaponTemplate::fireWeaponTemplate  Weapon.cpp:988
+
+#16  0.10% of query time
+                   calls      1825 |      4.1 ms   2.25 us/call | cells     61 cois     46 (skips    22) distOK    16 filterOK  15.7 rings    3 | empty   0.0% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 1293 | rescans 532: identical answer 65.6%, empty-again 0.0% (0.0 ms) | mean gap 35.7 frames (1:0% 2-10:2% 11-30:93% 31-120:0% >120:4%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:25.2% more:74.8%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3737
+   <- PointDefenseLaserUpdate::scanClosestTarget  PointDefenseLaserUpdate.cpp:254
+   <- PointDefenseLaserUpdate::update  PointDefenseLaserUpdate.cpp:149
+
+#17  0.05% of query time
+                   calls      1807 |      2.1 ms   1.16 us/call | cells     23 cois     22 (skips    15) distOK     6 filterOK   1.0 rings    1 | empty   0.0% | in-frame repeat  4.3% | collect-all   0.0%
+   askers 5 | rescans 1802: identical answer 100.0%, empty-again 0.0% (0.0 ms) | mean gap 49.4 frames (1:7% 2-10:3% 11-30:10% 31-120:79% >120:0%) | world movers since the previous scan: 0:4.3% <100:2.6% <1000:10.9% more:82.2%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- AIPlayer::queueSupplyTruck  AIPlayer.cpp:296
+   <- AIPlayer::queueUnits  AIPlayer.cpp:2409
+
+#18  0.05% of query time
+                   calls       555 |      2.0 ms   3.57 us/call | cells    214 cois     65 (skips    46) distOK    13 filterOK   3.0 rings    7 | empty   0.2% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 29 | rescans 526: identical answer 99.4%, empty-again 0.0% (0.0 ms) | mean gap 151.1 frames (1:0% 2-10:0% 11-30:0% 31-120:0% >120:100%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:9.5% more:90.5%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3737
+   <- findObjectToRepair  DozerAIUpdate.cpp:888
+   <- DozerPrimaryIdleState::update  DozerAIUpdate.cpp:1126
+
+#19  0.04% of query time
+                   calls        10 |      1.5 ms 148.16 us/call | cells  12099 cois   1521 (skips   794) distOK   724 filterOK   0.0 rings  153 | empty 100.0% | in-frame repeat  0.0% | collect-all   0.0%
+   askers 0 | rescans 10: identical answer 100.0%, empty-again 100.0% (1.5 ms) | mean gap 51.3 frames (1:0% 2-10:0% 11-30:90% 31-120:0% >120:10%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:0.0% more:100.0%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3566
+   <- findSuitableAirfield  JetAIUpdate.cpp:169
+   <- JetOrHeliCirclingDeadAirfieldState::update  JetAIUpdate.cpp:349
+
+#20  0.03% of query time
+                   calls      3467 |      1.2 ms   0.35 us/call | cells     38 cois     13 (skips    11) distOK     1 filterOK   1.0 rings    2 | empty  17.0% | in-frame repeat 15.6% | collect-all 100.0%
+   askers 2926 | rescans 541: identical answer 98.2%, empty-again 45.1% (0.1 ms) | mean gap 0.0 frames (1:100% 2-10:0% 11-30:0% 31-120:0% >120:0%) | world movers since the previous scan: 0:100.0% <100:0.0% <1000:0.0% more:0.0%
+   <- PartitionManager::iteratePotentialCollisions  PartitionManager.cpp:3760
+   <- BuildAssistant::isLocationClearOfObjects  BuildAssistant.cpp:664
+   <- BuildAssistant::isLocationLegalToBuild  BuildAssistant.cpp:882
+
+#21  0.03% of query time
+                   calls       548 |      1.2 ms   2.15 us/call | cells    215 cois     65 (skips    45) distOK    12 filterOK   0.0 rings    7 | empty 100.0% | in-frame repeat  0.0% | collect-all   0.0%
+   askers 11 | rescans 537: identical answer 100.0%, empty-again 100.0% (1.2 ms) | mean gap 223.0 frames (1:0% 2-10:0% 11-30:0% 31-120:0% >120:100%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:9.3% more:90.7%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3566
+   <- DozerPrimaryIdleState::update  DozerAIUpdate.cpp:1140
+   <- StateMachine::updateStateMachine  StateMachine.cpp:442
+
+#22  0.02% of query time
+                   calls       162 |      0.9 ms   5.79 us/call | cells    473 cois     52 (skips    28) distOK    18 filterOK   0.0 rings   11 | empty 100.0% | in-frame repeat  0.0% | collect-all   0.0%
+   askers 1 | rescans 161: identical answer 100.0%, empty-again 100.0% (0.9 ms) | mean gap 59.9 frames (1:0% 2-10:0% 11-30:0% 31-120:100% >120:0%) | world movers since the previous scan: 0:0.0% <100:1.9% <1000:35.4% more:62.7%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3566
+   <- AI::findClosestEnemy  AI.cpp:756
+   <- AIUpdateInterface::getNextMoodTarget  AIUpdate.cpp:4463
+
+#23  0.02% of query time
+                   calls         5 |      0.9 ms 180.12 us/call | cells  12099 cois   1453 (skips   738) distOK   713 filterOK  33.6 rings  153 | empty   0.0% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 5 | rescans 0: identical answer 0.0%, empty-again 0.0% (0.0 ms) | mean gap 0.0 frames (1:0% 2-10:0% 11-30:0% 31-120:0% >120:0%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:0.0% more:0.0%
+   <- PartitionManager::iterateObjectsInRange  PartitionManager.cpp:3717
+   <- ScriptActions::doTeamGarrisonNearestBuilding  ScriptActions.cpp:3368
+   <- ScriptActions::executeAction  ScriptActions.cpp:6521
+
+#24  0.02% of query time
+                   calls      3527 |      0.7 ms   0.19 us/call | cells     21 cois      6 (skips     4) distOK     0 filterOK   0.3 rings    1 | empty  71.5% | in-frame repeat  0.0% | collect-all 100.0%
+   askers 3524 | rescans 3: identical answer 100.0%, empty-again 0.0% (0.0 ms) | mean gap 1382.7 frames (1:0% 2-10:0% 11-30:0% 31-120:0% >120:100%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:0.0% more:100.0%
+   <- PartitionManager::tryPosition  PartitionManager.cpp:3895
+   <- PartitionManager::findPositionAround  PartitionManager.cpp:4046
+   <- DozerAIUpdate::findGoodBuildOrRepairPosition  DozerAIUpdate.cpp:1924
+
+#25  0.01% of query time
+                   calls       409 |      0.6 ms   1.48 us/call | cells     60 cois     30 (skips    21) distOK     5 filterOK   0.0 rings    3 | empty 100.0% | in-frame repeat  0.0% | collect-all   0.0%
+   askers 59 | rescans 350: identical answer 100.0%, empty-again 100.0% (0.5 ms) | mean gap 388.1 frames (1:0% 2-10:0% 11-30:3% 31-120:11% >120:87%) | world movers since the previous scan: 0:0.0% <100:0.0% <1000:0.3% more:99.7%
+   <- PartitionManager::getClosestObject  PartitionManager.cpp:3579
+   <- Pathfinder::getAircraftPath  AIPathfind.cpp:6229
+   <- AIUpdateInterface::computeQuickPath  AIUpdate.cpp:1636

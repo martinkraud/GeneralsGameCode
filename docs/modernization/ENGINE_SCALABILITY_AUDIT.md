@@ -184,3 +184,7 @@ Candidate work for a later milestone, not started: (a) avoid guard / hunt scans 
 `twilight4H` (Zero Hour, Enhanced AI, 50 000 cash): fingerprint `1E5982E5B3A1B86B`, line-decision digest `6AC45762C1656E3D` (`GENERALS_LINE_TRACE_HASH`), open-list evolution digest `5B85CEF9CC94BCB0` (`GENERALS_PATH_TRACE_HASH`).
 `city5H`: fingerprint `FB748B205FB71351`, line digest `B414DB6B28633F5A`. A ground-layer `getCell` bypass that changed the line digest (25 extra "movement" stops) was rejected; negative-result caches were proven infeasible
 (0 replayable hits: replaying a failed search exactly needs the same free-pool count and unit state). Parallelising the current pathfinder is not justified (shared info pool, open/closed state in cells, per-frame allocation budget, request order, save/replay state).
+
+## 14. Update (X64.aq): the knee moved
+
+The exact staged HUNT scan of X64.aq ([AI_QUERY_AUDIT.md](AI_QUERY_AUDIT.md) sections 4 and 15) lowers the load-dependent cost: at 8x mobile units p99 33.2 -> 31.6 ms (over-budget ticks 80 -> 46, paired run), at 10x units p99 44.0 -> 34.0 ms (354 -> 106). The sustainable ceiling on this CPU is now about 2 700-2 900 objects instead of 2 200-2 700; below ~2 200 objects nothing changes. The same optimisation lowers the seeded graphical Zero Hour tick by 17 % (mean).

@@ -1,0 +1,151 @@
+{
+  "run": "framedelivery-20261106T013121Z-Generals-Skirmish-gb-ga1",
+  "tick_all": {
+    "ticks": 16200,
+    "mean": 1.214,
+    "p50": 1.154,
+    "p95": 2.38,
+    "p99": 4.308,
+    "p99_9": 8.393,
+    "worst": 14.063,
+    "over_33_3": 0
+  },
+  "tick": {
+    "ticks": 8201,
+    "mean": 1.664,
+    "p50": 1.527,
+    "p95": 2.671,
+    "p99": 5.609,
+    "p99_9": 8.595,
+    "worst": 12.992,
+    "over_33_3": 0,
+    "over_50": 0,
+    "over_100": 0
+  },
+  "world": {
+    "objects_max": 775,
+    "units_max": 138,
+    "moving_units_max": 83,
+    "objects_mean": 717.6,
+    "units_mean": 121.1,
+    "path_searches_total": 3978,
+    "path_ok_total": 3973,
+    "path_fail_total": 5,
+    "path_fail_ge5ms_total": 0,
+    "queued_paths_total": 6726,
+    "update_modules_total": 4346721,
+    "queue_cells_total": 1384812,
+    "objects_visited_total": 6018681,
+    "path_fail_ms_total": 0.0
+  },
+  "phase_ms_per_tick": {
+    "object_update_loops": 0.2935,
+    "ai_global": 0.0227,
+    "ai_player_strategy": 0.0543,
+    "ai_object_base_update": 0.7086,
+    "locomotor_move": 0.0635,
+    "path_queue": 0.0038,
+    "path_request_entries": 0.0275,
+    "path_search": 0.0325,
+    "path_reconstruction": 0.0125,
+    "weapon_fire": 0.0442,
+    "weapon_store": 0.0007,
+    "missile_ai_update": 0.0027,
+    "zone_calc": 0.0001,
+    "logic_scripts": 0.149,
+    "logic_terrain": 0.0004,
+    "logic_crc": 0.0031,
+    "logic_recorder": 0.0006,
+    "logic_commands": 0.0008,
+    "logic_build_assist": 0.0009,
+    "logic_partition": 0.1091,
+    "logic_destroy": 0.0167,
+    "logic_stores": 0.0056,
+    "logic_disabled_loop": 0.017,
+    "zone_label": 0.0081,
+    "zone_relabel": 0.0065,
+    "zone_blocks": 0.0049,
+    "zone_hierarchy": 0.0099,
+    "zone_flatten": 0.0148
+  },
+  "render": {
+    "windows": 109,
+    "frames": 64875,
+    "fps_mean": 119.88,
+    "fps_min_window": 115.32,
+    "interval_p50_median": 8.33,
+    "interval_p95_median": 8.33,
+    "interval_p99_median": 8.34,
+    "interval_p99_worst_window": 9.53,
+    "interval_max": 116.9,
+    "hitches": 15
+  },
+  "memory": {
+    "working_set_mb_start": 483.0,
+    "working_set_mb_end": 442.0,
+    "working_set_mb_max": 505.0,
+    "private_mb_end": 407.0,
+    "handles_start": 717,
+    "handles_end": 710
+  },
+  "hitches_by_dominant_phase": {
+    "draw_ms": {
+      "n": 1,
+      "max_interval_ms": 116.945
+    },
+    "predraw_ms": {
+      "n": 1,
+      "max_interval_ms": 73.098
+    }
+  },
+  "headless_same_frames": {
+    "ticks": 8201,
+    "mean": 0.728,
+    "p50": 0.607,
+    "p95": 1.261,
+    "p99": 4.382,
+    "worst": 11.237,
+    "over_33_3": 0
+  },
+  "headless_phase_ms_per_tick": {
+    "ai_object_base_update": 0.2737,
+    "object_update_loops": 0.1314,
+    "logic_scripts": 0.048,
+    "logic_partition": 0.0551,
+    "ai_player_strategy": 0.0304,
+    "path_search": 0.0263,
+    "locomotor_move": 0.0275,
+    "weapon_fire": 0.0262,
+    "path_request_entries": 0.0209,
+    "zone_flatten": 0.0154,
+    "path_reconstruction": 0.0121,
+    "zone_hierarchy": 0.0092,
+    "ai_global": 0.009,
+    "zone_label": 0.0079,
+    "zone_relabel": 0.007,
+    "logic_destroy": 0.0082,
+    "logic_disabled_loop": 0.0053,
+    "zone_blocks": 0.0044,
+    "logic_crc": 0.0025,
+    "path_queue": 0.002,
+    "logic_stores": 0.0015,
+    "missile_ai_update": 0.0013,
+    "weapon_store": 0.0004,
+    "logic_build_assist": 0.0002,
+    "logic_terrain": 0.0001,
+    "logic_recorder": 0.0001,
+    "logic_commands": 0.0001,
+    "zone_calc": 0.0001
+  },
+  "fingerprint": {
+    "checkpoints": 545,
+    "last_frame": 150,
+    "digest_of_all": "0117AE35379BAF83",
+    "vs_headless": {
+      "compared_checkpoints": 540,
+      "first_divergence_index": -1,
+      "digest_of_common_prefix": "5B8E7B06C98E5082",
+      "headless_digest_of_common_prefix": "5B8E7B06C98E5082"
+    }
+  }
+}

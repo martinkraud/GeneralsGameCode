@@ -354,6 +354,17 @@ render states and ordinary cache/device lifetimes remain to be classified/tested
 * Ported from upstream: `28bb4554f` (pending path requests after save load). Deferred: `1abf73d5d`, `8ed77a761`, `a4ac54b83`. Rejected: `21323414f`.
 * Open: guard / hunt query avoidance (needs a partition change model), seeded graphical benchmark, graphical A/B of the X64.pf gain, real two-PC validation of `2071ad765`.
 
+## X64.aq / X64.dh (AI queries, seeded graphical benchmark, disk hygiene), 2026-11-06
+
+* Documents: `AI_QUERY_AUDIT.md` (measurements, the exact staged HUNT scan, rejected avoidance ideas), `DISK_RETENTION.md` (what consumed the disk, what was done, the retention rules). Evidence: `docs/modernization/evidence/{graphical-benchmark,ai-query}/`.
+* **Disk rules for every agent:** stages share their `.big` / `.bik` assets through `build/dev-runtimes/asset-store` (hard links; never rewrite a stage's asset files in place); run `scripts/Clean-DevelopmentArtifacts.ps1` (dry run), `scripts/Clean-DiagnosticOutput.ps1` and `scripts/native-runtime/Optimize-StageStorage.ps1 -PruneStore` after a milestone; keep `build/diag` to summaries; crash dumps and `userdata-backups` are never removed automatically. Directory listings count a hard-linked file once per link; use the free space on the drive as the truth.
+* **Seeded graphical benchmark:** `pwsh scripts/performance/Invoke-GraphicalBenchmark.ps1 -Title ZeroHour -Stage mp-audit-zh -Label x -Minutes 9 -FromFrame 8000 [-Refresh]` (one run ~11 min, do not run two games at once; VSync off; needs an awake display session). Compare `summary.json` files; the fingerprint must equal the headless one (`first_divergence_index -1`). `GENERALS_SIM_CLONE=<k>@<frame>` multiplies mobile units for load tests.
+* **Exact optimisation:** staged HUNT scan in `AI::findClosestEnemy` (default on; `GENERALS_HUNT_STAGED=0` off; `GENERALS_HUNT_VERIFY=1` compares against the full scan and exits with code 3 on a difference). Run the verify mode after any change to the partition queries, the filters or the attack-priority tables.
+* Opt-in diagnostics: `GENERALS_SIM_GCO` (query characterisation), `GENERALS_SIM_UPDPROF` (update-module / AI-state profile), `GENERALS_SIM_SAMPLE` (now with callers), `GENERALS_SIM_FINGERPRINT`. All inert unless set.
+* Guard digests unchanged: ZH 1x `1E5982E5B3A1B86B` (line `6AC45762C1656E3D`, open list `5B85CEF9CC94BCB0`), 4x units `CF9C9DB782B65644`, `city5H` `FB748B205FB71351`, Generals 1x `1014EE85E384C19C`.
+* Rejected: query-result reuse and idle-guard scan skipping (not provably exact), sleeping every-frame helper updates (sleepy-heap tie order), upstream `bfc752661` (slower lookup), `b9fb894bf` (math sequence change), `2119cc9b6` deferred (behaviour change).
+* Open: graphical-mode inflation of per-object phases (client coupling vs cache pressure), contiguous per-cell object arrays for the partition (must keep list order), path search under congestion, first-use render hitches (~100-130 ms once per run) and `Present` stalls of 450-510 ms in 3 of 8 seeded runs (`top_render_hitches` in each summary shows `present_ms`; needs an ETW trace on a native session), real two-PC validation of `2071ad765`.
+
 ## Runtime and evidence rules
 
 No native title execution by the coding agent. Every new Generals/Zero Hour run
