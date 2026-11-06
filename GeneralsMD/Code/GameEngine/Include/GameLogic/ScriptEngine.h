@@ -132,6 +132,7 @@ public:
 
 	void setPriority(const ThingTemplate *tThing, Int priority);
 	Int getPriority(const ThingTemplate *tThing) const;
+	Int getMaxPriority() const;   ///< the largest priority this table can return (diagnostics; the bound a distance-limited selection needs)
 	AsciiString getName() const {return m_name;}
 #ifdef RTS_DEBUG
 	void dumpPriorityInfo();

@@ -26,6 +26,7 @@
 // The Artificial Intelligence system
 // Author: Michael S. Booth, November 2000
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/SpatialQueryDiag.h"
 #include "Common/PerformanceProfile.h"
 
 #include "Common/CRCDebug.h"
@@ -594,6 +595,67 @@ static void priorityFunc(Object *obj, void *userData)
 }
 
 
+// X64.aq: the attack-priority selection loop of AI::findClosestEnemy, statement for statement, as a function of an already sorted (near to far) candidate list so that the staged scan and the full scan
+// run the same code. cutSqr > 0 stops at the first candidate whose squared distance (the iterator's own sort key) is >= cutSqr; with 0 the whole list is processed, exactly as before.
+static void selectBestEnemy(ObjectIterator *iterBase, const Object *me, const AttackPriorityInfo *info, Real distanceModifier, Real cutSqr, Object *&bestEnemy, Int &effectivePriority, Int &actualPriority)
+{
+	// iterateObjectsInRange always returns a SimpleObjectIterator (see PartitionManager::iterateObjectsInRange)
+	SimpleObjectIterator *iter = static_cast<SimpleObjectIterator *>(iterBase);
+	Real numeric = 0.0f;
+	for (Object *theEnemy = iter->firstWithNumeric(&numeric); theEnemy; theEnemy = iter->nextWithNumeric(&numeric))
+	{
+		if (cutSqr > 0.0f && numeric >= cutSqr)
+			break;
+		Int curPriority = info->getPriority(theEnemy->getTemplate());
+		if (curPriority == 0)
+			continue; // don't attack 0 priority targets.
+
+		/* check for garrisoned buildings/vehicles & see if a higher priority unit is inside. */
+		ContainModuleInterface* contain = theEnemy->getContain();
+		if (contain) {
+			TPriorityInfo priorityInfo;
+			priorityInfo.priority = curPriority;
+			priorityInfo.info = info;
+			contain->iterateContained( priorityFunc, &priorityInfo, false ) ;
+			if (priorityInfo.priority > curPriority) {
+				curPriority = priorityInfo.priority;
+			}
+		}
+
+		Real distSqr = ThePartitionManager->getDistanceSquared(me, theEnemy, FROM_BOUNDINGSPHERE_2D);
+		Real dist = sqrt(distSqr);
+		Int modifier = dist/distanceModifier;
+		Int modPriority = curPriority-modifier;
+		if (modPriority < 1)
+			modPriority = 1;
+		if (modPriority > effectivePriority)
+		{
+			effectivePriority = modPriority;
+			actualPriority = curPriority;
+			bestEnemy = theEnemy;
+		}
+		if (modPriority == effectivePriority && curPriority > actualPriority)
+		{
+			effectivePriority = modPriority;
+			actualPriority = curPriority;
+			bestEnemy = theEnemy;
+		}
+	}
+}
+
+// X64.aq: mode of the staged scan. Default on; GENERALS_HUNT_STAGED=0 restores the single full scan; GENERALS_HUNT_VERIFY=1 runs both and exits with code 3 on the first difference.
+static int huntStagedMode()
+{
+	static int mode = -1;
+	if (mode < 0)
+	{
+		const char *verify = getenv("GENERALS_HUNT_VERIFY");
+		const char *staged = getenv("GENERALS_HUNT_STAGED");
+		mode = (verify && *verify) ? 2 : ((staged && *staged == '0') ? 0 : 1);
+	}
+	return mode;
+}
+
 //-----------------------------------------------------------------------------
 /**
  * Return the closest enemy, according to the qualifiers.
@@ -696,45 +758,89 @@ Object *AI::findClosestEnemy( const Object *me, Real range, UnsignedInt qualifie
 	Object *bestEnemy = nullptr;
 	Int			effectivePriority=0;
 	Int			actualPriority=0;
-	ObjectIterator *iter = ThePartitionManager->iterateObjectsInRange(me, range, FROM_BOUNDINGSPHERE_2D, filters, ITER_SORTED_NEAR_TO_FAR);
-	MemoryPoolObjectHolder holder(iter);
-	for (Object *theEnemy = iter->first(); theEnemy; theEnemy = iter->next())
+
+	// X64.aq: EXACT staged scan. The winner is decided by (priority - distance / modifier, then priority) over candidates sorted near to far, and no candidate at distance >= R can reach a
+	// modified priority above max(1, maxPriority - floor(R / modifier)) (priorities never exceed the table's maximum, also for contained units). So: scan only the candidates inside R first
+	// (the sorted list of a smaller query is a prefix of the full sorted list: same cells in the same order, same stable sort); if the best modified priority found there is larger than that
+	// bound, nothing farther can replace it (a replacement needs a modified priority >= the current one) and the result is final; otherwise try a larger R, and finally the full scan below.
+	// R sits half a modifier step above a step boundary so floating-point rounding can never matter, and the query radius carries a margin (asker radius + 3 cells) so that the cell cutoff of
+	// getClosestObjects cannot hide a candidate whose bounding-sphere distance is below R.
 	{
-		Int curPriority = info->getPriority(theEnemy->getTemplate());
-		if (curPriority == 0)
-			continue; // don't attack 0 priority targets.
-
-		/* check for garrisoned buildings/vehicles & see if a higher priority unit is inside. */
-		ContainModuleInterface* contain = theEnemy->getContain();
-		if (contain) {
-			TPriorityInfo priorityInfo;
-			priorityInfo.priority = curPriority;
-			priorityInfo.info = info;
-			contain->iterateContained( priorityFunc, &priorityInfo, false ) ;
-			if (priorityInfo.priority > curPriority) {
-				curPriority = priorityInfo.priority;
+		const Real distanceModifier = getAiData()->m_attackPriorityDistanceModifier;
+		const int mode = huntStagedMode();
+		if (mode != 0 && distanceModifier > 0.0f)
+		{
+			static const Int stageSteps[] = { 3, 7, 14 };
+			Int maxPriority = 0;
+			bool haveMaxPriority = false;   // the table maximum is only needed when a bounded stage runs (most scans have a small range)
+			const Real margin = 3.0f * TheGlobalData->m_partitionCellSize + me->getGeometryInfo().getBoundingSphereRadius();
+			for (size_t stage = 0; stage < sizeof(stageSteps) / sizeof(stageSteps[0]); ++stage)
+			{
+				const Real R = (static_cast<Real>(stageSteps[stage]) + 0.5f) * distanceModifier;
+				if (R + margin >= range)
+					break;
+				if (!haveMaxPriority)
+				{
+					maxPriority = info->getMaxPriority();
+					haveMaxPriority = true;
+				}
+				ObjectIterator *stageIter = ThePartitionManager->iterateObjectsInRange(me, R + margin, FROM_BOUNDINGSPHERE_2D, filters, ITER_SORTED_NEAR_TO_FAR);
+				MemoryPoolObjectHolder stageHolder(stageIter);
+				Object *stageBest = nullptr;
+				Int stageEffective = 0, stageActual = 0;
+				selectBestEnemy(stageIter, me, info, distanceModifier, R * R, stageBest, stageEffective, stageActual);
+				Int bound = maxPriority - stageSteps[stage];
+				if (bound < 1)
+					bound = 1;
+				if (stageEffective > bound)
+				{
+					if (mode == 2)
+					{
+						// verification: the full scan must give the same enemy
+						ObjectIterator *fullIter = ThePartitionManager->iterateObjectsInRange(me, range, FROM_BOUNDINGSPHERE_2D, filters, ITER_SORTED_NEAR_TO_FAR);
+						MemoryPoolObjectHolder fullHolder(fullIter);
+						Object *fullBest = nullptr;
+						Int fullEffective = 0, fullActual = 0;
+						selectBestEnemy(fullIter, me, info, distanceModifier, 0.0f, fullBest, fullEffective, fullActual);
+						SpatialQueryDiag::huntStage(static_cast<int>(stage), true);
+						if (fullBest != stageBest || fullEffective != stageEffective || fullActual != stageActual)
+						{
+							printf("HUNT STAGED MISMATCH at frame %u, stage %d: staged %u (%d/%d) full %u (%d/%d)\n", static_cast<unsigned>(TheGameLogic->getFrame()), static_cast<int>(stage),
+								stageBest ? static_cast<unsigned>(stageBest->getID()) : 0u, static_cast<int>(stageEffective), static_cast<int>(stageActual),
+								fullBest ? static_cast<unsigned>(fullBest->getID()) : 0u, static_cast<int>(fullEffective), static_cast<int>(fullActual));
+							fflush(stdout);
+							_exit(3);
+						}
+					}
+					else if (SpatialQueryDiag::enabled())
+						SpatialQueryDiag::huntStage(static_cast<int>(stage), false);
+					return stageBest;
+				}
 			}
-		}
-
-		Real distSqr = ThePartitionManager->getDistanceSquared(me, theEnemy, FROM_BOUNDINGSPHERE_2D);
-		Real dist = sqrt(distSqr);
-		Int modifier = dist/getAiData()->m_attackPriorityDistanceModifier;
-		Int modPriority = curPriority-modifier;
-		if (modPriority < 1)
-			modPriority = 1;
-		if (modPriority > effectivePriority)
-		{
-			effectivePriority = modPriority;
-			actualPriority = curPriority;
-			bestEnemy = theEnemy;
-		}
-		if (modPriority == effectivePriority && curPriority > actualPriority)
-		{
-			effectivePriority = modPriority;
-			actualPriority = curPriority;
-			bestEnemy = theEnemy;
+			if (SpatialQueryDiag::enabled())
+				SpatialQueryDiag::huntStage(99, false);
 		}
 	}
+
+	ObjectIterator *iter = ThePartitionManager->iterateObjectsInRange(me, range, FROM_BOUNDINGSPHERE_2D, filters, ITER_SORTED_NEAR_TO_FAR);
+	MemoryPoolObjectHolder holder(iter);
+	selectBestEnemy(iter, me, info, getAiData()->m_attackPriorityDistanceModifier, 0.0f, bestEnemy, effectivePriority, actualPriority);
+
+	if (SpatialQueryDiag::enabled())
+	{
+		// X64.aq diagnostic: how far down the sorted candidate list the winner can still change (see SpatialQueryDiag::huntSelect). Read-only.
+		const Int maxP = info->getMaxPriority();
+		const Real m = getAiData()->m_attackPriorityDistanceModifier;
+		const Real bound = (effectivePriority >= 2 && m > 0.0f) ? static_cast<Real>(maxP - effectivePriority + 1) * m : 1.0e30f;
+		unsigned n = 0, beyond = 0; Real farthest = 0.0f, winnerDist = 0.0f;
+		for (Object *o = iter->first(); o; o = iter->next())
+		{
+			const Real d = sqrt(ThePartitionManager->getDistanceSquared(me, o, FROM_BOUNDINGSPHERE_2D));
+			++n; farthest = d; if (d >= bound) ++beyond; if (o == bestEnemy) winnerDist = d;
+		}
+		SpatialQueryDiag::huntSelect(range, n, effectivePriority, maxP, m, winnerDist, farthest, beyond, bound > 1.0e29f ? 0.0f : bound);
+	}
+
 	if (bestEnemy) {
 		//DEBUG_LOG(("Find closest found %s, hunter %s, info %s", bestEnemy->getTemplate()->getName().str(),
 		//	me->getTemplate()->getName().str(), info->getName().str()));

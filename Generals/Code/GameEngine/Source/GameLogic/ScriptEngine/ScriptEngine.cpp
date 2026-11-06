@@ -189,6 +189,18 @@ Int AttackPriorityInfo::getPriority(const ThingTemplate *tThing) const
 	return priority;
 }
 
+//-------------------------------------------------------------------------------------------------
+/** the largest priority getPriority() can return for any template */
+//-------------------------------------------------------------------------------------------------
+Int AttackPriorityInfo::getMaxPriority() const
+{
+	Int best = m_defaultPriority;
+	if (m_priorityMap)
+		for (AttackPriorityMap::const_iterator it = m_priorityMap->begin(); it != m_priorityMap->end(); ++it)
+			if ((*it).second > best) best = (*it).second;
+	return best;
+}
+
 #ifdef RTS_DEBUG
 /** Dump the info. */
 //-------------------------------------------------------------------------------------------------
