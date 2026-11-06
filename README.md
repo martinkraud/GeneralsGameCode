@@ -61,6 +61,7 @@ The modernization deliberately separates:
 | Engineering findings (what was wrong, where, how it was verified) | [docs/findings/README.md](docs/findings/README.md) - [performance](docs/findings/PERFORMANCE_FINDINGS.md), [AMD64 porting](docs/findings/AMD64_PORTING_FINDINGS.md), [replay / determinism](docs/findings/REPLAY_DETERMINISM_FINDINGS.md) |
 | Current status: completed / in progress / planned / known issues | [docs/modernization/PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md) |
 | Modern Experience UI: archaeology of the retail UI and the target architecture | [archaeology](docs/modernization/MODERN_UI_ARCHAEOLOGY.md), [architecture and phases](docs/modernization/MODERN_UI_ARCHITECTURE.md) |
+| Product roadmap (Current -> Developer Preview -> Alpha -> Beta -> RC -> 1.0) and Modern UI product-completion audit (screen status, 4:3 - 32:9 validation, ranked remaining work) | [roadmap](docs/PRODUCT_ROADMAP.md), [UI audit](docs/modernization/MODERN_UI_PRODUCT_COMPLETION.md) |
 | Roadmap, milestone records and handoff | [docs/modernization/](docs/modernization/) - [roadmap](docs/modernization/FIRST_PLAYABLE_ROADMAP.md), [handoff](docs/modernization/AGENT_HANDOFF.md) |
 | Original Game Speed facts and the (unimplemented) Game Speed design | [audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [design](docs/modernization/GAME_SPEED_DESIGN.md) |
 | Building | [Building](#building) below |
@@ -503,7 +504,7 @@ Further fidelity and correctness improvements remain ongoing.
 - [x] UI archaeology and responsive layout foundation (UI.1)
 - [ ] Main frontend / navigation shell (UI.2) - implemented, redrawn by UI.3, awaiting native acceptance
 - [ ] Modern frontend design system, Match Setup, Options, Load / Replay, dialogs, Credits (UI.3) - implemented, awaiting native acceptance
-- [ ] Remaining retail frontend screens (LAN lobby, Online, Challenge select, Map select) (UI.4)
+- [ ] Remaining retail frontend screens (LAN lobby, Online, Challenge select, Map select) (UI.4) - audited and ranked in the UI audit; the LAN setup waits for real two-PC validation
 - [ ] Modern in-game HUD for USA / China / GLA (UI.5)
 - [ ] Resolution / scaling matrix, polish and native acceptance (UI.6)
 
