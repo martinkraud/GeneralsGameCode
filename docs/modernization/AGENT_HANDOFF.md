@@ -365,6 +365,15 @@ render states and ordinary cache/device lifetimes remain to be classified/tested
 * Rejected: query-result reuse and idle-guard scan skipping (not provably exact), sleeping every-frame helper updates (sleepy-heap tie order), upstream `bfc752661` (slower lookup), `b9fb894bf` (math sequence change), `2119cc9b6` deferred (behaviour change).
 * Open: graphical-mode inflation of per-object phases (client coupling vs cache pressure), contiguous per-cell object arrays for the partition (must keep list order), path search under congestion, first-use render hitches (~100-130 ms once per run) and `Present` stalls of 450-510 ms in 3 of 8 seeded runs (`top_render_hitches` in each summary shows `present_ms`; needs an ETW trace on a native session), real two-PC validation of `2071ad765`.
 
+## X64.performance-final (final performance audit, 2026-11-06)
+
+* Read [PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md). **The broad performance phase is closed**; no performance release blocker. Do not reopen A*, D3D11, AI-query or scalability audits without a new measured regression.
+* Root cause of Zero Hour's failing path searches: the shared 30 000-record `PathfindCellInfo` pool is exhausted while flooding a basin on the way to a far HUNT goal (goal reachable, units block ~1 %, nothing statically unreachable). Not congestion; no exact optimisation (repeats never occur with unchanged pathfinder state). Any change (pool size, budget, HUNT target choice) alters gameplay and needs an owner decision.
+* New opt-in diagnostics (inert by default): `GENERALS_SIM_PATHFAIL=1` now classifies each failure (budget / units / footprint / terrain via two floods), tracks (requester, goal) recurrence and recovery, counts refused allocations and post-exhaustion work; `GENERALS_PRESENT_STALL_LOG=<file>` (+ `GENERALS_PRESENT_STALL_MS`) logs long `Present` calls with DXGI / DWM / VRAM / window state. The pathfinder reference guards (`scripts/performance/test_x64_43_pathfail_contract.py`) allow the single `noteInfoResult` hook in `PathfindCell::allocateInfo`.
+* Final baseline and digests (ZH 1x `1E5982E5B3A1B86B`, 4x `3@15000` `CF9C9DB782B65644`, Generals 1x `1014EE85E384C19C`, Generals 4x `E649F6A6E27117B8`, `city5H` `FB748B205FB71351`, line `6AC45762C1656E3D` / `B414DB6B28633F5A`, open list `5B85CEF9CC94BCB0` / `30F676D2A410CAE1`) are in the audit; use them as the regression reference. Note: the 4x rung uses `GENERALS_SIM_CLONE=3@15000`.
+* Open, not performance-blocking: ETW trace of the rare off-CPU stalls on a native session (needs elevation), loading-screen prewarm of the first world draw (~130 ms once), real two-PC multiplayer validation of `2071ad765` (still pending).
+* Shell pitfall found: a PowerShell function named `PS` is shadowed by the `ps` alias (Get-Process) and silently does nothing; pass `-Exe` arrays to `Invoke-AiBehaviorGate.ps1` as one comma-separated string.
+
 ## Runtime and evidence rules
 
 No native title execution by the coding agent. Every new Generals/Zero Hour run

@@ -7,6 +7,13 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-06 - Final performance audit and baseline (X64.performance-final)
+
+* **Failing path searches explained:** in Zero Hour about 1 400 searches per match (a quarter of the 1x simulation time, the whole >10 ms tail) exhaust the shared 30 000-record cell-info pool while flooding a basin on the way to a far HUNT target; the goal is reachable, units block the route in ~1 % of the cases, nothing is statically unreachable. It is an existing engine budget, not congestion, and no exact optimisation exists (repeats are never mutation-free, the outcome depends on the free pool and unit costs), so none was made.
+* **Diagnostics (opt-in, inert by default):** failure classification floods, per-pair recurrence / recovery and refused-allocation counters in `GENERALS_SIM_PATHFAIL`; `GENERALS_PRESENT_STALL_LOG` probe in the D3D11 backend.
+* **Present stalls / first-use hitch:** 0 of 5 new seeded graphical runs reproduced a Present stall; 21 of 22 long hitches in the profiled run were off-CPU stalls (thread not running) landing anywhere, not in Present (environment). First-use hitch attributed to creation and first touch of 104 textures and 146 buffers (CPU-bound, ~130 ms).
+* **Final baseline and exit decision:** [PERFORMANCE_FINAL_AUDIT.md](docs/modernization/PERFORMANCE_FINAL_AUDIT.md); the broad performance phase is closed. No gameplay or determinism change (all guard digests, golden gates and tests unchanged). Real two-PC validation of `2071ad765` remains pending.
+
 ## 2026-11-06 - AI query / object update audit, seeded graphical benchmark and disk hygiene (X64.aq, X64.dh)
 
 * **Disk (X64.dh):** the dev disk had fallen to 21.8 GB free; `build/` held 74.8 GB. Stages now hard-link their immutable `.big` / `.bik` assets to a content-addressed store (a new Zero Hour stage costs ~0.09 GB instead of ~2.7 GB), existing stages were converted (31.7 GB), the superseded distribution `4f5e092c1` and the overlay-test stages were removed (8.5 GB), in-repo evidence identical to the verified backup was hard-linked (6.4 GB), raw screenshots were pruned (2.3 GB): **free disk 21.8 -> 70.3 GB, no content lost**. Free-space guards in the staging / packaging / benchmark scripts, store pruning, a diagnostic-output retention tool. Details: [DISK_RETENTION.md](docs/modernization/DISK_RETENTION.md).

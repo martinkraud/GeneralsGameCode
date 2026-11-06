@@ -264,21 +264,19 @@ large battles**: the slowest ticks (p99 / worst), ticks that exceed the 33.333 m
 
 All optimizations are exact (bit-identical simulation): each keeps the original algorithm selectable, was checked against it, and left the deterministic benchmark fingerprint unchanged.
 
-**Benchmark:** 72 000 authoritative ticks (40 game minutes at 30 TPS), Twilight Flame, one idle human + 7 Brutal AI, headless and deterministic, one development machine
-(Intel Core Ultra 5 125U). Same executable, original code paths vs current defaults, alternating runs, 4 each:
+**Current baseline** (the reference for regression tests; one development laptop, Intel Core Ultra 5 125U; headless, deterministic, 13 minutes = 23 400 ticks of Twilight Flame, 4 Hard AI, Enhanced AI, 50 000 cash; median of three runs, tick time in ms):
 
-| whole simulation tick | original paths | current |
-|---|---|---|
-| p99 | 22.8 ms | 5.9 ms |
-| p99.9 | 49.7 ms | 10.4 ms |
-| ticks over the 33.3 ms budget (of 72 000) | 204 | 4.5 |
-| derived missed deadlines | 414 | 8 |
-| derived maximum backlog | 3.0 s | 52 ms |
-| median tick | 0.71 ms | 0.71 ms |
+| workload | mean | p50 | p99 | p99.9 | ticks over the 33.3 ms budget (of 23 400) |
+|---|---|---|---|---|---|
+| Zero Hour, realistic heavy match | 2.75 | 1.64 | 18.6 | 26.4 | 9 |
+| Zero Hour, stress (4x mobile units) | 4.31 | 1.98 | 21.7 | 32.9 | 22 |
+| Generals, realistic heavy match | 0.78 | 0.64 | 5.0 | 9.8 | 6 |
+| Generals, stress (4x mobile units) | 1.40 | 0.77 | 10.1 | 17.1 | 0 |
 
-The median did not change: the work removed the rare expensive ticks (pathfinding zone recalculation, the A* open list and line walk, and a synchronous diagnostic disk flush on the logic thread), not the
-typical one. The deadline and backlog figures are derived from measured tick durations, not from a paced run. These numbers describe this workload on this machine and should not be generalised to other
-PCs, maps or match types. Remaining known tail: rare exhaustive failing path searches (~80 ms).
+Zero Hour keeps its p99 inside the budget up to about 2 700 - 2 900 simultaneous objects (a normal heavy match peaks near 1 500). Every optimization is exact (bit-identical simulation, guarded by determinism digests and golden AI gates), and the
+graphical client plays the same seeded replay as the headless run (state fingerprints equal at every checkpoint). The largest remaining cost is Zero Hour's HUNT-state path searches that exhaust the engine's shared path-cell pool (about a quarter
+of its simulation time); it needs a behaviour decision, not an exact optimisation, and is a Beta target. The broad performance phase is closed: [docs/modernization/PERFORMANCE_FINAL_AUDIT.md](docs/modernization/PERFORMANCE_FINAL_AUDIT.md).
+These numbers describe this workload on this machine and should not be generalised to other PCs, maps or match types.
 
 Methodology, the per-milestone A/B tables, the current profile and the limits of these results: **[docs/PERFORMANCE.md](docs/PERFORMANCE.md)**. Reusable root-cause write-ups for other engine developers:
 **[docs/findings/](docs/findings/README.md)**.
@@ -483,10 +481,11 @@ Further fidelity and correctness improvements remain ongoing.
 - [x] Renderer profiling
 - [x] Evidence-driven optimization foundation
 - [x] Large-game simulation profiling (deterministic AI-vs-AI benchmark)
-- [x] Exact serial CPU optimizations (ZoneCalc, A* open list and line walk, launch-log flush)
+- [x] Exact serial CPU optimizations (ZoneCalc, A* open list and line walk, launch-log flush, staged HUNT scan)
+- [x] Seeded, fingerprint-verified graphical benchmark and final performance baseline for both titles
+- [x] Performance-phase exit audit ([PERFORMANCE_FINAL_AUDIT.md](docs/modernization/PERFORMANCE_FINAL_AUDIT.md))
+- [ ] Zero Hour HUNT failing-search chain and first-use render hitch (Beta targets)
 - [ ] Heavy real-combat profiling with a human player
-- [ ] Further CPU optimization (exhaustive failing path searches, ZoneCalc coincidence)
-- [ ] Further frame-pacing improvements
 
 ## Phase 7 — Enhanced Experience
 
@@ -703,6 +702,18 @@ cmake --preset win32
 cmake --build --preset win32
 ```
 
+## Native AMD64 / Direct3D 11 Build (the modernized engine)
+
+```bash
+cmake --preset win64
+cmake --build --preset win64 --target g_generals z_generals
+```
+
+This produces `generalsv.exe` (Generals) and `generalszh.exe` (Zero Hour) under `build/win64/`. They run against a *staged copy* of your own game data, never against the Steam
+installation: see `scripts/native-runtime/` (`Stage-NativeInitOnly.ps1`, `Run-ZeroHourCandidate.ps1`) and, for a ZIP that can be extracted over a legitimate installation,
+`scripts/native-runtime/New-MKRaudsteinDistribution.ps1` (player packages, symbols and SHA-256 sums, newest two kept). Tests: `g_googletest` / `z_googletest` targets and the Python suites under `scripts/`.
+Disk use of the staging and benchmark tools is bounded ([DISK_RETENTION.md](docs/modernization/DISK_RETENTION.md)).
+
 The repository uses a vcpkg manifest (`vcpkg.json`) for dependency management.
 
 The experimental AMD64/D3D11 runtime uses its own staging and validation
@@ -747,7 +758,7 @@ Important remaining areas include:
 
 - Movie / cutscene playback
 - Full replay validation (a recorded Generals Skirmish re-simulates; Zero Hour, campaign and cross-version replays are not validated)
-- Multiplayer validation
+- Multiplayer validation (real two-PC validation of the latest multiplayer smoothness work is still pending)
 - Determinism validation
 - Broader Zero Hour validation (multiplayer, campaign, endurance)
 - Additional renderer fidelity work
@@ -755,7 +766,7 @@ Important remaining areas include:
 - Further display controls
 - Key rebinding
 - Cross-faction Enhanced HUD polish
-- Heavy-combat performance validation
+- Beta-level performance polish (see the performance section; no known performance release blocker)
 - Additional Modern Experience polish
 
 The presence of a feature in the native engine should not automatically be

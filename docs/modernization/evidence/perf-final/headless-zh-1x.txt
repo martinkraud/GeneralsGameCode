@@ -1,0 +1,6 @@
+twilight4H   ta digest 1E5982E5B3A1B86B mean 2.746 p50 1.636 p95 14.982 p99 18.313 p99.9 26.279 worst 75.764 >33.3ms 9 (69 s)
+twilight4H   tb digest 1E5982E5B3A1B86B mean 2.747 p50 1.634 p95 15.027 p99 18.563 p99.9 26.447 worst 75.466 >33.3ms 10 (69 s)
+twilight4H   tc digest 1E5982E5B3A1B86B mean 2.798 p50 1.669 p95 15.162 p99 18.691 p99.9 26.873 worst 68.051 >33.3ms 9 (70 s)
+twilight4H   k15 digest CF9C9DB782B65644 mean 4.305 p50 1.982 p95 16.263 p99 21.685 p99.9 32.944 worst 80.177 >33.3ms 22 (105 s)
+twilight4H   h1 digest 1E5982E5B3A1B86B mean 2.897 p50 1.708 p95 15.273 p99 20.047 p99.9 32.165 worst 84.019 >33.3ms 19 (73 s)
+city5H       hc digest FB748B205FB71351 mean 3.075 p50 3.030 p95 6.435 p99 10.159 p99.9 19.428 worst 46.297 >33.3ms 6 (116 s)

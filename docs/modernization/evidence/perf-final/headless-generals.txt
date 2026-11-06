@@ -1,0 +1,4 @@
+twilight4H   ta digest 1014EE85E384C19C mean 0.784 p50 0.636 p95 1.809 p99 5.071 p99.9 9.845 worst 45.278 >33.3ms 6 (21 s)
+twilight4H   tb digest 1014EE85E384C19C mean 0.837 p50 0.686 p95 1.959 p99 4.925 p99.9 11.211 worst 39.660 >33.3ms 6 (23 s)
+twilight4H   tc digest 1014EE85E384C19C mean 0.770 p50 0.623 p95 1.796 p99 5.010 p99.9 9.607 worst 45.107 >33.3ms 6 (21 s)
+twilight4H   k15 digest E649F6A6E27117B8 mean 1.396 p50 0.769 p95 4.477 p99 10.109 p99.9 17.140 worst 27.042 >33.3ms 0 (36 s)

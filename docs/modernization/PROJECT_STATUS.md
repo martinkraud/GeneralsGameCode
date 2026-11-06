@@ -1,10 +1,10 @@
 # MKRaudstein Modern Engine - project status
 
 One-page, evidence-linked status. Updated at every milestone closeout together with `README.md` and `AGENT_HANDOFF.md` (rule since UI.1: a milestone that changes what is true updates this file in the same milestone).
-Last updated: 2026-11-06 (X64.aq AI query audit and X64.dh disk hygiene, after X64.sc / X64.pf). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
+Last updated: 2026-11-06 (X64.performance-final: final performance audit and baseline, after X64.aq / X64.dh / X64.sc / X64.pf). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Current direction
-Performance optimization and Enhanced AI development are **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
+The broad performance phase is **closed** ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md): no remaining exact low-risk optimisation, no performance release blocker) and Enhanced AI development is **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
 Do not start X64.53 (AI combat coordination) before the owner decides to resume AI work.
 
 ## Completed (evidence in the linked documents)
@@ -30,14 +30,14 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | Engine completion audit: AMD64 pointer scan + upstream ports, D3D11 flip-model swap chain, render-hitch attribution, CPU tail / long-session measurements | implemented and automatically validated (gtest, golden gates both titles, Python suites); hitches attributed (simulation tail, terrain full update, first-use assets), not all fixed ([ENGINE_COMPLETION_AUDIT.md](ENGINE_COMPLETION_AUDIT.md)); **real two-PC validation of 2071ad765 still pending** |
 | Pathfinding performance (X64.pf) and engine scalability audit (X64.sc): exact A* line-phase optimisations (-17 % path-search CPU), unit-multiplier ladder, `getClosestObjects` characterisation, graphical endurance, multithreading decision (not justified), upstream pathfinding triage | measured and documented ([PATHFINDING_PERFORMANCE_AUDIT.md](PATHFINDING_PERFORMANCE_AUDIT.md), [ENGINE_SCALABILITY_AUDIT.md](ENGINE_SCALABILITY_AUDIT.md)); digests and golden gates unchanged |
 | AI query / object update audit, seeded graphical benchmark (fingerprint-verified against headless), exact staged HUNT scan, bounded disk use (X64.aq, X64.dh) | measured and documented ([AI_QUERY_AUDIT.md](AI_QUERY_AUDIT.md), [DISK_RETENTION.md](DISK_RETENTION.md)); digests and golden gates unchanged |
+| Final performance audit and baseline (X64.performance-final): failing-search root cause (shared cell-info pool, not congestion), HUNT chain, Present-stall probe, first-use hitch attribution, reference baseline for both titles, phase exit decision | measured and documented ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md)); diagnostics only, digests and gates unchanged |
 
 ## In progress
 * Modern Experience UI phase: UI.2 (shell) and UI.3 (design system + Options, Match Setup, Load / Replay, dialogs, Credits) are implemented and **waiting for the owner's native visual review**. If the look is disliked the next step is a visual revision, not HUD work.
 * Native human verification of X64.52B (edge scrolling, camera smoothness at 120 FPS) - the real-input camera gate on the final clean executables is still to be run on an unlocked desktop.
 
 ## Planned
-UI.2 shell / main menu (done) -> UI.3 frontend system, Options, Match Setup, browsers (done) -> owner review -> UI.4 remaining retail screens (LAN lobby, Online, Challenge / Map select) -> UI.5 Modern HUD -> UI.6 polish/acceptance; parallel UI.V (movie playback via FFmpeg). After the UI phase: a new performance
-baseline, then deeper performance / endurance work; later Enhanced AI phase 2 (combat coordination) and the long-term extended-game ideas listed in the README roadmap.
+UI.2 shell / main menu (done) -> UI.3 frontend system, Options, Match Setup, browsers (done) -> owner review -> UI.4 remaining retail screens (LAN lobby, Online, Challenge / Map select) -> UI.5 Modern HUD -> UI.6 polish/acceptance; parallel UI.V (movie playback via FFmpeg). After the UI phase: endurance work against the [performance baseline](PERFORMANCE_FINAL_AUDIT.md) (the HUNT failing-search chain and the first-use render hitch are Beta targets); later Enhanced AI phase 2 (combat coordination) and the long-term extended-game ideas listed in the README roadmap.
 
 ## Known issues and limitations
 Classification: **C** = correctness defect (belongs to a regression gate), **F** = feature/quality gap, **U** = unverified observation.
@@ -54,6 +54,8 @@ Classification: **C** = correctness defect (belongs to a regression gate), **F**
 | 8 | Multiplayer / LAN and long-session endurance not fully validated; the LAN lobby and Online screens are still the retail screens (no Modern match-option controls) | F | Planned validation; UI.4 |
 | 9 | Native real-input gates need an unlocked desktop | tooling | Exit code 3 = inconclusive |
 | 10 | Campaign progression, cross-version replays, some renderer/shadow fidelity cases | F | README "Known Incomplete Areas" |
+| 11 | Zero Hour HUNT state: ~1 400 exhaustive failing path searches per match (11 ms each, a quarter of the 1x simulation time; ticks > 33.3 ms: 9-26 of 23 400) | F (Beta target) | Existing engine pool budget, not congestion; no exact fix, needs a behaviour decision ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md)) |
+| 12 | Rare 100-2 200 ms process stalls (previously seen as 450-510 ms inside Present) and one ~130 ms first-use render hitch per match | U / F | Stalls are off-CPU and not Present-specific here; need an elevated ETW trace on a native session; probe `GENERALS_PRESENT_STALL_LOG` |
 
 ## Disk and artifact hygiene
 `build/` is regenerable; retention: the newest two validated distributions (`New-MKRaudsteinDistribution.ps1` cleans automatically), native candidates by `Cleanup-NativeCandidates.ps1` (dry run, reviewed plan hash),

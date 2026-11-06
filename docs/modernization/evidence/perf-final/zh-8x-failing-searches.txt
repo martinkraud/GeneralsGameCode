@@ -1,0 +1,182 @@
+FAILING A* SEARCH CHARACTERISATION (GENERALS_SIM_PATHFAIL; diagnostic, read-only)
+searches that reached the main loop: 40853 | succeeded 39432 | exhausted the open list 1421 (14652.15 ms total, mean 10.311 ms) | success time 4119.0 ms
+zone recalculations observed: 49
+failure time distribution (ms, diagnostic overhead included in the largest ones): p50 9.536 p90 13.412 p99 20.336 max 34.914
+  failures >=  1.000 ms: 1421  (14652.2 ms total = 100.0% of all failing time)
+  failures >=  5.000 ms: 1419  (14643.2 ms total = 99.9% of all failing time)
+  failures >= 10.000 ms:  533  (6726.0 ms total = 45.9% of all failing time)
+  failures >= 20.000 ms:   15  (351.3 ms total = 2.4% of all failing time)
+  failures >= 33.333 ms:    1  (34.9 ms total = 0.2% of all failing time)
+  failures >= 50.000 ms:    0  (0.0 ms total = 0.0% of all failing time)
+
+EXPENSIVE FAILURES (>= 5.0 ms): 1419
+
+by hierarchical pre-search (1 found a hierarchical path, 0 fell back to all-zones-passable):
+  0                                                           1419    14643.2 ms
+
+by requester AI state:
+  HUNT                                                        1396    14261.0 ms
+  ATTACKFOLLOW_WAYPOINT_PATH_AS_TEAM                            17      259.8 ms
+  GUARD                                                          4       89.3 ms
+  MOVE_TO                                                        2       33.2 ms
+
+by command source / attack path:
+  SCRIPT                                                      1400    14350.2 ms
+  AI                                                            19      293.0 ms
+
+by requester template:
+  ChinaTankBattleMaster                                        785     8117.4 ms
+  ChinaInfantryRedguard                                        446     4395.4 ms
+  AmericaTankCrusader                                           90      948.0 ms
+  AmericaTankPaladin                                            51      560.8 ms
+  AmericaInfantryMissileDefender                                36      411.8 ms
+  GLAVehicleQuadCannon                                           4       89.3 ms
+  ChinaInfantryTankHunter                                        3       59.5 ms
+  AmericaInfantryPilot                                           2       33.2 ms
+  AmericaTankMicrowave                                           1       18.1 ms
+  GLAInfantryTerrorist                                           1        9.8 ms
+
+by requesting team prototype:
+  China H 1ST Wave Rush4                                      1225    12446.9 ms
+  USA H 2ND Wave Tanks3                                         80      847.2 ms
+  USA H 2ND Wave Fast Attack3                                   39      485.4 ms
+  USA H 4TH Wave Artillery B3                                   23      233.5 ms
+  USA H 5TH Wave Tanks C3                                       17      188.2 ms
+  China H 4TH Wave Tanks B4                                      9      125.4 ms
+  USA H 3RD Wave Tanks C3                                       10      100.8 ms
+  GLA H 1W Guard Combat Zone2                                    4       89.3 ms
+  USA H 3RD Wave Tanks F3                                        9       83.5 ms
+  teamSkirmishAmerica3                                           2       33.2 ms
+  GLA H 4TH Wave Tanks B2                                        1        9.8 ms
+
+by player index:
+  6 (computer rules)                                          1234    12572.3 ms
+  5 (computer rules)                                           180     1971.8 ms
+  4 (computer rules)                                             5       99.0 ms
+
+by goal cell type:
+  clear                                                       1418    14633.4 ms
+  obstacle(structure)                                            1        9.8 ms
+
+by goal cell unit flags:
+  no units                                                     903     9329.4 ms
+  unit moving                                                  330     3411.3 ms
+  goal+other moving                                             70      748.5 ms
+  unit FIXED                                                    74      712.1 ms
+  unit goal                                                     42      441.9 ms
+
+by goal neighbours reached by the search (of 8):
+  0 reached, 8 terrain-valid                                  1264    13041.0 ms
+  0 reached, 7 terrain-valid                                    76      738.1 ms
+  0 reached, 5 terrain-valid                                    43      470.2 ms
+  0 reached, 6 terrain-valid                                    19      202.9 ms
+  0 reached, 4 terrain-valid                                    16      181.2 ms
+  3 reached, 8 terrain-valid                                     1        9.8 ms
+
+by zone test (zone1 == zone2 always here, else the search is rejected before work):
+  same zone                                                   1419    14643.2 ms
+
+by static terrain-only reachability (1 = terrain connects start and goal under the search's cell rules, 0 = it does not):
+  1                                                           1419    14643.2 ms
+
+by blocking-unit presence on the exhausted region's frontier:
+  terrain/map only                                             981    10084.7 ms
+  blocked by units                                             438     4558.5 ms
+
+by repeat index of the same request signature (0 = first time):
+  0                                                            691     7218.3 ms
+  10                                                           304     3343.5 ms
+  1                                                             98      923.9 ms
+  2                                                             71      663.2 ms
+  3                                                             59      555.3 ms
+  4                                                             48      468.3 ms
+  5                                                             39      378.1 ms
+  6                                                             34      327.9 ms
+  8                                                             26      270.5 ms
+  7                                                             27      269.3 ms
+  9                                                             22      225.0 ms
+
+FRONTIER of the exhausted region (neighbour cells of expanded cells that were never entered), summed over the expensive failures:
+  terrain: cliff                                            3530461
+  terrain: water                                                  0
+  terrain: rubble                                             58900
+  terrain: structure (obstacle)                             2719361
+  terrain: other impassable                                   51760
+  footprint off map                                          357479
+  ally without AI in footprint                                    0
+  ALLY FIXED NON-IDLE unit in footprint                        4995
+  ENEMY FIXED unit in footprint (cannot crush)                31204
+  passes (diagonal rule / other)                            1291052
+
+blocking units found on frontiers (distinct per failure) by template:
+  AmericaTankCrusader                         300
+  AmericaTankPaladin                          298
+  AmericaInfantryRanger                       249
+  ChinaTankGattling                           214
+  ChinaTankBattleMaster                       211
+  GLAVehicleQuadCannon                        188
+  ChinaVehicleDozer                           123
+  GLATankScorpion                              95
+  AmericaVehicleHumvee                         41
+  AmericaInfantryMissileDefender               40
+  AmericaTankAvenger                           37
+  ChinaInfantryRedguard                        29
+  relationship to the mover: ally          434
+  relationship to the mover: enemy        1478
+  blocker side: America                     967
+  blocker side: China                       647
+  blocker side: GLA                         298
+
+REPETITION (signature = start cell, goal cell, locomotor surfaces, crusher, radius, centre flag, human rules, layers, ignored obstacle, tunnelling):
+  distinct signatures over all searches 11574 | signatures that ever failed 693 | failed more than once 98 (728 repeat failures) | failed every time they were asked 693 | succeeded and failed alternately 0
+  failures that repeat an earlier signature with NO zone recalculation in between: 642 of 1421
+  repeat failures (same signature asked again): 728 | with ZERO pathfinder cell-state mutations since the previous request of that signature (the only case a state-version token could prove unchanged): 0 | mean mutations in between 19290, minimum 407
+  expensive failures that repeat an earlier signature: 728 of 1419 (7424.9 ms of 14643.2 ms)
+  expensive failures: 1419 | unique signatures 691 | unique requesting objects 46 | unique goal areas (4x4 cells) 147
+
+FAILURE CLASSIFICATION (all analysed failures; breadth-first floods with the search's own cell rules and an unlimited pool):
+  class 0 search budget / expansion quirk (goal reachable under the search's own cell rules with an unlimited pool)       1413    14554.6 ms (99% of failing time), 195 of them with >= 20000 cells allocated
+  class 1 TEMPORARY: blocked by units (reachable once units are ignored)                                                     8       97.6 ms (1% of failing time), 0 of them with >= 20000 cells allocated
+  by requesting state and class:
+    HUNT / class 0                                                1392   14221.1 ms
+    ATTACKFOLLOW_WAYPOINT_PATH_AS_TEAM / class 0                    13     202.0 ms
+    GUARD / class 0                                                  4      89.3 ms
+    ATTACKFOLLOW_WAYPOINT_PATH_AS_TEAM / class 1                     4      57.7 ms
+    HUNT / class 1                                                   4      39.8 ms
+    MOVE_TO / class 0                                                2      33.2 ms
+    ATTACK_MOVE_TO / class 0                                         1       4.9 ms
+    DEAD / class 0                                                   1       4.0 ms
+
+RECURRENCE of the same (requester, goal cell) after a failure with no success in between: 882 of 1421 failures (8939.6 ms); the requester had not changed its start cell in 718 of them (7341.1 ms); ZERO pathfinder cell mutations in between: 0
+  frames between consecutive failures of a pair: p10 61 p50 61 p90 170 max 12357 (30 frames = 1 s)
+RECOVERY: pairs that failed and LATER succeeded: 1 (mean 1.0 failures before success); frames from first failure to first success: p10 830 p50 830 p90 830 max 830; pairs that never succeeded again: 538 (1420 failures)
+
+SHARED CELL-INFO POOL (30000 records): failures during which an allocation was REFUSED because the pool was empty: 1421 of 1421 (14652.2 ms, 100% of failing time); free records when the search started: mean 16161 min 14392 max 21181
+POST-EXHAUSTION WORK: after the first refused allocation the search still ran 341.6 ms of 14652.2 ms (2%) and 867548 of 35923501 head pops (2%)
+
+TOP 25 EXPENSIVE FAILURES:
+    34.91 ms frame  10220 obj   1300 GLAVehicleQuadCannon   p4 GLA H 1W Guard Combat Zone2 state GUARD                  cmd SCRIPT hier 0 pops  47045 closed  15693 | start(218,236) goal(260,380) goalType clear flags no units | goal nbrs reached 0/8 valid 5 | nearest explored 14.8 cells | frontier: cliff 1486 water 0 struct 368 allyBusy 0 enemyFixed 230 offmap 0 | blockers 7 units | static BFS 1 | repeat 0
+    26.16 ms frame   7204 obj    392 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30649 closed  21107 | start(457,222) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2853 water 0 struct 1816 allyBusy 8 enemyFixed 0 offmap 379 | blockers 1 units | static BFS 1 | repeat 22
+    26.06 ms frame   7218 obj    427 AmericaInfantryMissileDefender p5 USA H 2ND Wave Fast Attack3 state HUNT                   cmd SCRIPT hier 0 pops  34794 closed  21102 | start(430,304) goal(460,222) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 15.0 cells | frontier: cliff 3112 water 0 struct 1777 allyBusy 4 enemyFixed 0 offmap 0 | blockers 1 units | static BFS 1 | repeat 0
+    24.36 ms frame   6899 obj    392 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30677 closed  21098 | start(457,222) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2846 water 0 struct 1821 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 17
+    24.20 ms frame   7162 obj    385 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30841 closed  21151 | start(459,224) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2847 water 0 struct 1816 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 22
+    23.51 ms frame   7156 obj    368 ChinaInfantryRedguard  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  28306 closed  21128 | start(461,223) goal(452,279) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 31.3 cells | frontier: cliff 2917 water 0 struct 1802 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 19
+    22.53 ms frame   7229 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  31245 closed  21121 | start(465,225) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2865 water 0 struct 1814 allyBusy 7 enemyFixed 0 offmap 379 | blockers 1 units | static BFS 1 | repeat 20
+    22.21 ms frame   6030 obj    370 ChinaInfantryTankHunter p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  57422 closed  20989 | start(356,146) goal(416,296) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 56.6 cells | frontier: cliff 2547 water 0 struct 1008 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 0
+    22.16 ms frame   7168 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  31260 closed  21131 | start(465,225) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2865 water 0 struct 1814 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 19
+    21.35 ms frame  10281 obj    364 GLAVehicleQuadCannon   p4 GLA H 1W Guard Combat Zone2 state GUARD                  cmd SCRIPT hier 0 pops  37633 closed  15698 | start(268,265) goal(256,376) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 7.8 cells | frontier: cliff 1330 water 0 struct 264 allyBusy 0 enemyFixed 298 offmap 0 | blockers 12 units | static BFS 1 | repeat 0
+    21.12 ms frame   7040 obj    385 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30744 closed  21103 | start(459,224) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2846 water 0 struct 1821 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 20
+    21.05 ms frame   6985 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  31263 closed  21125 | start(465,225) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2865 water 0 struct 1815 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 16
+    20.75 ms frame   7227 obj    430 AmericaInfantryMissileDefender p5 USA H 2ND Wave Fast Attack3 state HUNT                   cmd SCRIPT hier 0 pops  36111 closed  21140 | start(430,307) goal(460,222) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 15.0 cells | frontier: cliff 3117 water 0 struct 1783 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 0
+    20.64 ms frame   7217 obj    368 ChinaInfantryRedguard  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  28230 closed  21085 | start(461,223) goal(452,279) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 31.3 cells | frontier: cliff 2915 water 0 struct 1802 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 20
+    20.34 ms frame   7046 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  31254 closed  21118 | start(465,225) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2865 water 0 struct 1815 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 17
+    19.92 ms frame   7107 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  31256 closed  21121 | start(465,225) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2865 water 0 struct 1815 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 18
+    19.69 ms frame   7265 obj    392 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30570 closed  21063 | start(457,222) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2852 water 0 struct 1816 allyBusy 8 enemyFixed 0 offmap 379 | blockers 1 units | static BFS 1 | repeat 23
+    19.60 ms frame   5730 obj    370 ChinaInfantryTankHunter p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  52938 closed  21212 | start(373,131) goal(412,291) goalType clear flags no units | goal nbrs reached 0/8 valid 7 | nearest explored 53.3 cells | frontier: cliff 2593 water 0 struct 1331 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 0
+    19.50 ms frame   6757 obj    369 ChinaInfantryRedguard  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  28413 closed  21092 | start(464,223) goal(452,279) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 31.3 cells | frontier: cliff 2921 water 0 struct 1797 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 12
+    19.40 ms frame   7843 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  31425 closed  21144 | start(465,225) goal(404,255) goalType clear flags unit moving | goal nbrs reached 0/8 valid 8 | nearest explored 23.1 cells | frontier: cliff 2664 water 0 struct 1797 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 0
+    19.39 ms frame   6491 obj    385 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30624 closed  21027 | start(459,224) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2840 water 0 struct 1826 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 11
+    19.24 ms frame   6918 obj    385 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30885 closed  21161 | start(459,224) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2847 water 0 struct 1821 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 18
+    19.03 ms frame   6979 obj    385 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  30811 closed  21125 | start(459,224) goal(441,287) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 41.8 cells | frontier: cliff 2846 water 0 struct 1821 allyBusy 0 enemyFixed 0 offmap 379 | blockers 0 units | static BFS 1 | repeat 19
+    18.84 ms frame   7184 obj    369 ChinaInfantryRedguard  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  28451 closed  21148 | start(464,223) goal(452,279) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 31.3 cells | frontier: cliff 2922 water 0 struct 1797 allyBusy 0 enemyFixed 0 offmap 0 | blockers 0 units | static BFS 1 | repeat 19
+    18.81 ms frame  17369 obj    414 ChinaTankBattleMaster  p6 China H 1ST Wave Rush4 state HUNT                   cmd SCRIPT hier 0 pops  24124 closed  18195 | start(465,225) goal(462,302) goalType clear flags no units | goal nbrs reached 0/8 valid 8 | nearest explored 52.3 cells | frontier: cliff 2656 water 0 struct 2075 allyBusy 0 enemyFixed 104 offmap 416 | blockers 3 units | static BFS 1 | repeat 34
