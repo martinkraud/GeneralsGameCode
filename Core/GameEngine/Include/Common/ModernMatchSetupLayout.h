@@ -59,7 +59,7 @@ inline Layout compute(const Input &in)
 	Layout L;
 	if (in.surfaceW <= 0 || in.surfaceH <= 0) return L;
 	int scale = in.uiPercent > 0 ? in.uiPercent : 100;
-	int compW = static_cast<int>(in.surfaceH * ModernTheme::kCompositionMaxAspect + 0.5);
+	int compW = static_cast<int>(in.surfaceH * ModernTheme::kWideContentMaxAspect + 0.5);
 	if (compW > in.surfaceW) compW = in.surfaceW;
 	L.composition = Rect{ (in.surfaceW - compW) / 2, 0, compW, in.surfaceH };
 	const int rules = in.ruleCount < 0 ? 0 : (in.ruleCount > kMaxRules ? kMaxRules : in.ruleCount);

@@ -338,7 +338,7 @@ GameFont *fontAt(TypeRole role, int scalePercent)
 	if (!TheFontLibrary) return nullptr;
 	const ModernTheme::TypeStyle &t = ModernTheme::type(role);
 	int pt = (t.referenceSize * (scalePercent > 0 ? scalePercent : 100) + 50) / 100;
-	if (pt < 7) pt = 7;
+	if (pt < ModernTheme::kMinPointSize) pt = ModernTheme::kMinPointSize;
 	return TheFontLibrary->getFont(AsciiString(resolvedFamily(role)), pt, t.bold);
 }
 

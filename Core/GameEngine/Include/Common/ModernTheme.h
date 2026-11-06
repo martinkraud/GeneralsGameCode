@@ -62,7 +62,7 @@ inline const TypeStyle &type(TypeRole role)
 		{ { "Bahnschrift", "Segoe UI", "Arial" }, 12, false, false },   // Body
 		{ { "Bahnschrift", "Segoe UI", "Arial" }, 12, false, false },   // Label
 		{ { "Bahnschrift", "Segoe UI", "Arial" }, 12, true,  false },   // Value
-		{ { "Bahnschrift", "Segoe UI", "Arial" }, 10, false, false },   // Helper
+		{ { "Bahnschrift", "Segoe UI", "Arial" }, 11, false, false },   // Helper
 		{ { "Bahnschrift", "Segoe UI", "Arial" }, 11, true,  true  },   // Status
 	};
 	return table[static_cast<int>(role)];
@@ -156,6 +156,13 @@ inline const Metrics &metrics() { static const Metrics m; return m; }
 // Largest aspect ratio (width / height) the composition may span: on a wider surface the content is composed inside a centred box of this aspect and the
 // remaining width is left to the shell map. An owner-adjustable token.
 constexpr double kCompositionMaxAspect = 16.0 / 9.0;
+
+// Match Setup is a three-zone screen that needs width: its composition may span up to 21:9, so on an ultrawide surface it settles at the requested (Auto) UI scale instead of being reduced to fit a 16:9
+// box. It never stretches: the panel is bounded by its own content width and the rest of the surface stays the live shell map.
+constexpr double kWideContentMaxAspect = 21.0 / 9.0;
+
+// Smallest point size any Modern text is rendered at (reference sizes are scaled by the UI scale; a small scale must not make secondary text unreadable).
+constexpr int kMinPointSize = 11;
 
 static_assert(std::is_trivially_copyable<Palette>::value && std::is_trivially_copyable<Metrics>::value, "tokens are plain data");
 } // namespace ModernTheme

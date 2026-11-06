@@ -351,7 +351,7 @@ void rebuildDecor()
 	}
 	ModernDraw::DecorItem &foot = s_decor.add(ModernDraw::DecorKind::Text);
 	foot.x = relX(L.status.x + L.status.w * 62 / 100); foot.y = relY(L.status.y); foot.w = L.status.w - L.status.w * 62 / 100; foot.h = L.status.h;
-	foot.role = TypeRole::Helper; foot.align = 2; foot.color = p.textMuted.withAlpha(180);
+	foot.role = TypeRole::Helper; foot.align = 2; foot.color = p.textMuted.withAlpha(210);
 	wcsncpy(foot.text, ModernBranding::footerText(), 95);
 	s_decor.refreshFonts();
 	// the build footer is secondary: when the status text needs its box (narrow panel, 4:3) the footer yields instead of overprinting it
