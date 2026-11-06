@@ -37,6 +37,8 @@
 #include "GameClient/MatchOptionControls.h"
 #include "GameClient/ModernMatchSetup.h"
 #include "Common/SuperweaponLimit.h"
+#include "Common/GameSpeed.h"
+#include "Common/DisplayRuntime.h"
 #include "Common/FileSystem.h"
 #include "Common/GameEngine.h"
 #include "Common/PlayerTemplate.h"
@@ -125,6 +127,11 @@ static const char aiBehaviorKey[] = "AIBehavior";
 static NameKeyType comboBoxSuperweaponsID = NAMEKEY_INVALID;
 static GameWindow *comboBoxSuperweapons = nullptr;
 static const char superweaponLimitKey[] = "Superweapons";
+// Game Speed: pacing of the logic scheduler (Common/GameSpeed.h). Offered only by the Modern Match Setup (the legacy Match Options band has no room for a fourth rule); Classic = Normal.
+static NameKeyType comboBoxGameSpeedID = NAMEKEY_INVALID;
+static GameWindow *comboBoxGameSpeed = nullptr;
+static const char gameSpeedKey[] = "GameSpeed";
+static Bool gameSpeedSelectorOffered() { return ModernExperience::enabled( ModernExperience::FEATURE_GAME_SPEED ) && DisplayRuntime::modern(); }
 static NameKeyType staticTextGameSpeedID = NAMEKEY_INVALID;
 static NameKeyType checkBoxLimitSuperweaponsID = NAMEKEY_INVALID;
 static NameKeyType comboBoxStartingCashID = NAMEKEY_INVALID;
@@ -321,6 +328,15 @@ static UnsignedShort storedSuperweaponLimit(const SkirmishPreferences &prefs)
   return limit;
 }
 
+static UnsignedShort storedGameSpeed(const SkirmishPreferences &prefs)
+{
+  uint16_t percent = GameSpeed::kNormal;
+  SkirmishPreferences::const_iterator it = prefs.find(gameSpeedKey);
+  if (it == prefs.end() || !GameSpeed::parsePreferenceText(it->second.str(), percent))
+    return GameSpeed::kNormal;
+  return percent;
+}
+
 static AIBehaviorMode storedAIBehavior(const SkirmishPreferences &prefs)
 {
   AIBehaviorMode mode = AI_BEHAVIOR_ORIGINAL;
@@ -398,6 +414,8 @@ Bool SkirmishPreferences::write()
 		(*this)[aiBehaviorKey] = AIBehaviorOptions::preferenceValue(TheSkirmishGameInfo->getAIBehavior());
 	if (ModernExperience::enabled(ModernExperience::FEATURE_SUPERWEAPON_LIMIT))
 		(*this)[superweaponLimitKey] = SuperweaponLimit::preferenceText(TheSkirmishGameInfo->getSuperweaponLimit());
+	if (gameSpeedSelectorOffered())
+		(*this)[gameSpeedKey] = GameSpeed::preferenceText(TheSkirmishGameInfo->getGameSpeed());
 
 	setSlotList();
 
@@ -505,6 +523,7 @@ static void startPressed()
 	{
 		buttonPushed = FALSE;
 		MessageBoxOk(TheGameText->fetch("GUI:ErrorStartingGame"), TheGameText->fetch("GUI:CantFindMap"), nullptr);
+		return;   // an unknown map has no metadata to read below (the retail code dereferenced the end iterator)
 	}
 	MapMetaData mmd = it->second;
 	if(playerCount > mmd.m_numPlayers)
@@ -1353,6 +1372,8 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
   const Bool superweaponSelector = ModernExperience::enabled( ModernExperience::FEATURE_SUPERWEAPON_LIMIT );
   TheSkirmishGameInfo->setSuperweaponRestriction( superweaponSelector ? 0 : ( prefs.getSuperweaponRestricted() ? 1 : 0 ) );
   TheSkirmishGameInfo->setSuperweaponLimit( superweaponSelector ? storedSuperweaponLimit( prefs ) : SuperweaponLimit::kUnlimited );
+  TheSkirmishGameInfo->setGameSpeed( gameSpeedSelectorOffered() ? storedGameSpeed( prefs ) : GameSpeed::kNormal );
+  { uint16_t forced = 0; if ( gameSpeedSelectorOffered() && GameSpeed::forcedPercent( forced ) ) TheSkirmishGameInfo->setGameSpeed( forced ); }   // test aid
 	// AI Behaviour: Original unless the player chose Enhanced (Classic never offers it).
 	TheSkirmishGameInfo->setAIBehavior(ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR) ? storedAIBehavior(prefs) : AI_BEHAVIOR_ORIGINAL);
 
@@ -1398,6 +1419,7 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 	// "Limit Superweapons" check box (replaced by the Superweapons dropdown) are hidden; the retail Starting Cash caption and dropdown move into the band.
 	comboBoxAIBehavior = nullptr;
 	comboBoxSuperweapons = nullptr;
+	comboBoxGameSpeed = nullptr;
 	if (sliderGameSpeed && staticTextGameSpeed && comboBoxStartingCash && ModernExperience::enabled(ModernExperience::FEATURE_AI_BEHAVIOR))
 	{
 		if (speedLabel)
@@ -1443,6 +1465,14 @@ void SkirmishGameOptionsMenuInit( WindowLayout *layout, void *userData )
 			comboBoxSuperweapons = MatchOptionControls::createCombo(parent, band.label[2], band.control[2], comboBoxStartingCash, cashLabel,
 				NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextSuperweapons"), comboBoxSuperweaponsID, "GUI:Superweapons", L"Superweapons", entries, count);
 			MatchOptionControls::select(comboBoxSuperweapons, (int)TheSkirmishGameInfo->getSuperweaponLimit());
+		}
+		if (gameSpeedSelectorOffered())
+		{
+			entries = MatchOptionControls::gameSpeedEntries(count);
+			comboBoxGameSpeedID = NAMEKEY("SkirmishGameOptionsMenu.wnd:ComboBoxGameSpeed");
+			comboBoxGameSpeed = MatchOptionControls::createCombo(parent, band.label[2], band.control[2], comboBoxStartingCash, cashLabel,
+				NAMEKEY("SkirmishGameOptionsMenu.wnd:StaticTextGameSpeedRule"), comboBoxGameSpeedID, "GUI:GameSpeed", L"Game Speed", entries, count);
+			MatchOptionControls::select(comboBoxGameSpeed, (int)TheSkirmishGameInfo->getGameSpeed());
 		}
 	}
 	setFPSTextBox(sliderPos);
@@ -1655,6 +1685,10 @@ WindowMsgHandledType SkirmishGameOptionsMenuSystem( GameWindow *window, Unsigned
         if ( comboBoxAIBehavior && controlID == comboBoxAIBehaviorID )
         {
           TheSkirmishGameInfo->setAIBehavior( MatchOptionControls::selected( comboBoxAIBehavior, AI_BEHAVIOR_ORIGINAL ) == AI_BEHAVIOR_ENHANCED ? AI_BEHAVIOR_ENHANCED : AI_BEHAVIOR_ORIGINAL );
+        }
+        else if ( comboBoxGameSpeed && controlID == comboBoxGameSpeedID )
+        {
+          TheSkirmishGameInfo->setGameSpeed( (UnsignedShort)MatchOptionControls::selected( comboBoxGameSpeed, GameSpeed::kNormal ) );
         }
         else if ( comboBoxSuperweapons && controlID == comboBoxSuperweaponsID )
         {

@@ -6,6 +6,7 @@
 
 #include "Common/AIBehavior.h"
 #include "Common/SuperweaponLimit.h"
+#include "Common/GameSpeed.h"
 #include "GameClient/Gadget.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetStaticText.h"
@@ -45,11 +46,18 @@ const MatchOptionControls::Entry kSuperweapons[] = {
 	{ "GUI:SuperweaponsMax5", L"Max 5", 5 },
 	{ "GUI:SuperweaponsUnlimited", L"Unlimited", SuperweaponLimit::kUnlimited },
 };
+const MatchOptionControls::Entry kGameSpeed[] = {
+	{ GameSpeed::kLevels[0].labelKey, GameSpeed::kLevels[0].fallback, GameSpeed::kLevels[0].percent },
+	{ GameSpeed::kLevels[1].labelKey, GameSpeed::kLevels[1].fallback, GameSpeed::kLevels[1].percent },
+	{ GameSpeed::kLevels[2].labelKey, GameSpeed::kLevels[2].fallback, GameSpeed::kLevels[2].percent },
+	{ GameSpeed::kLevels[3].labelKey, GameSpeed::kLevels[3].fallback, GameSpeed::kLevels[3].percent },
+};
 }
 
 namespace MatchOptionControls
 {
 const Entry *aiBehaviorEntries(int &count) { count = (int)(sizeof(kAiBehavior) / sizeof(kAiBehavior[0])); return kAiBehavior; }
+const Entry *gameSpeedEntries(int &count) { count = (int)(sizeof(kGameSpeed) / sizeof(kGameSpeed[0])); return kGameSpeed; }
 const Entry *superweaponEntries(int &count) { count = (int)(sizeof(kSuperweapons) / sizeof(kSuperweapons[0])); return kSuperweapons; }
 
 GameWindow *createCombo(GameWindow *parent, const MatchOptionsLayout::Rect &label, const MatchOptionsLayout::Rect &control, GameWindow *appearance, GameWindow *labelDonor,

@@ -15,7 +15,10 @@
 #include "Common/ModernExperience.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/StartupDiagnostics.h"
+#include "Common/GameSpeed.h"
 #include "GameClient/Display.h"
+#include "GameClient/MapUtil.h"
+#include "GameNetwork/GameInfo.h"
 #include "GameClient/Gadget.h"
 #include "GameClient/GadgetCheckBox.h"
 #include "GameClient/GadgetComboBox.h"
@@ -39,10 +42,20 @@ const ModernMatchSetupScreen::RuleSpec kRules[] = {
 	{ "StartingCash", "GUI:StartingMoney", L"Starting Cash", "ComboBoxStartingCash", nullptr },
 	{ "AIBehavior", "GUI:AIBehavior", L"AI Behaviour", "ComboBoxAIBehavior", nullptr },
 	{ "Superweapons", "GUI:Superweapons", L"Superweapons", "ComboBoxSuperweapons", nullptr },
+	{ "GameSpeed", "GUI:GameSpeed", L"Game Speed", "ComboBoxGameSpeed", nullptr },
 	{ "LimitSuperweapons", "GUI:LimitSuperweapons", L"Limit Superweapons", "CheckboxLimitSuperweapons", "ComboBoxSuperweapons" },
 };
 
 struct Rule { const ModernMatchSetupScreen::RuleSpec *spec; GameWindow *window; bool check; };
+
+// one short sentence per rule, shown in the status line while that rule has the focus (GameText key "GUI:RuleHelp<Id>" overrides the fallback)
+struct RuleHelp { const char *id; const char *key; const wchar_t *fallback; };
+const RuleHelp kRuleHelp[] = {
+	{ "StartingCash", "GUI:RuleHelpStartingCash", L"Money every player starts the match with." },
+	{ "AIBehavior", "GUI:RuleHelpAIBehavior", L"Original is the classic AI. Enhanced builds bases and defends better." },
+	{ "Superweapons", "GUI:RuleHelpSuperweapons", L"How many superweapon structures each player may own at once." },
+	{ "GameSpeed", "GUI:RuleHelpGameSpeed", L"How fast the game runs, not graphics. Normal is the original speed." },
+};
 
 struct State
 {
@@ -56,6 +69,7 @@ struct State
 	GameWindow *map = nullptr, *mapName = nullptr, *selectMap = nullptr, *start = nullptr, *back = nullptr;
 	GameWindow *honorLabel[kHonorRows] = {}, *honorValue[kHonorRows] = {};
 	std::vector<GameWindow *> kept;                       // in back-to-front order (the last one is brought to the top last)
+	int statusToken = -1;                                 // what the status line currently says (validation reason / focused rule): the chrome is rebuilt when it changes
 	ModernDraw::Decor decor;
 	unsigned relayouts = 0;
 } s;
@@ -160,9 +174,53 @@ void skinAll()
 	if (s.back) ModernDraw::skinButton(s.back, ModernComponents::Kind::Secondary, TypeRole::MenuSecondary);
 	for (int i = 0; i < kHonorRows; ++i)
 	{
-		if (s.honorLabel[i]) { ModernDraw::skinText(s.honorLabel[i], TypeRole::Label, p.textSecondary); leftAligned(s.honorLabel[i]); }
-		if (s.honorValue[i]) { ModernDraw::skinText(s.honorValue[i], TypeRole::Value, p.text); if (TextData *d = static_cast<TextData *>(s.honorValue[i]->winGetUserData())) { d->centered = FALSE; d->centeredVertically = TRUE; } }
+		if (s.honorLabel[i]) { ModernDraw::skinText(s.honorLabel[i], TypeRole::Helper, p.textMuted); leftAligned(s.honorLabel[i]); }
+		if (s.honorValue[i]) { ModernDraw::skinText(s.honorValue[i], TypeRole::Helper, p.textSecondary); if (TextData *d = static_cast<TextData *>(s.honorValue[i]->winGetUserData())) { d->centered = FALSE; d->centeredVertically = TRUE; } }
 	}
+}
+
+// The status line: (1) why the match cannot start, using exactly the two checks startPressed() makes (the map is unknown to the map cache / more players than the map has start
+// positions) - Play stays enabled and the retail message box still appears, this only says it beforehand; (2) the help sentence of the rule that has the focus; (3) the default hint.
+enum StatusKind { StatusHint = 0, StatusMissingMap = 1, StatusTooManyPlayers = 2, StatusRuleHelp = 3 };
+
+int computeStatus(UnicodeString &text, int &token)
+{
+	token = 0;
+	if (TheSkirmishGameInfo && TheMapCache)
+	{
+		AsciiString lower = TheSkirmishGameInfo->getMap();
+		lower.toLower();
+		std::map<AsciiString, MapMetaData>::iterator it = TheMapCache->find(lower);
+		if (it == TheMapCache->end())
+		{
+			text = TheGameText->fetch("GUI:CantFindMap");
+			token = 1;
+			return StatusMissingMap;
+		}
+		const int players = TheSkirmishGameInfo->getNumPlayers();
+		if (players > it->second.m_numPlayers)
+		{
+			text.format(TheGameText->fetch("GUI:TooManyPlayers"), it->second.m_numPlayers);
+			token = 2 + (it->second.m_numPlayers << 4) + (players << 12);
+			return StatusTooManyPlayers;
+		}
+	}
+	GameWindow *focus = TheWindowManager ? TheWindowManager->winGetFocus() : nullptr;
+	for (int i = 0; focus && i < static_cast<int>(s.rules.size()); ++i)
+	{
+		bool inRule = false;
+		for (GameWindow *w = focus; w && !inRule; w = w->winGetParent()) inRule = (w == s.rules[i].window);
+		if (!inRule) continue;
+		for (const RuleHelp &h : kRuleHelp)
+			if (std::strcmp(h.id, s.rules[i].spec->id) == 0)
+			{
+				text = TheGameText->FETCH_OR_SUBSTITUTE(h.key, h.fallback);
+				token = 100 + i;
+				return StatusRuleHelp;
+			}
+	}
+	text = TheGameText->FETCH_OR_SUBSTITUTE("GUI:SkirmishHint", L"Click a start position on the map to take it.");
+	return StatusHint;
 }
 
 void rebuildDecor()
@@ -211,12 +269,17 @@ void rebuildDecor()
 	if (L.hasHonors)
 	{
 		ModernDraw::DecorItem &sep = s.decor.add(ModernDraw::DecorKind::Rule);
+		sep.color = p.hairline;
 		sep.x = rx(L.honorLabel[0].x); sep.y = ry(L.honorLabel[0].y) - ModernDraw::px(6); sep.w = L.honorLabel[0].w + L.honorValue[0].w; sep.h = 1; sep.color = p.hairline;
 	}
-	text(L.status, TypeRole::Helper, p.textMuted, TheGameText->FETCH_OR_SUBSTITUTE("GUI:SkirmishHint", L"Click a start position on the map to take it."));
+	UnicodeString statusText;
+	int statusToken = 0;
+	const int statusKind = computeStatus(statusText, statusToken);
+	s.statusToken = (statusKind << 24) ^ statusToken;
+	text(L.status, TypeRole::Helper, statusKind == StatusMissingMap || statusKind == StatusTooManyPlayers ? p.warning : (statusKind == StatusRuleHelp ? p.textSecondary : p.textMuted), statusText);
 	ModernDraw::DecorItem &foot = s.decor.add(ModernDraw::DecorKind::Text);
 	foot.x = rx(L.status.right()); foot.y = ry(L.status.y); foot.w = L.panel.right() - ModernDraw::px(24) - L.status.right() - 0; foot.h = L.status.h;
-	foot.role = TypeRole::Helper; foot.align = 2; foot.color = p.textMuted.withAlpha(150);
+	foot.role = TypeRole::Helper; foot.align = 2; foot.color = p.textMuted.withAlpha(210);
 	wcsncpy(foot.text, ModernBranding::footerText(), 95);
 	if (foot.w < ModernDraw::px(160)) foot.w = 0;
 	s.decor.refreshFonts();
@@ -233,6 +296,15 @@ void hideUnused()
 	for (GameWindow *c = s.sub->winGetChild(); c; c = c->winGetNext())
 		if (!contains(use, c))
 			c->winHide(TRUE);
+}
+
+void refreshStatus()
+{
+	UnicodeString text;
+	int token = 0;
+	const int kind = computeStatus(text, token);
+	if (s.statusToken != ((kind << 24) ^ token))
+		rebuildDecor();   // the status line changed (a validation reason appeared / the focused rule changed)
 }
 
 void relayout()
@@ -339,7 +411,11 @@ void update()
 	if (TheDisplay->getWidth() != s.surfaceW || TheDisplay->getHeight() != s.surfaceH || (uiPercent > 0 ? uiPercent : 100) != s.uiPercent)
 		relayout();
 	else
-		hideUnused();   // the retail fade-in (FULLFADE on SubParent) shows its children again after Init: whatever the composition does not use stays hidden
+	{
+		refreshStatus();
+		hideUnused();
+	}
+	//   // the retail fade-in (FULLFADE on SubParent) shows its children again after Init: whatever the composition does not use stays hidden
 }
 
 void forget()

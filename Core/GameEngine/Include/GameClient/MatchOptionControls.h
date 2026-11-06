@@ -15,6 +15,7 @@ struct Entry { const char *textKey; const wchar_t *fallback; int value; };
 // the entries of the two selectors, in display order
 const Entry *aiBehaviorEntries(int &count);        // Original (default), Enhanced
 const Entry *superweaponEntries(int &count);       // Disabled, Max 1, Max 3, Max 5, Unlimited (default)
+const Entry *gameSpeedEntries(int &count);         // Slow, Normal (default), Fast, Very Fast (values are percent of Normal, Common/GameSpeed.h)
 
 /// Creates (once) a caption + dropdown pair inside `parent`; a second call finds the existing dropdown and refills it. `appearance` is an existing retail dropdown whose look is copied,
 /// `labelDonor` an existing static text whose look is copied (may be null). Returns the combo box, or null when it could not be built.
