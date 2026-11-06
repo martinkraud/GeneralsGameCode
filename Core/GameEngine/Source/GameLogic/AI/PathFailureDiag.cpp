@@ -67,6 +67,12 @@ struct FailRec
 	int staticBfs = -1;   // 1 goal reachable by terrain rules from the start (so the failure is dynamic), 0 not reachable, -1 not evaluated
 	unsigned bfsCells = 0;
 	float goalToEdgeMin = 0;
+	// X64.perf-final: failure classification and per-(requester, goal) recurrence
+	int m1 = -1, m2 = -1;           // BFS under terrain + footprint-on-map only (1 = goal reachable) / under terrain + footprint + units (the search's own cell rules, unlimited pool)
+	int cls = 0;                    // see classNames
+	unsigned pairGap = 0, pairFails = 0, pairSameStart = 0, pairMutations = 0;
+	int pairSeen = 0;
+	unsigned poolFree = 0, infoFails = 0, popsAtRefusal = 0, popsTotal = 0; double msAfterRefusal = 0;
 };
 
 struct SigStat
@@ -75,6 +81,14 @@ struct SigStat
 	int lastResult = -1;
 };
 
+struct PairStat { unsigned firstFail = 0, lastFail = 0, fails = 0, mutAtLast = 0; int sx = 0, sy = 0; bool open = false; };
+struct Recovery { unsigned delay = 0, fails = 0; };
+std::unordered_map<unsigned long long, PairStat> s_pairs;
+std::vector<Recovery> s_recoveries;
+unsigned long long pairKey(unsigned obj, int gx, int gy) { return (static_cast<unsigned long long>(obj) << 40) ^ (static_cast<unsigned long long>(static_cast<unsigned>(gx) & 0xFFFFF) << 20) ^ static_cast<unsigned long long>(static_cast<unsigned>(gy) & 0xFFFFF); }
+enum Class { C_BUDGET, C_UNITS, C_FOOTPRINT, C_TERRAIN, C_UNKNOWN, C_COUNT };
+const char *classNames[C_COUNT] = { "search budget / expansion quirk (goal reachable under the search's own cell rules with an unlimited pool)", "TEMPORARY: blocked by units (reachable once units are ignored)",
+	"STATIC: footprint (radius / map edge), no units involved", "STATIC: terrain (cell type)", "not evaluated (non-ground layer)" };
 std::vector<FailRec> s_records;
 LiteCounters s_lite;
 std::vector<FailRec> s_liteSamples;
@@ -97,6 +111,13 @@ double nowMs()
 
 int g_state = -1;
 unsigned g_mutations = 0;
+unsigned g_infoFailures = 0;
+static Search *s_current = nullptr;   // the search in progress (the pathfinder runs one at a time)
+void noteInfoFailure()
+{
+	++g_infoFailures;
+	if (s_current) { if (!s_current->refusalsInSearch) { s_current->popsAtFirstRefusal = s_current->pops; s_current->ticksAtFirstRefusal = PerformanceProfile::now(); } ++s_current->refusalsInSearch; }
+}
 bool initState()
 {
 	g_state = getenv("GENERALS_SIM_PATHFAIL") ? 1 : 0;
@@ -123,6 +144,7 @@ void Search::begin(Pathfinder *p, Object *o, const LocomotorSet *l, const Coord3
 	++s_searches;
 	++s_lite.searches;
 	if (g_state != 1) return;
+	poolFreeAtStart = 0; infoFailAtStart = g_infoFailures; popsAtFirstRefusal = 0; refusalsInSearch = 0; ticksAtFirstRefusal = 0; s_current = this;
 	// request signature: everything the search outcome depends on in the STATIC part of its input (cells, class of mover, flags); not unit positions.
 	unsigned long long h = 1469598103934665603ULL;
 	h = mix(h, static_cast<unsigned long long>(start->getXIndex())); h = mix(h, static_cast<unsigned long long>(start->getYIndex()));
@@ -137,10 +159,20 @@ void Search::succeeded()
 {
 	if (!active || done) return;
 	done = true;
+	if (s_current == this) s_current = nullptr;
 	++s_successes;
 	const double okMs = static_cast<double>(PerformanceProfile::now() - startTick) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
 	s_successMs += okMs;
 	if (g_state != 1) { ++s_lite.successes; s_lite.successMs += okMs; return; }
+	if (obj && goalCell)
+	{
+		auto it = s_pairs.find(pairKey(obj->getID(), goalCell->getXIndex(), goalCell->getYIndex()));
+		if (it != s_pairs.end() && it->second.open)
+		{
+			s_recoveries.push_back({ TheGameLogic->getFrame() - it->second.firstFail, it->second.fails });
+			it->second.open = false; it->second.fails = 0;
+		}
+	}
 	SigStat &st = s_sigs[signature];
 	if (st.count == 0) { st.firstFrame = TheGameLogic->getFrame(); st.zoneRecalcAtFirst = s_zoneRecalcs; }
 	if (st.lastResult == 0) ++st.flips;
@@ -184,6 +216,8 @@ void PathFailureDiagAccess::analyze(PathFailureDiag::Search &s, int cellsAllocat
 	r.ms = static_cast<double>(PerformanceProfile::now() - s.startTick) * 1000.0 / static_cast<double>(PerformanceProfile::frequency());
 	if (!lite) { ++s_failures; s_failMs += r.ms; }
 	r.frame = TheGameLogic->getFrame();
+	r.popsAtRefusal = s.popsAtFirstRefusal; r.popsTotal = s.pops; r.msAfterRefusal = s.ticksAtFirstRefusal ? static_cast<double>(PerformanceProfile::now() - s.ticksAtFirstRefusal) * 1000.0 / static_cast<double>(PerformanceProfile::frequency()) : 0.0;
+	r.poolFree = s.poolFreeAtStart; r.infoFails = g_infoFailures - s.infoFailAtStart;
 	r.pops = s.pops; r.cells = static_cast<unsigned>(cellsAllocated); r.sig = s.signature; r.hier = s_hierarchical;
 	r.zone1 = s.zone1; r.zone2 = s.zone2; r.radius = s.radius; r.center = s.center; r.human = s.human; r.crusher = s.crusher;
 	r.layer = s.layer; r.destLayer = s.destLayer; r.surfaces = static_cast<unsigned>(s.loco->getValidSurfaces());
@@ -356,6 +390,80 @@ void PathFailureDiagAccess::analyze(PathFailureDiag::Search &s, int cellsAllocat
 			r.staticBfs = reached ? 1 : 0;
 		}
 	}
+
+	// X64.perf-final: separate "the terrain / footprint says no" from "units say no" from "the search ran out of budget". Two breadth-first floods from the start with the A*'s own neighbour and
+		// diagonal rules, an unlimited pool, no costs: m1 ignores units (footprint on the map only), m2 applies the search's unit rules (fixed uncrushable enemies, allies without AI).
+	if (s.startCell->getLayer() == LAYER_GROUND && goal->getLayer() == LAYER_GROUND && !s.loco->isDownhillOnly())
+	{
+		const int w = pf.m_extent.hi.x - pf.m_extent.lo.x + 1, h = pf.m_extent.hi.y - pf.m_extent.lo.y + 1;
+		if (w > 0 && h > 0)
+		{
+			const ObjectID ignoreId = s.obj && s.obj->getAIUpdateInterface() ? s.obj->getAIUpdateInterface()->getIgnoredObstacleID() : INVALID_ID;
+			auto flood = [&](bool units) -> int {
+				std::vector<unsigned char> vis(static_cast<size_t>(w) * h, 0);
+				std::vector<int> queue;
+				auto idx = [&](int x, int y) { return static_cast<size_t>(y - pf.m_extent.lo.y) * w + (x - pf.m_extent.lo.x); };
+				queue.push_back(r.sx); queue.push_back(r.sy);
+				vis[idx(r.sx, r.sy)] = 1;
+				for (size_t head = 0; head < queue.size(); head += 2)
+				{
+					const int x = queue[head], y = queue[head + 1];
+					bool nf[8] = { false, false, false, false, false, false, false, false };
+					for (int i = 0; i < 8; ++i)
+					{
+						const int nx = x + dx8[i], ny = y + dy8[i];
+						if (nx < pf.m_extent.lo.x || nx > pf.m_extent.hi.x || ny < pf.m_extent.lo.y || ny > pf.m_extent.hi.y) continue;
+						PathfindCell *n = pf.getCell(LAYER_GROUND, nx, ny);
+						if (!n) continue;
+						if (i >= 4 && !nf[(i - 4)] && !nf[(i - 3) & 3]) continue;
+						if (!pf.validMovementPosition(s.crusher, surfaces, n, nullptr)) continue;
+						nf[i] = true;
+						// footprint (checkForMovement replica)
+						bool blocked = false;
+						const int numAbove = s.radius + (s.center ? 1 : 0);
+						for (int a = nx - s.radius; a < nx + numAbove && !blocked; ++a)
+							for (int b = ny - s.radius; b < ny + numAbove && !blocked; ++b)
+							{
+								PathfindCell *fc = pf.getCell(LAYER_GROUND, a, b);
+								if (!fc) { blocked = true; break; }
+								if (!units) continue;
+								if (fc->getFlags() != PathfindCell::UNIT_PRESENT_FIXED) continue;
+								const ObjectID pu = fc->getPosUnit();
+								if (!s.obj || pu == s.obj->getID() || pu == ignoreId) continue;
+								Object *unit = TheGameLogic->findObjectByID(pu);
+								if (!unit) continue;
+								if (s.obj->getRelationship(unit) == ALLIES) { if (!unit->getAIUpdateInterface()) blocked = true; }
+								else if (!s.obj->canCrushOrSquish(unit, TEST_CRUSH_OR_SQUISH)) blocked = true;
+							}
+						if (blocked) continue;
+						if (vis[idx(nx, ny)]) continue;
+						vis[idx(nx, ny)] = 1;
+						if (nx == r.gx && ny == r.gy) return 1;
+						queue.push_back(nx); queue.push_back(ny);
+					}
+				}
+				return 0;
+			};
+			r.m2 = flood(true);
+			r.m1 = r.m2 ? 1 : flood(false);
+			if (r.staticBfs == 0 && r.m1 == 0) r.cls = C_TERRAIN;
+			else if (r.m2 == 1) r.cls = C_BUDGET;
+			else if (r.m1 == 1) r.cls = C_UNITS;
+			else r.cls = r.staticBfs == 1 ? C_FOOTPRINT : C_TERRAIN;
+		}
+		else r.cls = C_UNKNOWN;
+	}
+	else r.cls = C_UNKNOWN;
+	if (!lite && s.obj)
+	{
+		PairStat &ps = s_pairs[pairKey(r.object, r.gx, r.gy)];
+		if (ps.open)
+		{
+			r.pairSeen = 1; r.pairGap = r.frame - ps.lastFail; r.pairFails = ps.fails; r.pairSameStart = (ps.sx == r.sx && ps.sy == r.sy) ? 1 : 0; r.pairMutations = g_mutations - ps.mutAtLast;
+		}
+		else { ps.open = true; ps.firstFail = r.frame; ps.fails = 0; }
+		++ps.fails; ps.lastFail = r.frame; ps.sx = r.sx; ps.sy = r.sy; ps.mutAtLast = g_mutations;
+	}
 	if (lite)
 	{
 		s_lite.frontierCliff += r.frontier[R_TERRAIN_CLIFF]; s_lite.frontierStructure += r.frontier[R_TERRAIN_OBSTACLE]; s_lite.frontierAllyBusy += r.frontier[R_ALLY_NOT_IDLE];
@@ -467,6 +575,46 @@ void report(FILE *out)
 	std::unordered_set<unsigned long long> uSig; std::unordered_set<unsigned> uObj; std::map<std::pair<int, int>, unsigned> uGoal;
 	for (const FailRec *r : exp) { uSig.insert(r->sig); uObj.insert(r->object); ++uGoal[{ r->gx / 4, r->gy / 4 }]; }
 	fprintf(out, "  expensive failures: %zu | unique signatures %zu | unique requesting objects %zu | unique goal areas (4x4 cells) %zu\n", exp.size(), uSig.size(), uObj.size(), uGoal.size());
+	// X64.perf-final: classification, recurrence and recovery
+	{
+		fprintf(out, "\nFAILURE CLASSIFICATION (all analysed failures; breadth-first floods with the search's own cell rules and an unlimited pool):\n");
+		unsigned cn[C_COUNT] = { 0 }; double cms[C_COUNT] = { 0 }; unsigned cpool[C_COUNT] = { 0 };
+		for (const FailRec &r : s_records) { ++cn[r.cls]; cms[r.cls] += r.ms; if (r.cells >= 20000) ++cpool[r.cls]; }
+		for (int c = 0; c < C_COUNT; ++c) if (cn[c]) fprintf(out, "  class %d %-110s %5u  %9.1f ms (%.0f%% of failing time), %u of them with >= 20000 cells allocated\n", c, classNames[c], cn[c], cms[c], totalMs > 0 ? 100.0 * cms[c] / totalMs : 0.0, cpool[c]);
+		fprintf(out, "  by requesting state and class:\n");
+		std::map<std::string, std::pair<unsigned, double>> cs;
+		for (const FailRec &r : s_records) { auto &e = cs[std::string(aiStateName(r.aiState)) + " / class " + std::to_string(r.cls)]; ++e.first; e.second += r.ms; }
+		std::vector<std::pair<std::string, std::pair<unsigned, double>>> csv_(cs.begin(), cs.end());
+		std::sort(csv_.begin(), csv_.end(), [](auto &a, auto &b) { return a.second.second > b.second.second; });
+		for (size_t i = 0; i < csv_.size() && i < 12; ++i) fprintf(out, "    %-60s %5u %9.1f ms\n", csv_[i].first.c_str(), csv_[i].second.first, csv_[i].second.second);
+		unsigned seen = 0, sameStart = 0, noMut = 0; std::vector<unsigned> gaps;
+		double seenTime = 0, sameStartTime = 0;
+		for (const FailRec &r : s_records) if (r.pairSeen) { ++seen; seenTime += r.ms; gaps.push_back(r.pairGap); if (r.pairSameStart) { ++sameStart; sameStartTime += r.ms; } if (r.pairMutations == 0) ++noMut; }
+		std::sort(gaps.begin(), gaps.end());
+		auto gp = [&](double p) { return gaps.empty() ? 0u : gaps[std::min(gaps.size() - 1, static_cast<size_t>(p * static_cast<double>(gaps.size())))]; };
+		fprintf(out, "\nRECURRENCE of the same (requester, goal cell) after a failure with no success in between: %u of %zu failures (%.1f ms); the requester had not changed its start cell in %u of them (%.1f ms); ZERO pathfinder cell mutations in between: %u\n",
+			seen, s_records.size(), seenTime, sameStart, sameStartTime, noMut);
+		fprintf(out, "  frames between consecutive failures of a pair: p10 %u p50 %u p90 %u max %u (30 frames = 1 s)\n", gp(0.1), gp(0.5), gp(0.9), gaps.empty() ? 0u : gaps.back());
+		unsigned long long recSum = 0; std::vector<unsigned> rd;
+		for (const Recovery &c : s_recoveries) { rd.push_back(c.delay); recSum += c.fails; }
+		std::sort(rd.begin(), rd.end());
+		auto rp = [&](double p) { return rd.empty() ? 0u : rd[std::min(rd.size() - 1, static_cast<size_t>(p * static_cast<double>(rd.size())))]; };
+		unsigned openPairs = 0, openFails = 0;
+		for (auto &kv : s_pairs) if (kv.second.open) { ++openPairs; openFails += kv.second.fails; }
+		fprintf(out, "RECOVERY: pairs that failed and LATER succeeded: %zu (mean %.1f failures before success); frames from first failure to first success: p10 %u p50 %u p90 %u max %u; pairs that never succeeded again: %u (%u failures)\n",
+			s_recoveries.size(), s_recoveries.empty() ? 0.0 : static_cast<double>(recSum) / static_cast<double>(s_recoveries.size()), rp(0.1), rp(0.5), rp(0.9), rd.empty() ? 0u : rd.back(), openPairs, openFails);
+	}
+	{
+		unsigned withFail = 0; double failMs = 0, freeSum = 0; unsigned freeMin = ~0u, freeMax = 0;
+		for (const FailRec &r : s_records) { freeSum += r.cells; freeMin = std::min(freeMin, r.cells); freeMax = std::max(freeMax, r.cells); if (r.infoFails) { ++withFail; failMs += r.ms; } }
+		fprintf(out, "\nSHARED CELL-INFO POOL (30000 records): failures during which an allocation was REFUSED because the pool was empty: %u of %zu (%.1f ms, %.0f%% of failing time); cells held by the failed search at its end (the pool is shared with the records of unit-occupied cells): mean %.0f min %u max %u\n",
+			withFail, s_records.size(), failMs, totalMs > 0 ? 100.0 * failMs / totalMs : 0.0, s_records.empty() ? 0.0 : freeSum / static_cast<double>(s_records.size()), s_records.empty() ? 0u : freeMin, freeMax);
+	}
+	{
+		double after = 0, all = 0; unsigned long long pa = 0, pt = 0;
+		for (const FailRec &r : s_records) { after += r.msAfterRefusal; all += r.ms; pa += r.popsTotal - r.popsAtRefusal; pt += r.popsTotal; }
+		fprintf(out, "POST-EXHAUSTION WORK: after the first refused allocation the search still ran %.1f ms of %.1f ms (%.0f%%) and %llu of %llu head pops (%.0f%%)\n", after, all, all > 0 ? 100.0 * after / all : 0.0, pa, pt, pt ? 100.0 * static_cast<double>(pa) / static_cast<double>(pt) : 0.0);
+	}
 	fprintf(out, "\nTOP 25 EXPENSIVE FAILURES:\n");
 	std::vector<const FailRec *> top(exp.begin(), exp.end());
 	std::sort(top.begin(), top.end(), [](const FailRec *a, const FailRec *b) { return a->ms > b->ms; });
@@ -482,12 +630,12 @@ void report(FILE *out)
 
 namespace
 {
-const char kCsvHeader[] = "frame,object,template,player,team,human,aistate,cmd,attackPath,hier,surfaces,crusher,radius,center,layer,destLayer,fromX,fromY,rawToX,rawToY,startX,startY,goalX,goalY,zone1,zone2,pops,cellsAllocated,closed,ms,sig,repeat,prevFrame,zoneRecalcsSincePrev,goalType,goalFlags,goalPinched,goalObstacle,goalNeighbours,goalValidNeighbours,goalReachedNeighbours,nearestClosedCells,bboxW,bboxH,fCliff,fWater,fRubble,fStruct,fOther,fOffMap,fAllyNoAI,fAllyBusy,fEnemyFixed,fPasses,blockerUnits,staticBfs,bfsCells,goalToEdge\n";
+const char kCsvHeader[] = "frame,object,template,player,team,human,aistate,cmd,attackPath,hier,surfaces,crusher,radius,center,layer,destLayer,fromX,fromY,rawToX,rawToY,startX,startY,goalX,goalY,zone1,zone2,pops,cellsAllocated,closed,ms,sig,repeat,prevFrame,zoneRecalcsSincePrev,goalType,goalFlags,goalPinched,goalObstacle,goalNeighbours,goalValidNeighbours,goalReachedNeighbours,nearestClosedCells,bboxW,bboxH,fCliff,fWater,fRubble,fStruct,fOther,fOffMap,fAllyNoAI,fAllyBusy,fEnemyFixed,fPasses,blockerUnits,staticBfs,bfsCells,goalToEdge,cls,m1,m2,pairSeen,pairGap,pairFails,pairSameStart,pairMutations,poolFree,infoFails,popsAtRefusal,popsTotal,msAfterRefusal\n";
 void formatRow(std::string &out, const FailRec &r)
 {
 	char line[3072];
-	snprintf(line, sizeof(line), "%u,%u,%s,%d,%s,%d,%s,%s,%d,%d,%u,%d,%d,%d,%d,%d,%.1f,%.1f,%.1f,%.1f,%d,%d,%d,%d,%d,%d,%u,%u,%u,%.4f,%016llX,%u,%u,%u,%s,%s,%d,%s,%d,%d,%d,%.2f,%d,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%u,%.0f\n",
-		r.frame, r.object, r.tmpl.c_str(), r.player, r.team.c_str(), r.human, aiStateName(r.aiState), cmdName(r.cmd), r.attackPath, r.hier, r.surfaces, r.crusher, r.radius, r.center, r.layer, r.destLayer, r.fx, r.fy, r.rx, r.ry, r.sx, r.sy, r.gx, r.gy, r.zone1, r.zone2, r.pops, r.cells, r.closed, r.ms, r.sig, r.repeat, r.sigPrevFrame, r.zoneRecalcsSincePrev, cellTypeName(r.goalType), flagName(r.goalFlags), r.goalPinched, r.goalObstacle.c_str(), r.goalNeighbours, r.goalValidNeighbours, r.goalReachedNeighbours, r.nearestClosed, r.bboxW, r.bboxH, r.frontier[R_TERRAIN_CLIFF], r.frontier[R_TERRAIN_WATER], r.frontier[R_TERRAIN_RUBBLE], r.frontier[R_TERRAIN_OBSTACLE], r.frontier[R_TERRAIN_OTHER], r.frontier[R_OFF_MAP], r.frontier[R_ALLY_NO_AI], r.frontier[R_ALLY_NOT_IDLE], r.frontier[R_ENEMY_FIXED], r.frontier[R_PASSES], r.blockerUnits, r.staticBfs, r.bfsCells, r.goalToEdgeMin);
+	snprintf(line, sizeof(line), "%u,%u,%s,%d,%s,%d,%s,%s,%d,%d,%u,%d,%d,%d,%d,%d,%.1f,%.1f,%.1f,%.1f,%d,%d,%d,%d,%d,%d,%u,%u,%u,%.4f,%016llX,%u,%u,%u,%s,%s,%d,%s,%d,%d,%d,%.2f,%d,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%u,%.0f,%d,%d,%d,%d,%u,%u,%u,%u,%u,%u,%u,%u,%.4f\n",
+		r.frame, r.object, r.tmpl.c_str(), r.player, r.team.c_str(), r.human, aiStateName(r.aiState), cmdName(r.cmd), r.attackPath, r.hier, r.surfaces, r.crusher, r.radius, r.center, r.layer, r.destLayer, r.fx, r.fy, r.rx, r.ry, r.sx, r.sy, r.gx, r.gy, r.zone1, r.zone2, r.pops, r.cells, r.closed, r.ms, r.sig, r.repeat, r.sigPrevFrame, r.zoneRecalcsSincePrev, cellTypeName(r.goalType), flagName(r.goalFlags), r.goalPinched, r.goalObstacle.c_str(), r.goalNeighbours, r.goalValidNeighbours, r.goalReachedNeighbours, r.nearestClosed, r.bboxW, r.bboxH, r.frontier[R_TERRAIN_CLIFF], r.frontier[R_TERRAIN_WATER], r.frontier[R_TERRAIN_RUBBLE], r.frontier[R_TERRAIN_OBSTACLE], r.frontier[R_TERRAIN_OTHER], r.frontier[R_OFF_MAP], r.frontier[R_ALLY_NO_AI], r.frontier[R_ALLY_NOT_IDLE], r.frontier[R_ENEMY_FIXED], r.frontier[R_PASSES], r.blockerUnits, r.staticBfs, r.bfsCells, r.goalToEdgeMin, r.cls, r.m1, r.m2, r.pairSeen, r.pairGap, r.pairFails, r.pairSameStart, r.pairMutations, r.poolFree, r.infoFails, r.popsAtRefusal, r.popsTotal, r.msAfterRefusal);
 	out += line;
 }
 }

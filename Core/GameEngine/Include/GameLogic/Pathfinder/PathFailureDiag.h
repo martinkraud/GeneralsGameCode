@@ -23,6 +23,9 @@ extern int g_state;                 // -1 = not read yet, 0 = off, 1 = full char
 extern unsigned g_mutations;        // pathfinder cell-state mutations (unit position / goal / terrain type / obstacle changes)
 bool initState();
 inline bool enabled() { return g_state > 0 ? true : (g_state == 0 ? false : initState()); }
+extern unsigned g_infoFailures;       // allocations refused because the shared PathfindCellInfo pool was empty
+void noteInfoFailure();
+inline void noteInfoResult(bool allocated) { if (!allocated) noteInfoFailure(); }
 inline void noteMapMutation() { if (g_state > 0) ++g_mutations; }
 
 // The hierarchical pre-search result of the request that is about to run its A* (1 = found a hierarchical path, 0 = fell back to "all zones passable").
@@ -36,6 +39,8 @@ struct Search
 	bool done = false;
 	unsigned long long startTick = 0;
 	unsigned pops = 0;
+	unsigned poolFreeAtStart = 0, infoFailAtStart = 0;   // X64.perf-final
+	unsigned popsAtFirstRefusal = 0, refusalsInSearch = 0; unsigned long long ticksAtFirstRefusal = 0;
 	unsigned long long signature = 0;
 	// copies of the request, valid when active
 	Pathfinder *pf = nullptr;

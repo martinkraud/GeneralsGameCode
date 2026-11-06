@@ -7,6 +7,8 @@
 #include "WorldRenderScale.h"
 #include <d3d11.h>
 #include <dxgi.h>
+#include <dxgi1_4.h>
+#include <dwmapi.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <algorithm>
@@ -26,6 +28,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <psapi.h>
 
 using Microsoft::WRL::ComPtr;
 namespace {
@@ -372,6 +375,74 @@ struct D3D11Backend::Impl {
             slot.pending = false;
             gpuTail = (gpuTail + 1) % kGpuSlots;
         }
+    }
+    // --- X64.perf-final: Present-stall probe (GENERALS_PRESENT_STALL_LOG=<file>, GENERALS_PRESENT_STALL_MS=<threshold, default 100>) -----------------------------------------------------
+    // Opt-in, read-only. A Present() that blocks for a long time is recorded together with what could explain it: how much of the wait was CPU, whether the GPU was still behind, DXGI frame statistics,
+    // DWM composition timing, video-memory budget, and the window / input state. Off: one cached boolean test per frame.
+    struct StallProbe
+    {
+        int state = -1; FILE *file = nullptr; double thresholdMs = 100.0; unsigned long long t0 = 0, freq = 0; double recent[4] = {0, 0, 0, 0}; unsigned frame = 0, stalls = 0;
+        bool on() { if (state < 0) init(); return state > 0; }
+        void init()
+        {
+            state = 0;
+            const char *path = std::getenv("GENERALS_PRESENT_STALL_LOG");
+            if (!path || !*path) return;
+            file = std::fopen(path, "wb");
+            if (!file) return;
+            if (const char *t = std::getenv("GENERALS_PRESENT_STALL_MS")) { const double v = std::atof(t); if (v >= 5.0) thresholdMs = v; }
+            LARGE_INTEGER f, c; QueryPerformanceFrequency(&f); QueryPerformanceCounter(&c); freq = static_cast<unsigned long long>(f.QuadPart); t0 = static_cast<unsigned long long>(c.QuadPart);
+            std::fprintf(file, "t_s,frame,present_ms,thread_cpu_ms,hresult,vsync,tearing,foreground,iconic,visible,idle_input_ms,gpu_pending,dxgi_stats,dxgi_present_count,dxgi_refresh_count,dxgi_sync_refresh,"
+                "dwm_ok,dwm_late,dwm_dropped,dwm_missed,dwm_refresh_hz,vram_local_used_mb,vram_local_budget_mb,vram_nonlocal_used_mb,prev1_ms,prev2_ms,prev3_ms,prev4_ms,working_set_mb,page_faults\n");
+            std::fflush(file);
+            state = 1;
+        }
+        static unsigned long long cpu100ns()
+        {
+            FILETIME c, e, k, u; if (!GetThreadTimes(GetCurrentThread(), &c, &e, &k, &u)) return 0;
+            return ((static_cast<unsigned long long>(k.dwHighDateTime) << 32) | k.dwLowDateTime) + ((static_cast<unsigned long long>(u.dwHighDateTime) << 32) | u.dwLowDateTime);
+        }
+    } stallProbe;
+    void ProbePresent(double ms, double cpuMs, HRESULT result)
+    {
+        StallProbe &p = stallProbe;
+        const unsigned f = p.frame++;
+        const double prev[4] = { p.recent[0], p.recent[1], p.recent[2], p.recent[3] };
+        p.recent[3] = p.recent[2]; p.recent[2] = p.recent[1]; p.recent[1] = p.recent[0]; p.recent[0] = ms;
+        if (ms < p.thresholdMs) return;
+        ++p.stalls;
+        LARGE_INTEGER c; QueryPerformanceCounter(&c);
+        HWND wnd = static_cast<HWND>(config.window);
+        LASTINPUTINFO li{}; li.cbSize = sizeof(li); GetLastInputInfo(&li);
+        unsigned pending = 0; for (unsigned i = 0; i < kGpuSlots; ++i) if (gpu[i].pending) ++pending;
+        DXGI_FRAME_STATISTICS fs{}; const HRESULT fsr = swapchain ? swapchain->GetFrameStatistics(&fs) : E_FAIL;
+        unsigned dwmOk = 0, late = 0, dropped = 0, missed = 0; double hz = 0;
+        if (HMODULE dwm = LoadLibraryA("dwmapi.dll"))
+        {
+            using Fn = HRESULT (WINAPI *)(HWND, DWM_TIMING_INFO *);
+            if (Fn fn = reinterpret_cast<Fn>(GetProcAddress(dwm, "DwmGetCompositionTimingInfo")))
+            {
+                DWM_TIMING_INFO t{}; t.cbSize = sizeof(t);
+                if (SUCCEEDED(fn(nullptr, &t))) { dwmOk = 1; late = static_cast<unsigned>(t.cFramesLate); dropped = static_cast<unsigned>(t.cFramesDropped); missed = static_cast<unsigned>(t.cFramesMissed); hz = t.rateRefresh.uiDenominator ? static_cast<double>(t.rateRefresh.uiNumerator) / static_cast<double>(t.rateRefresh.uiDenominator) : 0.0; }
+            }
+        }
+        double usedLocal = 0, budgetLocal = 0, usedNon = 0;
+        {
+            ComPtr<IDXGIDevice> dd; ComPtr<IDXGIAdapter> ad; ComPtr<IDXGIAdapter3> a3;
+            if (device && SUCCEEDED(device.As(&dd)) && SUCCEEDED(dd->GetAdapter(&ad)) && SUCCEEDED(ad.As(&a3)))
+            {
+                DXGI_QUERY_VIDEO_MEMORY_INFO li2{}, ni{};
+                if (SUCCEEDED(a3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &li2))) { usedLocal = li2.CurrentUsage / 1048576.0; budgetLocal = li2.Budget / 1048576.0; }
+                if (SUCCEEDED(a3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &ni))) usedNon = ni.CurrentUsage / 1048576.0;
+            }
+        }
+        PROCESS_MEMORY_COUNTERS pmc{}; pmc.cb = sizeof(pmc); GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+        std::fprintf(p.file, "%.3f,%u,%.1f,%.1f,0x%08X,%d,%d,%d,%d,%d,%lu,%u,0x%08X,%u,%u,%u,%u,%u,%u,%u,%.2f,%.0f,%.0f,%.0f,%.1f,%.1f,%.1f,%.1f,%.0f,%lu\n",
+            static_cast<double>(static_cast<unsigned long long>(c.QuadPart) - p.t0) / static_cast<double>(p.freq), f, ms, cpuMs, static_cast<unsigned>(result), config.vsync ? 1 : 0, tearing ? 1 : 0,
+            GetForegroundWindow() == wnd ? 1 : 0, IsIconic(wnd) ? 1 : 0, IsWindowVisible(wnd) ? 1 : 0, static_cast<unsigned long>(GetTickCount() - li.dwTime), pending,
+            static_cast<unsigned>(fsr), SUCCEEDED(fsr) ? fs.PresentCount : 0u, SUCCEEDED(fsr) ? fs.PresentRefreshCount : 0u, SUCCEEDED(fsr) ? fs.SyncRefreshCount : 0u,
+            dwmOk, late, dropped, missed, hz, usedLocal, budgetLocal, usedNon, prev[0], prev[1], prev[2], prev[3], static_cast<double>(pmc.WorkingSetSize) / 1048576.0, static_cast<unsigned long>(pmc.PageFaultCount));
+        std::fflush(p.file);
     }
     struct TexKey { std::string label; unsigned entry, w, h, fmt; bool operator<(const TexKey &o) const {
         if (entry != o.entry) return entry < o.entry; if (w != o.w) return w < o.w; if (h != o.h) return h < o.h;
@@ -1022,10 +1093,15 @@ void D3D11Backend::Flip_To_Primary() {
     impl->pass.onPresented();      // the next picture starts clean
     impl->GpuEnd();
     HRESULT result;
+    const bool probing = impl->stallProbe.on();
+    const unsigned long long probeCpu0 = probing ? Impl::StallProbe::cpu100ns() : 0ull, probeT0 = probing ? Impl::Ticks() : 0ull;
     {
         Impl::ScopedTicks timing(impl->stats.present_ticks);
         result = impl->swapchain->Present(impl->config.vsync ? 1 : 0, (!impl->config.vsync && impl->tearing) ? DXGI_PRESENT_ALLOW_TEARING : 0);
     }
+    if (probing)
+        impl->ProbePresent(static_cast<double>(Impl::Ticks() - probeT0) * 1000.0 / static_cast<double>(impl->stallProbe.freq),
+            static_cast<double>(Impl::StallProbe::cpu100ns() - probeCpu0) / 10000.0, result);
     ++impl->stats.present_calls;
     impl->GpuPoll();
     impl->lastPresent = {static_cast<unsigned>(result),

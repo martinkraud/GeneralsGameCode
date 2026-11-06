@@ -39,7 +39,7 @@ def hook_problems(source):
         if "PathFailureDiag::" not in line or line.lstrip().startswith("//") or line.lstrip().startswith("#include"):
             continue
         st = line.strip()
-        if "noteMapMutation" in st:
+        if "noteMapMutation" in st or "noteInfoResult" in st:
             continue            # increments a counter only when the switch is on
         if "PathFailureDiag::Search failDiag" in st:
             continue            # default-constructed, inert

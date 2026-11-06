@@ -1386,6 +1386,7 @@ Bool PathfindCell::allocateInfo( const ICoord2D &pos )
 	PerformanceProfile::pathCount(PerformanceProfile::PathWork::InfoAttempts);
 	if (!m_info) {
 		m_info = PathfindCellInfo::getACellInfo(this, pos);
+		if (PathFailureDiag::g_state > 0) PathFailureDiag::noteInfoResult(m_info != nullptr);   // X64.perf-final diagnostic counter
 		PerformanceProfile::pathCount(m_info?PerformanceProfile::PathWork::InfoNew:PerformanceProfile::PathWork::InfoFailed);
 		return (m_info != nullptr);
 	}
