@@ -196,7 +196,7 @@ inline Geometry compute(int surfaceW, int surfaceH, int uiScalePercent, Title ti
 	g.composition = Rect{ (surfaceW - compW) / 2, 0, compW, surfaceH };
 
 	// Fit loop: reduce the effective scale until the navigation stack (logo + heading + slots + footer) fits the surface height.
-	for (int attempt = 0; attempt < 64; ++attempt)
+	for (int attempt = 0; attempt < 128; ++attempt)
 	{
 		const int pad = sc(m.panelPadding, scale), gap = sc(m.itemGap, scale);
 		int bandW = sc(m.panelPreferredWidth, scale);
@@ -252,7 +252,7 @@ inline Geometry compute(int surfaceW, int surfaceH, int uiScalePercent, Title ti
 			g.slideFrom = -(bandX + bandW);
 			return g;
 		}
-		scale = scale * 92 / 100;   // reduce and try again
+		scale = scale * 96 / 100;   // reduce (in small steps, so the largest scale that fits is found) and try again
 	}
 	return g;
 }

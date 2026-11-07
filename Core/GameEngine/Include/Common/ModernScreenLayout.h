@@ -87,7 +87,7 @@ inline Layout computeImpl(const Input &in)
 	if (compW > in.surfaceW) compW = in.surfaceW;
 	L.composition = Rect{ (in.surfaceW - compW) / 2, 0, compW, in.surfaceH };
 
-	for (int attempt = 0; attempt < 64; ++attempt)
+	for (int attempt = 0; attempt < 128; ++attempt)
 	{
 		const int pad = sc(24, scale), gap = sc(16, scale), edge = sc(m.edgeMargin, scale);
 		const int titleH = sc(34, scale), ruleH = (sc(m.ruleThickness, scale) > 0 ? sc(m.ruleThickness, scale) : 1);
@@ -104,7 +104,7 @@ inline Layout computeImpl(const Input &in)
 		int panelH = prefH < availH ? prefH : availH;
 		if (panelH < needH) panelH = needH;
 		const bool fits = needH <= availH;
-		if (!fits && scale > 30) { scale = scale * 92 / 100; continue; }
+		if (!fits && scale > 30) { scale = scale * 96 / 100; continue; }
 
 		int panelW = sc(m.contentMaxWidth * 80 / 100, scale);          // settings pages are a reading column, not a canvas
 		if (panelW > compW - 2 * edge) panelW = compW - 2 * edge;
@@ -129,7 +129,7 @@ inline Layout computeImpl(const Input &in)
 
 		const int contentX = L.rail.right() + gap * 3 / 2;
 		L.content = Rect{ contentX, bodyTop, P.right() - pad - contentX, bodyBottom - bodyTop };
-		if ((L.content.w < in.minContentW || L.content.h < in.minContentH) && scale > 30) { scale = scale * 92 / 100; continue; }
+		if ((L.content.w < in.minContentW || L.content.h < in.minContentH) && scale > 30) { scale = scale * 96 / 100; continue; }
 		int visible = L.content.h / pitch;
 		if (visible < 1) visible = 1;
 		if (visible > kMaxRows) visible = kMaxRows;
@@ -199,7 +199,7 @@ inline int dialogScale(int surfaceW, int surfaceH, int uiPercent)
 	using namespace detail;
 	int scale = uiPercent > 0 ? uiPercent : 100;
 	// the panel (520 x ~240 reference units) must fit with margins: reduce the scale instead of clipping
-	while (scale > 30 && (sc(520, scale) > surfaceW - 2 * sc(24, scale) || sc(240, scale) > surfaceH - 2 * sc(24, scale))) scale = scale * 92 / 100;
+	while (scale > 30 && (sc(520, scale) > surfaceW - 2 * sc(24, scale) || sc(240, scale) > surfaceH - 2 * sc(24, scale))) scale = scale * 96 / 100;
 	return scale;
 }
 
@@ -271,7 +271,7 @@ inline BrowserLayout computeBrowser(const BrowserInput &in)
 	if (compW > in.surfaceW) compW = in.surfaceW;
 	L.composition = Rect{ (in.surfaceW - compW) / 2, 0, compW, in.surfaceH };
 	const int actions = clampi(in.actionCount, 1, kMaxBrowserActions);
-	for (int attempt = 0; attempt < 64; ++attempt)
+	for (int attempt = 0; attempt < 128; ++attempt)
 	{
 		const int pad = sc(24, scale), gap = sc(16, scale), edge = sc(m.edgeMargin, scale);
 		const int titleH = sc(34, scale), ruleH = sc(m.ruleThickness, scale) > 0 ? sc(m.ruleThickness, scale) : 1;
@@ -287,7 +287,7 @@ inline BrowserLayout computeBrowser(const BrowserInput &in)
 		int panelW = sc(980, scale);
 		if (panelW > compW - 2 * edge) panelW = compW - 2 * edge;
 		const int minW = colW + sc(360, scale) + 2 * pad + gap;
-		if ((needH > availH || minW > compW - 2 * edge) && scale > 30) { scale = scale * 92 / 100; continue; }
+		if ((needH > availH || minW > compW - 2 * edge) && scale > 30) { scale = scale * 96 / 100; continue; }
 		if (panelW < minW) panelW = minW;
 		L.panel = Rect{ L.composition.x + (compW - panelW) / 2, (in.surfaceH - panelH) / 2, panelW, panelH };
 		const Rect &P = L.panel;
