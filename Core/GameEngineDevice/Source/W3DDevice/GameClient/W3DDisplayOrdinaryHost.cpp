@@ -2092,6 +2092,7 @@ void NativeAutoShot()
                 static bool anchorBefore = false;
                 static unsigned op = 0, opWait = 0;
                 static int cat = 0;
+                static int wheelBefore = 0;
                 auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("options", ok ? "ok" : "defect", what); };
                 auto visibleChain = [](GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c->winIsHidden()) return false; return w != nullptr; };
                 auto isAnc = [](GameWindow *a, GameWindow *w) { for (GameWindow *c = w; c; c = c->winGetParent()) if (c == a) return true; return false; };
@@ -2202,6 +2203,38 @@ void NativeAutoShot()
                     op = 10; opWait = 3;                // let the help strip of the focused setting reach the screen before the capture
                 } else if (op == 10) {
                     char tag[64]; sprintf_s(tag, "options-%d", cat); shoot(tag);
+                    if (OptionsTabs::layout().scrollable) {
+                        // the owner could not scroll the Keyboard list: on every page that does not fit, the mouse wheel over a row (any kind of control) must scroll it
+                        const OptionsPageLayout::PageTable pt = OptionsPageLayout::pageItems(static_cast<OptionsPageLayout::Category>(cat));
+                        GameWindow *row = nullptr;
+                        for (int i = 0; i < pt.count && !row; ++i) { char rn[96]; sprintf_s(rn, "OptionsMenu.wnd:%s", pt.items[i].control); GameWindow *c = find(rn); if (c && visibleChain(c)) row = c; }
+                        wheelBefore = OptionsTabs::firstRow();
+                        if (row) { int x, y, ww, hh; row->winGetScreenPosition(&x, &y); row->winGetSize(&ww, &hh); ICoord2D pos = { x + ww / 2, y + hh / 2 }; for (int k = 0; k < 3; ++k) TheWindowManager->winProcessMouseEvent(GWM_WHEEL_DOWN, &pos, nullptr); }
+                        op = 11; opWait = 3;
+                    } else { ++cat; if (cat < OptionsPageLayout::kCategoryCount) { op = 1; opWait = 3; } else { op = 3; opWait = 2; } }
+                } else if (op == 11) {
+                    check(OptionsTabs::firstRow() > wheelBefore, "the mouse wheel over a row scrolls the page");
+                    const OptionsPageLayout::PageTable pt = OptionsPageLayout::pageItems(static_cast<OptionsPageLayout::Category>(cat));
+                    GameWindow *row = nullptr;
+                    for (int i = 0; i < pt.count && !row; ++i) { char rn[96]; sprintf_s(rn, "OptionsMenu.wnd:%s", pt.items[i].control); GameWindow *c = find(rn); if (c && visibleChain(c)) row = c; }
+                    if (row) { int x, y, ww, hh; row->winGetScreenPosition(&x, &y); row->winGetSize(&ww, &hh); ICoord2D pos = { x + ww / 2, y + hh / 2 }; for (int k = 0; k < 3; ++k) TheWindowManager->winProcessMouseEvent(GWM_WHEEL_UP, &pos, nullptr); }
+                    op = 12; opWait = 3;
+                } else if (op == 12) {
+                    check(OptionsTabs::firstRow() == wheelBefore, "the mouse wheel scrolls the page back up");
+                    OptionsTabs::onKey(KEY_DOWN, KEY_STATE_DOWN);
+                    check(OptionsTabs::firstRow() == wheelBefore + 1, "the Down arrow scrolls one row");
+                    OptionsTabs::onKey(KEY_END, KEY_STATE_DOWN);
+                    check(OptionsTabs::firstRow() > wheelBefore + 1 || OptionsTabs::layout().rowCount - OptionsTabs::layout().visibleRows <= wheelBefore + 1, "End scrolls to the last row");
+                    OptionsTabs::onKey(KEY_HOME, KEY_STATE_DOWN);
+                    check(OptionsTabs::firstRow() == 0, "Home scrolls to the first row");
+                    {
+                        // a click on the scroll track must reach the page: the track lies in the margin of the panel, so this also proves the top-level layout window covers the whole panel
+                        const ModernScreen::Rect &tr = OptionsTabs::layout().scrollTrack; ICoord2D pos = { tr.x + tr.w / 2, tr.y + tr.h * 9 / 10 };
+                        const WinInputReturnCode used = TheWindowManager->winProcessMouseEvent(GWM_LEFT_DOWN, &pos, nullptr); TheWindowManager->winProcessMouseEvent(GWM_LEFT_UP, &pos, nullptr);
+                        if (OptionsTabs::firstRow() == 0) { char d[200]; sprintf_s(d, "track click at %d,%d (track %d,%d %dx%d): the window manager reported %s", pos.x, pos.y, tr.x, tr.y, tr.w, tr.h, used == WIN_INPUT_USED ? "used" : "NOT used (no window took the event)"); StartupDiagnostics::checkpoint("options", "note", d); }
+                    }
+                    check(OptionsTabs::firstRow() > 0, "a click on the scroll track scrolls the page");
+                    OptionsTabs::onKey(KEY_HOME, KEY_STATE_DOWN);
                     ++cat;
                     if (cat < OptionsPageLayout::kCategoryCount) { op = 1; opWait = 3; } else { op = 3; opWait = 2; }
                 } else if (op == 3) {           // keyboard: Page Down walks the categories and wraps

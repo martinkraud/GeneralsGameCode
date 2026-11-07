@@ -30,6 +30,9 @@ bool onKey(int key, int state);
 // Mouse wheel routing (GWM_WHEEL_UP / GWM_WHEEL_DOWN): scrolls the rows of a page that does not fit. True when consumed.
 bool onWheel(bool up);
 
+// Mouse click routing (GWM_LEFT_DOWN, screen coordinates): a click on the scroll track of a page that does not fit jumps there. True when consumed.
+bool onClick(int x, int y);
+
 // True when a setting differs from the value it had when the screen opened.
 bool dirty();
 

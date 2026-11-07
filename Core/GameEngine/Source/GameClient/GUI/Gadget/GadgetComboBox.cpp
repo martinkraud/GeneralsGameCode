@@ -130,17 +130,10 @@ WindowMsgHandledType GadgetComboBoxInput( GameWindow *window, UnsignedInt msg,
 
 		// ------------------------------------------------------------------------
 		case GWM_WHEEL_DOWN:
-		{
-
-			break;
-
-		}
-
-		// ------------------------------------------------------------------------
 		case GWM_WHEEL_UP:
 		{
-			break;
-
+			// a combo box has nothing to scroll: the wheel passes to the parent (a scrolling settings page; the retail code swallowed it, which made a page with dropdown rows impossible to scroll with the wheel)
+			return MSG_IGNORED;
 		}
 
 		// ------------------------------------------------------------------------

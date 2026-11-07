@@ -1530,6 +1530,11 @@ WindowMsgHandledType OptionsMenuInput( GameWindow *window, UnsignedInt msg,
 		case GWM_CHAR:
 		{
 			UnsignedByte key = mData1;
+		case GWM_LEFT_DOWN:
+			if( OptionsTabs::onClick( LOLONGTOSHORT( mData1 ), HILONGTOSHORT( mData1 ) ) )
+				return MSG_HANDLED;
+			break;
+
 			UnsignedByte state = mData2;
 
 			if( OptionsTabs::onKey( key, state ) )

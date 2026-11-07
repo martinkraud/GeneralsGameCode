@@ -67,6 +67,7 @@ GameWindow *s_root = nullptr;
 GameWindow *s_popup = nullptr;          // retail Advanced Display panel: its subtree is never touched
 GameWindow *s_network = nullptr;
 GameWindow *s_backdrop = nullptr;
+GameWindow *s_trackHit = nullptr;       // an enabled, empty window over the scroll track: the hosting panels are NO_INPUT, so without it a click on the track reaches no window at all
 bool s_advancedOpen = false;
 ModernDraw::Decor s_decor;
 std::vector<GameWindow *> s_initiallyHidden;
@@ -568,6 +569,14 @@ void showCategory(int category, bool keepScroll = false)
 	// 2. visibility for the whole layout tree
 	for (const char *c : kChrome)
 		v.chrome.push_back(keyOf(c));
+	if (s_trackHit && L.scrollable && !s_advancedOpen)
+	{
+		const int left = ModernDraw::px(3);
+		place(s_trackHit, ModernScreen::Rect{ L.scrollTrack.x - left, L.scrollTrack.y, L.scrollTrack.w + left, L.scrollTrack.h });
+		v.chrome.push_back(static_cast<NameKeyType>(s_trackHit->winGetWindowId()));
+	}
+	else if (s_trackHit)
+		s_trackHit->winHide(TRUE);
 	if (s_backdrop)
 		v.chrome.push_back(static_cast<NameKeyType>(s_backdrop->winGetWindowId()));
 	apply(s_root, v);
@@ -579,6 +588,8 @@ void showCategory(int category, bool keepScroll = false)
 		frame->winBringToTop();                 // the retail frame hosts every gadget: it must draw above the Modern backdrop, never below it
 	for (size_t i = frontToBack.size(); i-- > 0;)
 		frontToBack[i]->winBringToTop();
+	if (s_trackHit && L.scrollable && !s_advancedOpen)
+		s_trackHit->winBringToTop();            // above the NO_INPUT hosting panels, so a click on the track finds a window
 	for (const char *c : { "ButtonDefaults", "ButtonAccept", "ButtonBack" })
 		if (GameWindow *w = byName(c)) w->winBringToTop();
 	for (int i = kCategoryCount - 1; i >= 0; --i)
@@ -615,7 +626,8 @@ GameWindow *makeStatic(GameWindow *parent, GameWindow *donor, const std::string 
 	instance.m_id = keyOf(name.c_str());
 	TextData data = {};
 	data.centeredVertically = TRUE;
-	GameWindow *w = TheWindowManager->gogoGadgetStaticText(parent, WIN_STATUS_ENABLED | WIN_STATUS_NO_INPUT, 0, 0, 100, 20, &instance, &data, instance.m_font, FALSE);
+	// no WIN_STATUS_NO_INPUT: the window manager drops a mouse event whose top window is NO_INPUT instead of offering it to the parent, so the wheel over the rows never reached the page
+	GameWindow *w = TheWindowManager->gogoGadgetStaticText(parent, WIN_STATUS_ENABLED, 0, 0, 100, 20, &instance, &data, instance.m_font, FALSE);
 	if (w)
 		GadgetStaticTextSetText(w, text);
 	return w;
@@ -715,6 +727,22 @@ bool create()
 	s_root = s_canvas;
 	while (s_root->winGetParent())
 		s_root = s_root->winGetParent();
+	// The retail layout root is the 4:3 area the screen was authored for, centred and scaled to the display height. On a wider display the Modern panel is wider than it, and a top-level
+	// window only receives mouse events inside its own rectangle, so the margin of the panel (the scroll track, the outer edge of the rail) never got a click or the wheel. The root
+	// covers the whole display; its direct children keep their screen positions (their coordinates are relative to the root).
+	if (s_root != s_canvas)
+	{
+		Int rootX = 0, rootY = 0;
+		s_root->winGetScreenPosition(&rootX, &rootY);
+		for (GameWindow *child = s_root->winGetChild(); child; child = child->winGetNext())
+		{
+			Int childX = 0, childY = 0;
+			child->winGetPosition(&childX, &childY);
+			child->winSetPosition(childX + rootX, childY + rootY);
+		}
+		s_root->winSetPosition(0, 0);
+		s_root->winSetSize(TheDisplay->getWidth(), TheDisplay->getHeight());
+	}
 
 	// restored retail checkboxes join the host panel of their page (one parent per page; see OptionsPageLayout::kReparented)
 	for (const OptionsPageLayout::HostedControl &h : OptionsPageLayout::kReparented)
@@ -751,6 +779,21 @@ bool create()
 	s_backdrop = ModernDraw::createBackdrop(s_canvas, "OptionsMenu.wnd:ModernBackdrop", &s_decor);
 	if (s_backdrop)
 		s_backdrop->winSetOwner(s_canvas);
+	{
+		WinInstanceData instance;
+		instance.m_font = donor->winGetFont();
+		instance.m_style = GWS_STATIC_TEXT;
+		instance.m_id = keyOf("ScrollTrackHit");
+		TextData data = {};
+		GameWindow *hitParent = byName("OptionsMenuParentOld");   // the frame that owns the input callback and every row: a sibling of it would never reach OptionsMenuInput
+		if (!hitParent) hitParent = s_canvas;
+		s_trackHit = TheWindowManager->gogoGadgetStaticText(hitParent, WIN_STATUS_ENABLED, 0, 0, 10, 10, &instance, &data, instance.m_font, FALSE);
+		if (s_trackHit)
+		{
+			ModernDraw::skinText(s_trackHit, TypeRole::Label, ModernDraw::palette().textSecondary);
+			s_trackHit->winHide(TRUE);
+		}
+	}
 	styleControls();
 	buildKeyboardRows(byName("VideoParent"), donor);
 
@@ -856,8 +899,10 @@ bool onKey(int key, int state)
 	{
 	case KEY_PGDN: target = (s_active + 1) % kCategoryCount; break;
 	case KEY_PGUP: target = (s_active + kCategoryCount - 1) % kCategoryCount; break;
-	case KEY_HOME: if (state & KEY_STATE_CONTROL) target = 0; else return false; break;
-	case KEY_END: if (state & KEY_STATE_CONTROL) target = kCategoryCount - 1; else return false; break;
+	case KEY_HOME: if (state & KEY_STATE_CONTROL) target = 0; else if (s_layout.scrollable) { scrollTo(0); return true; } else return false; break;
+	case KEY_END: if (state & KEY_STATE_CONTROL) target = kCategoryCount - 1; else if (s_layout.scrollable) { scrollTo(ModernScreen::maxFirstRow(s_layout.rowCount, s_layout.visibleRows)); return true; } else return false; break;
+	case KEY_DOWN: if (s_layout.scrollable && !(state & KEY_STATE_CONTROL)) { scrollTo(s_firstRow + 1); return true; } return false;
+	case KEY_UP: if (s_layout.scrollable && !(state & KEY_STATE_CONTROL)) { scrollTo(s_firstRow - 1); return true; } return false;
 	default: return false;
 	}
 	if (target != s_active)
@@ -870,6 +915,20 @@ bool onWheel(bool up)
 	if (s_active < 0 || s_advancedOpen || !s_layout.scrollable)
 		return false;
 	scrollTo(s_firstRow + (up ? -1 : 1));
+	return true;
+}
+
+// A click on the scroll track jumps there. The track is chrome drawn by the screen; the click reaches this through s_trackHit (an enabled window over the track) and the layout root, which covers the display. True when consumed.
+bool onClick(int x, int y)
+{
+	if (s_active < 0 || s_advancedOpen || !s_layout.scrollable)
+		return false;
+	const ModernScreen::Rect &t = s_layout.scrollTrack;
+	const int slop = ModernDraw::px(10);
+	if (t.w <= 0 || t.h <= 0 || x < t.x - slop || x > t.right() + slop || y < t.y || y > t.bottom())
+		return false;
+	const int maxFirst = ModernScreen::maxFirstRow(s_layout.rowCount, s_layout.visibleRows);
+	scrollTo(((y - t.y) * maxFirst + t.h / 2) / t.h);
 	return true;
 }
 
@@ -901,7 +960,7 @@ void forget()
 	keyboardTable() = PageTable{ nullptr, 0 };
 	s_kbItems.clear();
 	s_kbNames.clear();
-	s_canvas = s_root = s_popup = s_network = s_backdrop = nullptr;
+	s_canvas = s_root = s_popup = s_network = s_backdrop = s_trackHit = nullptr;
 	s_active = -1;
 	s_firstRow = 0;
 	s_advancedOpen = false;
