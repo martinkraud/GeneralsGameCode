@@ -30,6 +30,7 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/ModernBranding.h"
+#include "Common/ReleaseIdentity.h"
 #include "Common/StartupDiagnostics.h"
 
 #include "gamespy/ghttp/ghttp.h"
@@ -993,6 +994,8 @@ static void initLabelVersion()
 				// Modern Experience: understated footer; the full product/version/hash string goes to the log.
 				AsciiString full;
 				full.translate(text);
+				full.concat(" | ");
+				full.concat(ReleaseIdentity::kDesignation);
 				StartupDiagnostics::checkpoint("version", "observed", full.str());
 				text = UnicodeString(ModernBranding::footerText());
 			}
@@ -1564,14 +1567,14 @@ WindowMsgHandledType OptionsMenuInput( GameWindow *window, UnsignedInt msg,
 				return MSG_HANDLED;
 			break;
 
-		case GWM_CHAR:
-		{
-			UnsignedByte key = mData1;
 		case GWM_LEFT_DOWN:
 			if( OptionsTabs::onClick( LOLONGTOSHORT( mData1 ), HILONGTOSHORT( mData1 ) ) )
 				return MSG_HANDLED;
 			break;
 
+		case GWM_CHAR:
+		{
+			UnsignedByte key = mData1;
 			UnsignedByte state = mData2;
 
 			if( OptionsTabs::onKey( key, state ) )

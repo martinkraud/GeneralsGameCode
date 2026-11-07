@@ -1,0 +1,8 @@
+{
+  "schema": "mkraudstein-identity/1",
+  "designation": "Developer Preview 1",
+  "branding": "Modern Experience by MKRaudstein | 64-bit • DirectX 11",
+  "architecture": "x64 (AMD64)",
+  "graphics": "Direct3D 11",
+  "note": "Single source of the release designation for the package builder. Core/GameEngine/Include/Common/ReleaseIdentity.h carries the same designation for the engine log; scripts/native-runtime/test_distribution_contract.py keeps them equal."
+}
