@@ -1,0 +1,46 @@
+name: Repository checks
+
+# Runs the repository-only Python suites of the modernization branch (source contracts, package-script contracts, analysis tools, pure-data tests).
+# It needs NO game files and downloads none: it never builds the game and never starts it. The native builds, the golden AI / determinism gates and the
+# native UI audits need the owner's legitimate Steam installations and therefore run on the developer machines only (docs/modernization/DISTRIBUTION.md).
+# This workflow is informational: nothing else depends on it.
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - dev/modern-engine
+  pull_request:
+    branches:
+      - dev/modern-engine
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-suites:
+    name: Python suites (no game files)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Python version
+        run: python --version
+
+      - name: Native runtime / distribution contracts
+        run: python -B -m unittest discover -s scripts/native-runtime
+
+      - name: Rendering tests
+        run: python -B -m unittest discover -s scripts/rendering
+
+      - name: Performance tooling tests
+        run: python -B -m unittest discover -s scripts/performance
+
+      - name: Diagnostics tooling tests
+        run: python -B -m unittest discover -s scripts/diagnostics
