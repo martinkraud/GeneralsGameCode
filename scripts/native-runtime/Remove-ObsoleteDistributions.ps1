@@ -43,6 +43,7 @@ $obsolete = @($ordered | Where-Object { $keepVersions -notcontains $_.Version })
 # Older distributions that never got a record (pre-record pipeline versions, interrupted runs) are identified by the exact generated file names only.
 $legacy = @(Get-ChildItem -LiteralPath $out -File | ForEach-Object {
         if ($_.Name -match '^MKRaudstein-(?:Generals|ZeroHour)-x64-Preview-([0-9a-f]{7,40})(?:\.zip|\.zip\.sha256|-Symbols\.zip|\.manifest\.json|\.overlay-test\.json|\.stage-parity\.json)$' -or
+            $_.Name -match '^MKRaudstein-(?:Generals|ZeroHour)-DeveloperPreview-([0-9a-f]{7,40})(?:\.zip|\.zip\.sha256|-Symbols\.zip|\.package-test\.json)$' -or
             $_.Name -match '^MKRaudstein-x64-Preview-([0-9a-f]{7,40})\.(?:SHA256SUMS|distribution\.json)$') { $Matches[1] } } |
     Where-Object { $keepVersions -notcontains $_ -and -not $records.ContainsKey($_) } | Sort-Object -Unique |
     ForEach-Object { [pscustomobject]@{ Version = $_; Time = [datetime]::MinValue; Titles = @() } })
@@ -62,6 +63,8 @@ foreach ($r in $obsolete) {
     foreach ($t in $titles) {
         $p = "MKRaudstein-$t-x64-Preview-$($r.Version)"
         $names += @("$p.zip", "$p.zip.sha256", "$p-Symbols.zip", "$p.manifest.json", "$p.overlay-test.json", "$p.stage-parity.json")
+        $dp = "MKRaudstein-$t-DeveloperPreview-$($r.Version)"      # the Developer Preview player package of the same version
+        $names += @("$dp.zip", "$dp.zip.sha256", "$dp-Symbols.zip", "$dp.package-test.json")
     }
     foreach ($n in $names) {
         $full = Join-Path $out $n

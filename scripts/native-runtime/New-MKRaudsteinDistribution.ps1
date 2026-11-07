@@ -14,6 +14,7 @@
 param([string]$GeneralsCandidate,
       [string]$ZeroHourCandidate,
       [switch]$Build,                 # cmake --build build/win64 --config Release --target g_generals z_generals first
+      [switch]$NativeInstallTest,     # also run layer C of Test-DeveloperPreviewPackage (install into a disposable copy of the real game, launch it, uninstall): slow, needs the Steam files
       [switch]$SkipValidation,        # development only: package without running the validator (a distribution MUST be validated)
       [string]$OutputDirectory,
       [string]$Version,
@@ -68,22 +69,38 @@ foreach ($t in $titles) {
         & (Join-Path $PSScriptRoot 'Test-ZeroHourOverlayPackage.ps1') -Title $t.Title -Candidate $candidate -Zip $zip
         $validated = $true
     }
+    # The Developer Preview PLAYER package wraps the validated overlay: installer + uninstaller + docs + payload, no proprietary asset, no PDB.
+    Write-Host "== Developer Preview package $($t.Title) =="
+    $dpArgs = @{ Title = $t.Title; OverlayZip = $zip; OutputDirectory = $OutputDirectory; Version = $Version }
+    if ($AllowDirtyTree) { $dpArgs.AllowDirtyTree = $true }
+    $dp = @(& (Join-Path $PSScriptRoot 'New-DeveloperPreviewPackage.ps1') @dpArgs) | Select-Object -Last 1
+    if (-not $dp -or -not (Test-Path -LiteralPath $dp.Zip)) { throw "Developer Preview package missing for $($t.Title)" }
+    $dpValidated = $false
+    if (-not $SkipValidation) {
+        Write-Host "== validating the Developer Preview package $($t.Title) =="
+        $testArgs = @{ Title = $t.Title; Package = $dp.Zip; Candidate = $candidate }
+        if ($NativeInstallTest) { $testArgs.Native = $true }
+        & (Join-Path $PSScriptRoot 'Test-DeveloperPreviewPackage.ps1') @testArgs
+        $dpValidated = $true
+    }
     $symbols = Join-Path $OutputDirectory "MKRaudstein-$($t.Title)-x64-Preview-$Version-Symbols.zip"
     $entries = [IO.Compression.ZipFile]::OpenRead($zip)
     try { $count = $entries.Entries.Count } finally { $entries.Dispose() }
     $summary.Add([ordered]@{ title = $t.Title; candidate = $candidate; zip = (Split-Path $zip -Leaf); bytes = (Get-Item $zip).Length; files = $count
                              sha256 = (Get-FileHash $zip -Algorithm SHA256).Hash; symbols = if (Test-Path $symbols) { Split-Path $symbols -Leaf } else { $null }
-                             validated = $validated })
+                             validated = $validated
+                             developerPreview = [ordered]@{ zip = (Split-Path $dp.Zip -Leaf); bytes = (Get-Item $dp.Zip).Length; sha256 = $dp.Sha256; symbols = if ($dp.Symbols) { Split-Path $dp.Symbols -Leaf } else { $null }
+                                                            validated = $dpValidated; nativeInstallTest = [bool]($NativeInstallTest -and $dpValidated) } })
 }
 
 # One combined record for the distribution: both titles, one commit, one hash list.
 $combined = [ordered]@{ distribution = 'MKRaudstein x64 Preview'; version = $Version; commit = $commit; titles = $summary }
 $combinedPath = Join-Path $OutputDirectory "MKRaudstein-x64-Preview-$Version.distribution.json"
 $combined | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $combinedPath -Encoding utf8
-($summary | ForEach-Object { "$($_.sha256)  $($_.zip)" }) | Set-Content -LiteralPath (Join-Path $OutputDirectory "MKRaudstein-x64-Preview-$Version.SHA256SUMS") -Encoding ascii
+(@($summary | ForEach-Object { "$($_.sha256)  $($_.zip)"; "$($_.developerPreview.sha256)  $($_.developerPreview.zip)" })) | Set-Content -LiteralPath (Join-Path $OutputDirectory "MKRaudstein-x64-Preview-$Version.SHA256SUMS") -Encoding ascii
 Write-Host ''
 foreach ($s in $summary) { Write-Host ("{0,-9} {1} files {2:N0} B  SHA-256 {3}  validated={4}" -f $s.title, $s.files, $s.bytes, $s.sha256, $s.validated) }
-if (-not $SkipValidation -and @($summary | Where-Object { -not $_.validated }).Count) { throw 'A title was not validated.' }
+if (-not $SkipValidation -and @($summary | Where-Object { -not $_.validated -or -not $_.developerPreview.validated }).Count) { Write-Host "an overlay ZIP or a Developer Preview package was not validated"; throw 'A title was not validated.' }
 Write-Host "DISTRIBUTION READY for BOTH titles: $combinedPath"
 
 # Retention (current + previous validated distribution) - only now, after BOTH titles were built, packaged and validated; any earlier failure throws before this point.
