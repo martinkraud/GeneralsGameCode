@@ -17,7 +17,7 @@
 namespace OptionsPageLayout
 {
 
-enum class Category { Display, Graphics, Audio, Controls, Gameplay, Modern, Network, Count };   // Modern: the Modern Experience features (UI.3 category)
+enum class Category { Display, Graphics, Audio, Controls, Keyboard, Gameplay, Modern, Network, Count };   // Modern: the Modern Experience features (UI.3 category)
 constexpr int kCategoryCount = static_cast<int>(Category::Count);
 constexpr int kMaxRows = 10;
 
@@ -69,7 +69,7 @@ struct Tabs
 // ---- page ownership (names are window names without the "OptionsMenu.wnd:" prefix) ----------------------------
 // Exactly one category's items are visible/hit-testable; the retail controls that are not listed anywhere are
 // hidden in Modern Options. Kind lets tests assert "no slider on DISPLAY/GAMEPLAY".
-enum class ControlKind { Combo, Slider, Check, Block };
+enum class ControlKind { Combo, Slider, Check, Entry, Button, Info, Block };   // Info: a read-only text value (the Keyboard reference rows)   // Entry: a text field (Network firewall port); Button: an action (Refresh NAT)
 
 struct PageItem
 {
@@ -99,6 +99,8 @@ constexpr PageItem kAudioItems[] = {
 };
 constexpr PageItem kControlsItems[] = {
 	{nullptr, "CheckAlternateMouse", ControlKind::Check},
+	{nullptr, "CheckDoubleClickAttackMove", ControlKind::Check},   // Zero Hour only (the window does not exist in Generals: the row is not offered there)
+	{nullptr, "Retaliation", ControlKind::Check},                  // Zero Hour only
 	{"ScrollSpeedLabel", "SliderScrollSpeed", ControlKind::Slider},
 	{nullptr, "CheckBoxDrawAnchor", ControlKind::Check},     // retail options that Modern Options used to hide: all have live handlers
 	{nullptr, "CheckBoxMoveAnchor", ControlKind::Check},
@@ -110,6 +112,14 @@ constexpr PageItem kGameplayItems[] = {
 	{nullptr, "CheckBoxSaveCamera", ControlKind::Check},
 };
 // Modern Experience: what the Modern Engine adds on top of the retail game (UI.3 groups it in its own category).
+// Network (UI.5): the retail Network block as generated rows. The LAN address is the setting that matters for LAN play; the three online items belong to the original online service, which is
+// not available (their retail enable / disable rules are kept; the help text says so). The retail HTTP proxy and send-delay controls stay hidden as in retail.
+constexpr PageItem kNetworkItems[] = {
+	{"StaticTextLANIpAddresses", "ComboBoxIP", ControlKind::Combo},
+	{"StaticTextOnlineIpAddresses", "ComboBoxOnlineIP", ControlKind::Combo},
+	{"StaticTextFirewallPortOverride", "TextEntryFirewallPortOverride", ControlKind::Entry},
+	{nullptr, "ButtonFirewallRefresh", ControlKind::Button},
+};
 constexpr PageItem kModernItems[] = {
 	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
 	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA, China, GLA)
@@ -156,6 +166,10 @@ struct PageTable
 	int count;
 };
 
+// The Keyboard page is generated at run time from the live key bindings (a read-only reference: the retail engine has no key rebinding, its Keyboard Options screen was hidden and unfinished). The owner of
+// the storage (OptionsTabs) fills this table when the screen opens; it is empty in the pure tests.
+inline PageTable &keyboardTable() { static PageTable t = { nullptr, 0 }; return t; }
+
 inline PageTable pageItems(Category c)
 {
 	switch (c)
@@ -164,9 +178,11 @@ inline PageTable pageItems(Category c)
 	case Category::Graphics: return {kGraphicsItems, static_cast<int>(sizeof(kGraphicsItems) / sizeof(kGraphicsItems[0]))};
 	case Category::Audio: return {kAudioItems, static_cast<int>(sizeof(kAudioItems) / sizeof(kAudioItems[0]))};
 	case Category::Controls: return {kControlsItems, static_cast<int>(sizeof(kControlsItems) / sizeof(kControlsItems[0]))};
+	case Category::Keyboard: return keyboardTable();
 	case Category::Gameplay: return {kGameplayItems, static_cast<int>(sizeof(kGameplayItems) / sizeof(kGameplayItems[0]))};
 	case Category::Modern: return {kModernItems, static_cast<int>(sizeof(kModernItems) / sizeof(kModernItems[0]))};
-	default: return {nullptr, 0};    // Network: the retail block, kept whole
+	case Category::Network: return {kNetworkItems, static_cast<int>(sizeof(kNetworkItems) / sizeof(kNetworkItems[0]))};
+	default: return {nullptr, 0};
 	}
 }
 
@@ -292,6 +308,7 @@ inline const char *categoryTextKey(Category c)
 	case Category::Graphics: return "GUI:OptionsTabGraphics";
 	case Category::Audio: return "GUI:OptionsTabAudio";
 	case Category::Controls: return "GUI:OptionsTabControls";
+	case Category::Keyboard: return "GUI:OptionsTabKeyboard";
 	case Category::Gameplay: return "GUI:OptionsTabGameplay";
 	case Category::Modern: return "GUI:OptionsTabModern";
 	default: return "GUI:OptionsTabNetwork";

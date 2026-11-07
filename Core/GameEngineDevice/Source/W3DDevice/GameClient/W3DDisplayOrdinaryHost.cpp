@@ -55,6 +55,7 @@
 #include "WW3D2/camera.h"
 #include "GameClient/ControlBar.h"
 #include "GameClient/InGameUI.h"
+#include "GameClient/GadgetCheckBox.h"
 #include "GameClient/Drawable.h"
 #include "GameLogic/Object.h"
 #include "Common/Player.h"
@@ -2088,6 +2089,7 @@ void NativeAutoShot()
             } else if (step.kind == OPTIONS_UI) {
                 // UI.3: the Modern Options screen: per category, the visible rows are inside the viewport, reachable by the mouse and fit their labels; other pages' controls are hidden; dirty state, discard
                 // confirmation, category keys. In the Classic frontend the same flow checks that no Modern Options chrome exists.
+                static bool anchorBefore = false;
                 static unsigned op = 0, opWait = 0;
                 static int cat = 0;
                 auto check = [&](bool ok, const char *what) { StartupDiagnostics::checkpoint("options", ok ? "ok" : "defect", what); };
@@ -2123,9 +2125,10 @@ void NativeAutoShot()
                               L.panel.x, L.panel.y, L.panel.w, L.panel.h, L.content.x, L.content.y, L.content.w, L.content.h, L.rail.x, L.rail.y, L.rail.w, L.rail.h);
                     StartupDiagnostics::checkpoint("options", "geometry", flowText);
                     check(L.panel.x >= 0 && L.panel.y >= 0 && L.panel.right() <= TheDisplay->getWidth() && L.panel.bottom() <= TheDisplay->getHeight(), "the panel is inside the display");
+                    check(L.panel.contains(L.help) && L.help.w > 0 && L.help.h > 0, "the help strip is inside the panel");
                     cat = 0; op = 1; opWait = 2;
                 } else if (op == 1) {           // select the category through its rail button, as a click does
-                    static const char *const tabNames[] = { "TabDisplay", "TabGraphics", "TabAudio", "TabControls", "TabGameplay", "TabModern", "TabNetwork" };
+                    static const char *const tabNames[] = { "TabDisplay", "TabGraphics", "TabAudio", "TabControls", "TabKeyboard", "TabGameplay", "TabModern", "TabNetwork" };
                     char name[96]; sprintf_s(name, "OptionsMenu.wnd:%s", tabNames[cat]);
                     GameWindow *tab = find(name);
                     check(tab && visibleChain(tab) && reach(tab), "the rail button is visible and reachable by the mouse");
@@ -2160,18 +2163,6 @@ void NativeAutoShot()
                         StartupDiagnostics::checkpoint("options", (inside && hit && fits && ww >= 40 && hh >= 18) ? "ok" : "defect", flowText);
                         if (!(inside && hit && fits)) ++defects;
                     }
-                    if (cat == static_cast<int>(Category::Network)) {   // the retail Network block is kept whole: everything it shows must lie inside the content viewport
-                        int total = 0, outside = 0;
-                        if (GameWindow *net = find("OptionsMenu.wnd:NetworkParent"))
-                            for (GameWindow *w = net->winGetChild(); w; w = w->winGetNext()) {
-                                if (w->winIsHidden()) continue;
-                                int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
-                                ++total;
-                                if (x < L.content.x || y < L.content.y || x + ww > L.content.right() || y + hh > L.content.bottom()) ++outside;
-                            }
-                        sprintf_s(flowText, "network block: %d visible windows, %d outside the content viewport", total, outside);
-                        check(total > 0 && outside == 0, flowText);
-                    }
                     for (int c = 0; c < kCategoryCount; ++c) {
                         if (c == cat) continue;
                         const PageTable o = pageItems(static_cast<Category>(c));
@@ -2184,7 +2175,7 @@ void NativeAutoShot()
                         if (leaked) { sprintf_s(flowText, "category %d: %d control(s) of category %d still visible", cat, leaked, c); check(false, flowText); }
                     }
                     sprintf_s(flowText, "category %d rows_visible=%d layout_visible=%d defects=%d", cat, shownRows, L.visibleRows, defects);
-                    check(cat == static_cast<int>(Category::Network) || shownRows == L.visibleRows, flowText);
+                    check(shownRows == L.visibleRows, flowText);
                     if (cat == 0 && find("OptionsMenu.wnd:ButtonAccept") && !reach(find("OptionsMenu.wnd:ButtonAccept"))) {
                         std::string chain;
                         for (GameWindow *a = find("OptionsMenu.wnd:ButtonAccept"); a; a = a->winGetParent()) {
@@ -2197,6 +2188,12 @@ void NativeAutoShot()
                     check(visibleChain(find("OptionsMenu.wnd:ButtonAccept")) && reach(find("OptionsMenu.wnd:ButtonAccept")), "Apply is visible and reachable");
                     check(visibleChain(find("OptionsMenu.wnd:ButtonBack")) && reach(find("OptionsMenu.wnd:ButtonBack")), "Cancel is visible and reachable");
                     check(visibleChain(find("OptionsMenu.wnd:ButtonDefaults")) && reach(find("OptionsMenu.wnd:ButtonDefaults")), "Defaults is visible and reachable");
+                    // the help strip explains the focused setting: focus the first control of the page so the capture shows it
+                    for (int i = 0; i < t.count; ++i) {
+                        char hn[96]; sprintf_s(hn, "OptionsMenu.wnd:%s", t.items[i].control);
+                        GameWindow *hw = find(hn);
+                        if (hw && visibleChain(hw) && BitIsSet(hw->winGetStatus(), WIN_STATUS_ENABLED) && t.items[i].kind != ControlKind::Info) { TheWindowManager->winSetFocus(hw); OptionsTabs::update(); break; }
+                    }
                     char tag[64]; sprintf_s(tag, "options-%d", cat); shoot(tag);
                     ++cat;
                     if (cat < OptionsPageLayout::kCategoryCount) { op = 1; opWait = 3; } else { op = 3; opWait = 2; }
@@ -2237,8 +2234,25 @@ void NativeAutoShot()
                 } else if (op == 7) {
                     check(find("MessageBox.wnd:MessageBoxParent") == nullptr || !visibleChain(find("MessageBox.wnd:MessageBoxParent")), "No keeps the Options screen open");
                     check(OptionsTabs::activeCategory() >= 0 && OptionsTabs::dirty(), "the changes are still pending after No");
-                    GameWindow *slider = find("OptionsMenu.wnd:SliderSFXVolume");
-                    (void)slider;
+                    // transaction check: a setting that applies at the click (the scroll anchor) is restored by Cancel + Yes
+                    GameWindow *anchor = find("OptionsMenu.wnd:CheckBoxDrawAnchor");
+                    if (anchor) {
+                        anchorBefore = TheInGameUI->getDrawRMBScrollAnchor();
+                        GadgetCheckBoxSetChecked(anchor, !GadgetCheckBoxIsChecked(anchor));
+                        press(anchor);
+                        check(TheInGameUI->getDrawRMBScrollAnchor() != anchorBefore, "the scroll anchor applies at the click (retail behaviour)");
+                        GameWindow *back = find("OptionsMenu.wnd:ButtonBack");
+                        if (back) press(back);
+                        op = 8; opWait = 12;
+                    } else { modernCost("options"); advance("options audited", nullptr); done = true; }
+                } else if (op == 8) {
+                    GameWindow *yes = find("MessageBox.wnd:ButtonYes");
+                    check(yes && visibleChain(yes), "the discard confirmation offers Yes");
+                    if (yes) press(yes);
+                    op = 9; opWait = 20;
+                } else if (op == 9) {
+                    check(TheInGameUI->getDrawRMBScrollAnchor() == anchorBefore, "Cancel + Yes restores the scroll anchor that was in force when Options opened");
+                    check(find("OptionsMenu.wnd:ModernBackdrop") == nullptr || !visibleChain(find("OptionsMenu.wnd:ModernBackdrop")), "Cancel + Yes leaves the Options screen");
                     modernCost("options"); advance("options audited", nullptr); done = true;
                 }
             } else if (step.kind == MATCH_SETUP) {

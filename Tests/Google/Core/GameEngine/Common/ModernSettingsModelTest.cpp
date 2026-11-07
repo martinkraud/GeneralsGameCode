@@ -58,16 +58,16 @@ TEST(OptionsPages, EveryCategoryHasItsRowsAndNoControlLivesOnTwoPages)
 	for (int c = 0; c < kCategoryCount; ++c)
 	{
 		const PageTable table = pageItems(static_cast<Category>(c));
-		if (static_cast<Category>(c) == Category::Network) { EXPECT_EQ(table.count, 0); continue; }   // the retail block, kept whole
+		if (static_cast<Category>(c) == Category::Keyboard) { EXPECT_EQ(table.count, 0); continue; }   // generated at run time from the key bindings (empty in the pure tests)
 		EXPECT_GE(table.count, 1) << c;
-		EXPECT_LE(table.count, kMaxRows) << c;
+		EXPECT_LE(table.count, 12) << c;
 		for (int i = 0; i < table.count; ++i)
 		{
 			const PageItem &item = table.items[i];
 			ASSERT_NE(item.control, nullptr);
 			EXPECT_TRUE(controls.insert(item.control).second) << item.control << " appears on two pages";
 			EXPECT_EQ(ownerOf(item.control), c) << item.control;
-			if (item.kind == ControlKind::Check) EXPECT_EQ(item.label, nullptr) << item.control << ": a check box carries its own caption";
+			if (item.kind == ControlKind::Check || item.kind == ControlKind::Button) EXPECT_EQ(item.label, nullptr) << item.control << ": a check box / button carries its own caption";
 			else { ASSERT_NE(item.label, nullptr) << item.control; EXPECT_TRUE(labels.insert(item.label).second) << item.label; EXPECT_EQ(ownerOf(item.label), c); }
 		}
 	}

@@ -13,14 +13,17 @@
 #include <cstring>
 #include <cwchar>
 #include <cwctype>
+#include <string>
 #include <vector>
 
 #include "Common/DisplayRuntime.h"
 #include "Common/ModernBranding.h"
 #include "Common/ModernExperience.h"
 #include "Common/ModernSettingsModel.h"
+#include "Common/HotkeyText.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionsPageLayout.h"
+#include "Common/SettingHelp.h"
 #include "Common/StartupDiagnostics.h"
 #include "GameClient/Display.h"
 #include "GameClient/Gadget.h"
@@ -28,10 +31,12 @@
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetPushButton.h"
 #include "GameClient/GadgetSlider.h"
+#include "GameClient/GadgetTextEntry.h"
 #include "GameClient/GadgetStaticText.h"
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/KeyDefs.h"
+#include "GameClient/MetaEvent.h"
 #include "GameClient/MessageBox.h"
 #include "GameClient/ModernDisplayOptions.h"
 #include "GameClient/ModernDraw.h"
@@ -43,13 +48,13 @@ using ModernTheme::TypeRole;
 
 const char *const kTabIds[kCategoryCount] = {
 	"OptionsMenu.wnd:TabDisplay", "OptionsMenu.wnd:TabGraphics", "OptionsMenu.wnd:TabAudio",
-	"OptionsMenu.wnd:TabControls", "OptionsMenu.wnd:TabGameplay", "OptionsMenu.wnd:TabModern", "OptionsMenu.wnd:TabNetwork",
+	"OptionsMenu.wnd:TabControls", "OptionsMenu.wnd:TabKeyboard", "OptionsMenu.wnd:TabGameplay", "OptionsMenu.wnd:TabModern", "OptionsMenu.wnd:TabNetwork",
 };
-const wchar_t *const kFallbackWide[kCategoryCount] = { L"Display", L"Graphics", L"Audio", L"Controls", L"Gameplay", L"Modern Experience", L"Network" };
+const wchar_t *const kFallbackWide[kCategoryCount] = { L"Display", L"Graphics", L"Audio", L"Controls", L"Keyboard", L"Gameplay", L"Modern Experience", L"Network" };
 // retail windows that stay on every page (the Modern backdrop is added at run time)
 const char *const kChrome[] = { "OptionsMenuParent", "ButtonBack", "ButtonAccept", "ButtonDefaults" };
 // panels that host the pages' retail controls (moved/resized to the content rectangle; they are containers)
-const char *const kPanels[] = { "VideoParent", "AudioParent", "ScrollParent" };
+const char *const kPanels[] = { "VideoParent", "AudioParent", "ScrollParent", "NetworkParent" };
 
 GameWindow *s_tabs[kCategoryCount] = {};
 NameKeyType s_tabKeys[kCategoryCount] = {};
@@ -70,6 +75,7 @@ ModernSettings::Tracker s_tracker;                       // the pending-changes 
 GameWindow *s_tracked[ModernSettings::kMaxControls] = {};   // the gadget behind each tracker slot
 bool s_dirty = false;
 int s_lastSliderSum = -1;
+int s_helpToken = -1;                                       // which setting the help strip currently explains (-1 = not built yet)
 void (*s_discard)() = nullptr;
 
 GameWindow *byName(const char *name)
@@ -133,7 +139,7 @@ bool isTab(GameWindow *w)
 }
 
 // returns true when `w` (or a descendant) stays visible
-bool apply(GameWindow *w, const Visibility &v, bool inNetwork)
+bool apply(GameWindow *w, const Visibility &v)
 {
 	if (w == s_popup)
 		return true;                      // the Advanced Display panel manages itself
@@ -141,17 +147,14 @@ bool apply(GameWindow *w, const Visibility &v, bool inNetwork)
 		return true;
 	const NameKeyType id = static_cast<NameKeyType>(w->winGetWindowId());
 	bool self = isOneOf(id, v.active) || isOneOf(id, v.chrome);
-	if (inNetwork && !wasHidden(w))
-		self = true;                      // the retail Network block is kept whole (as it was shown)
 	if (self && wasHidden(w) && !isOneOf(id, v.active) && !isOneOf(id, v.chrome))
 		self = false;                     // retail hid it deliberately (e.g. the obsolete send-delay switch)
 
 	bool any = false;
 	if (isContainer(w) || w == s_root)
 	{
-		const bool childNetwork = inNetwork || (w == s_network && v.activeCategory == static_cast<int>(Category::Network));
 		for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext())
-			any |= apply(c, v, childNetwork);
+			any |= apply(c, v);
 	}
 	const bool show = self || any;
 	w->winHide(show ? FALSE : TRUE);
@@ -195,7 +198,7 @@ bool itemShown(const PageItem &item)
 {
 	if (item.control && std::strcmp(item.control, "ModernMonitor") == 0)
 		return ModernDisplayOptions::hasMultipleMonitors();
-	return true;
+	return item.control && byName(item.control) != nullptr;   // an option that only one title has (Zero Hour: Retaliation, double-click attack move) is not offered in the other
 }
 
 UnicodeString upper(const UnicodeString &s)
@@ -223,6 +226,13 @@ int controlValue(GameWindow *w)
 	if (BitIsSet(style, GWS_COMBO_BOX)) { Int pos = -1; GadgetComboBoxGetSelectedPos(w, &pos); return pos; }
 	if (BitIsSet(style, GWS_HORZ_SLIDER)) return GadgetSliderGetPosition(w);
 	if (BitIsSet(style, GWS_CHECK_BOX)) return GadgetCheckBoxIsChecked(w) ? 1 : 0;
+	if (BitIsSet(style, GWS_ENTRY_FIELD))
+	{
+		int h = 17;
+		const UnicodeString text = GadgetTextEntryGetText(w);
+		for (const WideChar *p = text.str(); p && *p; ++p) h = h * 31 + static_cast<int>(*p);
+		return h;
+	}
 	return 0;
 }
 
@@ -230,15 +240,18 @@ void takeSnapshot()
 {
 	s_tracker.clear();
 	for (GameWindow *&w : s_tracked) w = nullptr;
-	for (int c = 0; c < static_cast<int>(Category::Network); ++c)
+	for (int c = 0; c < kCategoryCount; ++c)
 	{
 		const PageTable t = pageItems(static_cast<Category>(c));
 		for (int i = 0; i < t.count; ++i)
+		{
+			if (t.items[i].kind == ControlKind::Button || t.items[i].kind == ControlKind::Info) continue;
 			if (GameWindow *w = byName(t.items[i].control))
 			{
 				const int slot = s_tracker.add(static_cast<int>(w->winGetWindowId()), controlValue(w));
 				if (slot >= 0) s_tracked[slot] = w;
 			}
+		}
 	}
 	s_dirty = false;
 }
@@ -263,6 +276,33 @@ int sliderSum()
 UnicodeString captionOf(int category)
 {
 	return TheGameText->FETCH_OR_SUBSTITUTE(categoryTextKey(static_cast<Category>(category)), kFallbackWide[category]);
+}
+
+// The setting the help strip explains: the hovered row's control, else the focused one (a combo box's children count as the combo), else none. Returns the table index + 1 (0 = none).
+bool isInside(GameWindow *w, GameWindow *outer)
+{
+	for (; w; w = w->winGetParent())
+		if (w == outer) return true;
+	return false;
+}
+
+int pickHelp(const SettingHelp::Entry *&entry)
+{
+	entry = nullptr;
+	if (s_active < 0) return 0;
+	const PageTable table = pageItems(static_cast<Category>(s_active));
+	GameWindow *focus = TheWindowManager ? TheWindowManager->winGetFocus() : nullptr;
+	int hover = 0, focused = 0;
+	for (int i = 0; i < table.count; ++i)
+	{
+		GameWindow *w = byName(table.items[i].control);
+		if (!w || w->winIsHidden()) continue;
+		if (!hover && w->winGetInstanceData() && BitIsSet(w->winGetInstanceData()->getState(), WIN_STATE_HILITED)) hover = i + 1;
+		if (!focused && focus && isInside(focus, w)) focused = i + 1;
+	}
+	const int pick = hover ? hover : focused;
+	if (pick) entry = SettingHelp::find(table.items[pick - 1].control);
+	return entry ? pick : 0;
 }
 
 void rebuildDecor()
@@ -335,6 +375,26 @@ void rebuildDecor()
 		thumb.x = relX(L.scrollThumb.x); thumb.y = relY(L.scrollThumb.y); thumb.w = L.scrollThumb.w; thumb.h = L.scrollThumb.h; thumb.color = p.accent;
 	}
 
+	// help strip: what the hovered / focused setting changes (two lines at most)
+	{
+		const SettingHelp::Entry *entry = nullptr;
+		s_helpToken = pickHelp(entry) + 1000 * (s_active + 1);
+		if (entry) StartupDiagnostics::checkpoint("options_tabs", "help", entry->control);
+		ModernDraw::DecorItem &help = s_decor.add(ModernDraw::DecorKind::Text);
+		help.x = relX(L.help.x); help.y = relY(L.help.y); help.w = L.help.w; help.h = L.help.h; help.wrap = L.help.w;
+		help.role = TypeRole::Helper;
+		if (entry)
+		{
+			help.color = p.textSecondary;
+			wcsncpy(help.text, TheGameText->FETCH_OR_SUBSTITUTE(entry->key, entry->fallback).str(), 255);
+		}
+		else
+		{
+			help.color = p.textMuted;
+			wcsncpy(help.text, TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsHelpDefault", L"Point at a setting or select it to see what it does.").str(), 255);
+		}
+	}
+
 	// status line: the dirty state (or what Apply does) and the build footer
 	ModernDraw::DecorItem &st = s_decor.add(ModernDraw::DecorKind::Text);
 	st.x = relX(L.status.x); st.y = relY(L.status.y); st.w = L.status.w * 62 / 100; st.h = L.status.h;
@@ -342,12 +402,12 @@ void rebuildDecor()
 	if (s_dirty)
 	{
 		st.color = p.warning;
-		wcsncpy(st.text, upper(TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsUnsaved", L"Unsaved changes - Apply to keep them")).str(), 95);
+		wcsncpy(st.text, upper(TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsUnsaved", L"Unsaved changes - Accept to keep them")).str(), 95);
 	}
 	else
 	{
 		st.role = TypeRole::Helper; st.color = p.textMuted;
-		wcsncpy(st.text, TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsHint", L"Volume and scroll speed apply as you move them; the rest applies with Apply.").str(), 95);
+		wcsncpy(st.text, TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsHint", L"Accept saves your changes and closes Options; Cancel discards them.").str(), 95);
 	}
 	ModernDraw::DecorItem &foot = s_decor.add(ModernDraw::DecorKind::Text);
 	foot.x = relX(L.status.x + L.status.w * 62 / 100); foot.y = relY(L.status.y); foot.w = L.status.w - L.status.w * 62 / 100; foot.h = L.status.h;
@@ -368,25 +428,43 @@ void styleControls()
 			panel->winSetEnabledColor(0, GameMakeColor(0, 0, 0, 0));
 			panel->winSetEnabledBorderColor(0, GameMakeColor(0, 0, 0, 0));
 		}
-	for (int c = 0; c < static_cast<int>(Category::Network); ++c)
+	for (int c = 0; c < kCategoryCount; ++c)
 	{
 		const PageTable t = pageItems(static_cast<Category>(c));
 		for (int i = 0; i < t.count; ++i)
 		{
 			GameWindow *control = byName(t.items[i].control);
 			GameWindow *label = t.items[i].label ? byName(t.items[i].label) : nullptr;
-			if (label) ModernDraw::skinText(label, TypeRole::Label, ModernDraw::palette().textSecondary);
+			if (label)
+			{
+				ModernDraw::skinText(label, TypeRole::Label, ModernDraw::palette().textSecondary);
+				if (c == static_cast<int>(Category::Network))   // the retail captions end in a colon; the generated rows of the other pages have none
+				{
+					UnicodeString caption = GadgetStaticTextGetText(label);
+					UnicodeString trimmed;
+					const WideChar *text = caption.str();
+					int length = text ? static_cast<int>(wcslen(text)) : 0;
+					while (length > 0 && (text[length - 1] == L':' || text[length - 1] == L' ')) --length;
+					for (int k = 0; k < length; ++k) trimmed.concat(text[k]);
+					GadgetStaticTextSetText(label, trimmed);
+				}
+			}
 			if (!control) continue;
 			switch (t.items[i].kind)
 			{
 			case ControlKind::Combo: ModernDraw::skinCombo(control); break;
 			case ControlKind::Slider: ModernDraw::skinSlider(control); break;
 			case ControlKind::Check: ModernDraw::skinCheck(control); break;
+			case ControlKind::Entry: ModernDraw::skinEntry(control); break;
+			case ControlKind::Button:
+				ModernDraw::skinButton(control, ModernComponents::Kind::Secondary, TypeRole::MenuSecondary);
+				GadgetButtonSetText(control, upper(control->winGetText()));
+				break;
 			default: break;
 			}
 		}
 	}
-	if (GameWindow *w = byName("ButtonAccept")) { ModernDraw::skinButton(w, ModernComponents::Kind::Primary, TypeRole::MenuSecondary); GadgetButtonSetText(w, upper(TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsApply", L"Apply"))); }
+	if (GameWindow *w = byName("ButtonAccept")) { ModernDraw::skinButton(w, ModernComponents::Kind::Primary, TypeRole::MenuSecondary); GadgetButtonSetText(w, upper(TheGameText->FETCH_OR_SUBSTITUTE("GUI:Accept", L"Accept"))); }
 	if (GameWindow *w = byName("ButtonDefaults")) { ModernDraw::skinButton(w, ModernComponents::Kind::Secondary, TypeRole::MenuSecondary); GadgetButtonSetText(w, upper(TheGameText->FETCH_OR_SUBSTITUTE("GUI:Defaults", L"Defaults"))); }
 	if (GameWindow *w = byName("ButtonBack")) { ModernDraw::skinButton(w, ModernComponents::Kind::Secondary, TypeRole::MenuSecondary); GadgetButtonSetText(w, upper(TheGameText->FETCH_OR_SUBSTITUTE("GUI:Cancel", L"Cancel"))); }
 	for (int i = 0; i < kCategoryCount; ++i)
@@ -405,17 +483,6 @@ void computeLayout()
 	in.tabCount = kCategoryCount;
 	in.rowCount = s_active >= 0 ? pageRowCount(s_active) : 0;
 	in.firstRow = s_firstRow;
-	if (s_network && s_active == static_cast<int>(Category::Network))   // the retail Network block has a fixed pixel size: the viewport must hold it
-	{
-		int right = 0, bottom = 0;
-		for (GameWindow *c = s_network->winGetChild(); c; c = c->winGetNext())
-		{
-			Int x, y, w, h; c->winGetPosition(&x, &y); c->winGetSize(&w, &h);
-			if (x + w > right) right = x + w;
-			if (y + h > bottom) bottom = y + h;
-		}
-		in.minContentW = right; in.minContentH = bottom;
-	}
 	s_layout = ModernScreen::compute(in);
 	s_firstRow = s_layout.firstRow;
 	ModernDraw::setScalePercent(s_layout.effectiveScale);
@@ -457,8 +524,6 @@ void showCategory(int category, bool keepScroll = false)
 	for (const char *name : kPanels)
 		if (GameWindow *panel = byName(name))
 			placePanel(panel, L.content, true);
-	if (s_network)
-		placePanel(s_network, L.content, false);   // the retail Network rows are placed from the content origin
 	std::vector<GameWindow *> frontToBack;
 	Visibility v;
 	v.activeCategory = category;
@@ -479,6 +544,10 @@ void showCategory(int category, bool keepScroll = false)
 		{
 			place(control, ModernScreen::Rect{ lab.x, ctl.y, ctl.right() - lab.x, ctl.h });
 		}
+		else if (it.kind == ControlKind::Button)
+		{
+			place(control, ctl);                    // an action: in the control column, no caption of its own
+		}
 		else
 		{
 			if (label)
@@ -487,6 +556,7 @@ void showCategory(int category, bool keepScroll = false)
 				leftAlign(label);
 			}
 			ModernScreen::Rect c = ctl;
+			if (it.kind == ControlKind::Info) c = ModernScreen::Rect{ ctl.x, lab.y, ctl.w, lab.h };
 			if (it.kind == ControlKind::Slider) c.w -= ModernDraw::px(56) + ModernDraw::px(8);   // room for the value label
 			place(control, c);
 		}
@@ -500,15 +570,13 @@ void showCategory(int category, bool keepScroll = false)
 		v.chrome.push_back(keyOf(c));
 	if (s_backdrop)
 		v.chrome.push_back(static_cast<NameKeyType>(s_backdrop->winGetWindowId()));
-	apply(s_root, v, false);
+	apply(s_root, v);
 
 	// 3. z-order: the backdrop first (everything else is brought above it), upper rows last so a dropdown opens over the rows below it
 	if (s_backdrop)
 		s_backdrop->winBringToTop();
 	if (GameWindow *frame = byName("OptionsMenuParentOld"))
 		frame->winBringToTop();                 // the retail frame hosts every gadget: it must draw above the Modern backdrop, never below it
-	if (s_network && category == static_cast<int>(Category::Network))
-		s_network->winBringToTop();
 	for (size_t i = frontToBack.size(); i-- > 0;)
 		frontToBack[i]->winBringToTop();
 	for (const char *c : { "ButtonDefaults", "ButtonAccept", "ButtonBack" })
@@ -531,6 +599,101 @@ void scrollTo(int firstRow)
 	if (clamped == s_firstRow) return;
 	s_firstRow = clamped;
 	showCategory(s_active, true);
+}
+
+// ---- Keyboard page: a read-only reference of the live key bindings (TheMetaMap, i.e. the CommandMap.ini of the game) ----
+// The retail engine has no key rebinding: its Keyboard Options screen is hidden in both titles and its Assign / Reset buttons do nothing. Modern Options therefore shows what the bindings ARE (grouped by
+// category, heading rows in the accent colour) instead of offering controls that would not work. Rows are generated static texts hosted by the Video panel; they take part in the generic row layout.
+std::vector<std::string> s_kbNames;       // stable storage of the generated window names (the page items point into it)
+std::vector<PageItem> s_kbItems;
+
+GameWindow *makeStatic(GameWindow *parent, GameWindow *donor, const std::string &name, const UnicodeString &text)
+{
+	WinInstanceData instance;
+	instance.m_font = donor->winGetFont();
+	instance.m_style = GWS_STATIC_TEXT;
+	instance.m_id = keyOf(name.c_str());
+	TextData data = {};
+	data.centeredVertically = TRUE;
+	GameWindow *w = TheWindowManager->gogoGadgetStaticText(parent, WIN_STATUS_ENABLED | WIN_STATUS_NO_INPUT, 0, 0, 100, 20, &instance, &data, instance.m_font, FALSE);
+	if (w)
+		GadgetStaticTextSetText(w, text);
+	return w;
+}
+
+void buildKeyboardRows(GameWindow *host, GameWindow *donor)
+{
+	s_kbNames.clear();
+	s_kbItems.clear();
+	keyboardTable() = PageTable{ nullptr, 0 };
+	if (!TheMetaMap || !host || !donor)
+		return;
+	struct CategoryCaption { MappableKeyCategories category; const char *key; const wchar_t *fallback; };
+	static const CategoryCaption captions[] = {
+		{ CATEGORY_CONTROL, "GUI:KeyCategoryControl", L"Control" }, { CATEGORY_SELECTION, "GUI:KeyCategorySelection", L"Selection" }, { CATEGORY_TEAM, "GUI:KeyCategoryTeam", L"Teams" },
+		{ CATEGORY_INTERFACE, "GUI:KeyCategoryInterface", L"Interface" }, { CATEGORY_INFORMATION, "GUI:KeyCategoryInformation", L"Information" },
+		{ CATEGORY_TAUNT, "GUI:KeyCategoryTaunt", L"Taunts" }, { CATEGORY_MISC, "GUI:KeyCategoryMisc", L"Miscellaneous" },
+	};
+	struct Row { bool heading; UnicodeString label, value; };
+	std::vector<Row> rows;
+	for (const CategoryCaption &cap : captions)
+	{
+		bool any = false;
+		for (const MetaMapRec *rec = TheMetaMap->getFirstMetaMapRec(); rec; rec = rec->m_next)
+		{
+			if (rec->m_category != cap.category || rec->m_displayName.getLength() == 0)
+				continue;
+			if (!any)
+			{
+				rows.push_back(Row{ true, upper(TheGameText->FETCH_OR_SUBSTITUTE(cap.key, cap.fallback)), UnicodeString() });
+				any = true;
+			}
+			const char *raw = nullptr;
+			for (const LookupListRec *k = KeyNames; k->name; ++k)
+				if (k->value == rec->m_key) { raw = k->name; break; }
+			const std::string combo = HotkeyText::combo(raw, (rec->m_modState & CTRL) != 0, (rec->m_modState & ALT) != 0, (rec->m_modState & SHIFT) != 0);
+			UnicodeString value;
+			if (combo.empty())
+				value = TheGameText->FETCH_OR_SUBSTITUTE("GUI:KeyUnassigned", L"-");
+			else
+			{
+				AsciiString ascii(combo.c_str());
+				value.translate(ascii);
+			}
+			rows.push_back(Row{ false, rec->m_displayName, value });
+		}
+	}
+	if (rows.empty())
+		return;
+	s_kbNames.reserve(rows.size() * 2);
+	s_kbItems.reserve(rows.size());
+	const ModernTheme::Palette &p = ModernDraw::palette();
+	for (size_t i = 0; i < rows.size(); ++i)
+	{
+		char buffer[48];
+		snprintf(buffer, sizeof(buffer), "HotkeyLabel%u", static_cast<unsigned>(i));
+		s_kbNames.push_back(buffer);
+		const std::string &labelName = s_kbNames.back();
+		snprintf(buffer, sizeof(buffer), "HotkeyValue%u", static_cast<unsigned>(i));
+		s_kbNames.push_back(buffer);
+		const std::string &valueName = s_kbNames.back();
+		GameWindow *label = makeStatic(host, donor, labelName, rows[i].label);
+		GameWindow *value = makeStatic(host, donor, valueName, rows[i].value);
+		if (!label || !value)
+			continue;
+		if (rows[i].heading)
+			ModernDraw::skinText(label, TypeRole::SectionHeading, p.accent);
+		else
+			ModernDraw::skinText(label, TypeRole::Label, p.textSecondary);
+		ModernDraw::skinText(value, TypeRole::Value, p.text);
+		label->winHide(TRUE);
+		value->winHide(TRUE);
+		s_kbItems.push_back(PageItem{ labelName.c_str(), valueName.c_str(), ControlKind::Info });
+	}
+	keyboardTable() = PageTable{ s_kbItems.data(), static_cast<int>(s_kbItems.size()) };
+	char detail[80];
+	snprintf(detail, sizeof(detail), "rows=%d bindings=%d", static_cast<int>(s_kbItems.size()), static_cast<int>(rows.size()));
+	StartupDiagnostics::checkpoint("options_tabs", "keyboard", detail);
 }
 }  // namespace
 
@@ -589,6 +752,7 @@ bool create()
 	if (s_backdrop)
 		s_backdrop->winSetOwner(s_canvas);
 	styleControls();
+	buildKeyboardRows(byName("VideoParent"), donor);
 
 	if (s_popup)
 	{
@@ -630,7 +794,7 @@ void setAdvancedOpen(bool open)
 		v.chrome.push_back(keyOf("OptionsMenuParent"));
 		if (s_backdrop)
 			v.chrome.push_back(static_cast<NameKeyType>(s_backdrop->winGetWindowId()));
-		apply(s_root, v, false);
+		apply(s_root, v);
 		for (int i = 0; i < kCategoryCount; ++i)
 			if (s_tabs[i])
 				s_tabs[i]->winHide(TRUE);
@@ -673,7 +837,9 @@ void update()
 	ModernDraw::setFocusWindow(TheWindowManager->winGetFocus());
 	const bool dirtyNow = computeDirty();
 	const int sum = sliderSum();
-	if (dirtyNow != s_dirty || sum != s_lastSliderSum)
+	const SettingHelp::Entry *helpEntry = nullptr;
+	const int helpNow = pickHelp(helpEntry) + 1000 * (s_active + 1);
+	if (dirtyNow != s_dirty || sum != s_lastSliderSum || helpNow != s_helpToken)
 	{
 		s_dirty = dirtyNow;
 		s_lastSliderSum = sum;
@@ -732,6 +898,9 @@ void forget()
 	s_tracker.clear();
 	for (GameWindow *&w : s_tracked) w = nullptr;
 	s_decor.clear();
+	keyboardTable() = PageTable{ nullptr, 0 };
+	s_kbItems.clear();
+	s_kbNames.clear();
 	s_canvas = s_root = s_popup = s_network = s_backdrop = nullptr;
 	s_active = -1;
 	s_firstRow = 0;
