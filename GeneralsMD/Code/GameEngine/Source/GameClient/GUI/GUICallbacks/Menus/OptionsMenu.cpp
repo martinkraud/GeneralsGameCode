@@ -919,8 +919,29 @@ static void DestroyOptionsLayout() {
 }
 
 // Cancel / Back: the pending changes are dropped (nothing is written), the layout closes. Shared by the plain Back press and the Modern "discard changes?" confirmation.
+static Bool s_openDrawAnchor = FALSE, s_openMoveAnchor = FALSE, s_openUseCamera = FALSE, s_openSaveCamera = FALSE;
+// Modern Options: the scroll anchors and the replay-camera switches take effect the moment they are clicked (retail behaviour) and were never restored by Cancel. The state in force when the screen
+// opened is remembered and put back when the changes are discarded (Classic keeps the retail behaviour: OptionsTabs is not active there).
+static void rememberOpenState()
+{
+	s_openDrawAnchor = TheInGameUI->getDrawRMBScrollAnchor();
+	s_openMoveAnchor = TheInGameUI->getMoveRMBScrollAnchor();
+	s_openUseCamera = TheGlobalData->m_useCameraInReplay;
+	s_openSaveCamera = TheGlobalData->m_saveCameraInReplay;
+}
+
+static void restoreOpenState()
+{
+	if (OptionsTabs::activeCategory() < 0) return;
+	TheInGameUI->setDrawRMBScrollAnchor(s_openDrawAnchor);
+	TheInGameUI->setMoveRMBScrollAnchor(s_openMoveAnchor);
+	TheWritableGlobalData->m_useCameraInReplay = s_openUseCamera;
+	TheWritableGlobalData->m_saveCameraInReplay = s_openSaveCamera;
+}
+
 static void leaveWithoutSaving()
 {
+	restoreOpenState();
 	delete pref;
 	pref = nullptr;
 
@@ -1453,6 +1474,7 @@ void OptionsMenuInit( WindowLayout *layout, void *userData )
 
 	// X64.33 FIX3: category pages (no-op in Classic)
 	OptionsTabs::create();
+	rememberOpenState();
 
 	// show menu
 	layout->hide( FALSE );

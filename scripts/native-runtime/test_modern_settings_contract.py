@@ -99,7 +99,9 @@ class ModernSettingsContracts(unittest.TestCase):
                      "SliderVoiceVolume": "SFX / Music / Voice volume", "CheckAlternateMouse": "Alternate Mouse",
                      "SliderScrollSpeed": "Scroll Speed", "CheckBoxDrawAnchor": "Draw scroll anchor", "CheckBoxMoveAnchor": "Move scroll anchor",
                      "ModernMotion": "Unit Motion", "ModernInterface": "Interface", "CheckLanguageFilter": "Language filter",
-                     "CheckBoxUseCamera": "Use camera", "CheckBoxSaveCamera": "Save camera"}
+                     "CheckBoxUseCamera": "Use camera", "CheckBoxSaveCamera": "Save camera",
+                     "CheckDoubleClickAttackMove": "Double-click attack move", "Retaliation": "Retaliation", "ComboBoxIP": "LAN IP address",
+                     "ComboBoxOnlineIP": "Online IP address", "TextEntryFirewallPortOverride": "Firewall port override", "ButtonFirewallRefresh": "Refresh NAT"}
         for name in names:
             self.assertIn(name, label_for, "page control without an audit entry: " + name)
             self.assertIn(label_for[name], audit, name)

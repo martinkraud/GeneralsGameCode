@@ -215,8 +215,8 @@ class FixThreeContracts(unittest.TestCase):
 
     def test_page_visibility_is_decided_for_the_whole_layout_tree(self):
         tabs = read("Core/GameEngine/Source/GameClient/GUI/OptionsTabs.cpp")
-        self.assertIn("bool apply(GameWindow *w, const Visibility &v, bool inNetwork)", tabs)
-        self.assertIn("apply(s_root, v, false);", tabs)
+        self.assertIn("bool apply(GameWindow *w, const Visibility &v)", tabs)
+        self.assertIn("apply(s_root, v);", tabs)
         self.assertIn("while (s_root->winGetParent())", tabs)        # the root of the layout, not a known panel list
         # gadgets are never recursed into (their combo/slider children are not page items)
         self.assertIn("if (isContainer(w) || w == s_root)", tabs)
