@@ -23,7 +23,7 @@ class AcceptCancel(unittest.TestCase):
         tabs = read(TABS)
         self.assertIn('FETCH_OR_SUBSTITUTE("GUI:Accept", L"Accept")', tabs)
         self.assertNotIn('L"Apply"', tabs)
-        self.assertIn("Accept saves your changes and closes Options; Cancel discards them.", tabs)
+        self.assertIn("Accept saves and closes. Cancel discards your changes.", tabs)
         self.assertNotIn("apply as you move them", tabs)       # volume and scroll speed apply on Accept (retail has no live preview)
 
     def test_cancel_restores_what_applies_at_the_click(self):

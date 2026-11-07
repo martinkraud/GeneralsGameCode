@@ -407,7 +407,7 @@ void rebuildDecor()
 	else
 	{
 		st.role = TypeRole::Helper; st.color = p.textMuted;
-		wcsncpy(st.text, TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsHint", L"Accept saves your changes and closes Options; Cancel discards them.").str(), 95);
+		wcsncpy(st.text, TheGameText->FETCH_OR_SUBSTITUTE("GUI:OptionsHint", L"Accept saves and closes. Cancel discards your changes.").str(), 95);
 	}
 	ModernDraw::DecorItem &foot = s_decor.add(ModernDraw::DecorKind::Text);
 	foot.x = relX(L.status.x + L.status.w * 62 / 100); foot.y = relY(L.status.y); foot.w = L.status.w - L.status.w * 62 / 100; foot.h = L.status.h;
