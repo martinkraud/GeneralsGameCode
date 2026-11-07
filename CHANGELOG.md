@@ -7,6 +7,16 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-07 - Settings / UX Completion (Developer Preview readiness)
+
+* **Per-setting help:** every exposed Modern Options control has one factual sentence (`SettingHelp.h`, unit-tested for coverage and tone) shown in a two-line help strip when the setting is hovered or focused; Game Speed and the other match rules stay per-match rules, never global settings.
+* **Network page:** the retail block became generated rows (LAN address, online address, firewall port, Refresh NAT) with the same spacing, skin, dirty tracking and help as the other pages; no networking behaviour changed (the three online items belong to the unavailable original service and say so).
+* **Keyboard page:** a read-only reference of the live key bindings (from `TheMetaMap`, grouped by category, both titles). Audit finding: the retail engine has no key rebinding (its Keyboard Options button is hidden in both titles and the screen's Assign / Reset do nothing), so Modern shows what the bindings are instead of offering controls that would not work.
+* **Zero Hour controls restored:** Retaliation and Double Click Guard are on the Controls page in Zero Hour (a control a title lacks is not a row in the other).
+* **Accept / Cancel made honest:** the commit button closed Options but was captioned Apply (now Accept); the hint no longer claims volume and scroll speed apply live; Cancel now restores the scroll anchors and the replay-camera switch that apply at the click (Modern only; Classic keeps retail behaviour).
+* **Documentation:** `docs/modernization/MODERN_SETTINGS_ARCHITECTURE.md` (layers, storage, persistence, transaction model, keyboard decision, limitations); product roadmap: Match Options and Game Speed owner accepted.
+* **Verification:** no simulation change (Zero Hour 1x `1E5982E5B3A1B86B`, 4x `CF9C9DB782B65644`, `city5H` `FB748B205FB71351`; Generals 1x `1014EE85E384C19C`, 4x `E649F6A6E27117B8`; X64.pf guards unchanged; golden AI gates pass); native Options audit of every page in both titles at 1024x768 .. 5120x1440; Classic smoke.
+
 ## 2026-11-07 - Modern Match Options + Game Speed
 
 * **Game Speed (Skirmish, Generals and Zero Hour):** Slow 0.75x / Normal 1.00x (default, bit-identical to before) / Fast 1.25x / Very Fast 1.50x. It is pacing of the existing offline logic-rate seam and nothing else: one `GameInfo` value (`GS=` in the options string / replay header written only when not Normal, Skirmish.ini `GameSpeed`, save xfer version 7), independent of FPS / refresh / VSync / render scale, ignored by network games, Campaign and Challenge. Runtime Speed Up / Down (Shift+Ctrl+Numpad +/-) with on-screen feedback in live Skirmish games. 2.0x was evaluated and rejected (heavy Zero Hour cannot hold the 16.7 ms budget). Details and evidence: `docs/modernization/GAME_SPEED.md`.

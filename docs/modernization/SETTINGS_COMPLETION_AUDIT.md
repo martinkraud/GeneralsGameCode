@@ -244,3 +244,19 @@ D3D11 pixels. That needs the native retest.
 
 v4 passed the human native test: Render Scale now renders the world correctly (the section 11 fix was confirmed), settings are usable and
 Interface selection works. Settings completion is ACCEPTED AND CLOSED.
+
+## 12. Settings / UX completion (2026-11-07)
+
+See [MODERN_SETTINGS_ARCHITECTURE.md](MODERN_SETTINGS_ARCHITECTURE.md). Controls added to the Modern pages or changed by that milestone, with their disposition (classes as in section 1):
+
+| page | control | class | evidence / disposition |
+|---|---|---|---|
+| CONTROLS | Double-click attack move | **A** (Zero Hour only) | retail ZH check box, `UseDoubleClickAttackMove`, applied on Accept; the Generals screen has no such control so no row is offered there |
+| CONTROLS | Retaliation | **A** (Zero Hour only) | retail ZH check box, `Retaliation` (default on), applied on Accept |
+| KEYBOARD | key binding reference | read-only | generated from `TheMetaMap`; the retail engine has no rebinding (hidden button, inert Assign / Reset) |
+| NETWORK | LAN IP address | **A** | `IPAddress`, applied on Accept; the setting that matters for LAN play |
+| NETWORK | Online IP address | **D** (online service unavailable) | retail control kept with its retail rules; help text says the service is not available |
+| NETWORK | Firewall port override | **D** (online service unavailable) | as above |
+| NETWORK | Refresh NAT | **D** (online service unavailable) | as above |
+| footer | Accept | **A** | the button was captioned "Apply" but closes Options after saving; renamed to the retail word Accept; the hint no longer claims that volume and scroll speed apply live (they apply on Accept) |
+| CONTROLS / GAMEPLAY | scroll anchors, use camera in replays | **A** | applied at the click (retail); Cancel now restores the state in force when Options opened (Modern only) |

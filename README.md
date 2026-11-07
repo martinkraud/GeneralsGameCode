@@ -162,7 +162,7 @@ Current Modern Experience work includes:
 - Widescreen support
 - Ultrawide support
 - UI scaling
-- Modernized Options interface
+- Modernized Options interface: eight pages with a help line for every setting, a read-only keyboard-shortcut reference and Accept / Cancel semantics (see [Modern Settings](docs/modernization/MODERN_SETTINGS_ARCHITECTURE.md))
 - Improved frontend layout
 - Skirmish match options: Starting Cash, AI Behaviour (Original / Enhanced), a Superweapons limit and Game Speed (Slow / Normal / Fast / Very Fast; pacing only, independent of FPS, Normal = original speed)
 - Smooth unit presentation
@@ -503,7 +503,7 @@ Further fidelity and correctness improvements remain ongoing.
 
 - [x] UI archaeology and responsive layout foundation (UI.1)
 - [ ] Main frontend / navigation shell (UI.2) - implemented, redrawn by UI.3, awaiting native acceptance
-- [ ] Modern frontend design system, Match Setup, Options, Load / Replay, dialogs, Credits (UI.3) - implemented, awaiting native acceptance
+- [x] Modern frontend design system, Match Setup, Options, Load / Replay, dialogs, Credits (UI.3) - visual direction approved by the owner (2026-11-06); Match Options + Game Speed accepted (2026-11-07); Settings / UX completion implemented, owner review of the new Options pages pending
 - [ ] Remaining retail frontend screens (LAN lobby, Online, Challenge select, Map select) (UI.4) - audited and ranked in the UI audit; the LAN setup waits for real two-PC validation
 - [ ] Modern in-game HUD for USA / China / GLA (UI.5)
 - [ ] Resolution / scaling matrix, polish and native acceptance (UI.6)
