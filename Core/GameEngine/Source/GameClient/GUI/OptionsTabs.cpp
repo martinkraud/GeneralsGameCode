@@ -414,8 +414,8 @@ void rebuildDecor()
 	foot.role = TypeRole::Helper; foot.align = 2; foot.color = p.textMuted.withAlpha(210);
 	wcsncpy(foot.text, ModernBranding::footerText(), 95);
 	s_decor.refreshFonts();
-	// the build footer is secondary: when the status text needs its box (narrow panel, 4:3) the footer yields instead of overprinting it
-	if (s_decor.textWidth(s_decor.count() - 2) > st.w) { foot.text[0] = 0; s_decor.refreshFonts(); }
+	// the build footer is secondary: when the status text and the footer do not fit side by side (narrow panel, 4:3, a long status) the footer yields instead of overprinting it
+	if (s_decor.textWidth(s_decor.count() - 2) + s_decor.textWidth(s_decor.count() - 1) + ModernDraw::px(24) > L.status.w) { foot.text[0] = 0; s_decor.refreshFonts(); }
 }
 
 void styleControls()

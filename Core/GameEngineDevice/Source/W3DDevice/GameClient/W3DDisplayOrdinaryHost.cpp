@@ -2109,6 +2109,11 @@ void NativeAutoShot()
                 };
                 const bool modernOptions = OptionsTabs::activeCategory() >= 0;
                 if (opWait > 0) { --opWait; }
+                else if (op == 9) {            // after Cancel + Yes the Options screen is gone: this is the result of the transaction step
+                    check(TheInGameUI->getDrawRMBScrollAnchor() == anchorBefore, "Cancel + Yes restores the scroll anchor that was in force when Options opened");
+                    check(find("OptionsMenu.wnd:ModernBackdrop") == nullptr || !visibleChain(find("OptionsMenu.wnd:ModernBackdrop")), "Cancel + Yes leaves the Options screen");
+                    advance("options audited", nullptr); done = true;
+                }
                 else if (!modernOptions) {
                     static unsigned classicWait = 0;
                     if (++classicWait < 90) { opWait = 1; }
@@ -2194,6 +2199,8 @@ void NativeAutoShot()
                         GameWindow *hw = find(hn);
                         if (hw && visibleChain(hw) && BitIsSet(hw->winGetStatus(), WIN_STATUS_ENABLED) && t.items[i].kind != ControlKind::Info) { TheWindowManager->winSetFocus(hw); OptionsTabs::update(); break; }
                     }
+                    op = 10; opWait = 3;                // let the help strip of the focused setting reach the screen before the capture
+                } else if (op == 10) {
                     char tag[64]; sprintf_s(tag, "options-%d", cat); shoot(tag);
                     ++cat;
                     if (cat < OptionsPageLayout::kCategoryCount) { op = 1; opWait = 3; } else { op = 3; opWait = 2; }
@@ -2250,10 +2257,6 @@ void NativeAutoShot()
                     check(yes && visibleChain(yes), "the discard confirmation offers Yes");
                     if (yes) press(yes);
                     op = 9; opWait = 20;
-                } else if (op == 9) {
-                    check(TheInGameUI->getDrawRMBScrollAnchor() == anchorBefore, "Cancel + Yes restores the scroll anchor that was in force when Options opened");
-                    check(find("OptionsMenu.wnd:ModernBackdrop") == nullptr || !visibleChain(find("OptionsMenu.wnd:ModernBackdrop")), "Cancel + Yes leaves the Options screen");
-                    modernCost("options"); advance("options audited", nullptr); done = true;
                 }
             } else if (step.kind == MATCH_SETUP) {
                 // UI.3: the Modern Match Setup composition: every player cell, the map preview, the rule cards and the actions sit on their layout rectangle and can be reached by the mouse; the retail
