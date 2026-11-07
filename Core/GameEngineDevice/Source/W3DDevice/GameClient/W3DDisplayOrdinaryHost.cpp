@@ -2111,7 +2111,7 @@ void NativeAutoShot()
                 if (opWait > 0) { --opWait; }
                 else if (op == 9) {            // after Cancel + Yes the Options screen is gone: this is the result of the transaction step
                     check(TheInGameUI->getDrawRMBScrollAnchor() == anchorBefore, "Cancel + Yes restores the scroll anchor that was in force when Options opened");
-                    check(find("OptionsMenu.wnd:ModernBackdrop") == nullptr || !visibleChain(find("OptionsMenu.wnd:ModernBackdrop")), "Cancel + Yes leaves the Options screen");
+                    check(!modernOptions, "Cancel + Yes leaves the Options screen (the Modern Options state is gone)");
                     advance("options audited", nullptr); done = true;
                 }
                 else if (!modernOptions) {
