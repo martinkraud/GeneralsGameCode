@@ -7,6 +7,13 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-07 - Modern Match Options + Game Speed
+
+* **Game Speed (Skirmish, Generals and Zero Hour):** Slow 0.75x / Normal 1.00x (default, bit-identical to before) / Fast 1.25x / Very Fast 1.50x. It is pacing of the existing offline logic-rate seam and nothing else: one `GameInfo` value (`GS=` in the options string / replay header written only when not Normal, Skirmish.ini `GameSpeed`, save xfer version 7), independent of FPS / refresh / VSync / render scale, ignored by network games, Campaign and Challenge. Runtime Speed Up / Down (Shift+Ctrl+Numpad +/-) with on-screen feedback in live Skirmish games. 2.0x was evaluated and rejected (heavy Zero Hour cannot hold the 16.7 ms budget). Details and evidence: `docs/modernization/GAME_SPEED.md`.
+* **Match Rules UX:** Game Speed is the fourth generated rule; the Modern Match Setup status line explains the two start failures the retail code has (unknown map, too many players for the map) before Play is pressed and shows a one-sentence help for the focused rule; the career block is visually secondary; the retail missing-map path no longer dereferences the end iterator.
+* **Ultrawide and readability:** Match Setup may compose up to 21:9 (Auto scale 186 % -> up to 198 % on 21:9 / 32:9), oversized scales are reduced in 4 % steps (largest scale that fits, all aspect ratios), a global 11 pt minimum for Modern text, Helper text 10 -> 11 pt, stronger footer contrast.
+* **Verification:** no simulation change (Zero Hour 1x `1E5982E5B3A1B86B`, Generals 1x `1014EE85E384C19C`, golden AI gates); Game Speed headless digests identical at all four levels in both titles; graphical pace 99 % of target on the heavy 4x Zero Hour stress at Very Fast; recorded Skirmish replays carry `GS=` and replay with CRC checking; save -> quit -> load restores the speed. Multiplayer Game Speed is not implemented.
+
 ## 2026-11-06 - Modern Experience UI product-completion audit (UI.4 audit)
 
 * **Audit, not a restart:** the existing Modern UI (UI.1 - UI.3) was measured against the product-completion brief; results, ranked remaining work and the Classic / Modern boundary are in `docs/modernization/MODERN_UI_PRODUCT_COMPLETION.md`.

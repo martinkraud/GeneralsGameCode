@@ -76,3 +76,21 @@ Every Modern entry point is gated by `DisplayRuntime::modern()` and `!ModernExpe
 6. Options: per-setting help text, Network block as generated rows, keyboard options.
 7. Start-button validation line, long-string / localisation pass.
 8. HUD polish (Beta); Online screens only if the service ever returns; movies (FFmpeg, Beta).
+
+## 10. Match Options, ultrawide and readability polish (2026-11-07)
+
+Owner visual review approved the direction (shell map, dark restrained panels, Bahnschrift, chamfers, accents, three-zone Match Setup, responsive Modern layout). Changes made, nothing redesigned:
+
+| Item | Before | After |
+|---|---|---|
+| Match Rules | 3 rules | 4 rules (Starting Cash, AI Behaviour, Superweapons, Game Speed) from the generated spec list; career block set in the muted helper style |
+| Match Setup status line | one static hint | start-validation reason (unknown map / too many players: the two checks `startPressed()` already makes; Play stays enabled), else one-sentence help for the focused rule, else the hint |
+| Auto UI scale, Match Setup, 21:9 / 32:9 (1440 tall) | 186 % (reduced to fit a 16:9 box) | 198 % (composition up to 21:9; the panel now fills 86 % of the height and about half of a 32:9 width, shell map still visible) |
+| Auto UI scale, main menu, 1440 tall (any aspect) | 190 % | 198 % (4 % reduction steps find the largest scale that fits) |
+| Smallest text | 10 pt Helper, 7 pt floor | 11 pt Helper, 11 pt floor for all Modern text; footer alpha 150 / 180 -> 210 |
+
+Finding worth knowing: the Auto scale is height-based, so the same 1440-pixel-tall surface gets the same physical UI at 16:9 and 32:9 (and the owner's options file says `UIScale = Auto`); the earlier "tiny" 32:9 screenshots were the explicit 100 % audit shots. A larger Auto cannot be had without exceeding the surface height; a physical-size (DPI-aware) preference would be the next lever and needs the owner's monitor data.
+
+Validation: 36 native audit runs (both titles, 1024x768 / 1920x1080 / 5120x1440 x 75 / 150 %: MainMenu, Options, MatchSetup) with 0 defects; Auto-scale shots at 1024x768 .. 5120x1440; Classic smoke (main menu, Options, Match Setup, Replay, both titles) shows the retail screens (the Match Setup audit's only "defects" are the Modern dropdowns Classic correctly lacks). Evidence: `evidence/ui-5/` (before / after at 21:9 and 32:9, 4:3, 16:9, Generals, Classic).
+
+Known pre-existing Classic detail: the retail Skirmish screen still shows its "Game Speed" caption with no slider (the slider has been hidden since X64.52A because it was the FPS cap); left untouched (Classic preservation).

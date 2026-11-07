@@ -1,6 +1,6 @@
 # Game Speed - design for a future explicit feature (DOCUMENT ONLY)
 
-Status: **design, not implemented.** No Game Speed UI or runtime behaviour exists or is added by X64.42. This file turns the proposal in
+Status: **design; implemented for Skirmish by the Game Speed milestone - see [GAME_SPEED.md](GAME_SPEED.md) for what was built, decided (levels 0.75 / 1.00 / 1.25 / 1.50x; 2.0x rejected) and measured.** Original text follows. Previously: design, not implemented. No Game Speed UI or runtime behaviour exists or is added by X64.42. This file turns the proposal in
 `RETAIL_GAME_SPEED_AUDIT.md` section 4 into a contract plus the implication research a later, separately authorized milestone needs.
 The facts it relies on are proven in the audit: retail **Normal = exactly 30 logic frames per second** in Generals and Zero Hour; the retail
 Skirmish Game Speed slider was the FPS cap of the one-update-per-loop-iteration main loop; this fork decouples logic from render

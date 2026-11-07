@@ -1,0 +1,8 @@
+zh GS=100 fp_last=[frame=14400 crc=660B68BA objects=940] sha=373FF961D3AA0D32 :: determinism fingerprint: 480 checkpoints every 30 frames | digest 3D626C3F14B694AE
+zh GS=75 fp_last=[frame=14400 crc=660B68BA objects=940] sha=373FF961D3AA0D32 :: determinism fingerprint: 480 checkpoints every 30 frames | digest 3D626C3F14B694AE
+zh GS=125 fp_last=[frame=14400 crc=660B68BA objects=940] sha=373FF961D3AA0D32 :: determinism fingerprint: 480 checkpoints every 30 frames | digest 3D626C3F14B694AE
+zh GS=150 fp_last=[frame=14400 crc=660B68BA objects=940] sha=373FF961D3AA0D32 :: determinism fingerprint: 480 checkpoints every 30 frames | digest 3D626C3F14B694AE
+gen GS=100 fp_last=[frame=14400 crc=3188CF2E objects=742] sha=1F721D421049CBB9 :: determinism fingerprint: 480 checkpoints every 30 frames | digest E55E10F57074ECA8
+gen GS=75 fp_last=[frame=14400 crc=3188CF2E objects=742] sha=1F721D421049CBB9 :: determinism fingerprint: 480 checkpoints every 30 frames | digest E55E10F57074ECA8
+gen GS=125 fp_last=[frame=14400 crc=3188CF2E objects=742] sha=1F721D421049CBB9 :: determinism fingerprint: 480 checkpoints every 30 frames | digest E55E10F57074ECA8
+gen GS=150 fp_last=[frame=14400 crc=3188CF2E objects=742] sha=1F721D421049CBB9 :: determinism fingerprint: 480 checkpoints every 30 frames | digest E55E10F57074ECA8

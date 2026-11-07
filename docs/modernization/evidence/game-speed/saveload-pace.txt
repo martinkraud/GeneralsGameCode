@@ -1,0 +1,50 @@
+== zh-SkirmishSaveLoad-100 :: no LastReplay.rep
+state 0 state before_save: frame=301 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=231 structures=39 logic_crc=BD6FC558
+state 0 state saved: frame=331 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=231 structures=39 logic_crc=4FCB154D
+state 0 state after_load: frame=332 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=231 structures=39 logic_crc=01F2554F
+state 0 objects compared saved vs loaded: identical=224 differ=7 missing_after_load=0 new_after_load=0
+== zh-SkirmishSaveLoad-150 :: no LastReplay.rep
+pace 0 percent=150 logic_fps=45.00 render_cap=120
+state 0 state before_save: frame=301 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=232 structures=39 logic_crc=6AAB0D5F
+state 0 state saved: frame=346 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=232 structures=39 logic_crc=1907F20A
+pace 0 percent=100 logic_fps=30.00 render_cap=120
+pace 0 percent=150 logic_fps=45.00 render_cap=120
+pace 0 percent=100 logic_fps=30.00 render_cap=120
+pace 0 percent=150 logic_fps=45.00 render_cap=120
+state 0 state after_load: frame=347 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=234 structures=40 logic_crc=8FE45EA6
+state 0 objects compared saved vs loaded: identical=225 differ=7 missing_after_load=0 new_after_load=2
+== zh-SkirmishSaveLoad-125 :: no LastReplay.rep
+pace 0 percent=125 logic_fps=37.50 render_cap=120
+state 0 state before_save: frame=301 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=231 structures=39 logic_crc=E2266842
+state 0 state saved: frame=339 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=231 structures=39 logic_crc=63AE9507
+pace 0 percent=100 logic_fps=30.00 render_cap=120
+pace 0 percent=125 logic_fps=37.50 render_cap=120
+pace 0 percent=100 logic_fps=30.00 render_cap=120
+pace 0 percent=125 logic_fps=37.50 render_cap=120
+state 0 state after_load: frame=339 side=FactionAmericaSuperWeaponGeneral money=50000 rank=1 skill=0 objects=231 structures=39 logic_crc=1BF00485
+state 0 objects compared saved vs loaded: identical=228 differ=3 missing_after_load=0 new_after_load=0
+== gen-SkirmishSaveLoad-100 :: no LastReplay.rep
+state 0 state before_save: frame=301 side=FactionAmerica money=50000 rank=1 skill=0 objects=566 structures=95 logic_crc=CE529A4E
+state 0 state saved: frame=331 side=FactionAmerica money=50000 rank=1 skill=0 objects=566 structures=95 logic_crc=4F7146D9
+state 0 state after_load: frame=331 side=FactionAmerica money=50000 rank=1 skill=0 objects=566 structures=95 logic_crc=C200E092
+state 0 objects compared saved vs loaded: identical=566 differ=0 missing_after_load=0 new_after_load=0
+== gen-SkirmishSaveLoad-150 :: no LastReplay.rep
+pace 0 percent=150 logic_fps=45.00 render_cap=240
+state 0 state before_save: frame=302 side=FactionAmerica money=50000 rank=1 skill=0 objects=567 structures=96 logic_crc=20B5F028
+state 0 state saved: frame=346 side=FactionAmerica money=50000 rank=1 skill=0 objects=567 structures=96 logic_crc=E2EDCB21
+pace 0 percent=100 logic_fps=30.00 render_cap=240
+pace 0 percent=150 logic_fps=45.00 render_cap=240
+pace 0 percent=100 logic_fps=30.00 render_cap=240
+pace 0 percent=150 logic_fps=45.00 render_cap=240
+state 0 state after_load: frame=347 side=FactionAmerica money=50000 rank=1 skill=0 objects=568 structures=97 logic_crc=2234C25D
+state 0 objects compared saved vs loaded: identical=564 differ=2 missing_after_load=1 new_after_load=2
+== gen-SkirmishSaveLoad-125 :: no LastReplay.rep
+pace 0 percent=125 logic_fps=37.50 render_cap=240
+state 0 state before_save: frame=301 side=FactionAmerica money=50000 rank=1 skill=0 objects=567 structures=96 logic_crc=AB5AB896
+state 0 state saved: frame=338 side=FactionAmerica money=50000 rank=1 skill=0 objects=567 structures=96 logic_crc=825CF6E0
+pace 0 percent=100 logic_fps=30.00 render_cap=240
+pace 0 percent=125 logic_fps=37.50 render_cap=240
+pace 0 percent=100 logic_fps=30.00 render_cap=240
+pace 0 percent=125 logic_fps=37.50 render_cap=240
+state 0 state after_load: frame=338 side=FactionAmerica money=50000 rank=1 skill=0 objects=567 structures=96 logic_crc=16C751D4
+state 0 objects compared saved vs loaded: identical=567 differ=0 missing_after_load=0 new_after_load=0

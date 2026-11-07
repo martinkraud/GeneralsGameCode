@@ -63,7 +63,7 @@ The modernization deliberately separates:
 | Modern Experience UI: archaeology of the retail UI and the target architecture | [archaeology](docs/modernization/MODERN_UI_ARCHAEOLOGY.md), [architecture and phases](docs/modernization/MODERN_UI_ARCHITECTURE.md) |
 | Product roadmap (Current -> Developer Preview -> Alpha -> Beta -> RC -> 1.0) and Modern UI product-completion audit (screen status, 4:3 - 32:9 validation, ranked remaining work) | [roadmap](docs/PRODUCT_ROADMAP.md), [UI audit](docs/modernization/MODERN_UI_PRODUCT_COMPLETION.md) |
 | Roadmap, milestone records and handoff | [docs/modernization/](docs/modernization/) - [roadmap](docs/modernization/FIRST_PLAYABLE_ROADMAP.md), [handoff](docs/modernization/AGENT_HANDOFF.md) |
-| Original Game Speed facts and the (unimplemented) Game Speed design | [audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [design](docs/modernization/GAME_SPEED_DESIGN.md) |
+| Game Speed (Skirmish): original facts, architecture, supported speeds and evidence | [Game Speed](docs/modernization/GAME_SPEED.md), [retail audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [original design](docs/modernization/GAME_SPEED_DESIGN.md) |
 | Building | [Building](#building) below |
 | Known limitations | [Known Incomplete Areas](#known-incomplete-areas) below |
 
@@ -164,7 +164,7 @@ Current Modern Experience work includes:
 - UI scaling
 - Modernized Options interface
 - Improved frontend layout
-- Skirmish match options: Starting Cash, AI Behaviour (Original / Enhanced) and a Superweapons limit
+- Skirmish match options: Starting Cash, AI Behaviour (Original / Enhanced), a Superweapons limit and Game Speed (Slow / Normal / Fast / Very Fast; pacing only, independent of FPS, Normal = original speed)
 - Smooth unit presentation
 - Optional Enhanced gameplay interface (USA, China, GLA)
 
@@ -380,7 +380,7 @@ modernization.
 | Replay record / re-simulate (Generals Skirmish) | ✅ Verified for a recorded match; wider validation needed |
 | Multiplayer / determinism | ⏳ Further validation needed |
 | Zero Hour native gameplay | ✅ Working, human-tested on desktop and laptop; broader (multiplayer, campaign, endurance) validation continues |
-| Skirmish match rules (Starting Cash, AI Behaviour, Superweapons) | ✅ Working, optional (Original/defaults preserved; `-classic` hides them) |
+| Skirmish match rules (Starting Cash, AI Behaviour, Superweapons, Game Speed) | ✅ Working, optional (Original/defaults preserved; `-classic` hides them); Game Speed is Skirmish-only, multiplayer Game Speed is not implemented |
 | Enhanced AI (opt-in per match) | 🚧 Experimental; development paused while the Modern UI is built, Original AI is the default and is gate-protected |
 | Overlay player packages (Generals + Zero Hour) | ✅ Working (ZIP over the legitimate installation; no game assets are redistributed) |
 | Modern Experience frontend: design system, main menu, Options, Skirmish Match Setup, Load Game / Replays, dialogs, Credits (both titles; LAN lobby, Online, Challenge select and Map select stay retail) | 🚧 Implemented and automatically validated; awaiting native visual acceptance ([UI.3](docs/modernization/MODERN_UI_3_FRONTEND.md)) |

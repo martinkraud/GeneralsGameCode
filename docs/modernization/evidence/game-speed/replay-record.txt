@@ -1,0 +1,6 @@
+== zh-Skirmish-125 :: header_has_GS=True (must be true) replay_mismatch=False exit_text_len=157
+== zh-Skirmish-150 :: header_has_GS=True (must be true) replay_mismatch=False exit_text_len=157
+== zh-Skirmish-100 :: header_has_GS=False (must be false) replay_mismatch=False exit_text_len=157
+== gen-Skirmish-125 :: header_has_GS=True (must be true) replay_mismatch=False exit_text_len=158
+== gen-Skirmish-150 :: header_has_GS=True (must be true) replay_mismatch=False exit_text_len=158
+== gen-Skirmish-100 :: header_has_GS=False (must be false) replay_mismatch=False exit_text_len=158
