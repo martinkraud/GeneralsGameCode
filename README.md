@@ -1,54 +1,92 @@
-# GeneralsGameCode — MKRaudstein Modern Engine
+# MKRaudstein Modern Engine
 
-> **Experimental modernization fork of TheSuperHackers/GeneralsGameCode.**
->
-> A native 64-bit and DirectX 11 modernization of  
-> **Command & Conquer: Generals** and **Command & Conquer: Generals – Zero Hour**.
->
-> The project focuses on preserving the original games while modernizing the
-> engine, rendering, display support, performance and optional user experience.
->
-> **Status:** Active development. Generals and Zero Hour are both playable on the
-> modernized native AMD64/D3D11 engine and have been stable on the project's tested
-> desktop and laptop systems. This project is not yet intended as a finished
-> end-user release. Current detail: [docs/modernization/PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md).
+**A 64-bit, DirectX 11 modernization of Command & Conquer: Generals and Zero Hour, with an optional Modern Experience and the original game one switch away.**
 
----
+[![Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D6)](docs/DEVELOPER_PREVIEW.md)
+[![DirectX 11](https://img.shields.io/badge/graphics-DirectX%2011-107C10)](docs/modernization/PROJECT_STATUS.md)
+[![Generals](https://img.shields.io/badge/Generals-supported-555555)](#whats-the-state-of-each-title)
+[![Zero Hour](https://img.shields.io/badge/Zero%20Hour-supported-555555)](#whats-the-state-of-each-title)
+[![Status: Developer Preview](https://img.shields.io/badge/status-Developer%20Preview-orange)](docs/DEVELOPER_PREVIEW.md)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE.md)
 
-## Project Overview
+> An independent fork of [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode). **This repository contains source code and tooling only: it does not contain, and the project does not distribute, any Electronic Arts game asset.** You need your own legitimate copy of the game.
 
-This repository builds on the community-driven
-[TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode)
-project.
+<p align="center">
+  <img src="docs/modernization/evidence/ui-3/screens/ZeroHour-MainMenu-1920x1080-100-mainmenu-root.jpg" alt="Modern Experience main menu (Zero Hour, 1920x1080)" width="49%">
+  <img src="docs/modernization/evidence/ui-5/zh-16x9-matchsetup-1920x1080-auto.jpg" alt="Modern Experience Skirmish setup with match rules" width="49%">
+</p>
 
-The goal of this fork is not to turn Generals into a different game.
+## What is this?
 
-The goal is to make the original game work correctly on a modernized engine
-first, while creating a foundation for optional modern presentation and future
-expansion.
+The original games were built for 32-bit Windows, Direct3D 8 and 800x600 screens. This project ports the engine to **native 64-bit Windows with a Direct3D 11 renderer**, adds support for modern displays (4:3 to 32:9, high refresh rates, UI scaling) and offers an **optional Modern Experience**: a redesigned frontend, Options and Skirmish setup, an Enhanced in-game HUD and a few opt-in match rules. The original simulation stays authoritative and unchanged: **Modernize Generals, not replace its identity.**
 
-The project currently focuses on:
+## The questions people ask first
 
-- Native AMD64 / 64-bit Windows support
-- Direct3D 11 rendering
-- Preservation of original Generals gameplay
-- Authoritative original-style 30 TPS simulation
-- Rendering independent of simulation rate
-- Smooth high-refresh presentation
-- Modern resolutions and ultrawide displays
-- UI scaling and modern display handling
-- Improved frame pacing and performance
-- Modernized frontend and settings
-- Optional Enhanced gameplay interface
-- Improved stability and maintainability
-- Continued compatibility work for Zero Hour
+| Question | Short answer |
+|---|---|
+| **What does it do today?** | Both **Generals** and **Zero Hour** run as native 64-bit Direct3D 11 games on Windows: menus, Skirmish against the AI, save/load and replays, audio, all three base factions with the Enhanced HUD. |
+| **What is Modern Experience?** | The optional modern layer: responsive menu and Options (8 pages, help for every setting, read-only keyboard reference), Skirmish **Match Rules** (Starting Cash, AI Behaviour Original / Enhanced, Superweapons, Game Speed Slow-Normal-Fast-Very Fast), smooth unit motion, Enhanced HUD. It is the default of the 64-bit runtime. |
+| **What is Classic?** | `-classic` starts the original frontend and behaviour of the game, with none of the Modern screens, rules or HUD. Gameplay rules are identical in both: the simulation is the original 30 ticks per second logic, deterministic, with presentation decoupled from it. |
+| **What works, what is still in progress?** | See [Development status](#development-status). Open: real two-PC multiplayer validation, Modern LAN screens, multiplayer Game Speed, movie playback, key rebinding. |
+| **What do I need to run it?** | Windows 10/11 64-bit, a Direct3D 11 GPU and your own **Steam copy of Generals and/or Zero Hour** (English). The Developer Preview package needs no Visual Studio, CMake, Python or repository. |
+| **Is it released?** | **Developer Preview** (testing build), not a public release. [Player guide](docs/DEVELOPER_PREVIEW.md). |
+| **Does this repository contain game assets?** | **No.** No archive, media, texture, map or modified copy of EA data. Where the project needs a derived data file, the installer generates it on your PC from your own files. [Distribution](docs/modernization/DISTRIBUTION.md). |
+| **Where are the technical details?** | [Documentation](#documentation) below; the authoritative roadmap is [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md). |
 
-The modernization deliberately separates:
+## Try the Developer Preview
 
-1. **Original game preservation**
-2. **Engine modernization**
-3. **Optional Modern Experience features**
-4. **Future gameplay/content expansion**
+1. Own and install **Generals** and/or **Zero Hour** on Steam.
+2. Take the package of your game (`MKRaudstein-<Title>-DeveloperPreview-<commit>.zip`) from the packaging output of `scripts/native-runtime/New-MKRaudsteinDistribution.ps1` (there is no public download page yet), extract it and run **`Install.cmd`**. It checks your installation, backs up what it replaces, installs and verifies.
+3. Press PLAY in Steam. Add `-classic` to the launch options for the original frontend. `MKRaudstein\Uninstall.cmd` in the game folder restores the original files; Steam *Verify integrity of game files* is the fallback.
+
+Full guide, limitations and troubleshooting: **[docs/DEVELOPER_PREVIEW.md](docs/DEVELOPER_PREVIEW.md)**.
+
+## Development status
+
+State vocabulary: **Done** = implemented and validated as stated; **Owner accepted** = reviewed by the project owner on a native desktop; **Pending** = a named validation is still open; **Future** = not started. No percentages: the states mirror [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md).
+
+| Area | State |
+|---|---|
+| Native AMD64 (Generals, Zero Hour) | Done |
+| Direct3D 11 renderer | Done |
+| Modern resolutions, ultrawide (4:3 - 32:9), UI scaling | Done |
+| Smooth high-refresh presentation (simulation stays 30 TPS) | Done |
+| Classic preservation (`-classic`, original rules, golden determinism gates) | Done |
+| Modern Experience UI (menu, Options, Skirmish setup, Load / Replay) | Done, **owner accepted** |
+| Enhanced AI (opt-in per match) | Done (experimental; Original AI is the default) |
+| Match Options (Starting Cash, AI Behaviour, Superweapons) | Done, **owner accepted** |
+| Game Speed (Skirmish) | Done, **owner accepted** (multiplayer: not implemented) |
+| Settings / UX | Done, **owner accepted** (Controls scrolling fixed in the Developer Preview milestone) |
+| Developer Preview package, installer, uninstaller | Done (automatically validated on the developer PC) |
+| Real clean-machine validation of the package | **Pending** |
+| Multiplayer (LAN) validation between two PCs | **Pending** |
+| Modern LAN lobby, multiplayer Game Speed, protocol compatibility check | Future |
+| Public Alpha, Beta, Release Candidate, 1.0 | Future |
+
+### What's the state of each title?
+
+* **Generals**: full Skirmish path on the native engine; campaign progression and movie playback are incomplete; the Zero-Hour-style special-power sidebar extension is generated at install time from your own archives.
+* **Zero Hour**: Skirmish human-tested on a desktop and a laptop; multiplayer, campaign progression, movies and long-session endurance are not fully validated.
+
+Details and known issues: [PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md).
+
+## Roadmap in one line
+
+**Developer Preview → Public Alpha → Beta → Release Candidate → 1.0.** Gates for each stage (including the two open validations above) are in [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md), which is authoritative; the phase list further down this page is the engineering history.
+
+## Screenshots
+
+| Modern Experience Options | Classic frontend (same game, `-classic`) |
+|---|---|
+| <img src="docs/modernization/evidence/ui-6/zh-16x10-keyboard-1920x1200.jpg" alt="Modern Options: keyboard reference" width="100%"> | <img src="docs/modernization/evidence/ui-6/classic-zh-options-1920x1080.jpg" alt="Classic Options screen" width="100%"> |
+
+More: [UI evidence](docs/modernization/evidence/) (4:3, 21:9 and 32:9 layouts).
+
+## Legal and positioning
+
+* This is an **independent modernization project**, not affiliated with or endorsed by Electronic Arts. "Command & Conquer", "Generals" and "Zero Hour" are trademarks of Electronic Arts Inc.
+* The source code is released under the **GPL-3.0 with the additional terms of the original Electronic Arts source release** (see [LICENSE.md](LICENSE.md)). Project-created code and binaries are separate from the retail game content.
+* You must own a legitimate, compatible copy of the game. The project distributes **no** proprietary game asset; its packages contain only the project's own binaries, scripts and documentation, and a validation gate fails if anything else appears.
 
 ---
 
@@ -56,70 +94,39 @@ The modernization deliberately separates:
 
 | For | Start here |
 |---|---|
+| Playing the Developer Preview | [Player guide](docs/DEVELOPER_PREVIEW.md) |
+| How the package, installer and uninstaller work and are validated | [Distribution architecture](docs/modernization/DISTRIBUTION.md) |
 | What changed, by area | [CHANGELOG.md](CHANGELOG.md) |
+| Current status: completed / in progress / planned / known issues | [docs/modernization/PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md) |
+| Product roadmap (Current -> Developer Preview -> Alpha -> Beta -> RC -> 1.0) and the Modern UI product-completion audit | [roadmap](docs/PRODUCT_ROADMAP.md), [UI audit](docs/modernization/MODERN_UI_PRODUCT_COMPLETION.md) |
+| Modern Experience UI: archaeology of the retail UI and the target architecture | [archaeology](docs/modernization/MODERN_UI_ARCHAEOLOGY.md), [architecture and phases](docs/modernization/MODERN_UI_ARCHITECTURE.md) |
+| Settings, Options and the keyboard reference | [Modern Settings](docs/modernization/MODERN_SETTINGS_ARCHITECTURE.md) |
+| Game Speed (Skirmish): original facts, architecture, supported speeds and evidence | [Game Speed](docs/modernization/GAME_SPEED.md), [retail audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [original design](docs/modernization/GAME_SPEED_DESIGN.md) |
 | Performance methodology and results | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) |
 | Engineering findings (what was wrong, where, how it was verified) | [docs/findings/README.md](docs/findings/README.md) - [performance](docs/findings/PERFORMANCE_FINDINGS.md), [AMD64 porting](docs/findings/AMD64_PORTING_FINDINGS.md), [replay / determinism](docs/findings/REPLAY_DETERMINISM_FINDINGS.md) |
-| Current status: completed / in progress / planned / known issues | [docs/modernization/PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md) |
-| Modern Experience UI: archaeology of the retail UI and the target architecture | [archaeology](docs/modernization/MODERN_UI_ARCHAEOLOGY.md), [architecture and phases](docs/modernization/MODERN_UI_ARCHITECTURE.md) |
-| Product roadmap (Current -> Developer Preview -> Alpha -> Beta -> RC -> 1.0) and Modern UI product-completion audit (screen status, 4:3 - 32:9 validation, ranked remaining work) | [roadmap](docs/PRODUCT_ROADMAP.md), [UI audit](docs/modernization/MODERN_UI_PRODUCT_COMPLETION.md) |
-| Roadmap, milestone records and handoff | [docs/modernization/](docs/modernization/) - [roadmap](docs/modernization/FIRST_PLAYABLE_ROADMAP.md), [handoff](docs/modernization/AGENT_HANDOFF.md) |
-| Game Speed (Skirmish): original facts, architecture, supported speeds and evidence | [Game Speed](docs/modernization/GAME_SPEED.md), [retail audit](docs/modernization/RETAIL_GAME_SPEED_AUDIT.md), [original design](docs/modernization/GAME_SPEED_DESIGN.md) |
+| Roadmap, milestone records and handoff | [docs/modernization/](docs/modernization/) - [handoff](docs/modernization/AGENT_HANDOFF.md) |
 | Building | [Building](#building) below |
 | Known limitations | [Known Incomplete Areas](#known-incomplete-areas) below |
 
 ---
 
-# Current Status
+## Project background
 
-## Generals — Native AMD64 / DirectX 11
+This repository builds on the community-driven [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode) project. The goal of this fork is not to turn Generals into a different game: it is to make the original game work correctly on a modernized engine first, while creating a foundation for optional modern presentation and future expansion. The modernization deliberately separates:
 
-**Command & Conquer: Generals is now playable through the modernized native
-AMD64 and Direct3D 11 engine path.**
+1. **Original game preservation**
+2. **Engine modernization**
+3. **Optional Modern Experience features**
+4. **Future gameplay/content expansion**
 
-The native path has progressed far beyond the initial rendering prototype.
+<details>
+<summary>Detailed capability list of the native engine (Generals)</summary>
 
-Currently demonstrated functionality includes:
+Native 64-bit Windows executable, normal startup, original asset loading, original INI / WND parsing, Direct3D 11 presentation and world rendering, original frontend and Main Menu, Solo Play / Skirmish setup, map loading, live GameLogic, AI players, selection and commands, buildings and production, ground units, aircraft, projectiles, terrain, scenery, trees and props, roads and bridges, water and shorelines, shroud, shadows, particles and effects, radar, command bar, General powers, audio, edge scrolling, save / load, Skirmish victory and return to the frontend, repeated match startup.
 
-- Native 64-bit Windows executable
-- Normal application startup
-- Original game asset loading
-- Original INI and WND parsing
-- Native Direct3D 11 presentation
-- Original frontend and Main Menu
-- Solo Play / Skirmish setup
-- Map loading
-- Live GameLogic
-- AI players
-- Unit selection and commands
-- Buildings and production
-- Ground units
-- Aircraft
-- Projectiles
-- Terrain
-- Scenery
-- Trees and props
-- Roads and bridges
-- Water and shorelines
-- Shroud
-- Shadows
-- Particles and effects
-- Radar
-- Command bar
-- General powers
-- Audio
-- Edge scrolling
-- Save / Load
-- Skirmish victory and return to frontend
-- Repeated match startup during native testing
+A normal Generals gameplay path runs through `Startup → Main Menu → Skirmish → Map Load → Gameplay → Victory / Exit` on the native AMD64 / D3D11 engine. Zero Hour runs on the same engine.
 
-The modern renderer is therefore no longer limited to UI or terrain
-experimentation.
-
-A normal Generals gameplay path can run through:
-
-`Startup → Main Menu → Skirmish → Map Load → Gameplay → Victory / Exit`
-
-on the native AMD64/D3D11 engine.
+</details>
 
 ---
 
@@ -382,8 +389,8 @@ modernization.
 | Zero Hour native gameplay | ✅ Working, human-tested on desktop and laptop; broader (multiplayer, campaign, endurance) validation continues |
 | Skirmish match rules (Starting Cash, AI Behaviour, Superweapons, Game Speed) | ✅ Working, optional (Original/defaults preserved; `-classic` hides them); Game Speed is Skirmish-only, multiplayer Game Speed is not implemented |
 | Enhanced AI (opt-in per match) | 🚧 Experimental; development paused while the Modern UI is built, Original AI is the default and is gate-protected |
-| Overlay player packages (Generals + Zero Hour) | ✅ Working (ZIP over the legitimate installation; no game assets are redistributed) |
-| Modern Experience frontend: design system, main menu, Options, Skirmish Match Setup, Load Game / Replays, dialogs, Credits (both titles; LAN lobby, Online, Challenge select and Map select stay retail) | 🚧 Implemented and automatically validated; awaiting native visual acceptance ([UI.3](docs/modernization/MODERN_UI_3_FRONTEND.md)) |
+| Developer Preview package, installer and uninstaller (Generals + Zero Hour) | ✅ Built and validated by script on the developer PC (installer with backup / rollback, uninstaller, no game assets redistributed); a real clean-machine run is pending ([player guide](docs/DEVELOPER_PREVIEW.md), [distribution](docs/modernization/DISTRIBUTION.md)) |
+| Modern Experience frontend: design system, main menu, Options (8 pages), Skirmish Match Setup, Load Game / Replays, dialogs, Credits (both titles; LAN lobby, Online, Challenge select and Map select stay retail) | ✅ Owner accepted on a native desktop ([UI.3](docs/modernization/MODERN_UI_3_FRONTEND.md), [Settings](docs/modernization/MODERN_SETTINGS_ARCHITECTURE.md)) |
 | In-game Modern HUD for the new frontend language | ⏳ Planned ([architecture](docs/modernization/MODERN_UI_ARCHITECTURE.md)); the Enhanced HUD framework v1 is unchanged |
 
 ---
@@ -412,7 +419,9 @@ movies and long-session endurance are not yet fully validated. See
 
 ---
 
-# Roadmap
+# Engineering phases (history)
+
+> The **product roadmap** - Developer Preview → Public Alpha → Beta → Release Candidate → 1.0, with the gates of each stage - is [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) and is authoritative. The phase list below is the engineering history of how the native engine was brought up; it is not a second roadmap.
 
 ## Phase 1 — Native Engine Foundation
 
@@ -712,7 +721,7 @@ cmake --build --preset win64 --target g_generals z_generals
 
 This produces `generalsv.exe` (Generals) and `generalszh.exe` (Zero Hour) under `build/win64/`. They run against a *staged copy* of your own game data, never against the Steam
 installation: see `scripts/native-runtime/` (`Stage-NativeInitOnly.ps1`, `Run-ZeroHourCandidate.ps1`) and, for a ZIP that can be extracted over a legitimate installation,
-`scripts/native-runtime/New-MKRaudsteinDistribution.ps1` (player packages, symbols and SHA-256 sums, newest two kept). Tests: `g_googletest` / `z_googletest` targets and the Python suites under `scripts/`.
+`scripts/native-runtime/New-MKRaudsteinDistribution.ps1` (the overlay ZIPs and the Developer Preview player packages with installer / uninstaller, symbols and SHA-256 sums, newest two kept; see [DISTRIBUTION.md](docs/modernization/DISTRIBUTION.md)). Tests: `g_googletest` / `z_googletest` targets and the Python suites under `scripts/`.
 Disk use of the staging and benchmark tools is bounded ([DISK_RETENTION.md](docs/modernization/DISK_RETENTION.md)).
 
 The repository uses a vcpkg manifest (`vcpkg.json`) for dependency management.
@@ -733,20 +742,10 @@ For upstream build information, see the
 
 # Running the Game
 
-Original **Command & Conquer: Generals** and **Zero Hour** game data is still
-required.
+Original **Command & Conquer: Generals** and **Zero Hour** game data is still required, and this repository does not provide it. You must own a legitimate copy (the Steam release, English, is the supported one).
 
-This repository does not provide the proprietary game assets required to run
-the games.
-
-Users must obtain the original game data from a legitimate copy.
-
-The current Modern Engine branch is still a development project and is **not
-yet intended as a finished end-user release**.
-
-Development runtime workflows are deliberately isolated so modernization
-testing does not require replacing the user's installed original game
-executables.
+* **To play the Developer Preview** (a testing build, not a public release): follow the [player guide](docs/DEVELOPER_PREVIEW.md). Extract the package of your game and run `Install.cmd`; it replaces only `Generals.exe` and adds the app-local runtime DLLs after backing up what it replaces, and `MKRaudstein\Uninstall.cmd` removes it again.
+* **To develop**: the development runtime workflows are deliberately isolated (a *staged copy* of your game data under `build/dev-runtimes/`), so modernization testing never replaces the executables of your installed game.
 
 ---
 
@@ -765,7 +764,8 @@ Important remaining areas include:
 - Additional renderer fidelity work
 - Some shadow correctness/fidelity cases
 - Further display controls
-- Key rebinding
+- Key rebinding (the retail engine has none; Modern Options shows the bindings read-only)
+- Real clean-machine validation of the Developer Preview package and real two-PC multiplayer validation
 - Cross-faction Enhanced HUD polish
 - Beta-level performance polish (see the performance section; no known performance release blocker)
 - Additional Modern Experience polish

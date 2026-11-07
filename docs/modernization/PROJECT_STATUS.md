@@ -1,7 +1,7 @@
 # MKRaudstein Modern Engine - project status
 
 One-page, evidence-linked status. Updated at every milestone closeout together with `README.md` and `AGENT_HANDOFF.md` (rule since UI.1: a milestone that changes what is true updates this file in the same milestone).
-Last updated: 2026-11-07 (Settings / UX Completion, after Modern Match Options + Game Speed - owner accepted). Product-level plan: [../PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
+Last updated: 2026-11-07 (Developer Preview Distribution, after Settings / UX Completion - owner accepted). Product-level plan: [../PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md). Detail per milestone: [FIRST_PLAYABLE_ROADMAP.md](FIRST_PLAYABLE_ROADMAP.md), [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Current direction
 The broad performance phase is **closed** ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md): no remaining exact low-risk optimisation, no performance release blocker) and Enhanced AI development is **paused** (gates stay in force). Active phase: **Modern Experience UI** ([MODERN_UI_ARCHITECTURE.md](MODERN_UI_ARCHITECTURE.md)).
@@ -19,7 +19,10 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | Modern Options (categories), Modern Settings | working |
 | Enhanced HUD framework v1 + USA / China / GLA themes | native-accepted, frozen ([ENHANCED_HUD_FRAMEWORK_V1.md](ENHANCED_HUD_FRAMEWORK_V1.md)) |
 | Camera scrolling in presentation time (X64.49) + screen-edge fix and real-input gate (X64.52B) | fixed; **awaiting human verification** at 120 FPS |
-| Overlay player packages for both titles (ZIP over the legitimate install, separate symbols, SHA-256, automatic retention cleanup) | working |
+| Overlay ZIPs for both titles (developer artifact: ZIP over the legitimate install, separate symbols, SHA-256, automatic retention cleanup) | working |
+| **Developer Preview package for both titles** (`MKRaudstein-<Title>-DeveloperPreview-<commit>.zip`: `Install.cmd` / `Uninstall.cmd`, PowerShell 5.1 installer with backup, rollback, record, upgrade / repair and uninstall; no EA asset - the Generals sidebar extension is generated from the player's archives; version identity `Developer Preview 1`; separate symbols; SHA-256) | built and **automatically validated in isolation** on the developer PC (package audit, 28 synthetic install / uninstall tests under Windows PowerShell 5.1, native install + launch + uninstall on a disposable copy of the real game); **real clean-machine validation pending** ([DISTRIBUTION.md](DISTRIBUTION.md), [player guide](../DEVELOPER_PREVIEW.md)) |
+| Controls / Keyboard list scrolling (owner-reported defect of the Settings review): wheel, Up / Down / Home / End, track click, in both titles at 1024x768 - 5120x1440 | fixed; native Options audit extended to detect it |
+| Repository CI: `Repository checks` workflow (repository-only Python suites, no game files) | added; informational |
 | Skirmish match rules: Starting Cash, AI Behaviour (Original / Enhanced), Superweapons limit (Disabled / 1 / 3 / 5 / Unlimited) | delivered (X64.51 - X64.52A), `-classic` hides them |
 | Enhanced AI foundation + dynamic base and defence (`AI=E2`) | delivered, opt-in per match, Original untouched and gate-protected (X64.51, X64.52) |
 | AI archaeology and bug audit | delivered (X64.50) |
@@ -34,10 +37,11 @@ Do not start X64.53 (AI combat coordination) before the owner decides to resume 
 | Modern UI product-completion audit: 4:3 / 16:10 added to the validated aspect matrix, Options Network-block and 4:3 footer fixes, ranked remaining UI work, product roadmap | measured and documented ([MODERN_UI_PRODUCT_COMPLETION.md](MODERN_UI_PRODUCT_COMPLETION.md)); UI-only, digests and golden gates unchanged |
 | Game Speed match rule (Skirmish, both titles; **owner accepted 2026-11-07**): 0.75 / 1.00 / 1.25 / 1.50x as pacing of the existing logic-rate seam, one GameInfo value (`GS=` in the options string / replay header, save version 7), runtime Speed Up / Down, Skirmish.ini persistence; 2.0x rejected | implemented and automatically validated (unit tests, source contract, headless digests identical at every level, graphical pace and fingerprints at 60 / 120 / 240 FPS, heavy Zero Hour 99 % of the target rate, recorded replays, save / load); **native human review pending; multiplayer not implemented / not validated** ([GAME_SPEED.md](GAME_SPEED.md)) |
 | Match Rules UX: Game Speed as the fourth generated rule, start-validation / rule-help status line, de-emphasised career block; ultrawide Match Setup composition, 4 % scale-fit steps, 11 pt text floor | implemented and automatically validated (native audits 4:3 - 32:9, Classic smoke); owner review pending |
-| Settings / UX completion: per-setting help strip, generated Network rows, read-only Keyboard reference, Zero Hour controls restored, Accept / Cancel semantics made honest | implemented and automatically validated (unit tests, source contracts, native audits of every Options page in both titles 4:3 - 32:9, Classic smoke, determinism gates); owner native review pending ([MODERN_SETTINGS_ARCHITECTURE.md](MODERN_SETTINGS_ARCHITECTURE.md)) |
+| Settings / UX completion: per-setting help strip, generated Network rows, read-only Keyboard reference, Zero Hour controls restored, Accept / Cancel semantics made honest | implemented and automatically validated (unit tests, source contracts, native audits of every Options page in both titles 4:3 - 32:9, Classic smoke, determinism gates); **owner accepted 2026-11-07** ([MODERN_SETTINGS_ARCHITECTURE.md](MODERN_SETTINGS_ARCHITECTURE.md)) |
 
 ## In progress
-* Modern Experience UI phase: UI.2 (shell) and UI.3 (design system + Options, Match Setup, Load / Replay, dialogs, Credits) are implemented and **waiting for the owner's native visual review**. If the look is disliked the next step is a visual revision, not HUD work.
+* **Developer Preview readiness:** the package, installer, uninstaller and documentation are done and automatically validated. Open **manual** gates: a real clean-machine install of the package, and the **real two-PC multiplayer validation of `2071ad765`**.
+* The Modern Experience UI (UI.2 / UI.3 / Match Options / Game Speed / Settings) is owner accepted; remaining UI work is the retail-screen leftovers (LAN lobby, Challenge / Map select), a Modern HUD and Beta polish.
 * Native human verification of X64.52B (edge scrolling, camera smoothness at 120 FPS) - the real-input camera gate on the final clean executables is still to be run on an unlocked desktop.
 
 ## Planned
@@ -60,6 +64,7 @@ Classification: **C** = correctness defect (belongs to a regression gate), **F**
 | 10 | Campaign progression, cross-version replays, some renderer/shadow fidelity cases | F | README "Known Incomplete Areas" |
 | 11 | Zero Hour HUNT state: ~1 400 exhaustive failing path searches per match (11 ms each, a quarter of the 1x simulation time; ticks > 33.3 ms: 9-26 of 23 400) | F (Beta target) | Existing engine pool budget, not congestion; no exact fix, needs a behaviour decision ([PERFORMANCE_FINAL_AUDIT.md](PERFORMANCE_FINAL_AUDIT.md)) |
 | 12 | Rare 100-2 200 ms process stalls (previously seen as 450-510 ms inside Present) and one ~130 ms first-use render hitch per match | U / F | Stalls are off-CPU and not Present-specific here; need an elevated ETW trace on a native session; probe `GENERALS_PRESENT_STALL_LOG` |
+| 13 | The Developer Preview package is not code-signed (SmartScreen / antivirus may warn) and `Generals.exe` embeds its build-time `.pdb` path (user name) in the PE debug directory | F (release hygiene) | `/PDBALTPATH` and signing are Public Alpha decisions; the validator reports the path as informational |
 
 ## Disk and artifact hygiene
 `build/` is regenerable; retention: the newest two validated distributions (`New-MKRaudsteinDistribution.ps1` cleans automatically), native candidates by `Cleanup-NativeCandidates.ps1` (dry run, reviewed plan hash),
