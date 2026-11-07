@@ -17,7 +17,7 @@ const Surface kSurfaces[] = { { 1920, 1080 }, { 2560, 1440 }, { 3440, 1440 }, { 
 const int kScales[] = { 75, 100, 150, 200, 300 };
 const int kRowCounts[] = { 0, 1, 3, 7, 12, 30 };
 
-Layout make(const Surface &s, int scale, int rows, int first = 0, int tabs = 6)
+Layout make(const Surface &s, int scale, int rows, int first = 0, int tabs = 8)
 {
 	Input in; in.surfaceW = s.w; in.surfaceH = s.h; in.uiPercent = scale; in.tabCount = tabs; in.rowCount = rows; in.firstRow = first;
 	return compute(in);
@@ -34,11 +34,11 @@ TEST(ModernScreenLayout, EverythingIsInsideThePanelAndNothingOverlaps)
 		ASSERT_GT(L.panel.w, 0) << what;
 		EXPECT_TRUE(surface.contains(L.panel)) << what;
 		EXPECT_TRUE(L.composition.contains(L.panel)) << what;
-		std::vector<Rect> parts = { L.title, L.titleRule, L.rail, L.content, L.status, L.defaults, L.apply, L.back };
+		std::vector<Rect> parts = { L.title, L.titleRule, L.rail, L.content, L.help, L.status, L.defaults, L.apply, L.back };
 		for (const Rect &r : parts) { EXPECT_TRUE(L.panel.contains(r)) << what; EXPECT_GT(r.w, 0); EXPECT_GT(r.h, 0); }
 		for (size_t i = 0; i < parts.size(); ++i) for (size_t j = i + 1; j < parts.size(); ++j)
 			EXPECT_FALSE(parts[i].overlaps(parts[j])) << what << " parts " << i << "," << j;
-		for (int i = 0; i < 6; ++i)
+		for (int i = 0; i < 8; ++i)
 		{
 			EXPECT_TRUE(L.rail.contains(L.tab[i])) << what;
 			EXPECT_GE(L.tab[i].h, 20) << what;

@@ -581,6 +581,7 @@ void Decor::refreshFonts()
 		if (!m_strings[i]) { m_strings[i] = TheDisplayStringManager->newDisplayString(); ++g_stats.stringAllocations; }
 		DisplayString *ds = static_cast<DisplayString *>(m_strings[i]);
 		ds->setFont(font(m_items[i].role));
+		ds->setWordWrap(m_items[i].wrap > 0 ? m_items[i].wrap : 0);
 		ds->setText(UnicodeString(m_items[i].text));
 	}
 }

@@ -47,7 +47,8 @@ struct Layout
 	int visibleRows = 0, firstRow = 0, rowCount = 0;
 	bool scrollable = false;
 	Rect scrollTrack, scrollThumb;     // only when scrollable
-	Rect status;                       // dirty / help line
+	Rect help;                         // the help strip of the focused setting (two lines)
+	Rect status;                       // dirty state / hint line
 	Rect defaults, apply, back;
 	int effectiveScale = 100;
 	bool compact = false;
@@ -93,11 +94,11 @@ inline Layout computeImpl(const Input &in)
 		const int titleH = sc(34, scale), ruleH = (sc(m.ruleThickness, scale) > 0 ? sc(m.ruleThickness, scale) : 1);
 		const int tabH = sc(40, scale), tabGap = sc(4, scale);
 		const int rowH = sc(m.rowHeight, scale), rowGap = sc(10, scale), pitch = rowH + rowGap;
-		const int actionH = sc(m.actionHeight, scale), statusH = sc(22, scale);
+		const int actionH = sc(m.actionHeight, scale), statusH = sc(22, scale), helpH = sc(40, scale);
 		const int visibleMin = in.rowCount < in.minVisibleRows ? (in.rowCount > 0 ? in.rowCount : 1) : in.minVisibleRows;
 		const int railNeed = tabs > 0 ? tabs * tabH + (tabs - 1) * tabGap : 0;
 		const int bodyNeed = railNeed > visibleMin * pitch ? railNeed : visibleMin * pitch;
-		const int needH = pad + titleH + gap / 2 + ruleH + gap + bodyNeed + gap + statusH + gap / 2 + actionH + pad;
+		const int needH = pad + titleH + gap / 2 + ruleH + gap + bodyNeed + gap + helpH + gap / 2 + statusH + gap / 2 + actionH + pad;
 
 		const int availH = in.surfaceH - 2 * edge;
 		const int prefH = sc(560, scale);
@@ -119,7 +120,8 @@ inline Layout computeImpl(const Input &in)
 		const int bodyTop = L.titleRule.bottom() + gap;
 		const int actionsTop = P.bottom() - pad - actionH;
 		L.status = Rect{ P.x + pad, actionsTop - gap / 2 - statusH, P.w - 2 * pad, statusH };
-		const int bodyBottom = L.status.y - gap / 2;
+		L.help = Rect{ P.x + pad, L.status.y - gap / 2 - helpH, P.w - 2 * pad, helpH };
+		const int bodyBottom = L.help.y - gap / 2;
 
 		int railW = sc(m.railWidth, scale);
 		if (railW > (P.w - 2 * pad) / 3) railW = (P.w - 2 * pad) / 3;

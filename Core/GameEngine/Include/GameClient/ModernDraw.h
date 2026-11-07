@@ -79,8 +79,9 @@ struct DecorItem
 	int cutTL = 0, cutTR = 0, cutBR = 0, cutBL = 0;
 	TypeRole role = TypeRole::Body;
 	int align = 0;                                  // Text: 0 left, 1 centre, 2 right
+	int wrap = 0;                                   // Text: wrap width in pixels (0 = one line)
 	ModernTheme::Color color = { 0, 0, 0, 0 };      // Scrim / Text / Rule / Tick colour (alpha 0 = the palette's default for the kind)
-	wchar_t text[96] = {};
+	wchar_t text[256] = {};
 	bool accent = false;                            // Panel / Raised: accent edge instead of the neutral edge
 };
 
