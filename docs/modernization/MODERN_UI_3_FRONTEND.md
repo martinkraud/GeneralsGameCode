@@ -53,7 +53,7 @@ the **title accent** as the only colour that differs between the games.
 | panel / panelRaised / field | (12,18,27,214) / (24,33,46,224) / (5,8,13,232) | content panels, zone / selected surfaces, the inside of an input |
 | hairline / edge | (72,86,104) / (116,132,152) | quiet separators / outlines |
 | text / textSecondary / textMuted / textDisabled | (236,240,244) / (178,190,204) / (128,142,158) / (88,98,112) | contrast against the shell map is a unit test (>= 4.5:1, 3:1 on pressed / accent fills) |
-| accent | Generals sand-gold (214,178,74), Zero Hour signal orange (232,118,40) | the *only* per-title difference: tick, rules, selection, primary action, headings, value labels |
+| accent | Generals sand-gold (214,178,74), Zero Hour cold steel blue (84,152,218) (locked title identity, Developer Preview 1 final acceptance; it was signal orange (232,118,40) before) | the *only* per-title difference: tick, rules, selection, primary action, headings, value labels |
 | danger / warning / ok / focus | (214,84,70) / (236,170,60) / (120,200,110) / title accent tint | Exit Game, dirty state |
 | chamfer / chamferSmall / accentTick | 12 / 6 / 4 reference units | all metrics are reference units x the effective UI scale |
 

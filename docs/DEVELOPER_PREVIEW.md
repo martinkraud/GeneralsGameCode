@@ -57,6 +57,7 @@ The uninstaller restores what *this installer* backed up; it cannot repair chang
 
 * **It is a testing build.** Expect bugs. Please report them (below).
 * **Multiplayer:** LAN uses the original menus. Real two-PC multiplayer validation has **not** been done yet; do not rely on it. The original online services no longer exist.
+* **Zero Hour in-game HUD:** the faction-specific Enhanced HUD is not active for Zero Hour yet (the original control bar is used); this is planned UI work.
 * **Game Speed** (Slow / Normal / Fast / Very Fast) works in **Skirmish only**; it is not available in multiplayer. There is no Modern LAN screen yet.
 * **Key bindings** are shown read-only in *Options → Keyboard*; they cannot be changed in the game (the original engine has no rebinding; edit `CommandMap.ini` as before).
 * **Movies** (Bink) are skipped in the 64-bit build: intro and briefing videos do not play.

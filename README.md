@@ -12,10 +12,14 @@
 
 > An independent fork of [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode). **This repository contains source code and tooling only: it does not contain, and the project does not distribute, any Electronic Arts game asset.** You need your own legitimate copy of the game.
 
-<p align="center">
-  <img src="docs/modernization/evidence/ui-3/screens/ZeroHour-MainMenu-1920x1080-100-mainmenu-root.jpg" alt="Modern Experience main menu (Zero Hour, 1920x1080)" width="49%">
-  <img src="docs/modernization/evidence/ui-5/zh-16x9-matchsetup-1920x1080-auto.jpg" alt="Modern Experience Skirmish setup with match rules" width="49%">
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="50%"><img src="docs/modernization/evidence/dp1-final/gen-mainmenu-1920x1080.jpg" alt="Generals: Modern Experience main menu, warm gold accent" width="100%"><br><b>Generals</b>: warm gold accent</td>
+    <td align="center" width="50%"><img src="docs/modernization/evidence/dp1-final/zh-mainmenu-1920x1080.jpg" alt="Zero Hour: Modern Experience main menu, cold blue accent" width="100%"><br><b>Zero Hour</b>: cold blue accent</td>
+  </tr>
+</table>
+
+<p align="center"><sub>One Modern Experience design family: the same layout, typography and components; only the title accent differs. Real captures of the final builds (1920&times;1080, Auto UI scale).</sub></p>
 
 ## What is this?
 
@@ -59,7 +63,8 @@ State vocabulary: **Done** = implemented and validated as stated; **Owner accept
 | Game Speed (Skirmish) | Done, **owner accepted** (multiplayer: not implemented) |
 | Settings / UX | Done, **owner accepted** (Controls scrolling fixed in the Developer Preview milestone) |
 | Developer Preview package, installer, uninstaller | Done (automatically validated on the developer PC) |
-| Real clean-machine validation of the package | **Pending** |
+| Player-package install, Steam play and uninstall (owner manual test, both titles) | **Owner accepted** (Generals and Zero Hour) |
+| Real clean-machine validation of the package | **Pending** (a machine without the developer tools has not been established) |
 | Multiplayer (LAN) validation between two PCs | **Pending** |
 | Modern LAN lobby, multiplayer Game Speed, protocol compatibility check | Future |
 | Public Alpha, Beta, Release Candidate, 1.0 | Future |
@@ -68,6 +73,7 @@ State vocabulary: **Done** = implemented and validated as stated; **Owner accept
 
 * **Generals**: full Skirmish path on the native engine; campaign progression and movie playback are incomplete; the Zero-Hour-style special-power sidebar extension is generated at install time from your own archives.
 * **Zero Hour**: Skirmish human-tested on a desktop and a laptop; multiplayer, campaign progression, movies and long-session endurance are not fully validated.
+  The Modern Experience uses a cold blue accent here (Generals: warm gold); the faction-specific in-game HUD is not active for Zero Hour yet (future UI work, see [the roadmap](docs/PRODUCT_ROADMAP.md)).
 
 Details and known issues: [PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md).
 
@@ -77,9 +83,13 @@ Details and known issues: [PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.
 
 ## Screenshots
 
-| Modern Experience Options | Classic frontend (same game, `-classic`) |
+| Skirmish setup: Generals | Skirmish setup: Zero Hour |
 |---|---|
-| <img src="docs/modernization/evidence/ui-6/zh-16x10-keyboard-1920x1200.jpg" alt="Modern Options: keyboard reference" width="100%"> | <img src="docs/modernization/evidence/ui-6/classic-zh-options-1920x1080.jpg" alt="Classic Options screen" width="100%"> |
+| <img src="docs/modernization/evidence/dp1-final/gen-skirmish-1920x1080.jpg" alt="Generals Skirmish setup (Modern Experience)" width="100%"> | <img src="docs/modernization/evidence/dp1-final/zh-skirmish-1920x1080.jpg" alt="Zero Hour Skirmish setup (Modern Experience)" width="100%"> |
+
+| Modern Experience Options (Zero Hour) | Classic frontend (same game, `-classic`) |
+|---|---|
+| <img src="docs/modernization/evidence/dp1-final/zh-options-1920x1080.jpg" alt="Zero Hour Modern Options" width="100%"> | <img src="docs/modernization/evidence/ui-6/classic-zh-options-1920x1080.jpg" alt="Classic Options screen" width="100%"> |
 
 More: [UI evidence](docs/modernization/evidence/) (4:3, 21:9 and 32:9 layouts).
 

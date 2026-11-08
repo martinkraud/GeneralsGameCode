@@ -7,6 +7,14 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-08 - Developer Preview 1 final acceptance
+
+* **Owner acceptance:** the real Generals and Zero Hour player packages were installed, played through Steam and (Zero Hour) uninstalled by the owner: PASS. Recorded as a manual player-package test, separate from the automated Layer C.
+* **Fixed:** the installer offered one Steam installation twice (the registry reports `c:/program files (x86)/steam`, the environment `C:\Program Files (x86)\Steam`; the Steam libraries were deduplicated case-sensitively). Folders are compared by a Windows path key in the installer discovery, the uninstaller candidate list and the library list; distinct installations stay distinct; the shown path uses the on-disk casing. Regression tests run the shipped helper under Windows PowerShell 5.1.
+* **Changed:** the Zero Hour Modern Experience has its own cold steel-blue accent (it used a signal orange); Generals keeps its warm gold, byte for byte. One shared theme (`ModernTheme.h`), two title accent palettes; layout, typography, components and the shell map are shared and untouched. Classic is unchanged.
+* **Recorded:** the faction-specific Enhanced HUD is not active for Zero Hour yet (its Zero Hour variants were never part of the native review): future UI work, not a Developer Preview 1 blocker (owner decision).
+* **Still pending:** real clean-machine validation; real two-PC multiplayer validation of `2071ad765`.
+
 ## 2026-11-07 - Developer Preview distribution, clean-install readiness and repository presentation
 
 * **Owner feedback closed:** Settings / UX was owner accepted with one defect: the Controls / Keyboard binding list could not be scrolled. Root causes: the generated rows were `NO_INPUT` static texts (the window manager drops a mouse event whose top window takes no input instead of offering it to the parent), a combo box swallowed the wheel, and the scrollbar track was decoration with no window under it (the hosting panels are `NO_INPUT`). Fix with the existing scroll model (`ModernScreen::Layout`, `OptionsTabs::scrollTo`): rows are normal windows, the combo passes the wheel up, Up / Down / Home / End scroll when a page overflows (Ctrl+Home / Ctrl+End still change page), and an enabled hit window over the track makes a click on it jump there. The native Options audit now wheels over a row, presses Down / End / Home and clicks the track on every overflowing page at 1024x768 - 5120x1440 in both titles.
