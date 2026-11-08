@@ -1546,6 +1546,17 @@ void NativeAutoShot()
                 StartupDiagnostics::checkpoint("feature_probe", "observed", probe);
             }
         }
+        if (!strcmp(tag, "game") && ThePlayerList && ThePlayerList->getLocalPlayer()) {
+            // what the modern HUD decided for the local player's side (Zero Hour HUD parity evidence)
+            const EnhancedHudLayout::Result &hl = EnhancedHud::layout();
+            char hud[260];
+            const EnhancedHud::State &hs = EnhancedHud::state();
+            sprintf_s(hud, "local_side=%s hud_active=%d faction=%d command_slots=%d island=%d,%d %dx%d scale=%.3f surface=%ux%u draw_frames=%llu avg_draw_us=%.2f",
+                      ThePlayerList->getLocalPlayer()->getSide().str(), EnhancedHud::active() ? 1 : 0, (int)EnhancedHud::faction(), EnhancedHudLayout::commandSlots(),
+                      hl.island.x, hl.island.y, hl.island.w, hl.island.h, hl.scale, TheDisplay->getWidth(), TheDisplay->getHeight(),
+                      hs.drawFrames, hs.drawFrames ? (double)hs.drawNanos / 1000.0 / (double)hs.drawFrames : 0.0);
+            StartupDiagnostics::checkpoint("hud", "observed", hud);
+        }
         char path[MAX_PATH];
         sprintf_s(path, "%s\\autoshot-%s.bmp", directory, tag);
         const bool ok = WriteBmpFile(path, backend->Readback_RGBA8(), TheDisplay->getWidth(), TheDisplay->getHeight());
@@ -1558,10 +1569,10 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { LAN_FILL, SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { LAN_FILL, SLOT_SIDE, SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
-        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 },
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { SLOT_SIDE, nullptr, nullptr, 60, 1 },
         { PRESS, "SkirmishGameOptionsMenu.wnd:ButtonStart", nullptr, 240, 1 }, { END, nullptr, nullptr, 0, 0 } };
     static const Step campaignSteps[] = {
         { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonSinglePlayer", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonUSA", nullptr, 300, 1 },
@@ -1721,6 +1732,20 @@ void NativeAutoShot()
                     }
                     advance("filled the LAN slots", nullptr); done = true;
                 }
+            } else if (step.kind == SLOT_SIDE) {
+                // dev aid (never set in normal play): GENERALS_AUTOFLOW_SIDE = army combo position of the human slot (0 = Random), chosen through the real combo box
+                const char *sideText = std::getenv("GENERALS_AUTOFLOW_SIDE");
+                GameWindow *parent = find("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent");
+                GameWindow *army = (sideText && parent) ? find("SkirmishGameOptionsMenu.wnd:ComboBoxPlayerTemplate0") : nullptr;
+                const int sidePos = sideText ? std::atoi(sideText) : -1;
+                if (army && sidePos >= 0 && sidePos < GadgetComboBoxGetLength(army)) {
+                    GadgetComboBoxSetSelectedPos(army, sidePos);
+                    TheWindowManager->winSendSystemMsg(parent, GCM_SELECTED, (WindowMsgData)army, sidePos);
+                    sprintf_s(flowText, "the human slot's army is combo entry %d", sidePos);
+                    advance(flowText, nullptr);
+                } else
+                    advance("no side override", nullptr);
+                done = true;
             } else if (step.kind == SLOT_FILL || step.kind == SLOT_PROBE) {
                 GameWindow *parent = find("SkirmishGameOptionsMenu.wnd:SkirmishGameOptionsMenuParent");
                 if (parent) {
