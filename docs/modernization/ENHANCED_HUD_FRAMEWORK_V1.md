@@ -39,6 +39,10 @@ Enforcement:
 
 Reason (recorded as this document requires): the retail Zero Hour control bar has **14** command buttons (7 x 2) where Generals has 12 (6 x 2); the v1 placement tables only knew the 12. `EnhancedHudLayout::CommandGrid { Standard, Wide }` adds a second command grid **beside** the accepted one. `Standard` (the default, used by Generals) is byte for byte the v1 geometry (`kCommandScalePermille == 1200`, the 12-entry table, the same mapping origin); `Wide` (Zero Hour) is the retail Zero Hour grid in the same command frame at 1.12 x. The profile is control bar data selected once in `ControlBarScheme::init`; the shared headers still name no title and no faction (`test_zero_hour_hud_contract.py`). `kFrameworkVersion` stays 1 (nothing accepted changed); the `EnhancedHudLayout.h` content pin in `test_enhanced_hud_contract.py` was updated for exactly this addition, and the Generals geometry is additionally pinned by `AcceptedMajorGeometryIsFrozen` and `EnhancedHudZeroHour.WideGridKeepsTheFrozenRegionsAndTheGeneralsGridExactlyAsAccepted`. Details: [ZERO_HOUR_MODERN_HUD.md](ZERO_HOUR_MODERN_HUD.md).
 
+### 1.2 Stepped silhouette (post Developer Preview 1, owner review)
+
+The island is no longer a flat rectangle: it is an envelope (the unchanged 180 unit band plus a rise) with four chassis steps (radar tallest, information medium, command lowest, General module modest) and a radar module 20 units wider, everything to its right shifted 20 units. Reason and numbers: [ZERO_HOUR_MODERN_HUD.md](ZERO_HOUR_MODERN_HUD.md) section 5.1. The command region (frame, grid scale, 12 / 14 slots) is as accepted; `kFrameworkVersion` stays 1; the `EnhancedHudLayout.h` pin and `AcceptedMajorGeometryIsFrozen` were updated deliberately for this change.
+
 ## 2. What is NOT frozen (faction presentation)
 
 Per faction, through `Theme` only: colours; frame construction (corner profiles, bevel weight, rivets, brackets, caps, girders);
