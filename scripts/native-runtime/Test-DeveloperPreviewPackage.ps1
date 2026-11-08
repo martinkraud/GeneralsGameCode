@@ -330,7 +330,7 @@ if ($Native) {
         if ($text) { Copy-Item -LiteralPath $log -Destination (Join-Path $out 'generals64.log') -Force }
         [pscustomobject]@{ Tag = $Tag; Out = $out; Exit = $exit; TimedOut = $timed; Text = $text }
     }
-    function Get-Lines([string]$Text, [string]$Component, [string]$State) { @(($Text -split "`n") | Where-Object { $_ -match "`t$Component`t$State`t" } | ForEach-Object { ($_.TrimEnd("`r") -split "`t", 9)[8] }) }
+    function Get-Lines([string]$Text, [string]$Component, [string]$State) { , @(($Text -split "`n") | Where-Object { $_ -match "`t$Component`t$State`t" } | ForEach-Object { ($_.TrimEnd("`r") -split "`t", 9)[8] }) }   # the leading comma keeps an empty result an array (it would unroll to $null, and .Count throws under strict mode)
     $runs = [ordered]@{}
     try {
         # first launch exactly as Steam's Play does it (no arguments), straight to the Modern main menu audit
