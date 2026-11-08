@@ -381,7 +381,7 @@ class EnhancedHudContracts(unittest.TestCase):
         # geometry or placement mechanism needs a deliberate version bump, a documented reason and a new native review.
         import hashlib
         pins = {
-            "Core/GameEngine/Include/Common/EnhancedHudLayout.h": "a2a52dd60b1fbeafcabbc60b888dbabb4e324948049bc05930b2b7f540efd564",
+            "Core/GameEngine/Include/Common/EnhancedHudLayout.h": "480708ce6b4f0b39e1e6ecfd2db722b16efa505d013deb5bea6c4210b464e3eb",
             "Core/GameEngine/Include/Common/EnhancedHudWindows.h": "0b83d551690699dd0fee50e8895e31d527ff6be267ddcf823dadec7c7d80c125",
         }
         for path, digest in pins.items():

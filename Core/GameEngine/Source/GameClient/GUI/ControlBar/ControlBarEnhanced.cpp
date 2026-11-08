@@ -279,7 +279,7 @@ void ControlBar::applyEnhancedLayout()
 		gen->winSetDrawFunc( purchasePanelDraw );
 		const Int surfaceW = TheDisplay ? (Int)TheDisplay->getWidth() : 800, surfaceH = TheDisplay ? (Int)TheDisplay->getHeight() : 600;
 		const double ui = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
-		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement( surfaceW, surfaceH, layout.island.y, ui );
+		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement( surfaceW, surfaceH, layout.infoTop, ui );
 		std::vector<GameWindow *> shownBefore;
 		for( GameWindow *ch = gen->winGetChild(); ch; ch = ch->winGetNext() )
 			if( !ch->winIsHidden() )
@@ -490,7 +490,11 @@ Bool ControlBar::getEnhancedTooltipPosition( Int width, Int height, Int *x, Int 
 		cursorX = TheMouse->getMouseStatus()->pos.x;
 		cursorY = TheMouse->getMouseStatus()->pos.y;
 	}
-	const EnhancedHudLayout::Rect spot = EnhancedHudPanels::tooltipPlacement( surfaceW, surfaceH, layout.island, layout.commandFrame, width, height, popup, cursorX, cursorY );
+	// the tooltip sits above the COMMAND region (the band's top), not above the radar tower
+	EnhancedHudLayout::Rect band = layout.island;
+	band.y = layout.bandTop;
+	band.h = layout.island.bottom() - layout.bandTop;
+	const EnhancedHudLayout::Rect spot = EnhancedHudPanels::tooltipPlacement( surfaceW, surfaceH, band, layout.commandFrame, width, height, popup, cursorX, cursorY );
 	*x = spot.x;
 	*y = spot.y;
 	return TRUE;
@@ -1081,9 +1085,9 @@ void powersPanelDraw( GameWindow *window, WinInstanceData * )
 			bottom = any ? std::max( bottom, plate.bottom() ) : plate.bottom();
 			any = true;
 		}
-		if( any && bottom < l.island.y )
+		if( any && bottom < l.rightTop )
 		{
-			const HRect rail = { left, bottom, right - left, l.island.y - bottom };
+			const HRect rail = { left, bottom, right - left, l.rightTop - bottom };
 			drawBevelPlate( rail, 0, CM_ALL, themeColor( c.theme->controlLow ), c.shadow, false, c );
 		}
 	}
@@ -1154,22 +1158,41 @@ void drawEnhancedHudFrame()
 	// 1. LEVEL 0 - CHASSIS: one gunmetal shell (graded, finely grained) with stepped machined top corners and a lit top edge.
 	//    The bottom is square and flush with the screen. Raised structural ribs in the gaps between the modules make the
 	//    modules read as panels set into ONE chassis instead of four boxes that touch.
-	const int shellMask = th.asymmetricShell ? CM_TL : CM_TOP;      // field-built: one cut shoulder, one square
-	const Int shellKR = th.asymmetricShell ? 0 : shellK;
-	fillChassis( isl, shellK, c, shellMask );
-	edgeChamfered( isl, shellK, shellMask, c.shadow );
-	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 1, isl.x + isl.w - shellKR - 2, isl.y + 1, 1, c.highlight );
-	TheDisplay->drawLine( isl.x + shellK + 1, isl.y + 2, isl.x + isl.w - shellKR - 2, isl.y + 2, 1, themeColor( th.plateBand ) );
-	if( th.girder )
+	// The silhouette is STEPPED (owner review): one chassis segment per module, each topped 8 reference units above its module, so the radar stands tallest, the information
+	// module is medium, the command region is lowest and the General module rises modestly. A step corner is machined (chamfered) only where the neighbour on that side is lower or
+	// absent; a corner beside a taller neighbour stays square so no notch opens against its wall.
+	HRect seg[ 4 ];
+	int segMask[ 4 ];
 	{
-		// a riveted structural girder across the top margin (modules are drawn over anything that reaches them)
-		const HRect gd = { isl.x + P( 9 ), isl.y + P( 3 ), isl.w - 2 * P( 9 ), std::max<Int>( 3, P( 4 ) ) };
-		TheDisplay->drawFillRect( gd.x, gd.y, gd.w, gd.h, themeColor( th.control ) );
-		TheDisplay->drawLine( gd.x, gd.y, gd.x + gd.w - 1, gd.y, 1, c.highlight );
-		TheDisplay->drawLine( gd.x, gd.y + gd.h - 1, gd.x + gd.w - 1, gd.y + gd.h - 1, 1, c.shadow );
-		if( th.rivets )
-			for( Int x = gd.x + P( 10 ); x < gd.x + gd.w - P( 6 ); x += P( 18 ) )
-				TheDisplay->drawFillRect( x, gd.y + gd.h / 2 - 1, std::max<Int>( 2, P( 1.6 ) ), std::max<Int>( 2, P( 1.6 ) ), c.shadow );
+		EnhancedHudLayout::shellSegments( l, seg );      // the one definition of the steps (layout tests use it too)
+		for( int i = 0; i < 4; ++i )
+		{
+			const bool leftLower = i == 0 || seg[ i - 1 ].y > seg[ i ].y;
+			const bool rightLower = i == 3 || seg[ i + 1 ].y > seg[ i ].y;
+			segMask[ i ] = ( leftLower ? CM_TL : 0 ) | ( rightLower && !( th.asymmetricShell && i == 3 ) ? CM_TR : 0 );   // field-built: the far end stays square
+		}
+	}
+	for( int i = 0; i < 4; ++i )
+	{
+		fillChassis( seg[ i ], shellK, c, segMask[ i ] );
+		edgeChamfered( seg[ i ], shellK, segMask[ i ], c.shadow );
+		const Int tl = ( segMask[ i ] & CM_TL ) ? shellK : 0, tr = ( segMask[ i ] & CM_TR ) ? shellK : 0;
+		TheDisplay->drawLine( seg[ i ].x + tl + 1, seg[ i ].y + 1, seg[ i ].right() - tr - 2, seg[ i ].y + 1, 1, c.highlight );
+		TheDisplay->drawLine( seg[ i ].x + tl + 1, seg[ i ].y + 2, seg[ i ].right() - tr - 2, seg[ i ].y + 2, 1, themeColor( th.plateBand ) );
+		if( th.girder )
+		{
+			// a riveted structural girder across the top margin of each step (modules are drawn over anything that reaches them)
+			const HRect gd = { seg[ i ].x + P( 9 ), seg[ i ].y + P( 3 ), seg[ i ].w - 2 * P( 9 ), std::max<Int>( 3, P( 4 ) ) };
+			if( gd.w > P( 12 ) )
+			{
+				TheDisplay->drawFillRect( gd.x, gd.y, gd.w, gd.h, themeColor( th.control ) );
+				TheDisplay->drawLine( gd.x, gd.y, gd.x + gd.w - 1, gd.y, 1, c.highlight );
+				TheDisplay->drawLine( gd.x, gd.y + gd.h - 1, gd.x + gd.w - 1, gd.y + gd.h - 1, 1, c.shadow );
+				if( th.rivets )
+					for( Int x = gd.x + P( 10 ); x < gd.x + gd.w - P( 6 ); x += P( 18 ) )
+						TheDisplay->drawFillRect( x, gd.y + gd.h / 2 - 1, std::max<Int>( 2, P( 1.6 ) ), std::max<Int>( 2, P( 1.6 ) ), c.shadow );
+			}
+		}
 	}
 	if( th.junctionRibs )
 	{
@@ -1178,7 +1201,8 @@ void drawEnhancedHudFrame()
 			const Int gx = mods[ i ].right(), gw = mods[ i + 1 ].x - mods[ i ].right();
 			if( gw < 4 )
 				continue;
-			const HRect rib = { gx + 1, isl.y + P( 8 ), gw - 2, isl.h - P( 8 ) - P( 5 ) };
+			const Int ribTop = std::max( seg[ i ].y, seg[ i + 1 ].y ) + P( 8 );     // under the LOWER of the two neighbouring steps
+			const HRect rib = { gx + 1, ribTop, gw - 2, isl.bottom() - ribTop - P( 5 ) };
 			TheDisplay->drawFillRect( rib.x, rib.y, rib.w, rib.h, themeColor( th.plateBand ) );
 			TheDisplay->drawLine( rib.x, rib.y, rib.x, rib.y + rib.h, 1, c.highlight );
 			TheDisplay->drawLine( rib.x + rib.w - 1, rib.y, rib.x + rib.w - 1, rib.y + rib.h, 1, c.shadow );
@@ -1204,9 +1228,9 @@ void drawEnhancedHudFrame()
 	if( th.vents )
 	{
 		// asymmetric end caps: a small ventilation grille at the left end, a pair of power lamps at the right end
-		drawVents( isl.x + P( 2.5 ), isl.y + isl.h / 2 - P( 9 ), P( 5 ), P( 18 ), 5, c );
-		drawLedGroup( isl.x + isl.w - P( 7 ), isl.y + P( 18 ), 1, 1, c );
-		drawLedGroup( isl.x + isl.w - P( 7 ), isl.y + P( 22 ), 1, 0, c );
+		drawVents( isl.x + P( 2.5 ), seg[ 0 ].y + seg[ 0 ].h / 2 - P( 9 ), P( 5 ), P( 18 ), 5, c );
+		drawLedGroup( isl.x + isl.w - P( 7 ), seg[ 3 ].y + P( 18 ), 1, 1, c );
+		drawLedGroup( isl.x + isl.w - P( 7 ), seg[ 3 ].y + P( 22 ), 1, 0, c );
 	}
 	if( th.fasteners )
 	{
@@ -1231,7 +1255,7 @@ void drawEnhancedHudFrame()
 			const Int gx = mods[ gi ].right(), gw = mods[ gi + 1 ].x - mods[ gi ].right();
 			if( gw < 3 )
 				continue;
-			const HRect patch = { gx - P( 2 ), isl.y + P( patchTop[ n ] ), gw + P( 4 ), P( 26 ) };
+			const HRect patch = { gx - P( 2 ), l.bandTop + P( patchTop[ n ] ), gw + P( 4 ), P( 26 ) };
 			drawBevelPlate( patch, 0, CM_ALL, shadeRgba( th.control, n == 0 ? 8 : -6 ), c.shadow, false, c );
 			drawScrew( patch.x + patch.w / 2, patch.y + P( 4 ), c );
 			drawScrew( patch.x + patch.w / 2, patch.y + patch.h - P( 5 ), c );
@@ -1243,7 +1267,7 @@ void drawEnhancedHudFrame()
 		const Int cs = P( 8 );
 		for( int side = 0; side < 2; ++side )
 		{
-			const HRect cap = { side == 0 ? isl.x : isl.x + isl.w - cs, isl.y, cs, cs };
+			const HRect cap = { side == 0 ? isl.x : isl.x + isl.w - cs, side == 0 ? seg[ 0 ].y : seg[ 3 ].y, cs, cs };
 			drawBevelPlate( cap, 0, CM_ALL, themeColor( th.control ), c.shadow, false, c );
 		}
 	}

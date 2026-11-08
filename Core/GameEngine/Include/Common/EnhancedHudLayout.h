@@ -42,8 +42,15 @@ struct Rect
 };
 
 // ---- reference design (island-local units) -------------------------------------------------------------------------
-constexpr int kIslandW = 1000;
-constexpr int kIslandH = 180;
+// Stepped silhouette (post Developer Preview 1, owner review): the 180 unit BAND (command region, accepted dimensions) keeps its coordinates; the island is taller than the band by
+// kIslandRise, and three modules rise above the band by different amounts: radar 36 (tall), selection / information 16 (medium), command 0 (low), General module 14 (modest). The radar
+// module is also 20 units wider (a landscape map is width limited, so a taller window alone would not enlarge the map); every module to its right moved 20 units right.
+constexpr int kRadarExtraW = 20;
+constexpr int kIslandW = 1000 + kRadarExtraW;
+constexpr int kIslandH = 180;                 // the band
+constexpr int kRiseRadar = 36, kRiseInfo = 16, kRiseXp = 14;
+constexpr int kIslandRise = kRiseRadar;       // the tallest module defines the envelope
+constexpr int kIslandTotalH = kIslandH + kIslandRise;
 constexpr int kPowerColumnW = 62;      // 59 wide shortcut buttons + 3 gap
 constexpr int kPowerColumnH = 270;     // 5 buttons x 49 pitch + margins (GenPowersShortcutBarUS.wnd: 60 x 270)
 constexpr int kPowerCount = 5;
@@ -55,12 +62,13 @@ constexpr int kPowerGap = 14;          // minimum clear space between that frame
 constexpr int kPowerMargin = 10;       // minimum distance of that frame from the surface edge
 
 // Regions (island-local reference units).
-constexpr Rect kRadarFrame   = {  8, 8, 216, 164};
-constexpr Rect kInfoFrame    = {230, 8, 165, 164};
-constexpr Rect kCommandFrame = {401, 8, 444, 164};
-constexpr Rect kXpFrame      = {851, 8, 141, 164};
-constexpr int kDividerX[3]   = {227, 398, 848};
-constexpr Rect kCashFrame    = {409, 10, 152,  26};   // dedicated money display panel (inside the command frame header)
+// y is band-local (0 = the band's top, negative = above it); the conversion to pixels adds kIslandRise.
+constexpr Rect kRadarFrame   = {  8, 8 - kRiseRadar, 216 + kRadarExtraW, 164 + kRiseRadar};
+constexpr Rect kInfoFrame    = {230 + kRadarExtraW, 8 - kRiseInfo, 165, 164 + kRiseInfo};
+constexpr Rect kCommandFrame = {401 + kRadarExtraW, 8, 444, 164};
+constexpr Rect kXpFrame      = {851 + kRadarExtraW, 8 - kRiseXp, 141, 164 + kRiseXp};
+constexpr int kDividerX[3]   = {227 + kRadarExtraW, 398 + kRadarExtraW, 848 + kRadarExtraW};
+constexpr Rect kCashFrame    = {409 + kRadarExtraW, 10, 152,  26};   // dedicated money display panel (inside the command frame header)   // dedicated money display panel (inside the command frame header)
 constexpr int kCommandScalePermille = 1200;   // the 6 x 2 button grid is drawn 1.20 x
 // Framework v1.1 (additive; the 6 x 2 grid above and every Generals number are untouched): the retail Zero Hour control bar has FOURTEEN command buttons, a 7 x 2 grid
 // of 50 x 44 buttons on a 55 unit pitch (ControlBar.wnd of the Zero Hour archives; 409 of its 413 command sets use slot 13 or 14). The same command frame holds it at 1.12 x.
@@ -87,7 +95,10 @@ struct Result
 {
 	bool valid = false;
 	double scale = 1.0;          // island scale: physical pixels per reference unit
-	Rect island;                 // physical pixels, bottom flush, centred
+	Rect island;                 // physical pixels, bottom flush, centred: the ENVELOPE (band plus the tallest module's rise)
+	int bandTop = 0;             // y of the band's top (the accepted island top); the command region starts here
+	int infoTop = 0;             // y of the shell above the selection / information module
+	int rightTop = 0;            // y of the shell above the General module (the right end of the island)
 	Rect powerPanel;             // physical pixels: the special power shortcut parent window (independent of the island)
 	Rect powerFrame;             // extent the Global Powers plates can occupy (all five slots, plus rounding tolerance); nothing is drawn behind it
 	bool powerHorizontal = false;   // compact fallback: a row of five instead of a column
@@ -109,16 +120,16 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	const double widthFraction = compact ? 1.0 : kMaxWidthPercentWide / 100.0;
 	const double capByWidth = widthFraction * surfaceW / kIslandW;
 	// never taller than a third of the surface either (tiny windows with huge UI scale)
-	const double capByHeight = (surfaceH / 3.0) / kIslandH;
+	const double capByHeight = (surfaceH / 3.0) / kIslandTotalH;
 	r.scale = std::min(layoutScale, std::min(capByWidth, capByHeight));
 	if (!(r.scale > 0.0))
 		return r;
 	const int w = std::min(scaledRef(kIslandW, r.scale), surfaceW);
-	const int h = scaledRef(kIslandH, r.scale);
+	const int h = scaledRef(kIslandTotalH, r.scale);
 	r.island = {(surfaceW - w) / 2, surfaceH - h, w, h};     // flush with the bottom edge: bottom() == surfaceH
 	const double s = static_cast<double>(w) / kIslandW;       // exact horizontal fit after rounding the width
 	auto phys = [&](const Rect &ref) {
-		return Rect{r.island.x + static_cast<int>(std::lround(ref.x * s)), r.island.y + static_cast<int>(std::lround(ref.y * s)),
+		return Rect{r.island.x + static_cast<int>(std::lround(ref.x * s)), r.island.y + static_cast<int>(std::lround((ref.y + kIslandRise) * s)),
 		            static_cast<int>(std::lround(ref.w * s)), static_cast<int>(std::lround(ref.h * s))};
 	};
 	r.radarFrame = phys(kRadarFrame);
@@ -126,6 +137,9 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	r.commandFrame = phys(kCommandFrame);
 	r.xpFrame = phys(kXpFrame);
 	r.cashFrame = phys(kCashFrame);
+	r.bandTop = r.island.y + static_cast<int>(std::lround(kIslandRise * s));
+	r.infoTop = r.island.y + static_cast<int>(std::lround((kIslandRise - kRiseInfo) * s));
+	r.rightTop = r.island.y + static_cast<int>(std::lround((kIslandRise - kRiseXp) * s));
 	for (int i = 0; i < 3; ++i)
 		r.dividerX[i] = r.island.x + static_cast<int>(std::lround(kDividerX[i] * s));
 
@@ -144,7 +158,7 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	const int cL = bx - pm - tol, cR = bx + bw + pm, cT = by - pm - tol, cB = (kPowerCount - 1) * pitchY + by + bh + pm + tol;
 	const int cx = surfaceW - cR;                                                       // the plates end exactly at the screen edge
 	const bool overlapsX = cx + cL < r.island.right() + gap && cx + cR > r.island.x - gap;
-	const int yMax = (overlapsX ? r.island.y - gap : surfaceH - mar) - cB;
+	const int yMax = (overlapsX ? r.rightTop - gap : surfaceH - mar) - cB;
 	const int yMin = mar - cT;
 	if (!compact && yMax >= yMin && cx + cL >= 0)
 	{
@@ -164,7 +178,7 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 		const int rowW = kPowerCount * pitchX, rowH = scaledRef(kPowerCellH, r.scale);
 		const int frameRight = std::min(r.island.right(), surfaceW) - 1;
 		const int rx = std::max(-rL + mar, frameRight - rR);
-		const int ry = std::max(mar - rT, r.island.y - gap - rB);
+		const int ry = std::max(mar - rT, r.rightTop - gap - rB);
 		r.powerPanel = {rx, ry, rowW, rowH};
 		r.powerHorizontal = true;
 		r.powerAboveIsland = true;
@@ -172,6 +186,34 @@ inline Result compute(int surfaceW, int surfaceH, double layoutScale)
 	}
 	r.valid = true;
 	return r;
+}
+
+// The chassis of the stepped silhouette: one segment per module (radar, information, command, General), each topped 8 reference units above its module frame, split at the centres
+// of the gaps between the modules. Physical pixels; the renderer draws exactly these, and "touching the island" means touching one of them (the notches beside the taller steps are world).
+inline void shellSegments(const Result &r, Rect out[4])
+{
+	const Rect frames[4] = {r.radarFrame, r.infoFrame, r.commandFrame, r.xpFrame};
+	const double s = r.island.w > 0 ? static_cast<double>(r.island.w) / kIslandW : r.scale;
+	const int margin = std::max(1, static_cast<int>(std::lround(8 * s)));
+	int xs[5];
+	xs[0] = r.island.x;
+	xs[4] = r.island.right();
+	for (int i = 1; i < 4; ++i)
+		xs[i] = (frames[i - 1].right() + frames[i].x) / 2;
+	for (int i = 0; i < 4; ++i)
+	{
+		const int top = frames[i].y - margin;
+		out[i] = {xs[i], top, xs[i + 1] - xs[i], r.island.bottom() - top};
+	}
+}
+inline bool silhouetteIntersects(const Result &r, const Rect &q)
+{
+	Rect seg[4];
+	shellSegments(r, seg);
+	for (const Rect &s : seg)
+		if (s.intersects(q))
+			return true;
+	return false;
 }
 
 // The island moved by (dx, dy) (the real control bar window slides on hide/show and in the low stage): every island-bound
@@ -182,6 +224,7 @@ inline Result translated(const Result &r, int dx, int dy)
 	Rect *rects[] = {&t.island, &t.radarFrame, &t.infoFrame, &t.commandFrame, &t.xpFrame, &t.cashFrame};
 	for (Rect *q : rects) { q->x += dx; q->y += dy; }
 	for (int i = 0; i < 3; ++i) t.dividerX[i] += dx;
+	t.bandTop += dy; t.infoTop += dy;      // rightTop belongs to the independent Global Powers clearance and stays
 	return t;
 }
 
@@ -204,17 +247,17 @@ struct Placement
 inline Rect infoMap(const Rect &src)
 {
 	const int k = kInfoScalePermille;
-	return {235 + ((src.x - 621) * k) / 1000, 34 + ((src.y - 483) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
+	return {235 + kRadarExtraW + ((src.x - 621) * k) / 1000, 34 + ((src.y - 483) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
 }
 inline Rect commandMap(const Rect &src)
 {
 	if (commandGrid() == CommandGrid::Wide)   // Zero Hour: the retail grid starts at (223, 494)
 	{
 		const int k = kCommandScaleWidePermille;
-		return {409 + ((src.x - 223) * k) / 1000, 44 + ((src.y - 494) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
+		return {409 + kRadarExtraW + ((src.x - 223) * k) / 1000, 44 + ((src.y - 494) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
 	}
 	const int k = kCommandScalePermille;
-	return {409 + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
+	return {409 + kRadarExtraW + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
 }
 
 struct NamedPlacement
@@ -229,19 +272,20 @@ inline const NamedPlacement *placements(int &count)
 {
 	static const NamedPlacement table[] = {
 		// radar group
-		{"LeftHUD",              {  7, 443, 167, 152}, { 16,  14, 167, 152}, false},
-		{"WinUAttack",           { 77, 416,  45,  45}, {188, 142,  32,  28}, false},
-		{"ButtonOptions",        {206, 495,  30,  22}, {188,  20,  32,  26}, false},
-		{"ButtonIdleWorker",     {206, 519,  30,  22}, {188,  50,  32,  26}, false},
-		{"ButtonPlaceBeacon",    {206, 543,  30,  22}, {188,  80,  32,  26}, false},
-		{"PopupCommunicator",    {206, 567,  30,  22}, {188, 110,  32,  26}, false},
+		// the radar window is taller (the tower) AND wider than the accepted one: 187 x 188 against 167 x 152
+		{"LeftHUD",              {  7, 443, 167, 152}, { 16,  14 - kRiseRadar, 167 + kRadarExtraW, 152 + kRiseRadar}, false},
+		{"WinUAttack",           { 77, 416,  45,  45}, {188 + kRadarExtraW, 142,  32,  28}, false},
+		{"ButtonOptions",        {206, 495,  30,  22}, {188 + kRadarExtraW,  20,  32,  26}, false},
+		{"ButtonIdleWorker",     {206, 519,  30,  22}, {188 + kRadarExtraW,  50,  32,  26}, false},
+		{"ButtonPlaceBeacon",    {206, 543,  30,  22}, {188 + kRadarExtraW,  80,  32,  26}, false},
+		{"PopupCommunicator",    {206, 567,  30,  22}, {188 + kRadarExtraW, 110,  32,  26}, false},
 		// header: money / power
-		{"MoneyDisplay",         {360, 437,  79,  19}, {413,  12, 144,  22}, false},
-		{"PowerWindow",          {261, 473, 283,   7}, {588,  13, 245,  14}, false},
+		{"MoneyDisplay",         {360, 437,  79,  19}, {413 + kRadarExtraW,  12, 144,  22}, false},
+		{"PowerWindow",          {261, 473, 283,   7}, {588 + kRadarExtraW,  13, 245,  14}, false},
 		// XP group
-		{"ButtonGeneral",        {736, 433,  56,  41}, {898,  14,  88,  39}, false},
-		{"ExpBarForeground",     {766, 484,  21, 107}, {857,  16,  34, 148}, false},
-		{"GeneralsExp",          {769, 503,  13,  87}, {862,  22,  24, 136}, false},
+		{"ButtonGeneral",        {736, 433,  56,  41}, {898 + kRadarExtraW,  14,  88,  39}, false},
+		{"ExpBarForeground",     {766, 484,  21, 107}, {857 + kRadarExtraW,  16,  34, 148}, false},
+		{"GeneralsExp",          {769, 503,  13,  87}, {862 + kRadarExtraW,  22,  24, 136}, false},
 		// no Enhanced equivalent: the three size toggles of the 800 px bar
 		{"ButtonSmall",          {592, 436,  31,  21}, {0, 0, 0, 0}, true},
 		{"ButtonMedium",         {625, 439,  31,  21}, {0, 0, 0, 0}, true},
@@ -259,7 +303,7 @@ inline const NamedPlacement *placements(int &count)
 // The General module (one piece): XP trough on the left, the General Powers entry button on top of the right column and
 // below it the rank grid, 2 x 2 square cells (slot 0 = first promotion, reading left to right, top to bottom), each with
 // a square star. Island-local reference units.
-constexpr int kRankGridX = 898, kRankGridY = 66, kRankCell = 42, kRankPitch = 46, kRankStarSize = 28;
+constexpr int kRankGridX = 898 + kRadarExtraW, kRankGridY = 66, kRankCell = 42, kRankPitch = 46, kRankStarSize = 28;
 inline Rect rankSlot(int index)
 {
 	return {kRankGridX + (index % 2) * kRankPitch, kRankGridY + (index / 2) * kRankPitch, kRankCell, kRankCell};
@@ -389,9 +433,9 @@ inline Rect toPhysical(const Result &r, const Rect &local)
 {
 	const double s = r.island.w > 0 ? static_cast<double>(r.island.w) / kIslandW : r.scale;
 	const int x0 = r.island.x + static_cast<int>(std::lround(local.x * s));
-	const int y0 = r.island.y + static_cast<int>(std::lround(local.y * s));
+	const int y0 = r.island.y + static_cast<int>(std::lround((local.y + kIslandRise) * s));
 	const int x1 = r.island.x + static_cast<int>(std::lround((local.x + local.w) * s));
-	const int y1 = r.island.y + static_cast<int>(std::lround((local.y + local.h) * s));
+	const int y1 = r.island.y + static_cast<int>(std::lround((local.y + local.h + kIslandRise) * s));
 	return {x0, y0, std::max(x1 - x0, local.w > 0 ? 1 : 0), std::max(y1 - y0, local.h > 0 ? 1 : 0)};
 }
 

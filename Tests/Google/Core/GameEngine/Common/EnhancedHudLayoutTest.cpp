@@ -223,9 +223,9 @@ TEST(EnhancedHudLayout, GlobalPowersAreAnIndependentSurfaceThatNeverTouchesTheIs
 			EXPECT_LE(r.powerFrame.bottom(), s.h) << s.name;
 			// clear space to the island (never touching), in both directions
 			const int gap = scaledRef(kPowerGap, r.scale);
-			EXPECT_FALSE(r.powerFrame.intersects(r.island)) << s.name;
+			EXPECT_FALSE(silhouetteIntersects(r, r.powerFrame)) << s.name;      // the stepped chassis (the notches beside the taller steps are world)
 			const bool clearX = r.powerFrame.x >= r.island.right() + gap || r.powerFrame.right() <= r.island.x - gap;
-			const bool clearY = r.powerFrame.bottom() <= r.island.y - gap;
+			const bool clearY = r.powerFrame.bottom() <= r.rightTop - gap;
 			EXPECT_TRUE(clearX || clearY) << s.name << " ui" << ui;
 			// never bottom-flush like the island: it floats in the battlefield
 			EXPECT_LT(r.powerFrame.bottom(), s.h) << s.name;
@@ -273,7 +273,7 @@ TEST(EnhancedHudLayout, GlobalPowersUseARowOnCompactSurfacesAndAColumnOtherwise)
 		if (compact)
 		{
 			// the row sits on top of the island, aligned to its right end, never wider than the island
-			EXPECT_LE(r.powerFrame.bottom(), r.island.y) << s.name;
+			EXPECT_LE(r.powerFrame.bottom(), r.rightTop) << s.name;           // above the General module (the right end of the island)
 			EXPECT_LE(r.powerFrame.right(), r.island.right()) << s.name;
 			EXPECT_GE(r.powerFrame.x, r.island.x) << s.name;
 			EXPECT_EQ(r.powerPanel.w, kPowerCount * scaledRef(kPowerColumnW, r.scale)) << s.name;
@@ -554,7 +554,7 @@ TEST(EnhancedHudLayout, RebalancedRegionsLeaveNoLargeEmptyCentre)
 	// the selection block fills most of the info frame
 	const Rect info = physical(r, "WinUnitSelected");
 	EXPECT_GE(double(info.w) / r.infoFrame.w, 0.90);
-	EXPECT_GE(double(info.h) / r.infoFrame.h, 0.70);
+	EXPECT_GE(double(info.h) / (r.infoFrame.h - scaledRef(kRiseInfo, r.scale)), 0.70);     // the frame's rise above the band is the step, not content area
 }
 
 // ---- image fitting (native review 3): reused retail bitmaps keep their proportions ----------------------------------
@@ -865,7 +865,8 @@ TEST(EnhancedHudLayout, RetailRadarWindowShowsBlackBarsForMapsThatAreNotItsShape
 	// root cause of the black side bars: the retail radar window is 167 x 152 (1.10:1); W3DRadar::draw keeps the map aspect
 	// and paints the rest of the window black. A square map therefore leaves bars left and right.
 	const Result r = compute(kSurfaces[5]);
-	const Rect slot = physical(r, "LeftHUD");
+	// the RETAIL window shape (the Enhanced window is fitted to the map and, since the stepped silhouette, nearly square: 187 x 188 reference units)
+	const Rect slot = {0, 0, scaledRef(167, r.scale), scaledRef(152, r.scale)};
 	int ulx, uly, lrx, lry;
 	radarDrawArea(slot.w, slot.h, 1024, 1024, ulx, uly, lrx, lry);
 	EXPECT_GT(ulx, 4) << "left bar width";
@@ -920,19 +921,26 @@ TEST(EnhancedHudLayout, PowerPlateIsTheButtonPlusAnEvenMargin)
 
 TEST(EnhancedHudLayout, AcceptedMajorGeometryIsFrozen)
 {
-	// the refine4 framework: any change to these numbers is a layout redesign and must be a deliberate decision
-	EXPECT_EQ(kIslandW, 1000);
+	// the refine4 framework: any change to these numbers is a layout redesign and must be a deliberate decision.
+	// Stepped silhouette (owner review after the Zero Hour HUD): the BAND (180 high; command region) and every module's width are the accepted ones; the radar module is 20 wider, the island
+	// 20 wider with everything right of the radar moved 20 right, and three modules rise above the band (radar 36, information 16, General module 14; command 0).
+	EXPECT_EQ(kIslandW, 1000 + 20);
 	EXPECT_EQ(kIslandH, 180);
-	EXPECT_EQ(kRadarFrame.x, 8);    EXPECT_EQ(kRadarFrame.w, 216);
-	EXPECT_EQ(kInfoFrame.x, 230);   EXPECT_EQ(kInfoFrame.w, 165);
-	EXPECT_EQ(kCommandFrame.x, 401); EXPECT_EQ(kCommandFrame.w, 444);
-	EXPECT_EQ(kXpFrame.x, 851);     EXPECT_EQ(kXpFrame.w, 141);
-	EXPECT_EQ(kCashFrame.x, 409);   EXPECT_EQ(kCashFrame.w, 152);
+	EXPECT_EQ(kRiseRadar, 36); EXPECT_EQ(kRiseInfo, 16); EXPECT_EQ(kRiseXp, 14); EXPECT_EQ(kIslandRise, 36); EXPECT_EQ(kIslandTotalH, 216);
+	EXPECT_EQ(kRadarFrame.x, 8);    EXPECT_EQ(kRadarFrame.w, 216 + 20); EXPECT_EQ(kRadarFrame.h, 164 + 36);
+	EXPECT_EQ(kInfoFrame.x, 230 + 20);   EXPECT_EQ(kInfoFrame.w, 165);    EXPECT_EQ(kInfoFrame.h, 164 + 16);
+	EXPECT_EQ(kCommandFrame.x, 401 + 20); EXPECT_EQ(kCommandFrame.w, 444); EXPECT_EQ(kCommandFrame.y, 8); EXPECT_EQ(kCommandFrame.h, 164);   // the command region is as accepted
+	EXPECT_EQ(kXpFrame.x, 851 + 20);     EXPECT_EQ(kXpFrame.w, 141);    EXPECT_EQ(kXpFrame.h, 164 + 14);
+	EXPECT_EQ(kCashFrame.x, 409 + 20);   EXPECT_EQ(kCashFrame.w, 152);
+	// the gaps between the modules are the accepted ones
+	EXPECT_EQ(kInfoFrame.x - kRadarFrame.right(), 230 - (8 + 216));
+	EXPECT_EQ(kCommandFrame.x - kInfoFrame.right(), 401 - (230 + 165));
+	EXPECT_EQ(kXpFrame.x - kCommandFrame.right(), 851 - (401 + 444));
 	EXPECT_EQ(kCommandScalePermille, 1200);
 	EXPECT_EQ(kInfoScalePermille, 1100);
 	EXPECT_EQ(kMaxWidthPercentWide, 82);
 	EXPECT_EQ(kCompactAspectPermille, 1450);
-	EXPECT_EQ(kRankGridX, 898);
+	EXPECT_EQ(kRankGridX, 898 + 20);
 	EXPECT_EQ(kRankCell, 42);
 	EXPECT_EQ(rankSlotCount(5), 4);
 	// slot count and ordering of the command bay
@@ -940,7 +948,7 @@ TEST(EnhancedHudLayout, AcceptedMajorGeometryIsFrozen)
 	bool hide = false;
 	ASSERT_TRUE(destinationFor("ButtonCommand01", first, hide));
 	ASSERT_TRUE(destinationFor("ButtonCommand12", last, hide));
-	EXPECT_EQ(first.x, 409);
+	EXPECT_EQ(first.x, 409 + kRadarExtraW);    // the grid origin moved with the wider radar module; its y, size and pitch are the accepted ones
 	EXPECT_EQ(first.y, 44);
 	EXPECT_GT(last.x, first.x);
 	EXPECT_GT(last.y, first.y);
@@ -951,7 +959,7 @@ TEST(EnhancedHudLayout, AcceptedMajorGeometryIsFrozen)
 			++buttons;
 	EXPECT_EQ(buttons, 12);
 	// physical island on the reference surfaces (centred, bottom flush, bounded)
-	struct Case { int w, h, islandW, islandH; } cases[] = {{1920, 1200, 1574, 283}, {3440, 1440, 2250, 405}, {5120, 1440, 2250, 405}};
+	struct Case { int w, h, islandW, islandH; } cases[] = {{1920, 1200, 1574, 333}, {3440, 1440, 2267, 480}, {5120, 1440, 2267, 480}};   // the envelope (band + rise) is capped at a third of the surface height
 	for (const Case &k : cases)
 	{
 		const Result r = EnhancedHudLayout::compute(k.w, k.h, layoutScaleFor(k.w, k.h, DisplayGeometry::kAutoUiScale));
@@ -1691,14 +1699,14 @@ TEST(EnhancedHudGlobalPowers, TheCompactDockIsPackedAgainstTheIslandAndStaysOnTh
 				EXPECT_GE(d.plates.x, 0) << tag;                                           // on the surface
 				EXPECT_LE(d.plates.right(), s.w) << tag;
 				EXPECT_GE(d.plates.y, 0) << tag;
-				EXPECT_LE(d.plates.bottom(), l.island.y) << tag;                           // above the island, not over it
+				EXPECT_LE(d.plates.bottom(), l.rightTop) << tag;                           // above the island, not over it
 				EXPECT_EQ(d.row.w, n * d.pitch) << tag;                                    // exactly as wide as its plates need
 				if (d.plates.x > 0)                                                         // not clamped by the surface edge
 					EXPECT_EQ(d.plates.right() + inset, std::min(l.island.right(), s.w)) << tag;   // docked at the island's right end
 				// attached: a rail joins the plates to the island's top edge
-				if (d.plates.bottom() < l.island.y)
+				if (d.plates.bottom() < l.rightTop)
 				{
-					EXPECT_EQ(d.rail.bottom(), l.island.y) << tag;
+					EXPECT_EQ(d.rail.bottom(), l.rightTop) << tag;
 					EXPECT_EQ(d.rail.y, d.plates.bottom()) << tag;
 					EXPECT_TRUE(d.rail.within(Rect{0, 0, s.w, s.h})) << tag;
 				}
@@ -1751,7 +1759,7 @@ TEST(EnhancedHudGlobalPowers, TwoVisibleButtonsAtTheLowestResolutionTouchTheIsla
 	EXPECT_LT(oldRight + 2 * d.pitch, l.island.right());                       // it floated well left of the island's right end
 	EXPECT_GT(d.plates.right(), oldRight);                                    // the packed plates are further right ...
 	EXPECT_GE(d.plates.right() + EnhancedHudLayout::scaledRef(14, l.scale), l.island.right() - 1);   // ... and end at the island
-	EXPECT_EQ(d.rail.bottom(), l.island.y);                                    // with a rail to the island's top edge
+	EXPECT_EQ(d.rail.bottom(), l.rightTop);                                    // with a rail to the island's top edge
 }
 
 
@@ -1847,7 +1855,7 @@ TEST(EnhancedHudZeroHour, WideGridKeepsTheFrozenRegionsAndTheGeneralsGridExactly
 	{
 		WideGridScope wide;
 		ASSERT_TRUE(destinationFor("ButtonCommand01", wideFirst, hide));
-		EXPECT_EQ(wideFirst.x, 409);                                  // the grid starts where the Generals grid starts
+		EXPECT_EQ(wideFirst.x, 409 + kRadarExtraW);                   // the grid starts where the Generals grid starts
 		EXPECT_EQ(wideFirst.y, 44);
 		Rect info, radar;
 		EXPECT_TRUE(destinationFor("WinUnitSelected", info, hide));   // the other groups are not title dependent
@@ -1910,7 +1918,7 @@ TEST(EnhancedHudZeroHour, TheCompactGlobalPowersDockHoldsEveryZeroHourShortcutSl
 			ASSERT_TRUE(d.valid) << s.name << " " << visible;
 			EXPECT_GE(d.plates.x, 0) << s.name << " " << visible;                          // the first plate stays on the surface
 			EXPECT_LE(d.plates.right(), s.w) << s.name << " " << visible;                  // the last one too
-			EXPECT_LE(d.plates.bottom(), l.island.y) << s.name << " " << visible;          // above the island, never over it
+			EXPECT_LE(d.plates.bottom(), l.rightTop) << s.name << " " << visible;          // above the island, never over it
 			EXPECT_GE(d.plates.y, 0) << s.name << " " << visible;
 			EXPECT_EQ(d.row.w, visible * d.pitch) << s.name << " " << visible;             // the row is exactly as wide as the visible plates need
 		}
@@ -1930,5 +1938,96 @@ TEST(EnhancedHudZeroHour, TheColumnGlobalPowersFrameStaysClearOfTheIslandOnEvery
 		EXPECT_LE(l.powerFrame.right(), s.w) << s.name;
 		EXPECT_GE(l.powerFrame.y, 0) << s.name;
 		EXPECT_FALSE(l.powerFrame.intersects(l.island)) << s.name;                          // the dock never touches the island
+	}
+}
+
+// ---- Stepped silhouette (owner review): tall radar -> medium information -> low command -> modest General module -------------------------------------------------------------------
+
+TEST(EnhancedHudSilhouette, TheStepsDescendFromTheRadarToTheCommandRegionAndRiseModestlyAtTheGeneralModule)
+{
+	const Surface surfaces[] = {{800, 600, "800x600"}, {1024, 768, "1024x768"}, {1280, 720, "1280x720"}, {1920, 1080, "1920x1080"},
+	                            {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid) << s.name;
+		Rect seg[4];
+		shellSegments(r, seg);
+		EXPECT_LT(seg[0].y, seg[1].y) << s.name;                   // radar taller than information
+		EXPECT_LT(seg[1].y, seg[2].y) << s.name;                   // information taller than command
+		EXPECT_LT(seg[3].y, seg[2].y) << s.name;                   // the General module rises above the command region ...
+		EXPECT_GT(seg[3].y, seg[1].y) << s.name;                   // ... but not as high as the information module: not identical towers
+		EXPECT_EQ(seg[0].y, r.island.y) << s.name;                 // the radar defines the envelope
+		for (const Rect &q : seg)
+		{
+			EXPECT_TRUE(q.within(r.island)) << s.name;
+			EXPECT_EQ(q.bottom(), r.island.bottom()) << s.name;   // bottom flush
+		}
+		// the segments tile the island width exactly
+		EXPECT_EQ(seg[0].x, r.island.x) << s.name;
+		for (int i = 0; i < 3; ++i)
+			EXPECT_EQ(seg[i].right(), seg[i + 1].x) << s.name;
+		EXPECT_EQ(seg[3].right(), r.island.right()) << s.name;
+		// every module is inside its own step
+		const Rect frames[4] = {r.radarFrame, r.infoFrame, r.commandFrame, r.xpFrame};
+		for (int i = 0; i < 4; ++i)
+			EXPECT_TRUE(frames[i].within(seg[i])) << s.name << " module " << i;
+	}
+}
+
+TEST(EnhancedHudSilhouette, TheMinimapRegionAndTheActualMinimapAreGenuinelyLargerThanTheAcceptedOnes)
+{
+	// accepted: radar frame 216 x 164, retail window 167 x 152 (reference units)
+	const Surface surfaces[] = {{1920, 1080, "1920x1080"}, {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result r = compute(s);
+		const double u = r.scale;
+		const Rect window = physical(r, "LeftHUD");
+		// the frame height grew 22 %, the window height 24 % and the window width 12 %: for a square map the usable area is 187 x 187 against 152 x 152 (+51 %)
+		EXPECT_GE(static_cast<double>(r.radarFrame.h) / (164 * u), 1.20) << s.name;
+		EXPECT_GE(static_cast<double>(window.h) / (152 * u), 1.20) << s.name;
+		EXPECT_GE(static_cast<double>(window.w) / (167 * u), 1.10) << s.name;
+		const double squareMapSide = std::min(window.w, window.h);
+		EXPECT_GE(squareMapSide / (152 * u), 1.20) << s.name;
+		// and it stays inside its module
+		EXPECT_TRUE(window.within(r.radarFrame)) << s.name;
+	}
+}
+
+TEST(EnhancedHudSilhouette, TheCommandRegionIsAsAcceptedAndBothCommandGridsStayInsideIt)
+{
+	const Surface s = {1920, 1080, "1920x1080"};
+	const Result r = compute(s);
+	EXPECT_EQ(r.bandTop, r.island.y + scaledRef(kIslandRise, r.scale));
+	EXPECT_NEAR(static_cast<double>(r.commandFrame.h) / r.scale, 164.0, 1.0);
+	EXPECT_NEAR(static_cast<double>(r.commandFrame.w) / r.scale, 444.0, 1.0);
+	EXPECT_EQ(r.commandFrame.y - r.bandTop, scaledRef(8, r.scale));
+	for (const CommandGrid grid : {CommandGrid::Standard, CommandGrid::Wide})
+	{
+		EnhancedHudLayout::setCommandGrid(grid);
+		const int slots = EnhancedHudLayout::commandSlots();
+		for (int i = 1; i <= slots; ++i)
+		{
+			char name[24];
+			std::snprintf(name, sizeof(name), "ButtonCommand%02d", i);
+			EXPECT_TRUE(physical(r, name).within(r.commandFrame)) << name << " slots " << slots;
+		}
+	}
+	EnhancedHudLayout::setCommandGrid(CommandGrid::Standard);
+}
+
+TEST(EnhancedHudSilhouette, TheTallRadarDoesNotConsumeAnUnreasonableShareOfTheViewport)
+{
+	// the envelope is capped at a third of the surface height, and the tower is only the radar's share of the width
+	const Surface surfaces[] = {{800, 600, "800x600"}, {1024, 768, "1024x768"}, {1280, 720, "1280x720"}, {1920, 1080, "1920x1080"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result r = compute(s);
+		EXPECT_LE(r.island.h * 3, s.h + 3) << s.name;
+		Rect seg[4];
+		shellSegments(r, seg);
+		const double towerShare = static_cast<double>(seg[0].w) / r.island.w;
+		EXPECT_LT(towerShare, 0.30) << s.name;
 	}
 }

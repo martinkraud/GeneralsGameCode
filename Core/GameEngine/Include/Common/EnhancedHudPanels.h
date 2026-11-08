@@ -282,7 +282,7 @@ inline CompactDock compactDock(const EnhancedHudLayout::Result &l, int visible, 
 	const int left = x + bx - pm, top = d.row.y + by - pm, bottom = d.row.y + by + bh + pm;
 	const int plateRight = x + (n - 1) * pitch + bx + bw + pm;
 	d.plates = {left, top, plateRight - left, bottom - top};
-	d.rail = (bottom < l.island.y) ? Rect{left, bottom, plateRight - left, l.island.y - bottom} : Rect{};
+	d.rail = (bottom < l.rightTop) ? Rect{left, bottom, plateRight - left, l.rightTop - bottom} : Rect{};
 	d.valid = true;
 	return d;
 }

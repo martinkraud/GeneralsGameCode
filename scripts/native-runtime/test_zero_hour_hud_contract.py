@@ -38,7 +38,7 @@ class ZeroHourHudContracts(unittest.TestCase):
         self.assertIn('{"ButtonCommand12",           {546, 546,  53,  45}},', standard)
         self.assertNotIn("ButtonCommand13", standard)
         # the Generals mapping is the first branch's fall-through: origin 246,493 at 1.2 x
-        self.assertIn("return {409 + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};", layout)
+        self.assertIn("return {409 + kRadarExtraW + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};", layout)
 
     def test_the_wide_grid_is_the_retail_zero_hour_grid(self):
         layout = read(LAYOUT)
