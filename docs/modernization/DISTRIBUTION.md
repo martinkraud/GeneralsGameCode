@@ -88,6 +88,7 @@ The installer writes no game setting and no launch option. Modern is the default
 
 * **Real clean-machine validation** and **real two-PC multiplayer validation of `2071ad765`** remain pending.
 * `Generals.exe` still embeds its build-time `.pdb` path in the PE debug directory (`/PDBALTPATH` would strip the user name from it): an informational finding of the validator, not a runtime dependency.
+* **Known, pre-existing shutdown report (not a regression):** a launch that ends on the live Modern main menu (the Layer C first launch) logs `ui_residency_release fail live_residencies=2` in the shutdown invariant check, because the menu's UI textures are still resident when the check runs; the backend teardown that follows destroys them and the process exits 0. The `2071ad765` build reports the same with 5; the Options, Skirmish and Classic launches report 0. Layer C lists it as `info` (any other failed phase still fails). A fix belongs to a separate UI-texture lifetime task.
 * The package is not code-signed (SmartScreen / antivirus may warn); there is no auto-updater (by decision).
 * The original EA `Generals.exe` is not available to the validator, so the retail launcher is recognised by its PE machine type (32-bit) and the install record, not by hash. The Steam folders on the development PC already contain the earlier overlay; all tests therefore run on isolated copies.
 * Only the English Steam release is targeted; a different game version is warned about, not blocked.

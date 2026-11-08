@@ -84,6 +84,12 @@ try {
     foreach ($a in @($record.generatedArtifacts)) {
         try { $ap = Resolve-UnderGameFolder $GameFolder $a; if (Test-Path -LiteralPath $ap) { Remove-Item -LiteralPath $ap -Force } } catch { }
     }
+    # the folders of the files the installer generated (Data\INI, Window): remove them only if they are now empty (a retail folder that holds anything else stays)
+    foreach ($a in @($record.generatedArtifacts)) {
+        try { $dir = Split-Path -Parent (Resolve-UnderGameFolder $GameFolder $a); if ($dir -and $dir.Length -gt $GameFolder.Length) { Remove-EmptyDirectories $dir } } catch { }
+    }
+    # the empty crash-dump folder the 64-bit runtime creates next to the game (only when empty: a real dump is kept)
+    try { Remove-EmptyDirectories (Join-Path $GameFolder 'CrashDumps') } catch { }
     # leftover temp files of an interrupted copy
     foreach ($f in $record.files) { try { $t = (Resolve-UnderGameFolder $GameFolder $f.path) + '.mkr-new'; if (Test-Path -LiteralPath $t) { Remove-Item -LiteralPath $t -Force } } catch { } }
     # empty directories the install created (only if now empty)
