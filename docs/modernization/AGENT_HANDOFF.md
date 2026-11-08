@@ -657,3 +657,14 @@ Small release-polish pass after the owner's manual player-package test. **Do not
 * **Zero Hour faction HUD:** the Enhanced HUD framework is compiled into Zero Hour (`GeneralsMD/.../InGameUI.cpp`), but the accepted themes are the USA / China / GLA sides of Generals; the Zero Hour variants were explicitly outside the native review (`X64_36_ENHANCED_HUD_*`). The owner saw it inactive in Zero Hour: record as future UI work, not a blocker.
 * **Packages:** rebuilt from the final commit with the hardened procedure (detached run, PID, log-age monitor, PROCESS-DIED state); never reuse an older hash.
 * **Open:** real clean-machine validation; real two-PC multiplayer validation of `2071ad765`. Out of scope and unchanged: Modern LAN, multiplayer Game Speed, 2.00x, protocol.
+
+## Zero Hour Modern HUD and Faction UI Parity (2026-11-08; post-DP1 development; DP1 frozen at `c55234b5b`, local tag `c55234b5b-dp1-rc`)
+
+Read [ZERO_HOUR_MODERN_HUD.md](ZERO_HOUR_MODERN_HUD.md) first (archaeology, coverage matrix, evidence). **Awaiting OWNER visual and gameplay acceptance: do not mark it accepted.**
+
+* **Why Zero Hour lacked the HUD:** a deliberate X64.45 gate in `ControlBarScheme::init` (`#if RTS_ZEROHOUR ... enhancedSide = nullptr`), because the HUD was reviewed against the 12-slot Generals bar. It was not a regression; the owner's `InterfaceStyle = Enhanced` was simply inert in Zero Hour.
+* **What was missing, not just disabled:** the 14-slot command grid (retail Zero Hour `ButtonCommand01..14`, 7 x 2, 409 of 413 command sets use slot 13/14) and the `Boss` side mapping (Boss -> China theme).
+* **Design:** Framework v1.1, additive: `EnhancedHudLayout::CommandGrid { Standard, Wide }`, selected in `ControlBarScheme::init`; Standard is the accepted Generals geometry and the default. The `EnhancedHudLayout.h` pin in `test_enhanced_hud_contract.py` was updated for exactly this; the shared headers name no title (`test_zero_hour_hud_contract.py`).
+* **Not changed on purpose:** Classic, Generals HUD, theme colours (the blue is the Zero Hour frontend accent only), General Powers console / Battle Overview (data-driven, shared), the retail tooltips, simulation / network / AI / saves.
+* **Dev harness:** `GENERALS_AUTOFLOW_SIDE=<army combo entry>` selects the human Skirmish slot's side without touching `Skirmish.ini` (never edit the owner's user data for captures); the `hud` checkpoint logs side, active, grid, island and frame-draw cost.
+* **Open:** owner acceptance (checklist in the milestone report); real clean-machine and two-PC multiplayer validation of DP1 remain pending; Boss has no native capture (not selectable as a human).

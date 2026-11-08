@@ -7,6 +7,12 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-08 - Zero Hour Modern HUD and faction UI parity (post Developer Preview 1; awaiting owner acceptance)
+
+* **Changed:** the Enhanced (Modern) gameplay HUD now works in Zero Hour. It had been disabled there since X64.45 (`#if RTS_ZEROHOUR` gate) because it was only reviewed against the 12-slot Generals control bar. The retail Zero Hour bar has 14 command slots (7 x 2), so the layout gained a second command grid beside the accepted one (Framework v1.1, additive: `CommandGrid::Standard` = the Generals geometry byte for byte, `CommandGrid::Wide` = Zero Hour). Every playable side is offered to the HUD: the three base factions, the nine generals and the Boss (mapped to the China theme). Faction themes stay USA / China / GLA (the blue is the Zero Hour frontend accent only). Presentation only; Classic and Generals are unchanged.
+* **Evidence:** all 12 selectable Zero Hour sides captured natively; USA / China / GLA at 1024x768 .. 5120x1440; Generals GLA pixel-identical to the DP1 executable; Classic original bar for both titles. See [ZERO_HOUR_MODERN_HUD.md](docs/modernization/ZERO_HOUR_MODERN_HUD.md).
+* **Developer Preview 1** stays frozen at `c55234b5b` (not rebuilt, not relabelled). Real clean-machine validation and the real two-PC multiplayer validation of `2071ad765` remain pending.
+
 ## 2026-11-08 - Developer Preview 1 final acceptance
 
 * **Owner acceptance:** the real Generals and Zero Hour player packages were installed, played through Steam and (Zero Hour) uninstalled by the owner: PASS. Recorded as a manual player-package test, separate from the automated Layer C.

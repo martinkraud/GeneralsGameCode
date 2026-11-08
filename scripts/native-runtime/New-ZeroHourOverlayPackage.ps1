@@ -39,7 +39,7 @@ $T = if ($Title -eq 'Generals') {
        Folder = 'C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour'; Data = 'Documents\Command and Conquer Generals Zero Hour Data'
        Limits = @(' - Movie (Bink) playback does not exist in the 64-bit build: movies are skipped. Campaign briefing movies, the General''s',
                   '   Challenge video screens and the intro movies are therefore absent; the mission or the static screens follow immediately.',
-                  ' - The Enhanced Zero Hour HUD is not implemented yet (the classic Zero Hour control bar is used).',
+                  ' - The Modern (Enhanced) Zero Hour HUD is available in builds after Developer Preview 1 (Options > Gameplay > Interface); it awaits the owner''s acceptance.',
                   ' - Three Zero Hour-only options are hidden in the Modern options pages; animated texture effects (rotating/offset',
                   '   textures) are static. These and more are planned for later milestones (X64.47 and later).',
                   ' - Mission victory / progression has not been validated by a human yet; LAN / online play is not supported.',

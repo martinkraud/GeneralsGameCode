@@ -73,7 +73,7 @@ State vocabulary: **Done** = implemented and validated as stated; **Owner accept
 
 * **Generals**: full Skirmish path on the native engine; campaign progression and movie playback are incomplete; the Zero-Hour-style special-power sidebar extension is generated at install time from your own archives.
 * **Zero Hour**: Skirmish human-tested on a desktop and a laptop; multiplayer, campaign progression, movies and long-session endurance are not fully validated.
-  The Modern Experience uses a cold blue accent here (Generals: warm gold); the faction-specific in-game HUD is not active for Zero Hour yet (future UI work, see [the roadmap](docs/PRODUCT_ROADMAP.md)).
+  The Modern Experience uses a cold blue accent here (Generals: warm gold); the Modern in-game HUD for Zero Hour (14-slot command grid, all generals) is implemented after Developer Preview 1 and awaits the owner's acceptance ([details](docs/modernization/ZERO_HOUR_MODERN_HUD.md)).
 
 Details and known issues: [PROJECT_STATUS.md](docs/modernization/PROJECT_STATUS.md).
 
