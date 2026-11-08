@@ -195,5 +195,65 @@ class GeneratorParity(unittest.TestCase):
                 self.assertEqual((py_out / rel).read_bytes(), (ps_out / rel).read_bytes(), rel)
 
 
+@unittest.skipUnless(shutil.which("powershell.exe") and sys.platform == "win32", "Windows PowerShell 5.1 is needed for the discovery test")
+class GameFolderDiscovery(unittest.TestCase):
+    """Owner acceptance finding: the installer listed one Steam installation twice (the registry spelling and the environment spelling of the same Windows folder differ in case and slashes). Equivalent Windows paths are one entry; genuinely different folders stay different. Runs the shipped helper under Windows PowerShell 5.1."""
+
+    SCRIPT = r"""
+param([string]$Work, [string]$Setup)
+$ErrorActionPreference = 'Stop'
+. $Setup
+$manifest = [pscustomobject]@{ target = [pscustomobject]@{ steamFolderNames = @('Command and Conquer Generals', 'Command & Conquer Generals - Zero Hour') } }
+$lib1 = Join-Path $Work 'SteamLib'
+$lib2 = Join-Path $Work 'OtherLib'
+foreach ($lib in $lib1, $lib2) { foreach ($n in $manifest.target.steamFolderNames) { New-Item -ItemType Directory -Force -Path (Join-Path $lib ('steamapps\common\' + $n)) | Out-Null } }
+$out = [ordered]@{}
+# the key: case, slash style, trailing separator, "." segments are the same folder; a different folder is not
+$a = Get-FolderKey $lib1
+$out.sameCase = ($a -eq (Get-FolderKey $lib1.ToLowerInvariant()))
+$out.sameSlash = ($a -eq (Get-FolderKey ($lib1 -replace '\\', '/')))
+$out.sameTrailing = ($a -eq (Get-FolderKey ($lib1 + '\')))
+$out.sameDot = ($a -eq (Get-FolderKey ($lib1 + '\.\')))
+$out.distinct = ($a -ne (Get-FolderKey $lib2))
+$out.rootKeepsItsSlash = ((Get-FolderKey 'c:/') -eq 'C:\')
+$out.emptyIsNull = ($null -eq (Get-FolderKey '   '))
+# discovery: the same library reported three ways (registry lower-case / forward slashes, environment spelling, trailing separator) is ONE installation per title
+function Get-SteamLibraries { return @($lib1.ToLowerInvariant().Replace([string][char]92, '/'), $lib1, ($lib1 + '\')) }
+$one = @(Find-GameFolders $manifest)
+$out.oneLibraryCount = $one.Count
+$out.oneLibraryDistinctTitles = @($one | ForEach-Object { Split-Path -Leaf $_ } | Sort-Object -Unique).Count
+# two genuinely different libraries stay two installations per title
+function Get-SteamLibraries { return @($lib1, $lib1.ToUpperInvariant(), $lib2) }
+$two = @(Find-GameFolders $manifest)
+$out.twoLibraryCount = $two.Count
+$out | ConvertTo-Json -Compress
+"""
+
+    def test_equivalent_paths_are_one_installation(self):
+        import json as _json
+        with tempfile.TemporaryDirectory() as tmp:
+            script = pathlib.Path(tmp) / "discovery.ps1"
+            script.write_text(self.SCRIPT, encoding="utf-8")
+            work = pathlib.Path(tmp) / "work"
+            work.mkdir()
+            env = {k: v for k, v in __import__("os").environ.items() if k != "PSModulePath"}
+            done = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-Work", str(work), "-Setup", str(DIST / "MKRaudstein-Setup.ps1")],
+                                  capture_output=True, text=True, env=env, timeout=120)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            got = _json.loads(done.stdout.strip().splitlines()[-1])
+            for key in ("sameCase", "sameSlash", "sameTrailing", "sameDot", "distinct", "rootKeepsItsSlash", "emptyIsNull"):
+                self.assertTrue(got[key], key)
+            self.assertEqual(got["oneLibraryCount"], 2, got)            # one entry for Generals + one for Zero Hour, not three of each
+            self.assertEqual(got["oneLibraryDistinctTitles"], 2, got)
+            self.assertEqual(got["twoLibraryCount"], 4, got)            # two real libraries x two titles
+
+    def test_no_case_sensitive_path_dedup_is_left(self):
+        for name in PLAYER_SCRIPTS:
+            text = read("scripts/distribution/" + name)
+            self.assertNotIn("Select-Object -Unique", text.replace("Sort-Object -Unique", ""), name)   # -Unique on paths is case-sensitive
+            self.assertNotIn(".Contains($", text, name)                                                # List<string>.Contains is case-sensitive
+        self.assertIn("Add-UniqueFolder $unique $c", read("scripts/distribution/Uninstall-MKRaudstein.ps1"))   # the uninstaller list is deduplicated too
+
+
 if __name__ == "__main__":
     unittest.main()

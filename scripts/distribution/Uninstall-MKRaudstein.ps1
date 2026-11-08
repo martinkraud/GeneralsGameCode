@@ -32,7 +32,9 @@ try {
                 }
             }
         }
-        $candidates = @($candidates | Where-Object { Get-InstallRecord $_ })
+        $unique = New-Object System.Collections.Generic.List[string]
+        foreach ($c in @($candidates | Where-Object { Get-InstallRecord $_ })) { Add-UniqueFolder $unique $c }   # one entry per real folder (case / slash / trailing-separator variants are the same folder)
+        $candidates = $unique.ToArray()
         if ($candidates.Count -eq 1) { $GameFolder = $candidates[0] }
         elseif ($candidates.Count -gt 1) {
             for ($i = 0; $i -lt $candidates.Count; $i++) { Write-Host ("   [{0}] {1}" -f ($i + 1), $candidates[$i]) }

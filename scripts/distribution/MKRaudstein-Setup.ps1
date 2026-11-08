@@ -46,6 +46,38 @@ function Read-PackageManifest([string]$PackageRoot) {
 }
 
 # Steam library folders (the default one plus the ones listed in libraryfolders.vdf). Read-only.
+# Windows path identity: case-insensitive, either slash, no trailing separator, "." / ".." resolved. Two spellings of one folder must be ONE entry (the registry reports
+# "c:/program files (x86)/steam", the environment "C:\Program Files (x86)\Steam"); two genuinely different folders stay two. Unusable text yields $null.
+function Get-FolderKey([string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    try {
+        $full = [IO.Path]::GetFullPath(($Path.Trim().Trim('"') -replace '/', '\'))
+        $root = [IO.Path]::GetPathRoot($full)
+        if ($full.Length -gt $root.Length) { $full = $full.TrimEnd('\') }
+        return $full.ToUpperInvariant()
+    } catch { return $null }
+}
+# Adds $Path to $List unless an equivalent folder is already there; the first spelling is kept (normalised for display: backslashes, no trailing separator).
+function Add-UniqueFolder($List, [string]$Path) {
+    $key = Get-FolderKey $Path
+    if (-not $key) { return }
+    foreach ($existing in $List) { if ((Get-FolderKey $existing) -eq $key) { return } }
+    $List.Add((Get-ExactCasePath ([IO.Path]::GetFullPath(($Path.Trim().Trim('"') -replace '/', '\'))).TrimEnd('\')))
+}
+# The folder names exactly as they are on disk (the registry reports lower case); display only. Falls back to the given text when a segment cannot be listed.
+function Get-ExactCasePath([string]$Path) {
+    try {
+        $root = [IO.Path]::GetPathRoot($Path)
+        $current = $root.ToUpperInvariant()
+        foreach ($segment in ($Path.Substring($root.Length) -split '\\' | Where-Object { $_ })) {
+            $hit = @([IO.Directory]::EnumerateFileSystemEntries($current, $segment) | Select-Object -First 1)
+            if ($hit.Count -eq 0) { return $Path }
+            $current = $hit[0]
+        }
+        return $current
+    } catch { return $Path }
+}
+
 function Get-SteamLibraries {
     $libraries = New-Object System.Collections.Generic.List[string]
     $roots = @()
@@ -57,16 +89,16 @@ function Get-SteamLibraries {
     }
     $roots += (Join-Path ${env:ProgramFiles(x86)} 'Steam')
     $roots += (Join-Path $env:ProgramFiles 'Steam')
-    foreach ($root in ($roots | Where-Object { $_ } | Select-Object -Unique)) {
+    foreach ($root in @($roots | Where-Object { $_ })) {
         $root = $root -replace '/', '\'
         if (-not (Test-Path -LiteralPath $root)) { continue }
-        if (-not $libraries.Contains($root)) { $libraries.Add($root) }
+        Add-UniqueFolder $libraries $root
         $vdf = Join-Path $root 'steamapps\libraryfolders.vdf'
         if (Test-Path -LiteralPath $vdf) {
             foreach ($line in (Get-Content -LiteralPath $vdf)) {
                 if ($line -match '"path"\s+"([^"]+)"') {
                     $p = ($Matches[1] -replace '\\\\', '\') -replace '/', '\'
-                    if ((Test-Path -LiteralPath $p) -and -not $libraries.Contains($p)) { $libraries.Add($p) }
+                    if (Test-Path -LiteralPath $p) { Add-UniqueFolder $libraries $p }
                 }
             }
         }
@@ -79,7 +111,7 @@ function Find-GameFolders($Manifest) {
     foreach ($library in (Get-SteamLibraries)) {
         foreach ($folderName in @($Manifest.target.steamFolderNames)) {
             $candidate = Join-Path $library ('steamapps\common\' + $folderName)
-            if ((Test-Path -LiteralPath $candidate) -and -not $found.Contains($candidate)) { $found.Add($candidate) }
+            if (Test-Path -LiteralPath $candidate) { Add-UniqueFolder $found $candidate }
         }
     }
     return $found.ToArray()
