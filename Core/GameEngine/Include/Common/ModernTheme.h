@@ -104,7 +104,7 @@ struct Variant
 
 inline const Variant &variant(Title title)
 {
-	// Shared base: steel / charcoal field-hardware surfaces, warm-white text. Only the accent differs between the titles (Generals sand-gold, Zero Hour signal orange).
+	// Shared base: steel / charcoal field-hardware surfaces, warm-white text. Only the accent family differs between the titles (Generals sand-gold; Zero Hour a restrained cold steel blue, Developer Preview 1 final acceptance).
 	static const Variant table[static_cast<int>(Title::Count)] = {
 		{ "Generals",
 		  { rgba(6, 10, 16, 176), rgba(12, 18, 27, 214), rgba(24, 33, 46, 224), rgba(5, 8, 13, 232),
@@ -114,9 +114,9 @@ inline const Variant &variant(Title title)
 		  "GeneralsLogo", 370, 120 },
 		{ "ZeroHour",
 		  { rgba(6, 10, 16, 176), rgba(12, 18, 27, 214), rgba(24, 33, 46, 224), rgba(5, 8, 13, 232),
-		    rgba(72, 86, 104, 255), rgba(116, 132, 152, 255), rgba(232, 118, 40, 255), rgba(232, 118, 40, 46),
-		    rgba(236, 240, 244, 255), rgba(178, 190, 204, 255), rgba(128, 142, 158, 255), rgba(88, 98, 112, 255), rgba(18, 12, 8, 255),
-		    rgba(214, 84, 70, 255), rgba(236, 170, 60, 255), rgba(120, 200, 110, 255), rgba(255, 168, 84, 255) },
+		    rgba(72, 86, 104, 255), rgba(116, 132, 152, 255), rgba(84, 152, 218, 255), rgba(84, 152, 218, 46),
+		    rgba(236, 240, 244, 255), rgba(178, 190, 204, 255), rgba(128, 142, 158, 255), rgba(88, 98, 112, 255), rgba(6, 12, 20, 255),
+		    rgba(214, 84, 70, 255), rgba(236, 170, 60, 255), rgba(120, 200, 110, 255), rgba(150, 202, 244, 255) },
 		  "GeneralsLogo", 370, 120 },
 	};
 	return table[static_cast<int>(title)];

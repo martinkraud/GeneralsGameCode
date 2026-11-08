@@ -96,6 +96,21 @@ TEST(ModernComponents, TitleVariantsChangeOnlyTheAccentFamily)
 	EXPECT_NE(style(Kind::Primary, State::Normal, g).fill.argb(), style(Kind::Primary, State::Normal, z).fill.argb());
 }
 
+// Locked product identity (Developer Preview 1 final acceptance): Generals keeps its warm sand-gold accent, Zero Hour has a cold, restrained blue one.
+TEST(ModernComponents, TitleAccentIdentity)
+{
+	const ModernTheme::Palette &g = ModernTheme::variant(Title::Generals).palette, &z = ModernTheme::variant(Title::ZeroHour).palette;
+	EXPECT_EQ(g.accent.argb(), ModernTheme::rgba(214, 178, 74).argb());                 // the Generals baseline did not move
+	EXPECT_GT(g.accent.r, g.accent.b);                                                  // warm
+	EXPECT_GT(z.accent.b, z.accent.r + 80);                                             // cold: blue clearly dominates red
+	EXPECT_GE(z.accent.b, z.accent.g);
+	EXPECT_LT(z.accent.g, 175);                                                         // not cyan / neon: the green channel stays well below the blue
+	EXPECT_LT(z.focus.r, z.focus.b);                                                    // the focus tint follows the accent
+	EXPECT_EQ(g.panel.argb(), z.panel.argb());                                          // shared surfaces and text
+	EXPECT_EQ(g.text.argb(), z.text.argb());
+	EXPECT_EQ(g.danger.argb(), z.danger.argb());
+}
+
 TEST(ModernComponents, MixAndContrastBasics)
 {
 	const ModernTheme::Color black{ 0, 0, 0, 255 }, white{ 255, 255, 255, 255 };
