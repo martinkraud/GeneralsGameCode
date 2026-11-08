@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0   # the contract tests compare against historic commits (git show <rev>:<path>, git diff <rev>..HEAD)
 
       - name: Python version
         run: python --version
