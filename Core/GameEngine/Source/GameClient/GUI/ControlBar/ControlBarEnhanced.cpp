@@ -48,6 +48,7 @@
 #include "GameNetwork/GameInfo.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -938,13 +939,16 @@ void drawGlyph( Glyph glyph, const HRect &r, Color color )
 	}
 }
 
-const int kHudWinCount = 8 + 12 + 1;
-GameWindow *s_hudWin[ kHudWinCount ];     // 0 radar, 1-4 utility buttons, 5 XP trough, 6 attack lamp, 7 CommandWindow, 8.. command buttons
+const int kHudWinCount = 8 + 12 + 1 + 2;
+GameWindow *s_hudWin[ kHudWinCount ];     // 0 radar, 1-4 utility buttons, 5 XP trough, 6 attack lamp, 7 CommandWindow, 8-19 command buttons 1-12, 20 PowerWindow, 21-22 command buttons 13-14 (Zero Hour)
 const char *const s_hudWinNames[ kHudWinCount ] = { "LeftHUD", "ButtonOptions", "ButtonIdleWorker", "ButtonPlaceBeacon",
                                          "PopupCommunicator", "ExpBarForeground", "WinUAttack", "CommandWindow",
                                          "ButtonCommand01", "ButtonCommand02", "ButtonCommand03", "ButtonCommand04",
                                          "ButtonCommand05", "ButtonCommand06", "ButtonCommand07", "ButtonCommand08",
-                                         "ButtonCommand09", "ButtonCommand10", "ButtonCommand11", "ButtonCommand12", "PowerWindow" };
+                                         "ButtonCommand09", "ButtonCommand10", "ButtonCommand11", "ButtonCommand12", "PowerWindow",
+                                         "ButtonCommand13", "ButtonCommand14" };
+// Index in s_hudWin / s_hudWinNames of command button `slot` (0-based, retail order).
+int hudCommandIndex( int slot ) { return slot < 12 ? 8 + slot : 21 + ( slot - 12 ); }
 
 bool windowChainShown( GameWindow *win )
 {
@@ -1114,6 +1118,12 @@ void drawEnhancedHudFrame()
 {
 	if( !EnhancedHud::active() || !TheDisplay )
 		return;
+	// the cost of this frame draw, for the developer diagnostics (two clock reads, no allocation)
+	struct DrawTimer
+	{
+		std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+		~DrawTimer() { EnhancedHud::recordDraw( (unsigned long long)std::chrono::duration_cast<std::chrono::nanoseconds>( std::chrono::steady_clock::now() - t0 ).count() ); }
+	} drawTimer;
 	EnhancedHudLayout::Result l = EnhancedHud::layout();
 	const HudPalette c = makePalette();
 	const EnhancedHudTheme::Theme &th = *c.theme;
@@ -1364,13 +1374,14 @@ void drawEnhancedHudFrame()
 				TheDisplay->drawFillRect( l.cashFrame.right() - P( 4 ) - ( 3 - i ) * ( segW + 1 ), l.cashFrame.y + l.cashFrame.h / 2 - segH / 2, segW, segH, i < 2 ? c.ready : c.accentDim );
 		}
 
-		HRect cells[ 12 ];
+		const int commandSlots = EnhancedHudLayout::commandSlots();       // 12 (Generals) or 14 (Zero Hour)
+		HRect cells[ EnhancedHudLayout::kCommandSlotsWide ];
 		HRect bay = { 0, 0, 0, 0 };
-		for( int i = 0; i < 12; ++i )
+		for( int i = 0; i < commandSlots; ++i )
 		{
 			EnhancedHudLayout::Rect dst;
 			bool hide = false;
-			EnhancedHudLayout::destinationFor( s_hudWinNames[ 8 + i ], dst, hide );
+			EnhancedHudLayout::destinationFor( s_hudWinNames[ hudCommandIndex( i ) ], dst, hide );
 			cells[ i ] = EnhancedHudLayout::toPhysical( l, dst );
 			bay = ( i == 0 ) ? cells[ i ] : EnhancedHudWindows::unionOf( bay, cells[ i ] );
 		}
@@ -1382,9 +1393,9 @@ void drawEnhancedHudFrame()
 		{
 			const Int ig = std::max<Int>( 1, g / 2 );
 			const Int k = th.plateCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.plateCornerRef ) : 0;
-			for( int i = 0; i < 12; ++i )
+			for( int i = 0; i < commandSlots; ++i )
 			{
-				GameWindow *btn = s_hudWin[ 8 + i ];
+				GameWindow *btn = s_hudWin[ hudCommandIndex( i ) ];
 				const bool occupied = btn && !btn->winIsHidden();
 				const HRect cell = inflate( cells[ i ], ig );
 				if( !occupied )

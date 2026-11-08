@@ -153,15 +153,19 @@ class ZeroHourNativeContract(unittest.TestCase):
         init = read("scripts/native-runtime/Stage-NativeInitOnly.ps1")
         self.assertIn("Modern extensions are Generals-only", init)
 
-    def test_enhanced_hud_is_not_offered_to_zero_hour_sides(self):
-        # The Enhanced HUD was reviewed against the Generals control bar only: Zero Hour keeps the Original bar (the option is inert).
+    def test_enhanced_hud_is_offered_to_zero_hour_sides_with_the_wide_command_grid(self):
+        # Zero Hour Modern HUD parity (post Developer Preview 1). X64.45 kept the Original bar because the HUD had only been reviewed against the 12-slot Generals bar.
+        # The retail Zero Hour bar has 14 command slots (7 x 2): Zero Hour now selects the Wide command grid and every side (the m_side of the scheme) is offered to the HUD.
         scheme = read("Core/GameEngine/Source/GameClient/GUI/ControlBar/ControlBarScheme.cpp")
         zh = scheme.index("#if RTS_ZEROHOUR")
-        gla = scheme.index("#else", zh)
-        self.assertIn("const char *const enhancedSide = nullptr;", scheme[zh:gla])
-        self.assertIn("const char *const enhancedSide = m_side.str();", scheme[gla:scheme.index("#endif", gla)])
-        self.assertIn("ModernExperience::classic(), enhancedSide,", scheme)
-        self.assertNotIn("classic(), m_side.str()", scheme)
+        other = scheme.index("#else", zh)
+        self.assertIn("EnhancedHudLayout::CommandGrid::Wide", scheme[zh:other])
+        self.assertIn("EnhancedHudLayout::CommandGrid::Standard", scheme[other:scheme.index("#endif", other)])
+        self.assertIn("ModernExperience::classic(), m_side.str(),", scheme)
+        self.assertIn("commandGrid );", scheme)
+        self.assertNotIn("enhancedSide", scheme)                      # no title gate hides a side any more
+        theme = read("Core/GameEngine/Include/Common/EnhancedHudTheme.h")
+        self.assertIn('std::strcmp(side, "Boss") == 0) return Faction::China;', theme)   # the Boss General uses the China scheme (side name "Boss")
 
     def test_the_terrain_atlas_version_is_unique_across_maps(self):
         # X64.45 first native run: black strips across the Zero Hour terrain. The terrain render object outlives its maps and keeps the uploaded

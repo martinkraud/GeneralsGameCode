@@ -417,16 +417,17 @@ void ControlBarScheme::validate() const
 
 void ControlBarScheme::init()
 {
-	// Enhanced gameplay HUD (USA prototype): decide for this scheme's side; anything unsupported stays Original.
+	// Enhanced gameplay HUD: decide for this scheme's side; anything unsupported stays Original.
+	// X64.45 kept Zero Hour on the Original bar until it had its own review (the HUD was built against the Generals control bar: 12 command slots).
+	// Zero Hour Modern HUD parity: the retail Zero Hour bar has 14 command slots (7 x 2), which the layout carries as its Wide command grid; every Zero Hour side
+	// (the three base factions, the nine generals and the Boss) maps to the USA / China / GLA theme by its side name.
 #if RTS_ZEROHOUR
-	// X64.45: the Enhanced HUD was built and reviewed against the Generals control bar (12 command slots, the Generals command
-	// sets and side names). Zero Hour keeps the Original bar until it has its own review: no side is "supported" there.
-	const char *const enhancedSide = nullptr;
+	const EnhancedHudLayout::CommandGrid commandGrid = EnhancedHudLayout::CommandGrid::Wide;
 #else
-	const char *const enhancedSide = m_side.str();
+	const EnhancedHudLayout::CommandGrid commandGrid = EnhancedHudLayout::CommandGrid::Standard;
 #endif
-	EnhancedHud::update( DisplayRuntime::modern(), ModernExperience::classic(), enhancedSide,
-		TheDisplay ? (Int)TheDisplay->getWidth() : 0, TheDisplay ? (Int)TheDisplay->getHeight() : 0, DisplayRuntime::uiScale() );
+	EnhancedHud::update( DisplayRuntime::modern(), ModernExperience::classic(), m_side.str(),
+		TheDisplay ? (Int)TheDisplay->getWidth() : 0, TheDisplay ? (Int)TheDisplay->getHeight() : 0, DisplayRuntime::uiScale(), commandGrid );
 	if(TheControlBar)
 	{
 		TheControlBar->switchControlBarStage(CONTROL_BAR_STAGE_DEFAULT);

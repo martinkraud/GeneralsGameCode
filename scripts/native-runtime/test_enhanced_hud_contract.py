@@ -210,10 +210,14 @@ class EnhancedHudContracts(unittest.TestCase):
         for forbidden in ("static bool", "s_hidden", "s_visible", "m_currentControlBarStage"):
             self.assertNotIn(forbidden, frame)
 
-    def test_command_bay_draws_all_twelve_slots_without_reordering_commands(self):
+    def test_command_bay_draws_all_command_slots_without_reordering_commands(self):
+        # 12 slots in Generals, 14 in Zero Hour (Framework v1.1 Wide command grid): the bay draws `commandSlots` plates
         bar = text(BAR)
         frame = bar[bar.index("void drawEnhancedHudFrame()"):]
-        self.assertIn("for( int i = 0; i < 12; ++i )", frame)
+        self.assertIn("const int commandSlots = EnhancedHudLayout::commandSlots();", frame)
+        self.assertEqual(frame.count("for( int i = 0; i < commandSlots; ++i )"), 2)
+        self.assertIn("HRect cells[ EnhancedHudLayout::kCommandSlotsWide ];", frame)
+        self.assertIn("int hudCommandIndex( int slot )", bar)
         self.assertIn("occupied", frame)
         # slot windows are only drawn behind, never re-assigned or moved by index
         for forbidden in ("setControlCommand", "findCommandButton", "CommandSet", "std::swap"):
@@ -377,7 +381,7 @@ class EnhancedHudContracts(unittest.TestCase):
         # geometry or placement mechanism needs a deliberate version bump, a documented reason and a new native review.
         import hashlib
         pins = {
-            "Core/GameEngine/Include/Common/EnhancedHudLayout.h": "c940c83b8a003b459fc428ee9f7f6f085b6fc572082c206d14d79410b5f3ac61",
+            "Core/GameEngine/Include/Common/EnhancedHudLayout.h": "a2a52dd60b1fbeafcabbc60b888dbabb4e324948049bc05930b2b7f540efd564",
             "Core/GameEngine/Include/Common/EnhancedHudWindows.h": "0b83d551690699dd0fee50e8895e31d527ff6be267ddcf823dadec7c7d80c125",
         }
         for path, digest in pins.items():
@@ -497,7 +501,7 @@ class EnhancedHudContracts(unittest.TestCase):
         bar = text(BAR)
         frame = bar[bar.index("void drawEnhancedHudFrame()"):]
         meter = frame[frame.index("POWER METER"):]
-        meter = meter[:meter.index("HRect cells[ 12 ];")]
+        meter = meter[:meter.index("HRect cells[ EnhancedHudLayout::kCommandSlotsWide ];")]
         # the track is drawn from the window rectangle alone: it does not depend on any power value being non zero
         self.assertIn("kPowerSegments", meter)
         self.assertIn("drawRecess( m, c, P( 1.2 ) );", meter)

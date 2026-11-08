@@ -196,6 +196,8 @@ inline Faction factionOfSide(const char *side)
 	if (std::strncmp(side, "America", 7) == 0) return Faction::Usa;
 	if (std::strncmp(side, "China", 5) == 0) return Faction::China;
 	if (std::strncmp(side, "GLA", 3) == 0) return Faction::Gla;
+	// Zero Hour: the Boss General (PlayerTemplate FactionBossGeneral, BaseSide China) uses the China control bar scheme (ChinaBossGeneral8x6, side name "Boss")
+	if (std::strcmp(side, "Boss") == 0) return Faction::China;
 	if (std::strncmp(side, "Europe", 6) == 0) return Faction::Europe;
 	if (std::strncmp(side, "Russia", 6) == 0) return Faction::Russia;
 	return Faction::Unknown;

@@ -18,6 +18,7 @@
 #include "Common/OptionsPageLayout.h"
 
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -1753,3 +1754,181 @@ TEST(EnhancedHudGlobalPowers, TwoVisibleButtonsAtTheLowestResolutionTouchTheIsla
 	EXPECT_EQ(d.rail.bottom(), l.island.y);                                    // with a rail to the island's top edge
 }
 
+
+// ---- Zero Hour Modern HUD parity (Framework v1.1: the Wide, 14-slot command grid; every Generals number above is untouched) ------------------------------------------------------
+
+namespace
+{
+// The grid profile is process-wide state; every test that selects Wide restores the accepted Standard (Generals) profile.
+struct WideGridScope
+{
+	WideGridScope() { EnhancedHudLayout::setCommandGrid(EnhancedHudLayout::CommandGrid::Wide); }
+	~WideGridScope() { EnhancedHudLayout::setCommandGrid(EnhancedHudLayout::CommandGrid::Standard); EnhancedHud::setRequested(false); EnhancedHud::deactivate(); }
+};
+const char *const kZeroHourSides[] = {
+	"America", "China", "GLA",
+	"AmericaSuperWeaponGeneral", "AmericaLaserGeneral", "AmericaAirForceGeneral",
+	"ChinaTankGeneral", "ChinaInfantryGeneral", "ChinaNukeGeneral",
+	"GLAToxinGeneral", "GLADemolitionGeneral", "GLAStealthGeneral",
+	"Boss"};
+}
+
+TEST(EnhancedHudZeroHour, StandardRemainsTheDefaultAndHasNoFourteenthSlot)
+{
+	EXPECT_EQ(EnhancedHudLayout::commandGrid(), EnhancedHudLayout::CommandGrid::Standard);
+	EXPECT_EQ(EnhancedHudLayout::commandSlots(), 12);
+	Rect r; bool hide = false;
+	EXPECT_TRUE(destinationFor("ButtonCommand12", r, hide));
+	EXPECT_FALSE(destinationFor("ButtonCommand13", r, hide));
+	EXPECT_FALSE(destinationFor("ButtonCommand14", r, hide));
+}
+
+TEST(EnhancedHudZeroHour, WideGridPlacesFourteenSlotsInsideTheCommandFrameOnEverySurface)
+{
+	WideGridScope wide;
+	EXPECT_EQ(EnhancedHudLayout::commandSlots(), 14);
+	int n = 0, buttons = 0;
+	for (const GroupWindow *g = commandGroup(n); n-- > 0; ++g)
+		if (std::strncmp(g->window, "ButtonCommand", 13) == 0)
+			++buttons;
+	EXPECT_EQ(buttons, 14);
+
+	const Surface surfaces[] = {{800, 600, "800x600"}, {1024, 768, "1024x768"}, {1280, 720, "1280x720"}, {1920, 1080, "1920x1080"},
+	                            {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result l = compute(s);
+		ASSERT_TRUE(l.valid) << s.name;
+		Rect cells[14];
+		for (int i = 0; i < 14; ++i)
+		{
+			char name[32];
+			std::snprintf(name, sizeof(name), "ButtonCommand%02d", i + 1);
+			Rect dst; bool hide = false;
+			ASSERT_TRUE(destinationFor(name, dst, hide)) << name;
+			EXPECT_FALSE(hide) << name;
+			cells[i] = toPhysical(l, dst);
+			EXPECT_FALSE(cells[i].empty()) << s.name << " " << name;
+			EXPECT_TRUE(cells[i].within(l.commandFrame)) << s.name << " " << name;      // never clipped by the command frame
+			EXPECT_TRUE(cells[i].within(l.island)) << s.name << " " << name;
+			EXPECT_FALSE(cells[i].intersects(l.cashFrame)) << s.name << " " << name;    // clear of the money display
+		}
+		for (int a = 0; a < 14; ++a)
+			for (int b = a + 1; b < 14; ++b)
+				EXPECT_FALSE(cells[a].intersects(cells[b])) << s.name << " " << a << "/" << b;   // no overlap: every button is individually hittable
+		// 7 columns x 2 rows in retail order (01 02 | 03 04 | ... | 13 14): odd buttons on the top row
+		for (int i = 0; i < 14; i += 2)
+		{
+			EXPECT_EQ(cells[i].x, cells[i + 1].x) << s.name;
+			EXPECT_LT(cells[i].y, cells[i + 1].y) << s.name;
+			if (i > 0)
+				EXPECT_LT(cells[i - 2].x, cells[i].x) << s.name;
+		}
+		// the containers of the command area hold all fourteen
+		for (const char *container : {"CommandWindow", "BeaconWindow", "UnderConstructionWindow", "ObserverPlayerInfoWindow", "ObserverPlayerListWindow"})
+		{
+			Rect dst; bool hide = false;
+			ASSERT_TRUE(destinationFor(container, dst, hide)) << container;
+			const Rect box = toPhysical(l, dst);
+			for (int i = 0; i < 14; ++i)
+				EXPECT_TRUE(cells[i].within(box)) << s.name << " " << container << " " << i;
+		}
+	}
+}
+
+TEST(EnhancedHudZeroHour, WideGridKeepsTheFrozenRegionsAndTheGeneralsGridExactlyAsAccepted)
+{
+	// the regions and every other table are shared: only the command grid differs
+	Rect standardFirst, standardLast;
+	bool hide = false;
+	ASSERT_TRUE(destinationFor("ButtonCommand01", standardFirst, hide));
+	ASSERT_TRUE(destinationFor("ButtonCommand12", standardLast, hide));
+	Rect wideFirst;
+	{
+		WideGridScope wide;
+		ASSERT_TRUE(destinationFor("ButtonCommand01", wideFirst, hide));
+		EXPECT_EQ(wideFirst.x, 409);                                  // the grid starts where the Generals grid starts
+		EXPECT_EQ(wideFirst.y, 44);
+		Rect info, radar;
+		EXPECT_TRUE(destinationFor("WinUnitSelected", info, hide));   // the other groups are not title dependent
+		EXPECT_TRUE(destinationFor("LeftHUD", radar, hide));
+	}
+	Rect again, againLast;
+	ASSERT_TRUE(destinationFor("ButtonCommand01", again, hide));       // Standard is restored exactly
+	ASSERT_TRUE(destinationFor("ButtonCommand12", againLast, hide));
+	EXPECT_EQ(again.x, standardFirst.x); EXPECT_EQ(again.y, standardFirst.y); EXPECT_EQ(again.w, standardFirst.w); EXPECT_EQ(again.h, standardFirst.h);
+	EXPECT_EQ(againLast.x, standardLast.x); EXPECT_EQ(againLast.w, standardLast.w);
+	EXPECT_EQ(kCommandScalePermille, 1200);                            // v1 constants are unchanged
+	EXPECT_EQ(kCommandFrame.w, 444);
+}
+
+TEST(EnhancedHudZeroHour, EveryZeroHourSideIsSupportedAndMapsToATheme)
+{
+	using EnhancedHudTheme::Faction;
+	for (const char *side : kZeroHourSides)
+	{
+		EXPECT_TRUE(supportsSide(side)) << side;
+		EXPECT_NE(EnhancedHudTheme::factionOfSide(side), Faction::Unknown) << side;
+	}
+	// base factions and generals share the theme of their base side (BaseSide of PlayerTemplate)
+	EXPECT_EQ(EnhancedHudTheme::factionOfSide("AmericaAirForceGeneral"), Faction::Usa);
+	EXPECT_EQ(EnhancedHudTheme::factionOfSide("ChinaNukeGeneral"), Faction::China);
+	EXPECT_EQ(EnhancedHudTheme::factionOfSide("GLAStealthGeneral"), Faction::Gla);
+	EXPECT_EQ(EnhancedHudTheme::factionOfSide("Boss"), Faction::China);   // the Boss General: scheme ChinaBossGeneral8x6, BaseSide China
+	for (const char *side : {"Observer", "Civilian", "boss", "BossGeneral", ""})
+		EXPECT_FALSE(supportsSide(side)) << side;                          // observers and civilians keep the Original bar
+}
+
+TEST(EnhancedHudZeroHour, TheDecisionSelectsTheGridAndOriginalStaysOriginal)
+{
+	WideGridScope restore;
+	EnhancedHud::setRequested(true);
+	EXPECT_TRUE(EnhancedHud::update(true, false, "ChinaTankGeneral", 1920, 1080, 1.0, EnhancedHudLayout::CommandGrid::Wide));
+	EXPECT_EQ(EnhancedHudLayout::commandSlots(), 14);
+	EXPECT_TRUE(EnhancedHud::update(true, false, "America", 1920, 1080, 1.0));       // default: the Generals grid
+	EXPECT_EQ(EnhancedHudLayout::commandSlots(), 12);
+	EXPECT_FALSE(EnhancedHud::update(true, true, "AmericaAirForceGeneral", 1920, 1080, 1.0, EnhancedHudLayout::CommandGrid::Wide));   // -classic: never
+	EXPECT_FALSE(EnhancedHud::update(false, false, "GLA", 1920, 1080, 1.0, EnhancedHudLayout::CommandGrid::Wide));                  // not the modern display
+	EnhancedHud::setRequested(false);
+	EXPECT_FALSE(EnhancedHud::update(true, false, "GLA", 1920, 1080, 1.0, EnhancedHudLayout::CommandGrid::Wide));                   // not requested (Original is the default)
+}
+
+TEST(EnhancedHudZeroHour, TheCompactGlobalPowersDockHoldsEveryZeroHourShortcutSlotOnTheSurface)
+{
+	// The Zero Hour shortcut bars carry up to 11 special-power buttons (SpecialPowerShortcutButtonCount 9..11 in PlayerTemplate; MAX_SPECIAL_POWER_SHORTCUTS = 11),
+	// the Generals dock was designed around 5. The compact (4:3 family) row must pack any visible count against the island's right end without leaving the surface.
+	WideGridScope wide;
+	const Surface compactSurfaces[] = {{800, 600, "800x600"}, {1024, 768, "1024x768"}, {1280, 960, "1280x960"}};
+	for (const Surface &s : compactSurfaces)
+	{
+		const Result l = compute(s);
+		ASSERT_TRUE(l.valid) << s.name;
+		ASSERT_TRUE(l.powerHorizontal) << s.name;
+		for (int visible = 1; visible <= 11; ++visible)
+		{
+			const EnhancedHudPanels::CompactDock d = EnhancedHudPanels::compactDock(l, visible, s.w);
+			ASSERT_TRUE(d.valid) << s.name << " " << visible;
+			EXPECT_GE(d.plates.x, 0) << s.name << " " << visible;                          // the first plate stays on the surface
+			EXPECT_LE(d.plates.right(), s.w) << s.name << " " << visible;                  // the last one too
+			EXPECT_LE(d.plates.bottom(), l.island.y) << s.name << " " << visible;          // above the island, never over it
+			EXPECT_GE(d.plates.y, 0) << s.name << " " << visible;
+			EXPECT_EQ(d.row.w, visible * d.pitch) << s.name << " " << visible;             // the row is exactly as wide as the visible plates need
+		}
+	}
+}
+
+TEST(EnhancedHudZeroHour, TheColumnGlobalPowersFrameStaysClearOfTheIslandOnEverySurface)
+{
+	WideGridScope wide;
+	const Surface surfaces[] = {{1280, 720, "1280x720"}, {1920, 1080, "1920x1080"}, {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result l = compute(s);
+		ASSERT_TRUE(l.valid) << s.name;
+		ASSERT_FALSE(l.powerHorizontal) << s.name;
+		EXPECT_GE(l.powerFrame.x, 0) << s.name;
+		EXPECT_LE(l.powerFrame.right(), s.w) << s.name;
+		EXPECT_GE(l.powerFrame.y, 0) << s.name;
+		EXPECT_FALSE(l.powerFrame.intersects(l.island)) << s.name;                          // the dock never touches the island
+	}
+}

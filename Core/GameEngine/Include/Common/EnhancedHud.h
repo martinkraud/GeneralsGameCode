@@ -20,6 +20,8 @@ struct State
 {
 	bool requested = false;
 	bool active = false;
+	// presentation cost counters (read by the developer diagnostics only): frames drawn and the nanoseconds the frame draw took
+	unsigned long long drawFrames = 0, drawNanos = 0;
 	EnhancedHudLayout::Result layout;
 	EnhancedHudTheme::Faction faction = EnhancedHudTheme::Faction::Usa;
 };
@@ -39,8 +41,11 @@ inline EnhancedHudTheme::Faction faction() { return state().faction; }
 inline const EnhancedHudTheme::Theme &theme() { return EnhancedHudTheme::themeFor(state().faction); }
 
 // Re-evaluates the decision for the given side/surface and recomputes the layout. Returns the new `active`.
-inline bool update(bool modernDisplay, bool classic, const char *side, int surfaceW, int surfaceH, double layoutScale)
+// `commandGrid` is the control bar's command grid (12 slots in Generals, 14 in Zero Hour); it is selected before anything is laid out.
+inline bool update(bool modernDisplay, bool classic, const char *side, int surfaceW, int surfaceH, double layoutScale,
+                   EnhancedHudLayout::CommandGrid commandGrid = EnhancedHudLayout::CommandGrid::Standard)
 {
+	EnhancedHudLayout::setCommandGrid(commandGrid);
 	State &s = state();
 	s.layout = EnhancedHudLayout::Result();
 	s.active = false;
@@ -51,6 +56,8 @@ inline bool update(bool modernDisplay, bool classic, const char *side, int surfa
 	s.active = s.layout.valid;
 	return s.active;
 }
+
+inline void recordDraw(unsigned long long nanos) { State &s = state(); ++s.drawFrames; s.drawNanos += nanos; }
 
 inline void deactivate()
 {

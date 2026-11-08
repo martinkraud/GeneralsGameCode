@@ -62,6 +62,18 @@ constexpr Rect kXpFrame      = {851, 8, 141, 164};
 constexpr int kDividerX[3]   = {227, 398, 848};
 constexpr Rect kCashFrame    = {409, 10, 152,  26};   // dedicated money display panel (inside the command frame header)
 constexpr int kCommandScalePermille = 1200;   // the 6 x 2 button grid is drawn 1.20 x
+// Framework v1.1 (additive; the 6 x 2 grid above and every Generals number are untouched): the retail Zero Hour control bar has FOURTEEN command buttons, a 7 x 2 grid
+// of 50 x 44 buttons on a 55 unit pitch (ControlBar.wnd of the Zero Hour archives; 409 of its 413 command sets use slot 13 or 14). The same command frame holds it at 1.12 x.
+constexpr int kCommandScaleWidePermille = 1120;
+constexpr int kCommandSlotsStandard = 12;
+constexpr int kCommandSlotsWide = 14;
+// The command grid of the running title. Standard (12 slots, Generals) is the default and exactly the accepted v1 geometry; Wide (14 slots, Zero Hour) is selected once, when the
+// control bar scheme is initialised. A grid profile is data about the control bar, never about a faction.
+enum class CommandGrid { Standard, Wide };
+inline CommandGrid &commandGridRef() { static CommandGrid grid = CommandGrid::Standard; return grid; }
+inline void setCommandGrid(CommandGrid grid) { commandGridRef() = grid; }
+inline CommandGrid commandGrid() { return commandGridRef(); }
+inline int commandSlots() { return commandGrid() == CommandGrid::Wide ? kCommandSlotsWide : kCommandSlotsStandard; }
 constexpr int kInfoScalePermille = 1100;      // the selection block is drawn 1.10 x
 
 // Ratio of the surface width the island may take on non-compact surfaces.
@@ -196,6 +208,11 @@ inline Rect infoMap(const Rect &src)
 }
 inline Rect commandMap(const Rect &src)
 {
+	if (commandGrid() == CommandGrid::Wide)   // Zero Hour: the retail grid starts at (223, 494)
+	{
+		const int k = kCommandScaleWidePermille;
+		return {409 + ((src.x - 223) * k) / 1000, 44 + ((src.y - 494) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
+	}
 	const int k = kCommandScalePermille;
 	return {409 + ((src.x - 246) * k) / 1000, 44 + ((src.y - 493) * k) / 1000, (src.w * k) / 1000, (src.h * k) / 1000};
 }
@@ -287,6 +304,34 @@ inline const GroupWindow *infoGroup(int &count)
 // Containers (full 408 x 100 command area) and the twelve buttons of the command group (commandMap).
 inline const GroupWindow *commandGroup(int &count)
 {
+	if (commandGrid() == CommandGrid::Wide)
+	{
+		// ControlBar.wnd of Zero Hour (retail 800 x 600 coordinates): the same containers, fourteen buttons in 7 columns x 2 rows
+		static const GroupWindow wide[] = {
+			{"CommandWindow",             {189, 492, 417, 100}},
+			{"BeaconWindow",              {198, 492, 408, 100}},
+			{"UnderConstructionWindow",   {198, 492, 408, 100}},
+			{"ObserverPlayerInfoWindow",  {190, 492, 416, 100}},
+			{"ObserverPlayerListWindow",  {198, 492, 408, 100}},
+			{"OCLTimerWindow",            {200, 491, 408, 100}},
+			{"ButtonCommand01",           {223, 494,  50,  44}},
+			{"ButtonCommand02",           {223, 545,  50,  44}},
+			{"ButtonCommand03",           {278, 494,  50,  44}},
+			{"ButtonCommand04",           {278, 545,  50,  44}},
+			{"ButtonCommand05",           {333, 494,  50,  44}},
+			{"ButtonCommand06",           {333, 545,  50,  44}},
+			{"ButtonCommand07",           {388, 494,  50,  44}},
+			{"ButtonCommand08",           {388, 545,  50,  44}},
+			{"ButtonCommand09",           {443, 494,  50,  44}},
+			{"ButtonCommand10",           {443, 545,  50,  44}},
+			{"ButtonCommand11",           {498, 494,  50,  44}},
+			{"ButtonCommand12",           {498, 545,  50,  44}},
+			{"ButtonCommand13",           {553, 494,  50,  44}},
+			{"ButtonCommand14",           {553, 545,  50,  44}},
+		};
+		count = static_cast<int>(sizeof(wide) / sizeof(wide[0]));
+		return wide;
+	}
 	static const GroupWindow table[] = {
 		{"CommandWindow",             {198, 492, 408, 100}},
 		{"BeaconWindow",              {198, 492, 408, 100}},
@@ -328,9 +373,12 @@ inline bool destinationFor(const char *name, Rect &out, bool &hide)
 			out = commandMap(g->src);
 			// a container is the bounding box of the grid (the 408 x 100 retail area is wider than the frame)
 			if (std::strstr(name, "Button") == nullptr)
-				out = {commandMap(Rect{246, 493, 0, 0}).x - 6, commandMap(Rect{246, 493, 0, 0}).y - 6,
-				       commandMap(Rect{546, 546, 53, 45}).right() - commandMap(Rect{246, 493, 0, 0}).x + 12,
-				       commandMap(Rect{546, 546, 53, 45}).bottom() - commandMap(Rect{246, 493, 0, 0}).y + 12};
+			{
+				const bool wide = commandGrid() == CommandGrid::Wide;
+				const Rect first = commandMap(wide ? Rect{223, 494, 0, 0} : Rect{246, 493, 0, 0});
+				const Rect last = commandMap(wide ? Rect{553, 545, 50, 44} : Rect{546, 546, 53, 45});
+				out = {first.x - 6, first.y - 6, last.right() - first.x + 12, last.bottom() - first.y + 12};
+			}
 			return true;
 		}
 	return false;

@@ -136,6 +136,8 @@ inline const Policy *policies(int &count)
 		{"ButtonCommand10",      Class::AspectFit,   "command/build icon"},
 		{"ButtonCommand11",      Class::AspectFit,   "command/build icon"},
 		{"ButtonCommand12",      Class::AspectFit,   "command/build icon"},
+		{"ButtonCommand13",      Class::AspectFit,   "command/build icon (Zero Hour, 14-slot bar)"},
+		{"ButtonCommand14",      Class::AspectFit,   "command/build icon (Zero Hour, 14-slot bar)"},
 		// GenPowersShortcutBarUS.wnd
 		{"Power:ButtonCommand",  Class::AspectFit,   "special power icon (cooldown overlay still covers the whole plate)"},
 		{"Power:ButtonParent",   Class::FrameArt,    "button frame art, scaled uniformly with its column"},
