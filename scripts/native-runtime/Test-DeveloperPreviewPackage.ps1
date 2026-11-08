@@ -273,11 +273,14 @@ if ($Native) {
     $game = Join-Path $stageRoot 'game'
     $gameFull = [IO.Path]::GetFullPath($game).TrimEnd('\') + '\'
     # make it a CLEAN RETAIL installation: only unchanged legitimate files, and the 32-bit stand-in launcher (the real EA launcher is not available to this validator)
+    $prunedFrom = @{}
     foreach ($f in @(Get-ChildItem -LiteralPath $game -Recurse -File)) {
         $rel = ($f.FullName.Substring($gameFull.Length) -replace '\\', '/').ToLowerInvariant()
         $isLegit = $legit.ContainsKey($rel) -and $legit[$rel] -eq (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash
-        if (-not $isLegit) { [IO.File]::Delete($f.FullName) }
+        if (-not $isLegit) { [IO.File]::Delete($f.FullName); $prunedFrom[[IO.Path]::GetDirectoryName($f.FullName)] = $true }
     }
+    # the folders this cleanup emptied are not in a real retail install either (the baseline of the C8 byte-identical check must be what Steam would have)
+    foreach ($d in ($prunedFrom.Keys | Sort-Object { $_.Length } -Descending)) { $cur = $d; while ($cur.Length -gt $gameFull.Length -and -not (Get-ChildItem -LiteralPath $cur -Force -ErrorAction SilentlyContinue)) { Remove-Item -LiteralPath $cur -Force; $cur = [IO.Path]::GetDirectoryName($cur) } }
     # stage files may be hard links into the shared asset store: never write INTO one, delete the name first so the stand-in is a new file
     if (Test-Path -LiteralPath (Join-Path $game 'Generals.exe')) { [IO.File]::Delete((Join-Path $game 'Generals.exe')) }
     [IO.File]::WriteAllBytes((Join-Path $game 'Generals.exe'), $exeStub)
