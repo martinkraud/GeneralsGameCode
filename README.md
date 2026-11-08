@@ -7,6 +7,7 @@
 [![Generals](https://img.shields.io/badge/Generals-supported-555555)](#whats-the-state-of-each-title)
 [![Zero Hour](https://img.shields.io/badge/Zero%20Hour-supported-555555)](#whats-the-state-of-each-title)
 [![Status: Developer Preview](https://img.shields.io/badge/status-Developer%20Preview-orange)](docs/DEVELOPER_PREVIEW.md)
+[![Repository checks](https://github.com/martinkraud/GeneralsGameCode/actions/workflows/repo-checks.yml/badge.svg?branch=dev%2Fmodern-engine)](https://github.com/martinkraud/GeneralsGameCode/actions/workflows/repo-checks.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE.md)
 
 > An independent fork of [TheSuperHackers/GeneralsGameCode](https://github.com/TheSuperHackers/GeneralsGameCode). **This repository contains source code and tooling only: it does not contain, and the project does not distribute, any Electronic Arts game asset.** You need your own legitimate copy of the game.
