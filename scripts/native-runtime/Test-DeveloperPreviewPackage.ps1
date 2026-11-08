@@ -392,7 +392,7 @@ if ($Native) {
     $r = Invoke-Setup $uninstallPs @('-GameFolder', $game, '-Yes')
     Check ($r.Exit -eq 0) "C8 uninstall on the disposable copy exits 0$(if ($r.Exit) { ': ' + $r.Out })" 'C'
     $afterTree = Get-Tree $game
-    $diffLines = Compare-Object ($cleanTree -split "`n") ($afterTree -split "`n")
+    $diffLines = @(Compare-Object ($cleanTree -split "`n") ($afterTree -split "`n"))
     Check ($diffLines.Count -eq 0) "C8 after uninstall the disposable copy is byte-identical to the clean retail copy before the install$(if ($diffLines.Count) { ': ' + (($diffLines | Select-Object -First 4 | ForEach-Object { $_.InputObject }) -join '; ') })" 'C'
     if (-not $KeepTemp) { try { Remove-Item -LiteralPath $stageRoot -Recurse -Force } catch { Write-Warning "could not remove the disposable stage $stageRoot" } }
     $nativeReport = [ordered]@{ stage = $stageRoot; runs = @($runs.Keys | ForEach-Object { [ordered]@{ run = $_; exit = $runs[$_].Exit; out = $runs[$_].Out } }) }
