@@ -669,3 +669,12 @@ Read [ZERO_HOUR_MODERN_HUD.md](ZERO_HOUR_MODERN_HUD.md) first (archaeology, cove
 * **Dev harness:** `GENERALS_AUTOFLOW_SIDE=<army combo entry>` selects the human Skirmish slot's side without touching `Skirmish.ini` (never edit the owner's user data for captures); the `hud` checkpoint logs side, active, grid, island and frame-draw cost.
 * **Open:** owner acceptance (checklist in the milestone report); real clean-machine and two-PC multiplayer validation of DP1 remain pending; Boss has no native capture (not selectable as a human).
 * **Silhouette revision (same milestone, owner review):** the island is an envelope (band 180 + rise 36) with four chassis steps (`EnhancedHudLayout::shellSegments`) and a 20 unit wider radar module (`kRadarExtraW`); `bandTop` / `infoTop` / `rightTop` replace `island.y` where "the top of the HUD" meant the command region, the information step or the General module. Tests: `EnhancedHudSilhouette.*`; pin updated. Still awaiting OWNER acceptance.
+
+## Modern Experience gameplay UI and UX polish (2026-11-10; post-DP1; DP1 frozen at `c55234b5b`)
+
+Read [GAMEPLAY_UI_AUDIT.md](GAMEPLAY_UI_AUDIT.md) first. **Awaiting OWNER acceptance.** The stepped HUD (`71b013524`) was owner accepted and is not to be redesigned.
+
+* **Audit harness:** `GENERALS_AUTOFLOW=gameui` (Invoke-NativeAutoCapture `-Flow GameUi`) starts a Skirmish and captures messages / tooltip / quit menu / chat / Battle Overview / hide-show / General Powers through presentation entry points only; with `GENERALS_AUTOFLOW_SIDE` it needs no user data. Replays: `-loadreplay build\bench\<Title>-twilight4H-...rep` with `GENERALS_AUTOSHOT` gives the observer view.
+* **Pure rules:** `Common/GameplayTextLayout.h` (message size / wrap, superweapon list), `EnhancedHudPanels::overviewFitAboveHud`, `PopupProfile {Standard, Wide}`; all unit tested and gated on Modern (messages) or the Enhanced HUD being active.
+* **Lessons:** the native probe found two Zero Hour parity defects that layout tests had missed (popup mapping, Overview scale): the Overview skin scales by height (424 wide in Generals, 596 in Zero Hour); the Zero Hour retail popup is 394 x 431 with 4 / 15 / 4 powers; scaled retail rectangles come back with up to two units of rounding error, so the Wide popup table matches with a tolerance of 3.
+* **Not done on purpose:** a Modern tooltip skin, quit menu, observer HUD, pause overlay, toasts. Chat / disconnect and countdown timers could not be captured natively (multiplayer / script state).

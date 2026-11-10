@@ -7,6 +7,13 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-10 - Modern Experience gameplay UI and UX polish (post Developer Preview 1; awaiting owner acceptance)
+
+* **Owner accepted** the revised stepped Modern HUD at `71b013524`; the Zero Hour Modern HUD milestone is complete.
+* **Audit:** 37 gameplay UI surfaces of both titles classified (Modernized / Acceptable retail / Needs polish / Needs responsive fix / Functional defect / Classic-only / Out of scope) from the real window data, the code and a new native in-match probe; most retail UI was deliberately preserved ([GAMEPLAY_UI_AUDIT.md](docs/modernization/GAMEPLAY_UI_AUDIT.md)).
+* **Fixed (Modern only, Classic untouched):** in-match message lines wrap inside the surface and scale with the surface height (a long line ran off the right edge at 1024 x 768, the retail size is tiny at 1440p); the superweapon countdown is lifted above the Enhanced HUD (its INI anchor landed on the power meter); the Battle Overview skin is scaled by height (it was drawn 1.4 x too large in Zero Hour, over the HUD) and kept clear of the stepped HUD; the Zero Hour General Powers popup has its own mapping (the Generals one overlapped text and left the tier headers visible).
+* **Preserved on purpose:** tooltips (title-specific retail art), quit menu, observer bar, replay controls, score screens, campaign UI, multiplayer chat / disconnect windows.
+
 ## 2026-11-08 - Zero Hour Modern HUD and faction UI parity (post Developer Preview 1; awaiting owner acceptance)
 
 * **Revised before acceptance (owner review):** the Modern HUD (both titles) now has a stepped silhouette instead of one flat strip: a taller, wider minimap tower (radar window 187 x 188 against 167 x 152 reference units), a medium information step, the unchanged command region, and a modest General module rise. Classic unchanged. See [ZERO_HOUR_MODERN_HUD.md](docs/modernization/ZERO_HOUR_MODERN_HUD.md) section 5.1.

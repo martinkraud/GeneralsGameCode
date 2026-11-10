@@ -1,6 +1,6 @@
 # Zero Hour Modern HUD and Faction UI Parity (post Developer Preview 1)
 
-Status: **implemented and automatically / natively validated; awaiting OWNER visual and gameplay acceptance.** Not accepted yet.
+Status: **COMPLETE: owner accepted the revised stepped HUD at `71b013524`** (taller / larger minimap, stepped silhouette, raised information region, unchanged command geometry, raised General module, the Generals 12-slot and Zero Hour 14-slot grids, responsive behaviour, shared architecture, Classic preservation). Do not reopen it unless a concrete defect is found. The follow-up native gameplay UI audit ([GAMEPLAY_UI_AUDIT.md](GAMEPLAY_UI_AUDIT.md)) found and fixed two Zero Hour parity defects in the Enhanced HUD (the General Powers popup mapping and the Battle Overview scale).
 Developer Preview 1 is frozen at `c55234b5b` (tag `c55234b5b-dp1-rc`, local) and is not touched by this milestone; everything here is post-DP1 development.
 
 Scope: bring the accepted Modern ("Enhanced") gameplay HUD to Zero Hour. It is **not** a HUD redesign: the accepted Generals HUD
