@@ -1569,11 +1569,17 @@ void NativeAutoShot()
     // Challenge start, play, Esc -> Save/Load -> Save, quit to the main menu, Single Player -> Load Game -> Load, play on, save again.
     // "state" records (frame, side, money, objects, the engine's own logic CRC) before the save and after the load show whether the
     // world came back. Nothing about the world is constructed or edited here.
-    enum StepKind { LAN_FILL, SLOT_SIDE, SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
+    enum StepKind { GAMEUI_PROBE, LAN_FILL, SLOT_SIDE, SLOT_FILL, SLOT_PROBE, MATCH_UI, MAIN_UI, OPTIONS_UI, MATCH_SETUP, BROWSER_UI, CREDITS_UI, PRESS, PRESS_EITHER, PRESS_OPTIONAL, PUSH, QUIT_MENU, SELECT_ROW, STATE, WAIT_FRAMES, WAIT_INPUT, WAKE_MENU, END };
     struct Step { StepKind kind; const char *a; const char *b; unsigned wait; int where; };   // where: 0 any, 1 shell, 2 running game
     static const Step skirmishSteps[] = {
         { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { SLOT_SIDE, nullptr, nullptr, 60, 1 },
         { PRESS, "SkirmishGameOptionsMenu.wnd:ButtonStart", nullptr, 240, 1 }, { END, nullptr, nullptr, 0, 0 } };
+    // Gameplay UI audit (post Zero Hour HUD): a Skirmish, then the in-match UI surfaces one after the other (messages, command tooltip, quit menu, chat, Battle Overview, control bar hide / show),
+    // each captured. Presentation entry points only; nothing here touches the simulation.
+    static const Step gameUiSteps[] = {
+        { PUSH, "Menus/SkirmishGameOptionsMenu.wnd", nullptr, 600, 1 }, { SLOT_SIDE, nullptr, nullptr, 60, 1 },
+        { PRESS, "SkirmishGameOptionsMenu.wnd:ButtonStart", nullptr, 240, 1 }, { WAIT_FRAMES, nullptr, nullptr, 300, 2 }, { WAIT_INPUT, nullptr, nullptr, 1, 2 },
+        { GAMEUI_PROBE, nullptr, nullptr, 30, 2 }, { END, nullptr, nullptr, 0, 0 } };
     static const Step campaignSteps[] = {
         { WAKE_MENU, "MainMenu.wnd:MainMenuParent", nullptr, 600, 1 }, { PRESS, "MainMenu.wnd:ButtonSinglePlayer", nullptr, 60, 1 }, { PRESS, "MainMenu.wnd:ButtonUSA", nullptr, 300, 1 },
         { PRESS, "MainMenu.wnd:ButtonEasy", nullptr, 300, 1 }, { END, nullptr, nullptr, 0, 0 } };
@@ -1661,12 +1667,13 @@ void NativeAutoShot()
         if (!_stricmp(text, "credits")) return 12;
         if (!_stricmp(text, "lan")) return 13;
         if (!_stricmp(text, "skirmishsaveload")) return 14;
+        if (!_stricmp(text, "gameui")) return 15;
         return 0;
     }();
     static unsigned flowFrames = 0, stepAt = 0, stepIndex = 0, waitFromFrame = 0;
     static bool flowFailed = false;
     if (autoFlow && !flowFailed && TheGameEngine && TheWindowManager && TheShell) {
-        const Step *steps = autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 14 ? skirmishSaveLoadSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : autoFlow == 13 ? lanSteps : saveLoadSteps;
+        const Step *steps = autoFlow == 15 ? gameUiSteps : autoFlow == 1 ? skirmishSteps : autoFlow == 2 ? campaignSteps : autoFlow == 3 ? challengeSteps : autoFlow == 14 ? skirmishSaveLoadSteps : autoFlow == 5 ? slotSteps : autoFlow == 6 ? matchSteps : autoFlow == 7 ? mainSteps : autoFlow == 8 ? optionsSteps : autoFlow == 9 ? setupSteps : autoFlow == 10 ? replaySteps : autoFlow == 11 ? loadGameSteps : autoFlow == 12 ? creditsSteps : autoFlow == 13 ? lanSteps : saveLoadSteps;
         ++flowFrames;
         const Step &step = steps[stepIndex];
         const bool shell = TheGameLogic->isInShellGame();
@@ -2492,6 +2499,53 @@ void NativeAutoShot()
                 if (menu) {
                     TheWindowManager->winSendInputMsg(menu, GWM_CHAR, KEY_SPACE, KEY_STATE_DOWN);
                     advance("sent a key to", step.a); done = true;
+                }
+            } else if (step.kind == GAMEUI_PROBE) {
+                static unsigned gop = 0, gwait = 0;
+                if (gwait > 0) { --gwait; }
+                else {
+                    auto hoverCommand = [&](const char *name) {
+                        GameWindow *w = find(name);
+                        if (!w) return false;
+                        int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                        if (TheMouse) TheMouse->setPosition(x + ww / 2, y + hh / 2);
+                        ICoord2D pos = { x + ww / 2, y + hh / 2 };
+                        TheWindowManager->winProcessMouseEvent(GWM_MOUSE_POS, &pos, nullptr);
+                        return true;
+                    };
+                    switch (gop) {
+                    case 0: {   // messages: the retail message lines (named timers / subtitles are script driven and are audited from the code)
+                        if (TheInGameUI) {
+                            TheInGameUI->messageNoFormat(UnicodeString(L"Insufficient funds."));
+                            TheInGameUI->messageNoFormat(UnicodeString(L"Construction complete: Barracks."));
+                            TheInGameUI->messageNoFormat(UnicodeString(L"A long message to check wrapping and readability at the current resolution: your base is under attack by the enemy forces near the north-east supply depot."));
+                        }
+                        gwait = 40; gop = 1; break; }
+                    case 1: shoot("ui-messages"); hoverCommand("ControlBar.wnd:ButtonCommand01"); gwait = 90; gop = 2; break;
+                    case 2: shoot("ui-tooltip"); ToggleQuitMenu(); gwait = 200; gop = 3; break;
+                    case 3: shoot("ui-quitmenu"); ToggleQuitMenu(); gwait = 40; gop = 4; break;
+                    case 4: ToggleInGameChat(); gwait = 200; gop = 5; break;
+                    case 5: shoot("ui-chat"); ToggleInGameChat(); gwait = 40; gop = 6; break;
+                    case 6: ToggleDiplomacy(); gwait = 120; gop = 7; break;
+                    case 7: {
+                        // every large visible window (the Battle Overview audit: which window draws what)
+                        std::vector<GameWindow *> all;
+                        for (GameWindow *top = TheWindowManager->winGetWindowList(); top; top = top->winGetNext()) all.push_back(top);
+                        for (size_t i = 0; i < all.size(); ++i) {
+                            GameWindow *w = all[i]; int x, y, ww, hh; w->winGetScreenPosition(&x, &y); w->winGetSize(&ww, &hh);
+                            if (!w->winIsHidden() && ww > 250 && hh > 250) {
+                                sprintf_s(flowText, "%s [%d,%d %dx%d] top=%d", w->winGetInstanceData() ? w->winGetInstanceData()->m_decoratedNameString.str() : "?", x, y, ww, hh, w->winGetParent() ? 0 : 1);
+                                StartupDiagnostics::checkpoint("gameui", "window", flowText);
+                            }
+                            for (GameWindow *c = w->winGetChild(); c; c = c->winGetNext()) all.push_back(c);
+                        }
+                        } shoot("ui-diplomacy"); ToggleDiplomacy(); gwait = 40; gop = 8; break;
+                    case 8: ToggleControlBar(); gwait = 80; gop = 9; break;
+                    case 9: shoot("ui-bar-hidden"); ToggleControlBar(); gwait = 80; gop = 10; break;
+                    case 10: shoot("ui-bar-shown"); if (TheControlBar) TheControlBar->showPurchaseScience(); gwait = 150; gop = 11; break;
+                    case 11: shoot("ui-genpowers"); if (TheControlBar) TheControlBar->hidePurchaseScience(); gwait = 20; gop = 12; break;
+                    default: advance("gameplay UI probe complete", nullptr); done = true; break;
+                    }
                 }
             } else if (step.kind == QUIT_MENU) {
                 ToggleQuitMenu(); advance("opened the quit menu (Esc)", nullptr); done = true;
