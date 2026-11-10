@@ -280,6 +280,12 @@ void ControlBar::applyEnhancedLayout()
 		const Int surfaceW = TheDisplay ? (Int)TheDisplay->getWidth() : 800, surfaceH = TheDisplay ? (Int)TheDisplay->getHeight() : 600;
 		const double ui = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
 		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement( surfaceW, surfaceH, layout.infoTop, ui );
+		// the retail popup differs per title (Generals 296 x 432, Zero Hour 394 x 431 with more powers per tier): the shape of its REMEMBERED retail size picks the mapping
+		remember( s_purchase, gen );
+		{
+			const Original &retail = s_purchase[ gen ];
+			EnhancedHudPanels::setPopupProfile( EnhancedHudPanels::popupProfileForParent( retail.size.x, retail.size.y ) );
+		}
 		std::vector<GameWindow *> shownBefore;
 		for( GameWindow *ch = gen->winGetChild(); ch; ch = ch->winGetNext() )
 			if( !ch->winIsHidden() )
@@ -1887,6 +1893,33 @@ void purchasePanelDraw( GameWindow *window, WinInstanceData * )
 // ---- Battle Overview (Diplomacy.wnd) ---------------------------------------------------------------------------------------
 GameWindow *s_overviewRoot = nullptr;
 GameWinDrawFunc s_overviewDraw = nullptr;
+// The retail place and size of the Battle Overview and every window below it (position and size only; restored for Original)
+std::map<GameWindow *, Original> s_overviewGeom;
+GameWindow *s_overviewGeomRoot = nullptr;
+
+void rememberOverviewGeometry( GameWindow *win )
+{
+	if( !win || s_overviewGeom.find( win ) != s_overviewGeom.end() )
+		return;
+	Original o;
+	win->winGetPosition( &o.pos.x, &o.pos.y );
+	win->winGetSize( &o.size.x, &o.size.y );
+	o.hidden = FALSE;
+	s_overviewGeom[ win ] = o;
+	for( GameWindow *ch = win->winGetChild(); ch; ch = ch->winGetNext() )
+		rememberOverviewGeometry( ch );
+}
+
+void restoreOverviewGeometry()
+{
+	for( std::map<GameWindow *, Original>::const_iterator it = s_overviewGeom.begin(); it != s_overviewGeom.end(); ++it )
+	{
+		it->first->winSetPosition( it->second.pos.x, it->second.pos.y );
+		it->first->winSetSize( it->second.size.x, it->second.size.y );
+	}
+	s_overviewGeom.clear();
+	s_overviewGeomRoot = nullptr;
+}
 struct WindowArt { const Image *enabled; const Image *disabled; };
 std::map<GameWindow *, WindowArt> s_overviewArt;
 
@@ -1897,7 +1930,9 @@ void overviewDraw( GameWindow *window, WinInstanceData * )
 	const HudPalette c = makePalette();
 	const EnhancedHudTheme::Theme &th = *c.theme;
 	const HRect r = windowRect( window );
-	const double u = r.w / (double)EnhancedHudPanels::kOverviewW;
+	// The scale comes from the HEIGHT: the retail root is 397 tall in both titles but 424 wide in Generals and 596 wide in Zero Hour (the skin was first built from the Generals width, which drew the
+	// Zero Hour table 1.4 x too big and out of the window, over the HUD).
+	const double u = r.h / (double)EnhancedHudPanels::kOverviewH;
 	s_drawScale = std::max( 0.5, u );
 	const Int k = th.windowCorner == EnhancedHudTheme::Corner::Chamfer ? P( th.windowCornerRef ) : 0;
 	fillChassis( r, k, c );
@@ -1948,7 +1983,8 @@ void overviewDraw( GameWindow *window, WinInstanceData * )
 	}
 
 	// player table module and a plate behind every visible row
-	const HRect ts = EnhancedHudPanels::popupScaled( EnhancedHudPanels::kOverviewTable, u );
+	HRect ts = EnhancedHudPanels::popupScaled( EnhancedHudPanels::kOverviewTable, u );
+	ts.w = r.w - 2 * ts.x;      // the table spans the window whatever its width (424 in Generals, 596 in Zero Hour)
 	drawModule( HRect{ r.x + ts.x + P( 4 ), r.y + ts.y + P( 12 ), ts.w - P( 8 ), ts.h - P( 8 ) }, c, -1 );
 	const Int rowPitch = (Int)( EnhancedHudPanels::kOverviewRowPitch * u + 0.5 );
 	for( int row = 0; row < EnhancedHudPanels::kOverviewRows; ++row )
@@ -1987,6 +2023,36 @@ void EnhancedHudOverview::attach( GameWindow *root )
 		forget( root, TRUE );
 		return;
 	}
+	// Keep the overview clear of the stepped HUD: it keeps its retail x, moves up so that its bottom edge clears the highest step it overlaps, and is scaled down uniformly when the free height is
+	// smaller than the retail window (EnhancedHudPanels::overviewFitAboveHud). The retail geometry is remembered and restored for Original.
+	{
+		if( s_overviewGeomRoot != root )
+		{
+			if( s_overviewGeomRoot )
+				restoreOverviewGeometry();
+			s_overviewGeomRoot = root;
+		}
+		rememberOverviewGeometry( root );
+		const Original &home = s_overviewGeom[ root ];
+		const EnhancedHudLayout::Result &layout = EnhancedHud::layout();
+		// the HUD layout is in screen pixels, a window position is relative to its parent: offset = where the parent's origin is on the screen
+		Int curX = 0, curY = 0, scrX = 0, scrY = 0;
+		root->winGetPosition( &curX, &curY );
+		root->winGetScreenPosition( &scrX, &scrY );
+		const Int offX = scrX - curX, offY = scrY - curY;
+		const EnhancedHudLayout::Rect homeRect = { home.pos.x + offX, home.pos.y + offY, home.size.x, home.size.y };
+		const Int gap = std::max<Int>( 4, (Int)std::lround( 10 * layout.scale ) );
+		const EnhancedHudPanels::OverviewFit fit = EnhancedHudPanels::overviewFitAboveHud( layout, homeRect, gap );
+		auto geometry = []( GameWindow *w, int *out )
+		{
+			const Original &o = s_overviewGeom[ w ];
+			out[ 0 ] = o.pos.x; out[ 1 ] = o.pos.y; out[ 2 ] = o.size.x; out[ 3 ] = o.size.y;
+		};
+		root->winSetPosition( home.pos.x, fit.y - offY );
+		root->winSetSize( (Int)std::lround( home.size.x * fit.factor ), (Int)std::lround( home.size.y * fit.factor ) );
+		if( fit.factor < 1.0 || root->winGetChild() )
+			EnhancedHudWindows::scaleSubtree<GameWindow>( root, fit.factor, geometry );
+	}
 	if( s_overviewRoot == root )
 		return;
 	forget( s_overviewRoot, FALSE );
@@ -2015,6 +2081,8 @@ void EnhancedHudOverview::attach( GameWindow *root )
 
 void EnhancedHudOverview::forget( GameWindow *root, Bool restore )
 {
+	if( root && restore && s_overviewGeomRoot == root )
+		restoreOverviewGeometry();     // the retail place and size
 	if( !root || root != s_overviewRoot )
 		return;
 	if( restore )

@@ -33,6 +33,8 @@
 
 #include "Common/ActionManager.h"
 #include "Common/DisplayRuntime.h"
+#include "Common/GameplayTextLayout.h"
+#include "Common/ModernExperience.h"
 #include "Common/EnhancedHud.h"
 #include "Common/StartupDiagnostics.h"
 #include "Common/FramePacer.h"
@@ -2454,8 +2456,13 @@ void InGameUI::addMessageText( const UnicodeString& formattedMessage, const RGBC
 	m_uiMessages[ 0 ].fullText = formattedMessage;
 	m_uiMessages[ 0 ].timestamp = TheGameLogic->getFrame();
 	m_uiMessages[ 0 ].displayString = TheDisplayStringManager->newDisplayString();
-	m_uiMessages[ 0 ].displayString->setFont( TheFontLibrary->getFont( m_messageFont,
-																						TheGlobalLanguageData->adjustFontSize(m_messagePointSize), m_messageBold ) );
+	// Modern Experience: the line wraps inside the surface and its point size follows the surface height (GameplayTextLayout); Classic keeps the retail single line at the retail size
+	const bool modernText = DisplayRuntime::modern() && !ModernExperience::classic() && TheDisplay;
+	const Int messagePoints = modernText ? GameplayTextLayout::pointSize( TheGlobalLanguageData->adjustFontSize(m_messagePointSize), (Int)TheDisplay->getHeight() )
+	                                     : TheGlobalLanguageData->adjustFontSize(m_messagePointSize);
+	m_uiMessages[ 0 ].displayString->setFont( TheFontLibrary->getFont( m_messageFont, messagePoints, m_messageBold ) );
+	if( modernText )
+		m_uiMessages[ 0 ].displayString->setWordWrap( GameplayTextLayout::wrapWidth( (Int)TheDisplay->getWidth(), (Int)TheDisplay->getHeight(), m_messagePosition.x ) );
 	m_uiMessages[ 0 ].displayString->setText( m_uiMessages[ 0 ].fullText );
 
 	//
@@ -3848,8 +3855,14 @@ void InGameUI::postDraw()
 				// draw the text
 				m_uiMessages[ i ].displayString->draw( x, y, m_uiMessages[ i ].color, dropColor );
 
-				// increment text spot to next location
-				if (GameFont *font = m_uiMessages[ i ].displayString->getFont())
+				// increment text spot to next location (a wrapped Modern line is as tall as its lines)
+				if (DisplayRuntime::modern() && !ModernExperience::classic())
+				{
+					Int lineHeight = 0;
+					m_uiMessages[ i ].displayString->getSize( nullptr, &lineHeight );
+					y += lineHeight;
+				}
+				else if (GameFont *font = m_uiMessages[ i ].displayString->getFont())
 				{
 					y += font->height;
 				}
@@ -3897,6 +3910,15 @@ void InGameUI::postDraw()
 		Int startY = DisplayRuntime::hudY(m_superweaponPosition.y, TheDisplay->getHeight());
 
 		Int bottomMargin = (Int)( (Real)TheTacticalView->getHeight() * 0.82f );
+
+		// Modern Experience with the Enhanced HUD: the INI anchor (70 % down the bottom-anchored 800 x 600 block) lands exactly on the top of the command region (over the power meter) and the
+		// retail 82 % margin lies inside the HUD, so the list is lifted to sit above the HUD (room for four lines) and the margin is the HUD's top.
+		if( EnhancedHud::active() )
+		{
+			const Int hudTop = (Int)EnhancedHud::layout().bandTop;
+			bottomMargin = GameplayTextLayout::superweaponMargin( bottomMargin, hudTop );
+			startY = GameplayTextLayout::superweaponStartY( startY, hudTop, DisplayRuntime::referenceScaleY( TheDisplay->getHeight() ) );
+		}
 
 
 

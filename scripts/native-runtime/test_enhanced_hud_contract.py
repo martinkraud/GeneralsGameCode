@@ -382,7 +382,7 @@ class EnhancedHudContracts(unittest.TestCase):
         import hashlib
         pins = {
             "Core/GameEngine/Include/Common/EnhancedHudLayout.h": "480708ce6b4f0b39e1e6ecfd2db722b16efa505d013deb5bea6c4210b464e3eb",
-            "Core/GameEngine/Include/Common/EnhancedHudWindows.h": "0b83d551690699dd0fee50e8895e31d527ff6be267ddcf823dadec7c7d80c125",
+            "Core/GameEngine/Include/Common/EnhancedHudWindows.h": "d574755aa07213d9dfec4444d20f3854ff9362461a25fa79807e2d93a9495790",
         }
         for path, digest in pins.items():
             data = (ROOT / path).read_bytes().replace(chr(13).encode() + chr(10).encode(), chr(10).encode())

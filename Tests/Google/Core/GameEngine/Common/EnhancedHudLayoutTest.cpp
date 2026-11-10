@@ -13,6 +13,7 @@
 #include "Common/EnhancedHud.h"
 #include "Common/EnhancedHudImageFit.h"
 #include "Common/EnhancedHudTheme.h"
+#include "Common/GameplayTextLayout.h"
 #include "Common/EnhancedHudLayout.h"
 #include "Common/EnhancedHudPanels.h"
 #include "Common/OptionsPageLayout.h"
@@ -2030,4 +2031,180 @@ TEST(EnhancedHudSilhouette, TheTallRadarDoesNotConsumeAnUnreasonableShareOfTheVi
 		const double towerShare = static_cast<double>(seg[0].w) / r.island.w;
 		EXPECT_LT(towerShare, 0.30) << s.name;
 	}
+}
+
+// ---- Gameplay UI polish: message lines and the Battle Overview ------------------------------------------------------------------------------------------------------------------
+
+TEST(GameplayTextLayout, MessageSizeFollowsTheSurfaceHeightAndNeverShrinksBelowRetail)
+{
+	using namespace GameplayTextLayout;
+	EXPECT_EQ(scalePercent(0), 100);
+	EXPECT_EQ(scalePercent(600), 100);       // the retail sizes are kept on small surfaces
+	EXPECT_EQ(scalePercent(768), 100);
+	EXPECT_EQ(scalePercent(900), 100);
+	EXPECT_EQ(scalePercent(1080), 120);
+	EXPECT_EQ(scalePercent(1440), 160);
+	EXPECT_EQ(scalePercent(4000), kMaxScalePercent);
+	EXPECT_EQ(pointSize(10, 768), 10);
+	EXPECT_EQ(pointSize(10, 1440), 16);
+	for (int h = 300; h <= 4000; h += 50)
+		EXPECT_GE(scalePercent(h + 50), scalePercent(h)) << h;       // monotonic
+}
+
+TEST(GameplayTextLayout, AWrappedMessageNeverRunsOffTheSurfaceOrAcrossAnUltrawideOne)
+{
+	using namespace GameplayTextLayout;
+	const struct { int w, h; } surfaces[] = {{640, 480}, {800, 600}, {1024, 768}, {1280, 720}, {1920, 1080}, {2560, 1440}, {3440, 1440}, {5120, 1440}};
+	for (const auto &s : surfaces)
+	{
+		const int width = wrapWidth(s.w, s.h, 10);
+		EXPECT_GT(width, 0) << s.w << "x" << s.h;
+		EXPECT_LE(10 + width, s.w - 10) << s.w << "x" << s.h;                       // the line ends inside the surface, with the origin margin on the right as well
+		EXPECT_LE(width, kMaxLineWidth * scalePercent(s.h) / 100) << s.w << "x" << s.h;   // and is never absurdly wide on an ultrawide surface
+	}
+	EXPECT_EQ(wrapWidth(1024, 768, 10), 900);       // 1024 x 768: the failure the native probe found (a long line ran off the right edge)
+	EXPECT_EQ(wrapWidth(5120, 1440, 10), 1440);
+}
+
+TEST(EnhancedHudOverview, TheBattleOverviewClearsTheSteppedHudKeepsItsRetailAnchorAndOnlyShrinksWhenItMust)
+{
+	const Surface surfaces[] = {{800, 600, "800x600"}, {1024, 768, "1024x768"}, {1280, 720, "1280x720"}, {1920, 1080, "1920x1080"}, {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result r = compute(s);
+		ASSERT_TRUE(r.valid) << s.name;
+		const int gap = std::max(4, static_cast<int>(std::lround(10 * r.scale)));
+		// the retail overview root: 596 x 397 reference units at the layout scale, left of centre, reaching down into the old 800 x 600 control bar
+		const double ui = r.scale;
+		Rect home = {std::max(0, static_cast<int>(s.w * 0.30 - 298 * ui)), static_cast<int>(s.h * 0.10), static_cast<int>(596 * ui), static_cast<int>(397 * ui)};
+		const EnhancedHudPanels::OverviewFit fit = EnhancedHudPanels::overviewFitAboveHud(r, home, gap);
+		EXPECT_GE(fit.y, 0) << s.name;
+		EXPECT_GE(fit.factor, EnhancedHudPanels::kOverviewMinFactor) << s.name;
+		EXPECT_LE(fit.factor, 1.0) << s.name;
+		Rect moved = {home.x, fit.y, static_cast<int>(std::lround(home.w * fit.factor)), static_cast<int>(std::lround(home.h * fit.factor))};
+		EXPECT_FALSE(silhouetteIntersects(r, moved)) << s.name << " the overview must not cover the HUD";   // after the fit nothing of it lies over the chassis
+		if (!silhouetteIntersects(r, home))
+		{
+			EXPECT_EQ(fit.y, home.y) << s.name;                       // a window that already clears the HUD is left alone ...
+			EXPECT_EQ(fit.factor, 1.0) << s.name;                     // ... and is not scaled
+		}
+		else
+			EXPECT_LE(fit.y, home.y) << s.name;                       // otherwise it only ever moves up
+	}
+	// one that clearly reaches into the HUD and fits above it is moved, not scaled; one far above it is untouched
+	const Result r = compute({1920, 1080, "1920x1080"});
+	const Rect low = {200, r.island.y - 50, 600, 300};
+	const EnhancedHudPanels::OverviewFit moved = EnhancedHudPanels::overviewFitAboveHud(r, low, 10);
+	EXPECT_LT(moved.y, low.y);
+	EXPECT_EQ(moved.factor, 1.0);
+	const Rect high = {200, 10, 600, 200};
+	EXPECT_EQ(EnhancedHudPanels::overviewFitAboveHud(r, high, 10).y, 10);
+	// one taller than the free height is shrunk, never below the minimum factor
+	const Rect tall = {200, 0, 900, r.island.y + 400};
+	const EnhancedHudPanels::OverviewFit shrunk = EnhancedHudPanels::overviewFitAboveHud(r, tall, 10);
+	EXPECT_LT(shrunk.factor, 1.0);
+	EXPECT_GE(shrunk.factor, EnhancedHudPanels::kOverviewMinFactor);
+}
+
+TEST(GameplayTextLayout, TheSuperweaponCountdownListSitsAboveTheEnhancedHudOnEverySurface)
+{
+	const Surface surfaces[] = {{1024, 768, "1024x768"}, {1280, 720, "1280x720"}, {1920, 1080, "1920x1080"}, {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : surfaces)
+	{
+		const Result r = compute(s);
+		const double ui = r.scale;
+		// the retail INI anchor in Modern: the bottom-anchored 800 x 600 block, 0.7 down = 180 reference units above the surface bottom (the HUD's band top is where it lands)
+		const int anchorY = s.h - static_cast<int>(180 * ui);
+		const int start = GameplayTextLayout::superweaponStartY(anchorY, r.bandTop, ui);
+		EXPECT_LT(start, r.bandTop) << s.name;                                           // never starts inside the HUD
+		EXPECT_LE(start + static_cast<int>(64 * ui), r.bandTop) << s.name;               // room for four lines above it
+		EXPECT_LE(GameplayTextLayout::superweaponMargin(static_cast<int>(s.h * 0.82), r.bandTop), r.bandTop) << s.name;
+		EXPECT_GE(start, 0) << s.name;
+		const int high = r.bandTop - 600;                                                // an anchor already far above the HUD is not moved
+		EXPECT_EQ(GameplayTextLayout::superweaponStartY(high, r.bandTop, ui), std::min(high, r.bandTop - 6 - static_cast<int>(64 * ui))) << s.name;
+	}
+}
+
+// ---- General Powers popup, Zero Hour profile (native audit of the gameplay UI milestone: the Generals mapping overlapped text in Zero Hour) -------------------------------------
+
+namespace
+{
+struct PopupProfileScope
+{
+	explicit PopupProfileScope(EnhancedHudPanels::PopupProfile p) { EnhancedHudPanels::setPopupProfile(p); }
+	~PopupProfileScope() { EnhancedHudPanels::setPopupProfile(EnhancedHudPanels::PopupProfile::Standard); }
+};
+// every window of the retail Zero Hour GeneralsExpPoints.wnd (relative to its 394 x 431 parent; ControlBar archives of the Zero Hour Steam release)
+struct ZhPopupWindow { const char *name; int x, y, w, h; bool power; };
+const ZhPopupWindow kZhPopup[] = {
+	{"header", 27, 0, 350, 34, false}, {"tier1 text", 22, 54, 350, 24, false}, {"level", 305, 6, 69, 26, false}, {"exit", 301, 386, 75, 21, false}, {"title", 114, 3, 160, 25, false},
+	{"exp housing", 112, 31, 167, 18, false}, {"exp bar", 114, 36, 161, 8, false}, {"points", 329, 30, 23, 26, false}, {"tier3 text", 22, 140, 350, 24, false}, {"tier5 text", 21, 328, 350, 24, false},
+	{"R1N0", 37, 83, 56, 48, true}, {"R1N1", 105, 83, 56, 48, true}, {"R1N2", 173, 83, 56, 48, true}, {"R1N3", 241, 83, 56, 48, true},
+	{"R3N0", 37, 170, 56, 48, true}, {"R3N3", 105, 170, 56, 48, true}, {"R3N6", 173, 170, 56, 48, true}, {"R3N9", 241, 170, 56, 48, true}, {"R3N12", 310, 170, 56, 48, true},
+	{"R3N1", 37, 222, 56, 48, true}, {"R3N4", 105, 222, 56, 48, true}, {"R3N7", 173, 222, 56, 48, true}, {"R3N10", 241, 222, 56, 48, true}, {"R3N13", 310, 222, 56, 48, true},
+	{"R3N2", 37, 274, 56, 48, true}, {"R3N5", 105, 274, 56, 48, true}, {"R3N8", 173, 274, 56, 48, true}, {"R3N11", 241, 275, 56, 48, true}, {"R3N14", 310, 275, 56, 48, true},
+	{"R8N0", 37, 357, 56, 48, true}, {"R8N1", 105, 357, 56, 48, true}, {"R8N2", 173, 357, 56, 48, true}, {"R8N3", 237, 362, 56, 48, true},
+};
+}
+
+TEST(EnhancedHudPopupProfile, TheShapeOfTheRetailPopupPicksTheProfile)
+{
+	using namespace EnhancedHudPanels;
+	EXPECT_EQ(popupProfileForParent(296, 432), PopupProfile::Standard);      // Generals
+	EXPECT_EQ(popupProfileForParent(394, 431), PopupProfile::Wide);          // Zero Hour
+	EXPECT_EQ(popupProfileForParent(296 * 3 / 2, 432 * 3 / 2), PopupProfile::Standard);   // scaled retail windows keep their aspect
+	EXPECT_EQ(popupProfileForParent(394 * 3 / 2, 431 * 3 / 2), PopupProfile::Wide);
+	EXPECT_EQ(popupProfileForParent(100, 0), PopupProfile::Standard);
+	EXPECT_EQ(popupRetailW(), 296);                                          // the default is the accepted Generals profile
+}
+
+TEST(EnhancedHudPopupProfile, EveryZeroHourPopupWindowMapsOnceInsideTheConsoleWithoutOverlappingPowers)
+{
+	using namespace EnhancedHudPanels;
+	PopupProfileScope wide(PopupProfile::Wide);
+	EXPECT_EQ(popupRetailW(), 394);
+	std::vector<Rect> powers, targets;
+	for (const ZhPopupWindow &w : kZhPopup)
+	{
+		const PopupTarget t = popupTarget({w.x, w.y, w.w, w.h});
+		ASSERT_TRUE(t.valid) << w.name;
+		EXPECT_TRUE(t.rect.within(Rect{0, 0, kPopupNewW, kPopupNewH})) << w.name;
+		for (const Rect &o : targets)
+			EXPECT_FALSE(t.rect.x == o.x && t.rect.y == o.y && t.rect.w == o.w && t.rect.h == o.h) << w.name << " collides";
+		targets.push_back(t.rect);
+		if (w.power)
+			powers.push_back(t.rect);
+	}
+	ASSERT_EQ(powers.size(), 23u);                                               // 4 + 15 + 4 powers
+	for (size_t a = 0; a < powers.size(); ++a)
+		for (size_t b = a + 1; b < powers.size(); ++b)
+			EXPECT_FALSE(powers[a].intersects(powers[b])) << a << "/" << b;       // every power is individually clickable
+	// the tiers: powers sit inside their tier module, the 15 powers of tier 3 form a 5 x 3 grid
+	int tier3 = 0;
+	for (const Rect &p : powers)
+	{
+		if (p.y >= kPopupNewTier1.y && p.bottom() <= kPopupNewTier1.bottom()) continue;
+		if (p.y >= kPopupNewTier5.y) { EXPECT_TRUE(p.within(kPopupNewTier5)); continue; }
+		EXPECT_TRUE(p.within(kPopupNewTier3)); ++tier3;
+	}
+	EXPECT_EQ(tier3, 15);
+	// the retail tier header texts, the level and the points count are replaced by the Enhanced readouts (hidden), the title and the bar are kept
+	EXPECT_TRUE(popupTarget({22, 54, 350, 24}).hide);
+	EXPECT_TRUE(popupTarget({22, 140, 350, 24}).hide);
+	EXPECT_TRUE(popupTarget({21, 328, 350, 24}).hide);
+	// the rectangles measured in the running game (the retail windows scaled by the UI scale and divided back): within the matching tolerance
+	EXPECT_TRUE(popupTarget({22, 55, 352, 24}).hide);                             // 1 star header text
+	EXPECT_TRUE(popupTarget({22, 141, 352, 24}).hide);                            // 3 star header text
+	EXPECT_TRUE(popupTarget({21, 330, 352, 24}).hide);                            // 5 star header text
+	EXPECT_FALSE(popupTarget({114, 3, 161, 25}).hide);                            // the title
+	EXPECT_TRUE(popupTarget({305, 6, 69, 26}).hide);
+	EXPECT_FALSE(popupTarget({114, 3, 160, 25}).hide);
+	// the Done button stays to the right of the last power of the 5 star row
+	const PopupTarget exitButton = popupTarget({301, 386, 75, 21});
+	const PopupTarget lastPower = popupTarget({237, 362, 56, 48});
+	EXPECT_GT(exitButton.rect.x, lastPower.rect.right());
+	// the Zero Hour window is not the Generals one: the Generals mapping is untouched by the profile
+	PopupProfileScope standard(PopupProfile::Standard);
+	EXPECT_FALSE(popupTarget({22, 54, 350, 24}).valid);                          // a Zero Hour rectangle is unknown to the Generals table
+	EXPECT_TRUE(popupTarget({0, 76, 296, 24}).valid);
 }

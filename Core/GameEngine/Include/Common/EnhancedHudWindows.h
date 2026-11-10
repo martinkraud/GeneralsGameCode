@@ -205,7 +205,7 @@ void applyPopupLayout(Win *parent, const Rect &placement, double f, Original &&o
 {
 	int po[4] = {0, 0, 0, 0};
 	original(parent, po);
-	const double s0 = po[2] > 0 ? po[2] / static_cast<double>(EnhancedHudPanels::kPopupW) : 1.0;
+	const double s0 = po[2] > 0 ? po[2] / static_cast<double>(EnhancedHudPanels::popupRetailW()) : 1.0;
 	parent->winSetPosition(placement.x, placement.y);
 	parent->winSetSize(placement.w, placement.h);
 	for (Win *child = parent->winGetChild(); child; child = child->winGetNext())

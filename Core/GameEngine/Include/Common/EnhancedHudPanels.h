@@ -136,6 +136,16 @@ constexpr Rect kPopupHeader = {0, 0, 296, 76};          // title, level, experie
 constexpr Rect kPopupRank1 = {0, 76, 296, 84};          // "1 star" header text + three powers
 constexpr Rect kPopupRank3 = {0, 160, 296, 188};        // "3 star" header text + twelve powers (4 columns x 3 rows)
 constexpr Rect kPopupRank8 = {0, 348, 296, 84};         // "5 star" header text + one power + the exit button (same row)
+// The retail Zero Hour popup (GeneralsExpPoints.wnd of the Zero Hour archives, native audit of the gameplay UI milestone) is a different window: parent 394 x 431, tier 1 with FOUR powers, tier 3 with
+// FIFTEEN (5 columns x 3 rows), tier 5 (retail Rank8) with four, its own header geometry and no "Experience" / "Remaining points" labels. The Standard profile is the Generals window the console was
+// accepted on; Wide is selected by the shape of the retail popup (EnhancedHudPanels::popupProfileForParent) and maps the Zero Hour windows into the same 440 x 508 console.
+enum class PopupProfile { Standard, Wide };
+inline PopupProfile &popupProfileRef() { static PopupProfile p = PopupProfile::Standard; return p; }
+inline void setPopupProfile(PopupProfile p) { popupProfileRef() = p; }
+constexpr int kPopupWideW = 394, kPopupWideH = 431;
+inline int popupRetailW() { return popupProfileRef() == PopupProfile::Wide ? kPopupWideW : 296; }
+// Which retail popup this is, from its (remembered, unmodified) size: Generals 296 x 432 (aspect 0.69), Zero Hour 394 x 431 (aspect 0.91).
+inline PopupProfile popupProfileForParent(int width, int height) { return height > 0 && width * 10 > height * 8 ? PopupProfile::Wide : PopupProfile::Standard; }
 inline Rect popupScaled(const Rect &r, double scale)
 {
 	return {static_cast<int>(std::lround(r.x * scale)), static_cast<int>(std::lround(r.y * scale)),
@@ -199,6 +209,40 @@ inline int popupClamp(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi
 // retail parent. Windows that are not part of the retail GeneralsExpPoints.wnd layout are reported invalid and left alone.
 inline PopupTarget popupTarget(const Rect &r)
 {
+	if (popupProfileRef() == PopupProfile::Wide)
+	{
+		// Zero Hour: relative rectangles of GeneralsExpPoints.wnd (parent 394 x 431)
+		struct WideEntry { int rx, ry, rw, rh; Rect to; bool hide; };
+		static const WideEntry wide[] = {
+			{27, 0, 350, 34, kPopupNewHeader, false},                  // header decoration window
+			{114, 3, 160, 25, {18, 14, 190, 26}, false},               // StaticTextTitle (rank name)
+			{305, 6, 69, 26, {216, 14, 100, 26}, true},                // StaticTextLevel (drawn as "RANK n / N")
+			{112, 31, 167, 18, {88, 50, 170, 18}, false},              // experience bar housing
+			{114, 36, 161, 8, {91, 55, 164, 8}, false},                // ProgressBarExperience
+			{329, 30, 23, 26, {370, 48, 23, 31}, true},                // StaticTextRankPointsAvailable (drawn large)
+			{22, 54, 350, 24, {14, 106, 412, 24}, true},               // 1 star header text
+			{22, 140, 350, 24, {14, 198, 412, 24}, true},              // 3 star header text
+			{21, 328, 350, 24, {14, 416, 412, 24}, true},              // 5 star header text
+			{301, 386, 75, 21, {344, 452, 80, 32}, false},             // ButtonExit
+		};
+		// the scaled retail rectangles come back from the window sizes with a rounding error of up to two units at the larger UI scales (measured in the running game): a tolerance of 3
+		auto near3 = [](int a, int b) { return a - b <= 3 && b - a <= 3; };
+		for (const WideEntry &e : wide)
+			if (near3(r.x, e.rx) && near3(r.y, e.ry) && near3(r.w, e.rw) && near3(r.h, e.rh))
+				return {true, e.to, e.hide};
+		if (near3(r.w, 56) && near3(r.h, 48))                     // a power button: 80 unit column pitch, five columns
+		{
+			if (r.y < 140)                                        // 1 star: four in a row
+				return {true, {72 + 80 * popupClamp((r.x - 37 + 34) / 68, 0, 3), 132, r.w, r.h}, false};
+			if (r.y < 328)                                        // 3 star: column c (0..4), row k (0..2)
+			{
+				const int col = popupClamp((r.x - 37 + 34) / 68, 0, 4), row = popupClamp((r.y - 170 + 26) / 52, 0, 2);
+				return {true, {32 + 80 * col, kPopupGridY0 + kPopupGridPitchY * row, r.w, r.h}, false};
+			}
+			return {true, {32 + 80 * popupClamp((r.x - 37 + 34) / 68, 0, 3), 444, r.w, r.h}, false};     // 5 star: four in a row, the exit button at the right
+		}
+		return {false, {}, false};
+	}
 	struct Entry { int rx, ry, rw, rh; Rect to; bool hide; };
 	static const Entry table[] = {
 		{0, 0, 296, 34, kPopupNewHeader, false},                   // header decoration window
@@ -285,6 +329,29 @@ inline CompactDock compactDock(const EnhancedHudLayout::Result &l, int visible, 
 	d.rail = (bottom < l.rightTop) ? Rect{left, bottom, plateRight - left, l.rightTop - bottom} : Rect{};
 	d.valid = true;
 	return d;
+}
+
+// The Battle Overview is the retail window skinned in place: it keeps its retail place, which was authored over the 800 x 600 control bar and so reaches into the stepped HUD (it covered the
+// radar, the information step and part of the command region). When its rectangle touches the chassis it is moved straight up so that its bottom edge clears the highest step it overlaps
+// horizontally, by `gap`; it never leaves the top of the surface. x never changes (the retail left anchor is kept), and a window that already clears the HUD is not moved at all.
+constexpr double kOverviewMinFactor = 0.55;
+struct OverviewFit { int y; double factor; };
+inline OverviewFit overviewFitAboveHud(const EnhancedHudLayout::Result &l, const Rect &window, int gap)
+{
+	if (!l.valid || !EnhancedHudLayout::silhouetteIntersects(l, window))
+		return {window.y, 1.0};
+	Rect seg[4];
+	EnhancedHudLayout::shellSegments(l, seg);
+	int highest = l.island.bottom();
+	for (const Rect &s : seg)
+		if (s.x < window.right() && window.x < s.right())
+			highest = std::min(highest, s.y);
+	const int room = std::max(1, highest - gap);              // free height above the highest step it overlaps
+	if (window.h <= room)
+		return {room - window.h, 1.0};                          // it fits: bottom edge just above the HUD
+	// it does not fit (the retail window is tall and the HUD is tall): scale it down uniformly to the free height, never below kOverviewMinFactor
+	const double f = std::max(kOverviewMinFactor, static_cast<double>(room) / window.h);
+	return {std::max(0, room - static_cast<int>(std::lround(window.h * f))), f};
 }
 
 // Where the retail hover tooltip (ControlBarPopupDescription) is placed. The tooltip window is an ENABLED window on top of the
