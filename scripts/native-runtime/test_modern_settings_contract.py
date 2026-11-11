@@ -98,7 +98,7 @@ class ModernSettingsContracts(unittest.TestCase):
                      "SliderSFXVolume": "SFX / Music / Voice volume", "SliderMusicVolume": "SFX / Music / Voice volume",
                      "SliderVoiceVolume": "SFX / Music / Voice volume", "CheckAlternateMouse": "Alternate Mouse",
                      "SliderScrollSpeed": "Scroll Speed", "CheckBoxDrawAnchor": "Draw scroll anchor", "CheckBoxMoveAnchor": "Move scroll anchor",
-                     "ModernMotion": "Unit Motion", "ModernInterface": "Interface", "CheckLanguageFilter": "Language filter",
+                     "ModernMotion": "Unit Motion", "ModernInterface": "Interface", "ModernSelectionRing": "Selection Ring", "CheckLanguageFilter": "Language filter",
                      "CheckBoxUseCamera": "Use camera", "CheckBoxSaveCamera": "Save camera",
                      "CheckDoubleClickAttackMove": "Double-click attack move", "Retaliation": "Retaliation", "ComboBoxIP": "LAN IP address",
                      "ComboBoxOnlineIP": "Online IP address", "TextEntryFirewallPortOverride": "Firewall port override", "ButtonFirewallRefresh": "Refresh NAT"}

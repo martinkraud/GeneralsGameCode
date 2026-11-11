@@ -123,6 +123,7 @@ constexpr PageItem kNetworkItems[] = {
 constexpr PageItem kModernItems[] = {
 	{"ModernMotionLabel", "ModernMotion", ControlKind::Combo},
 	{"ModernInterfaceLabel", "ModernInterface", ControlKind::Combo},   // Original | Enhanced (USA, China, GLA)
+	{"ModernSelectionRingLabel", "ModernSelectionRing", ControlKind::Combo},   // On | Off: the ground ring around selected units and structures
 };
 
 // Retail checkboxes that Modern Options restored. In the retail layout they are children of the Options root, not of the panel that

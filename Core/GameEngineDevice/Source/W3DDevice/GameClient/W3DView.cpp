@@ -91,6 +91,8 @@
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DView.h"
 #include "Common/DisplayRuntime.h"
+#include "Common/ModernExperience.h"
+#include "Common/SelectionRingStyle.h"
 #include "d3dx8math.h"
 #include "W3DDevice/GameClient/W3DShaderManager.h"
 #include "W3DDevice/GameClient/Module/W3DModelDraw.h"
@@ -1313,7 +1315,10 @@ void W3DView::drawNativeWorldOverlays()
 	{
 		const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
 		Player *local = rts::getObservedOrLocalPlayer();
-		if (selected && !selected->empty())
+		// Modern: the restrained ring (or none, Options > Modern Experience > Selection Ring); Classic: the retail ring, the preference ignored. Decided once per frame.
+		const Bool modernRing = DisplayRuntime::modern() && !ModernExperience::classic();
+		const SelectionRing::Style ringProbe = SelectionRing::styleFor(modernRing, SelectionRing::preference(), SelectionRing::Relation::Own, (Int)TheDisplay->getHeight());
+		if (selected && !selected->empty() && ringProbe.draw)
 		{
 			TheDisplay->beginBatch();
 			for (DrawableListCIt it = selected->begin(); it != selected->end(); ++it)
@@ -1322,15 +1327,17 @@ void W3DView::drawNativeWorldOverlays()
 				if (!draw || draw->isDrawableEffectivelyHidden())
 					continue;
 				const Object *obj = draw->getObject();
-				UnsignedInt color = GameMakeColor(255, 255, 255, 255);
+				SelectionRing::Relation relation = SelectionRing::Relation::Other;
 				if (obj && local)
 				{
 					const Player *owner = obj->getControllingPlayer();
 					if (owner == local)
-						color = GameMakeColor(40, 255, 40, 255);
+						relation = SelectionRing::Relation::Own;
 					else if (owner && local->getRelationship(obj->getTeam()) == ENEMIES)
-						color = GameMakeColor(255, 40, 40, 255);
+						relation = SelectionRing::Relation::Enemy;
 				}
+				const SelectionRing::Style ring = SelectionRing::styleFor(modernRing, SelectionRing::preference(), relation, (Int)TheDisplay->getHeight());
+				const UnsignedInt color = GameMakeColor(ring.r, ring.g, ring.b, ring.a);
 				Real radius = draw->getDrawableGeometryInfo().getBoundingCircleRadius();
 				if (radius < 6.0f) radius = 6.0f;
 				const Coord3D *center = draw->getPosition();
@@ -1348,7 +1355,7 @@ void W3DView::drawNativeWorldOverlays()
 					ICoord2D s;
 					const Bool visible = worldToScreen(&p, &s);
 					if (visible && havePrevious)
-						TheDisplay->drawLine(previous.x, previous.y, s.x, s.y, 2.0f, color);
+						TheDisplay->drawLine(previous.x, previous.y, s.x, s.y, ring.width, color);
 					if (visible && first) { firstPoint = s; first = FALSE; }
 					havePrevious = visible;
 					previous = s;

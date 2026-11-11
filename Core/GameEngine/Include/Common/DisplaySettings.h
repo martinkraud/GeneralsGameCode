@@ -15,6 +15,7 @@
 //   SmoothUnitMotion yes | no ground interpolation (Modern only; see GroundTranslation)
 //   RenderScale     100|90|80|75|67|50   internal 3D resolution in percent of the presentation size (WorldRenderScale; default 100)
 //   InterfaceStyle  Original | Enhanced   gameplay HUD presentation (Enhanced = USA prototype; see EnhancedHud.h)
+//   SelectionRing   yes | no   Modern ground selection ring (default yes when absent; local presentation only; Classic ignores it; see SelectionRingStyle.h)
 // The legacy `Resolution`, `FrameRateLimit` and `FPSLimit` keys keep their meaning (frame pacing is owned by the
 // existing FramePacer; nothing here limits frames).
 #pragma once
@@ -54,13 +55,14 @@ struct Settings
 	int uiScalePercent = DisplayGeometry::kAutoUiScale;
 	bool smoothMotion = false;
 	bool enhancedHud = false;                // Options > Gameplay > Interface: Original (default) | Enhanced
+	bool selectionRing = true;               // Options > Modern Experience > Selection Ring: On (default, also when the key is absent) | Off
 	unsigned renderScalePercent = 100;       // X64.37 v3: internal 3D resolution (WorldRenderScale::kChoices); 100 = native
 
 	bool operator==(const Settings &o) const
 	{
 		return explicitSettings == o.explicitSettings && monitor == o.monitor && monitorName == o.monitorName && resolution == o.resolution &&
 		       refreshHz == o.refreshHz && mode == o.mode && vsync == o.vsync &&
-		       uiScalePercent == o.uiScalePercent && smoothMotion == o.smoothMotion && enhancedHud == o.enhancedHud &&
+		       uiScalePercent == o.uiScalePercent && smoothMotion == o.smoothMotion && enhancedHud == o.enhancedHud && selectionRing == o.selectionRing &&
 		       renderScalePercent == o.renderScalePercent;
 	}
 };
@@ -167,6 +169,8 @@ inline Settings load(const KeyValues &kv, bool classic)
 		s.smoothMotion = detail::iequals(*t, "yes") || detail::iequals(*t, "true") || *t == "1";
 	if (const std::string *t = detail::find(kv, "InterfaceStyle"))
 		s.enhancedHud = detail::iequals(*t, "Enhanced");
+	if (const std::string *t = detail::find(kv, "SelectionRing"))
+		s.selectionRing = !(detail::iequals(*t, "no") || detail::iequals(*t, "false") || detail::iequals(*t, "off") || *t == "0");   // anything else (and an absent key) = On
 	if (const std::string *t = detail::find(kv, "RenderScale"))
 		s.renderScalePercent = detail::parseInt(*t, n) ? WorldRenderScale::sanitize(n) : WorldRenderScale::kDefaultPercent;   // invalid = 100
 	return s;
@@ -186,6 +190,7 @@ inline void store(const Settings &s, KeyValues &kv)
 	detail::put(kv, "UIScale", s.uiScalePercent > 0 ? std::to_string(s.uiScalePercent) : std::string("Auto"));
 	detail::put(kv, "SmoothUnitMotion", s.smoothMotion ? "yes" : "no");
 	detail::put(kv, "InterfaceStyle", s.enhancedHud ? "Enhanced" : "Original");
+	detail::put(kv, "SelectionRing", s.selectionRing ? "yes" : "no");
 	detail::put(kv, "RenderScale", std::to_string(WorldRenderScale::sanitize(static_cast<int>(s.renderScalePercent))));
 }
 
@@ -370,6 +375,7 @@ inline PersistPlan planPersistence(const Settings &stored, const Settings &effec
 	if (requested.vsync != effective.vsync) now.vsync = requested.vsync;
 	if (requested.smoothMotion != effective.smoothMotion) now.smoothMotion = requested.smoothMotion;
 	if (requested.enhancedHud != effective.enhancedHud) now.enhancedHud = requested.enhancedHud;
+	if (requested.selectionRing != effective.selectionRing) now.selectionRing = requested.selectionRing;
 	if (requested.renderScalePercent != effective.renderScalePercent) now.renderScalePercent = requested.renderScalePercent;
 	Settings later = now;
 	const bool sizeChanged = requested.resolution != effective.resolution;

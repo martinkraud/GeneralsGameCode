@@ -15,6 +15,8 @@
 #include "Common/NativeOrdinaryHost.h"
 #include "Common/DisplayRuntime.h"
 #include "Common/EnhancedHud.h"
+#include "Common/SelectionRingStyle.h"
+#include "Common/GameUtility.h"
 #include "Common/DisplaySettings.h"
 #include "Common/DisplayModes.h"
 #include "Common/ModernExperience.h"
@@ -427,6 +429,7 @@ void W3DDisplay::initOrdinaryHostPresentation()
         });
         if (settings.smoothMotion) GroundTranslation::setEnabled(true);   // Options > Unit Motion; off by default
         EnhancedHud::setRequested(settings.enhancedHud);                  // Options > Interface; Original by default
+        SelectionRing::setPreference(settings.selectionRing);             // Options > Selection Ring; On by default (Classic ignores it)
         state.stored = stored;
         state.settings = settings;
         state.settings.monitor = resolved.monitorIndex;            // what is running, not what was asked for
@@ -2544,6 +2547,34 @@ void NativeAutoShot()
                     case 9: shoot("ui-bar-hidden"); ToggleControlBar(); gwait = 80; gop = 10; break;
                     case 10: shoot("ui-bar-shown"); if (TheControlBar) TheControlBar->showPurchaseScience(); gwait = 150; gop = 11; break;
                     case 11: shoot("ui-genpowers"); if (TheControlBar) TheControlBar->hidePurchaseScience(); gwait = 20; gop = 12; break;
+                    case 12: {   // GENERALS_AUTOSELECT=infantry|vehicle|structure|multi (developer aid, selection ring evidence): selects local objects (UI selection only), looks at them, captures On then Off
+                        const char *mode = std::getenv("GENERALS_AUTOSELECT");
+                        if (!mode || !*mode || !TheInGameUI || !ThePlayerList) { gop = 14; break; }
+                        Player *local = rts::getObservedOrLocalPlayer();
+                        const bool wantMulti = !_stricmp(mode, "multi");
+                        KindOfType kind = !_stricmp(mode, "infantry") ? KINDOF_INFANTRY : !_stricmp(mode, "structure") ? KINDOF_STRUCTURE : KINDOF_VEHICLE;
+                        Object *first = nullptr;
+                        for (Object *obj = TheGameLogic->getFirstObject(); obj && !first; obj = obj->getNextObject())
+                            if (obj->getControllingPlayer() == local && obj->getDrawable() && (wantMulti ? (obj->isKindOf(KINDOF_INFANTRY) || obj->isKindOf(KINDOF_VEHICLE)) : obj->isKindOf(kind)))
+                                first = obj;
+                        if (!first) { StartupDiagnostics::checkpoint("gameui", "autoselect", "no matching object"); gop = 14; break; }
+                        TheInGameUI->deselectAllDrawables();
+                        const Coord3D at = *first->getPosition();
+                        unsigned count = 0;
+                        for (Object *obj = TheGameLogic->getFirstObject(); obj; obj = obj->getNextObject()) {
+                            if (obj->getControllingPlayer() != local || !obj->getDrawable()) continue;
+                            if (!wantMulti && obj != first) continue;
+                            const Coord3D *q = obj->getPosition();
+                            if (wantMulti && ((q->x - at.x) * (q->x - at.x) + (q->y - at.y) * (q->y - at.y) > 400.0f * 400.0f)) continue;
+                            TheInGameUI->selectDrawable(obj->getDrawable()); ++count;
+                        }
+                        sprintf_s(flowText, "selected %u (%s)", count, mode);
+                        StartupDiagnostics::checkpoint("gameui", "autoselect", flowText);
+                        if (TheTacticalView) { Coord3D look = at; TheTacticalView->lookAt(&look); }
+                        gwait = 90; gop = 13; break; }
+                    case 13: shoot("ui-ring-on"); SelectionRing::setPreference(false); gwait = 40; gop = 14; break;
+                    case 14: if (std::getenv("GENERALS_AUTOSELECT")) shoot("ui-ring-off"); SelectionRing::setPreference(true); SelectionRing::forceRetailRef() = true; gwait = 40; gop = 16; break;
+                    case 16: if (std::getenv("GENERALS_AUTOSELECT")) shoot("ui-ring-retail"); SelectionRing::forceRetailRef() = false; gwait = 10; gop = 15; break;
                     default: advance("gameplay UI probe complete", nullptr); done = true; break;
                     }
                 }

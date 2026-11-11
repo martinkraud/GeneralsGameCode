@@ -16,6 +16,7 @@
 #include "Common/NameKeyGenerator.h"
 #include "Common/OptionPreferences.h"
 #include "Common/OptionsPageLayout.h"
+#include "Common/SelectionRingStyle.h"
 #include "Common/StartupDiagnostics.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetLayering.h"
@@ -59,6 +60,7 @@ GameWindow *s_vsync = nullptr;
 GameWindow *s_renderScale = nullptr;
 GameWindow *s_motion = nullptr;
 GameWindow *s_interface = nullptr;   // Original | Enhanced (applies from the next match; not live-switched)
+GameWindow *s_ring = nullptr;        // Selection Ring: Off | On (live; presentation only)
 bool s_inMatch = false;
 bool s_refreshing = false;           // programmatic combo changes must not re-enter onSelectionChanged
 std::vector<DisplayModes::Monitor> s_monitors;
@@ -177,6 +179,7 @@ void syncFromRuntime()
 	select(s_renderScale, WorldRenderScale::indexOf(s.renderScalePercent));
 	select(s_motion, GroundTranslation::isEnabled() ? 1 : 0);
 	select(s_interface, s.enhancedHud ? 1 : 0);
+	select(s_ring, s.selectionRing ? 1 : 0);
 }
 
 // ---- configuration <-> runtime ---------------------------------------------------------------------------------------------------
@@ -469,6 +472,11 @@ bool create(GameWindow *resolutionCombo, const OptionPreferences &, bool inMatch
 		return c;
 	};
 
+	caption("OptionsMenu.wnd:ModernSelectionRingLabel", L"Selection Ring", "GUI:SelectionRing");
+	s_ring = combo("OptionsMenu.wnd:ModernSelectionRing", 2);
+	addEntry(s_ring, TheGameText->FETCH_OR_SUBSTITUTE("GUI:Off", L"Off"));
+	addEntry(s_ring, TheGameText->FETCH_OR_SUBSTITUTE("GUI:On", L"On"));
+
 	caption("OptionsMenu.wnd:ModernInterfaceLabel", L"Interface", "GUI:InterfaceStyle");
 	s_interface = combo("OptionsMenu.wnd:ModernInterface", 2);
 	addEntry(s_interface, TheGameText->FETCH_OR_SUBSTITUTE("GUI:InterfaceOriginal", L"Original"));
@@ -614,6 +622,7 @@ void reset()
 	select(s_renderScale, 0);   // 100 %
 	select(s_motion, 0);
 	select(s_interface, 0);   // Original
+	select(s_ring, 1);        // Selection Ring: On
 }
 
 bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
@@ -653,6 +662,8 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 	// live everywhere (also in a match): the HUD presentation and the Render Scale
 	const Int interfaceIndex = selected(s_interface);
 	if (interfaceIndex >= 0) requested.enhancedHud = interfaceIndex == 1;
+	const Int ringIndex = selected(s_ring);
+	if (ringIndex >= 0) requested.selectionRing = ringIndex == 1;
 	const Int renderScaleIndex = selected(s_renderScale);
 	if (renderScaleIndex >= 0 && renderScaleIndex < WorldRenderScale::kChoiceCount)
 		requested.renderScalePercent = WorldRenderScale::kChoices[renderScaleIndex];
@@ -706,6 +717,8 @@ bool apply(OptionPreferences &preferences, bool layoutsAlreadyRebuilt)
 		GroundTranslation::setEnabled(requested.smoothMotion);
 		state.settings.smoothMotion = requested.smoothMotion;
 	}
+	SelectionRing::setPreference(requested.selectionRing);      // local presentation only: live everywhere, takes effect on the next frame
+	state.settings.selectionRing = requested.selectionRing;
 	EnhancedHud::setRequested(requested.enhancedHud);
 	if (requested.enhancedHud != effective.enhancedHud)
 	{
@@ -775,7 +788,7 @@ void update()
 
 void forget()
 {
-	s_panelHost = s_resolution = s_monitor = s_mode = s_uiScale = s_vsync = s_renderScale = s_motion = s_interface = nullptr;
+	s_panelHost = s_resolution = s_monitor = s_mode = s_uiScale = s_vsync = s_renderScale = s_motion = s_interface = s_ring = nullptr;
 	s_monitors.clear();
 	s_inMatch = false;
 	s_labelBase.clear();

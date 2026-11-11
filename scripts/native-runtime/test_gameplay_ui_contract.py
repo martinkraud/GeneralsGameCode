@@ -53,6 +53,38 @@ class GameplayUiContracts(unittest.TestCase):
         forget = bar[bar.index("void EnhancedHudOverview::forget("):][:400]
         self.assertIn("restoreOverviewGeometry();", forget)
 
+    def test_the_general_powers_popup_is_placed_by_the_safe_area_rule(self):
+        bar = read(BAR)
+        self.assertIn("popupPlacementClear( surfaceW, surfaceH, layout, ui )", bar)
+        self.assertNotIn("popupPlacement( surfaceW, surfaceH, layout.infoTop, ui )", bar)       # the old rule let a tall popup fall back onto the HUD
+        panels = read("Core/GameEngine/Include/Common/EnhancedHudPanels.h")
+        self.assertIn("inline PopupPlacement popupPlacementClear(", panels)
+        self.assertIn("shellSegments(l, seg)", panels)
+
+    def test_the_selection_ring_is_presentation_only_and_classic_keeps_the_retail_ring(self):
+        header = read("Core/GameEngine/Include/Common/SelectionRingStyle.h")
+        self.assertEqual([l for l in header.splitlines() if l.startswith("#include")], ["#include <algorithm>"])   # pure: no engine, no simulation
+        view = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DView.cpp")
+        self.assertIn("DisplayRuntime::modern() && !ModernExperience::classic()", view[view.index("Selection rings."):])
+        self.assertIn("SelectionRing::styleFor(modernRing, SelectionRing::preference()", view)
+        self.assertIn("ring.width", view)
+        # the ring never takes part in picking, selection, commands, network, replays or saves
+        for path in ("Core/GameEngine/Source/GameClient/MessageStream/SelectionXlat.cpp", "Core/GameEngine/Source/GameLogic/System/GameLogicDispatch.cpp"):
+            self.assertNotIn("SelectionRing", read(path), path)
+        # the preference is a Modern display setting beside Interface: one source of truth, stored in Options.ini only
+        settings = read("Core/GameEngine/Include/Common/DisplaySettings.h")
+        self.assertIn("bool selectionRing = true;", settings)
+        self.assertIn('"SelectionRing"', settings)
+        for forbidden in ("Xfer", "GameMessage", "RecorderClass"):
+            self.assertNotIn(forbidden, header)
+        opts = read("Core/GameEngine/Source/GameClient/GUI/ModernDisplayOptions.cpp")
+        self.assertIn("select(s_ring, 1);        // Selection Ring: On", opts)                  # Defaults restore On
+        self.assertIn("SelectionRing::setPreference(requested.selectionRing);", opts)
+        self.assertIn("OptionsMenu.wnd:ModernSelectionRing", opts)
+        host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
+        self.assertIn("SelectionRing::setPreference(settings.selectionRing);", host)
+
+
     def test_the_probe_flow_is_a_harness_and_the_capture_script_knows_it(self):
         host = read("Core/GameEngineDevice/Source/W3DDevice/GameClient/W3DDisplayOrdinaryHost.cpp")
         self.assertIn('"gameui"', host)

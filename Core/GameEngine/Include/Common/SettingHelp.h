@@ -39,6 +39,7 @@ constexpr Entry kEntries[] = {
 	// Modern Experience
 	{ "ModernMotion", "GUI:HelpMotion", L"Original moves units once per simulation tick. Smooth interpolates their motion between ticks on faster displays; gameplay is identical. Experimental. Applies from the main menu." },
 	{ "ModernInterface", "GUI:HelpInterface", L"Original is the classic control bar. Enhanced is the redesigned HUD for USA, China and GLA with the same commands and layout logic." },
+	{ "ModernSelectionRing", "GUI:HelpSelectionRing", L"Shows a ground indicator around selected units and structures. Turning it off hides only the ring; health bars and the command UI stay. Does not affect gameplay." },
 	// Network
 	{ "ComboBoxIP", "GUI:HelpLanAddress", L"The network adapter address the game uses for LAN games. Choose the one on your local network." },
 	{ "ComboBoxOnlineIP", "GUI:HelpOnlineAddress", L"Used by the original online service, which is no longer available. It does not affect LAN play." },

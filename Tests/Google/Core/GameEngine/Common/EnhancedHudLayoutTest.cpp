@@ -17,6 +17,9 @@
 #include "Common/EnhancedHudLayout.h"
 #include "Common/EnhancedHudPanels.h"
 #include "Common/OptionsPageLayout.h"
+#include "Common/SelectionRingStyle.h"
+#include "Common/ModernSettingsModel.h"
+#include "Common/SettingHelp.h"
 
 #include <cmath>
 #include <cstdio>
@@ -2207,4 +2210,228 @@ TEST(EnhancedHudPopupProfile, EveryZeroHourPopupWindowMapsOnceInsideTheConsoleWi
 	PopupProfileScope standard(PopupProfile::Standard);
 	EXPECT_FALSE(popupTarget({22, 54, 350, 24}).valid);                          // a Zero Hour rectangle is unknown to the Generals table
 	EXPECT_TRUE(popupTarget({0, 76, 296, 24}).valid);
+}
+
+// Owner finding on the gameplay UI milestone: the General Powers popup overlapped the stepped HUD in real Zero Hour play. Root cause: the popup was sized by the surface and the UI scale only,
+// and when it was taller than the room above the HUD it was centred on the whole surface instead (over the HUD). The WHOLE box must obey bottom <= highest reached shell top - gap.
+TEST(EnhancedHudPopupSafeArea, TheWholePopupStaysAboveTheStepsItReaches)
+{
+	const int uiScales[] = {DisplayGeometry::kAutoUiScale, 75, 100, 125, 150, 200};
+	int oldOverlaps = 0;
+	for (const Surface &s : kSurfaces)
+		for (int ui : uiScales)
+		{
+			const double ls = layoutScaleFor(s.w, s.h, ui);
+			const Result l = EnhancedHudLayout::compute(s.w, s.h, ls);
+			if (!l.valid)
+				continue;
+			const EnhancedHudPanels::PopupPlacement p = EnhancedHudPanels::popupPlacementClear(s.w, s.h, l, ls);
+			Rect seg[4];
+			shellSegments(l, seg);
+			int top = s.h;
+			for (const Rect &g : seg)
+				if (g.x < p.rect.right() && g.right() > p.rect.x && g.y < top)
+					top = g.y;
+			const int gap = EnhancedHudPanels::popupSafeGap(l.scale);
+			EXPECT_LE(p.rect.bottom(), top - gap) << s.name << " ui " << ui;
+			EXPECT_GE(p.rect.y, 0) << s.name << " ui " << ui;
+			EXPECT_GE(p.rect.x, 0) << s.name << " ui " << ui;
+			EXPECT_LE(p.rect.right(), s.w) << s.name << " ui " << ui;
+			EXPECT_GE(p.scale, 0.25 - 1e-9) << s.name << " ui " << ui;
+			// the old placement is only ever replaced by a smaller or equal popup, never a larger one
+			const EnhancedHudPanels::PopupPlacement old = EnhancedHudPanels::popupPlacement(s.w, s.h, l.infoTop, ls);
+			EXPECT_LE(p.scale, old.scale + 1e-9) << s.name << " ui " << ui;
+			if (old.rect.bottom() > top - gap || old.rect.y < 0)
+				++oldOverlaps;
+			// a popup that already fits keeps exactly the accepted placement
+			if (old.rect.bottom() <= top - gap && old.rect.y >= 0)
+			{
+				EXPECT_EQ(p.rect.x, old.rect.x) << s.name << " ui " << ui;
+				EXPECT_EQ(p.rect.y, old.rect.y) << s.name << " ui " << ui;
+				EXPECT_EQ(p.rect.w, old.rect.w) << s.name << " ui " << ui;
+			}
+		}
+	RecordProperty("old_overlapping_cases", oldOverlaps);
+}
+
+TEST(EnhancedHudPopupSafeArea, TheNamedSurfacesKeepTheFullPopupReadable)
+{
+	const Surface named[] = {{1024, 768, "1024x768"}, {1280, 720, "1280x720"}, {1920, 1080, "1920x1080"}, {2560, 1440, "2560x1440"}, {3440, 1440, "3440x1440"}, {5120, 1440, "5120x1440"}};
+	for (const Surface &s : named)
+	{
+		const double ls = layoutScaleFor(s.w, s.h);
+		const Result l = EnhancedHudLayout::compute(s.w, s.h, ls);
+		ASSERT_TRUE(l.valid) << s.name;
+		const EnhancedHudPanels::PopupPlacement p = EnhancedHudPanels::popupPlacementClear(s.w, s.h, l, ls);
+		EXPECT_LE(p.rect.bottom(), l.island.y - EnhancedHudPanels::popupSafeGap(l.scale) + 40 * ls) << s.name;   // never lower than the highest step it can reach, plus the step rise
+		EXPECT_GE(p.scale, 0.60) << s.name << " stays readable (>= 60% of the reference console)";
+	}
+}
+
+// ---- Selection Ring: Modern ground selection ring and its player setting -----------------------------------------------------------------------------------------------------------------
+namespace
+{
+int saturation(const SelectionRing::Style &s)
+{
+	const int hi = std::max(s.r, std::max(s.g, s.b)), lo = std::min(s.r, std::min(s.g, s.b));
+	return hi == 0 ? 0 : (hi - lo) * 100 / hi;
+}
+}
+
+TEST(SelectionRingSetting, DefaultsToOnAndAnOldSettingsFileWithoutTheKeyIsOn)
+{
+	using namespace DisplayConfig;
+	EXPECT_TRUE(Settings().selectionRing);
+	KeyValues oldFile;
+	oldFile["DisplayVersion"] = "1";
+	oldFile["InterfaceStyle"] = "Enhanced";               // a file written before the option existed
+	EXPECT_TRUE(load(oldFile, false).selectionRing);
+	EXPECT_TRUE(load(KeyValues(), false).selectionRing);   // no file at all
+	oldFile["SelectionRing"] = "garbage";
+	EXPECT_TRUE(load(oldFile, false).selectionRing);       // anything but an explicit off is On
+}
+
+TEST(SelectionRingSetting, PersistsAndReloads)
+{
+	using namespace DisplayConfig;
+	Settings s;
+	s.selectionRing = false;
+	KeyValues out;
+	store(s, out);
+	EXPECT_EQ(out["SelectionRing"], "no");
+	KeyValues file = out;
+	file["DisplayVersion"] = "1";
+	EXPECT_FALSE(load(file, false).selectionRing);
+	s.selectionRing = true;
+	store(s, out);
+	EXPECT_EQ(out["SelectionRing"], "yes");
+	file = out;
+	file["DisplayVersion"] = "1";
+	EXPECT_TRUE(load(file, false).selectionRing);
+	for (const char *off : {"no", "No", "false", "off", "0"})
+	{
+		file["SelectionRing"] = off;
+		EXPECT_FALSE(load(file, false).selectionRing) << off;
+	}
+	// storing the block leaves every other key alone
+	KeyValues other;
+	other["SomethingElse"] = "x";
+	store(Settings(), other);
+	EXPECT_EQ(other["SomethingElse"], "x");
+}
+
+TEST(SelectionRingSetting, OnlyAnActualChangeIsPersistedAndNothingRiskyIsInvolved)
+{
+	using namespace DisplayConfig;
+	Settings stored, effective, requested;
+	stored.selectionRing = effective.selectionRing = requested.selectionRing = true;
+	requested.selectionRing = false;
+	PersistPlan p = planPersistence(stored, effective, requested);
+	EXPECT_FALSE(p.immediate.selectionRing);
+	EXPECT_FALSE(p.afterKeep.selectionRing);
+	EXPECT_FALSE(p.riskyChanged);                           // no Keep / Revert confirmation, no relayout
+	// untouched: the stored value is kept
+	stored.selectionRing = false;
+	effective.selectionRing = false;
+	requested.selectionRing = false;
+	EXPECT_FALSE(planPersistence(stored, effective, requested).immediate.selectionRing);
+	// a command line / session difference never leaks into the file
+	stored.selectionRing = true; effective.selectionRing = false; requested.selectionRing = false;
+	EXPECT_TRUE(planPersistence(stored, effective, requested).immediate.selectionRing);
+}
+
+TEST(SelectionRingSetting, ThePageRowHelpAndCancelDefaultsFollowTheExistingContracts)
+{
+	// the row is on the Modern Experience page, after the Interface row (dropdowns last, the list opens downwards)
+	int ring = -1, motion = -1, iface = -1, n = 0;
+	for (const OptionsPageLayout::PageItem &i : OptionsPageLayout::kModernItems)
+	{
+		if (std::strcmp(i.control, "ModernSelectionRing") == 0) ring = n;
+		if (std::strcmp(i.control, "ModernMotion") == 0) motion = n;
+		if (std::strcmp(i.control, "ModernInterface") == 0) iface = n;
+		++n;
+	}
+	EXPECT_GE(ring, 0);
+	EXPECT_GT(ring, iface);
+	EXPECT_GT(iface, motion);
+	EXPECT_FALSE(OptionsPageLayout::mainMenuOnly("ModernSelectionRing"));   // live everywhere, also in a match
+	// factual help sentence
+	const SettingHelp::Entry *help = SettingHelp::find("ModernSelectionRing");
+	ASSERT_NE(help, nullptr);
+	EXPECT_NE(std::wstring(help->fallback).find(L"ground indicator"), std::wstring::npos);
+	// Cancel returns to the baseline, Accept makes the change the new baseline, Defaults (On) is a staged change that Cancel also reverts
+	ModernSettings::Tracker t;
+	t.add(1, 1);                                    // On when the screen opened
+	t.set(1, 0);
+	EXPECT_TRUE(t.dirty());
+	t.revert();
+	EXPECT_FALSE(t.dirty());
+	t.set(1, 0);
+	t.accept();
+	EXPECT_FALSE(t.dirty());
+	t.set(1, 1);                                    // Defaults: On
+	EXPECT_TRUE(t.dirty());
+	t.revert();
+	EXPECT_FALSE(t.dirty());
+}
+
+TEST(SelectionRingStyle, ClassicIsTheRetailRingWhateverTheModernPreferenceSays)
+{
+	using namespace SelectionRing;
+	for (bool pref : {true, false})
+		for (Relation r : {Relation::Own, Relation::Enemy, Relation::Other})
+		{
+			const Style s = styleFor(false, pref, r, 1440);
+			const Style retail = retailStyle(r);
+			EXPECT_TRUE(s.draw);                    // never suppressed by the Modern setting
+			EXPECT_EQ(s.r, retail.r); EXPECT_EQ(s.g, retail.g); EXPECT_EQ(s.b, retail.b); EXPECT_EQ(s.a, 255);
+			EXPECT_FLOAT_EQ(s.width, 2.0f);
+		}
+	const Style own = retailStyle(Relation::Own);
+	EXPECT_EQ(own.r, 40); EXPECT_EQ(own.g, 255); EXPECT_EQ(own.b, 40);   // the exact retail primaries
+	EXPECT_EQ(retailStyle(Relation::Enemy).r, 255);
+}
+
+TEST(SelectionRingStyle, ModernOnIsRestrainedButStillClearlyReadable)
+{
+	using namespace SelectionRing;
+	for (int h : {600, 768, 1080, 1440, 2160})
+		for (Relation r : {Relation::Own, Relation::Enemy, Relation::Other})
+		{
+			const Style on = styleFor(true, true, r, h), retail = retailStyle(r);
+			EXPECT_TRUE(on.draw);
+			EXPECT_LT(on.a, 255);                           // translucent
+			EXPECT_GE(on.a, 110);                           // never faint
+			EXPECT_LE(on.width, 3.0f);
+			EXPECT_GE(on.width, 1.5f);                      // never a hairline
+			if (r != Relation::Other)
+				EXPECT_LT(saturation(on), saturation(retail));   // less saturated than the retail primary
+			EXPECT_GT(std::max(on.r, std::max(on.g, on.b)), 200 - 1 - 24);   // still bright enough for dark terrain
+		}
+	// the dominant channel keeps the meaning: green own, red enemy
+	const Style own = styleFor(true, true, Relation::Own, 1080), enemy = styleFor(true, true, Relation::Enemy, 1080);
+	EXPECT_GT(own.g, own.r); EXPECT_GT(own.g, own.b);
+	EXPECT_GT(enemy.r, enemy.g); EXPECT_GT(enemy.r, enemy.b);
+	// the line is thinner than retail at the sizes the owner plays (<= 1440 high) and never grows without bound
+	EXPECT_LT(styleFor(true, true, Relation::Own, 1080).width, 2.0f);
+	EXPECT_LE(styleFor(true, true, Relation::Own, 4320).width, 3.0f);
+	EXPECT_FLOAT_EQ(modernWidth(0), 1.5f);              // unknown height falls back to the 1080 value
+}
+
+TEST(SelectionRingStyle, ModernOffDrawsNoRing)
+{
+	using namespace SelectionRing;
+	for (Relation r : {Relation::Own, Relation::Enemy, Relation::Other})
+		EXPECT_FALSE(styleFor(true, false, r, 1080).draw);
+}
+
+TEST(SelectionRingStyle, ThePreferenceIsACachedPlainFlagThatDefaultsToOn)
+{
+	using namespace SelectionRing;
+	EXPECT_TRUE(preference());
+	setPreference(false);
+	EXPECT_FALSE(preference());
+	setPreference(true);
+	EXPECT_TRUE(preference());
+	static_assert(std::is_trivially_copyable<Style>::value, "plain data, no allocation per ring");
 }
