@@ -292,6 +292,37 @@ inline PopupPlacement popupPlacement(int surfaceW, int surfaceH, int consoleTop,
 	return {{x, y, w, h}, f};
 }
 
+// Safe-area placement (owner finding on the gameplay UI milestone): the WHOLE popup box, not only its centre, must stay clear of the stepped HUD. The popup is first sized as
+// before, then the highest shell segment (radar / information / command / General module) that its horizontal extent reaches gives the safe top; the scale is reduced only as far
+// as needed so that `bottom <= safe top - gap` holds (the scale never drops below 0.25). The retail windows are placed inside the box, so they obey the same bound.
+inline int popupSafeGap(double layoutScale) { return std::max(6, static_cast<int>(std::lround(8 * layoutScale))); }
+inline PopupPlacement popupPlacementClear(int surfaceW, int surfaceH, const EnhancedHudLayout::Result &l, double uiScale)
+{
+	PopupPlacement p = popupPlacement(surfaceW, surfaceH, l.infoTop, uiScale);
+	if (!l.valid)
+		return p;
+	const int gap = popupSafeGap(l.scale);
+	Rect seg[4];
+	EnhancedHudLayout::shellSegments(l, seg);
+	for (int pass = 0; pass < 3; ++pass)
+	{
+		int top = surfaceH;
+		for (const Rect &s : seg)
+			if (s.x < p.rect.right() && s.right() > p.rect.x && s.y < top)
+				top = s.y;
+		const int room = top - gap;
+		if (p.rect.bottom() <= room && p.rect.y >= 0)
+			break;
+		double f = std::min(p.scale, static_cast<double>(room) / kPopupNewH);
+		if (f < 0.25) f = 0.25;
+		const int w = static_cast<int>(std::lround(kPopupNewW * f)), h = static_cast<int>(std::lround(kPopupNewH * f));
+		int y = (room - h) / 2;
+		if (y < 0) y = 0;
+		p = {{(surfaceW - w) / 2, y, w, h}, f};
+	}
+	return p;
+}
+
 // ---- Global Powers: the compact dock (X64.37 v3) -------------------------------------------------------------------------------
 // Where the layout cannot give the Global Powers a side column (the 4:3 family, or no vertical room), it provides a row panel above the
 // island. The retail shortcut bar fills its slots from the LEFT (visible buttons are packed into slots 0 .. n-1), so a row of five slots

@@ -279,7 +279,7 @@ void ControlBar::applyEnhancedLayout()
 		gen->winSetDrawFunc( purchasePanelDraw );
 		const Int surfaceW = TheDisplay ? (Int)TheDisplay->getWidth() : 800, surfaceH = TheDisplay ? (Int)TheDisplay->getHeight() : 600;
 		const double ui = DisplayRuntime::uiScale() > 0.0 ? DisplayRuntime::uiScale() : 1.0;
-		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacement( surfaceW, surfaceH, layout.infoTop, ui );
+		const EnhancedHudPanels::PopupPlacement place = EnhancedHudPanels::popupPlacementClear( surfaceW, surfaceH, layout, ui );
 		// the retail popup differs per title (Generals 296 x 432, Zero Hour 394 x 431 with more powers per tier): the shape of its REMEMBERED retail size picks the mapping
 		remember( s_purchase, gen );
 		{
