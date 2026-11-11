@@ -45,6 +45,9 @@
 #include "GameLogic/GameLogic.h"
 #include "GameNetwork/FileTransfer.h"
 #include "GameNetwork/LANAPICallbacks.h"
+#include "GameNetwork/LanJoinCompat.h"
+#include "Common/DisplayRuntime.h"
+#include "Common/ModernExperience.h"
 #include "GameNetwork/networkutil.h"
 
 LANAPI *TheLAN = nullptr;
@@ -77,6 +80,8 @@ UnicodeString LANAPIInterface::getErrorStringFromReturnType( ReturnType ret )
 		case RET_DUPLICATE_NAME:
 			return TheGameText->fetch("LAN:ErrorDuplicateName");
 		case RET_CRC_MISMATCH:
+			if (DisplayRuntime::modern() && !ModernExperience::classic())       // Modern: say what it means; Classic keeps the retail text
+				return TheGameText->FETCH_OR_SUBSTITUTE("GUI:LanIncompatibleBuild", LanJoinCompat::modernDenyText());
 			return TheGameText->fetch("LAN:ErrorCRCMismatch");
 		case RET_GAME_STARTED:
 			return TheGameText->fetch("LAN:ErrorGameStarted");

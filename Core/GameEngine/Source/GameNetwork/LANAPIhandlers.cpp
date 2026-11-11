@@ -38,6 +38,8 @@
 #include "Common/UserPreferences.h"
 #include "GameNetwork/LANAPI.h"
 #include "GameNetwork/LANAPICallbacks.h"
+#include "GameNetwork/LanJoinCompat.h"
+#include "Common/StartupDiagnostics.h"
 #include "GameClient/MapUtil.h"
 
 void LANAPI::handleRequestLocations( LANMessage *msg, UnsignedInt senderIP )
@@ -287,10 +289,15 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 			if (TheGlobalData->m_netMinPlayers > 0) {
 #endif
 // TheSuperHackers @todo Enable CRC checks!
-#if !RTS_ZEROHOUR
-			if (msg->GameToJoin.iniCRC != TheGlobalData->m_iniCRC ||
-					msg->GameToJoin.exeCRC != TheGlobalData->m_exeCRC)
+// Modern Engine: enforced in both titles on the native 64-bit builds (LanJoinCompat.h); only a 32-bit Zero Hour build keeps the upstream behaviour.
+#if !RTS_ZEROHOUR || defined(_WIN64)
+			if (!LanJoinCompat::compatible({TheGlobalData->m_exeCRC, TheGlobalData->m_iniCRC}, {msg->GameToJoin.exeCRC, msg->GameToJoin.iniCRC}))
 			{
+				{
+					char detail[96];
+					sprintf(detail, "them exe:%08X ini:%08X us exe:%08X ini:%08X", msg->GameToJoin.exeCRC, msg->GameToJoin.iniCRC, TheGlobalData->m_exeCRC, TheGlobalData->m_iniCRC);
+					StartupDiagnostics::checkpoint("lan", "join_denied_incompatible_build", detail);
+				}
 				DEBUG_LOG(("LANAPI::handleRequestJoin - join denied because of CRC mismatch. CRCs are them/us INI:%X/%X exe:%X/%X",
 					msg->GameToJoin.iniCRC, TheGlobalData->m_iniCRC,
 					msg->GameToJoin.exeCRC, TheGlobalData->m_exeCRC));

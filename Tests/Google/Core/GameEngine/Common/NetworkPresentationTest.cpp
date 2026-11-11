@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include <string>
 #include "Common/FrameDeliveryStats.h"
 #include "Common/PresentationClock.h"
 #include "GameNetwork/NetworkPacing.h"
@@ -257,4 +258,36 @@ TEST(FrameDeliveryStats, AlphaRegressionWithoutTickIsReported)
 	f.alpha = 0.3f;                         // moves backwards without a tick
 	w.addFrame(f);
 	EXPECT_EQ(w.alphaRegressions(), 1u);
+}
+
+// ---- LAN join compatibility (Public Alpha gate) -------------------------------------------------------------------------------------------------------------------------------------------
+#include "GameNetwork/LanJoinCompat.h"
+
+TEST(LanJoinCompat, OnlyTheSameBuildWithTheSameDataMayJoin)
+{
+	using LanJoinCompat::Identity;
+	const Identity host = {0x1234ABCDu, 0x00C0FFEEu};
+	EXPECT_TRUE(LanJoinCompat::compatible(host, host));
+	EXPECT_TRUE(LanJoinCompat::compatible(host, Identity{0x1234ABCDu, 0x00C0FFEEu}));
+	EXPECT_FALSE(LanJoinCompat::compatible(host, Identity{0x1234ABCEu, 0x00C0FFEEu}));   // a different executable (another build, or the retail one)
+	EXPECT_FALSE(LanJoinCompat::compatible(host, Identity{0x1234ABCDu, 0x00C0FFEFu}));   // the same executable with different game data (INI / overlay)
+	EXPECT_FALSE(LanJoinCompat::compatible(host, Identity{0u, 0u}));                      // a client that never computed its identity
+	EXPECT_TRUE(LanJoinCompat::compatible(Identity{}, Identity{}));                        // symmetric by construction
+	EXPECT_EQ(LanJoinCompat::compatible(host, Identity{1, 2}), LanJoinCompat::compatible(Identity{1, 2}, host));
+}
+
+TEST(LanJoinCompat, EnforcedInBothTitlesOnNative64BitAndKeepsTheUpstreamRuleOnlyFor32BitZeroHour)
+{
+	EXPECT_TRUE(LanJoinCompat::enforced(false, false));   // retail Generals always enforced it
+	EXPECT_TRUE(LanJoinCompat::enforced(false, true));
+	EXPECT_TRUE(LanJoinCompat::enforced(true, true));     // Zero Hour, native 64-bit: now enforced
+	EXPECT_FALSE(LanJoinCompat::enforced(true, false));   // upstream 32-bit Zero Hour: unchanged
+}
+
+TEST(LanJoinCompat, TheRefusalTextSaysWhatToDo)
+{
+	const std::wstring text = LanJoinCompat::modernDenyText();
+	EXPECT_NE(text.find(L"different version"), std::wstring::npos);
+	EXPECT_NE(text.find(L"same"), std::wstring::npos);
+	EXPECT_LT(text.size(), 200u);
 }
