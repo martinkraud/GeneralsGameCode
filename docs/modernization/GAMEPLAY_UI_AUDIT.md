@@ -83,3 +83,10 @@ The Zero Hour tooltip is retail navy, the Generals one retail black. **Kept as t
 * Chat, disconnect and network status are audited from the code, not natively (they need a multiplayer session; the real two-PC validation of `2071ad765` is pending).
 * Superweapon and named countdown timers need scripted / special-power game state: the superweapon fix is validated by its layout tests and the analytic anchor, not by a native frame.
 * The General Powers popup in Zero Hour was captured for the base USA side and the generals sampled in the evidence; the Boss side cannot be a human in Skirmish.
+
+## 7. Closure: owner review findings (2026-11-11)
+
+Direction accepted by the owner; two findings fixed, nothing else reopened. **Modern Gameplay UI and UX Polish is COMPLETE.**
+
+* **General Powers overlapped the Modern HUD in real Zero Hour play.** Root cause: `popupPlacement` sized the popup from the surface and the UI scale only and, when it was taller than the room above the HUD (`y < 0`), centred it on the whole surface, over the HUD; the earlier validation used the automatic UI scale at three sizes. Fix: `EnhancedHudPanels::popupPlacementClear` (safe area: `popup bottom <= top of the highest HUD step its horizontal extent reaches - gap`, scale reduced only as needed, minimum 0.25; an already fitting popup keeps exactly the accepted placement). Native evidence at 1024 x 768, 1280 x 720, 1920 x 1080, 2560 x 1440, 3440 x 1440, 5120 x 1440 for both titles: `evidence/gameplay-ui/general-powers-safe-area-{zerohour,generals}.jpg`.
+* **Selection ring too dominant.** Archaeology, the restrained Modern ring and the Selection Ring setting: [SELECTION_RING.md](SELECTION_RING.md); before / after evidence `evidence/selection-ring/`.

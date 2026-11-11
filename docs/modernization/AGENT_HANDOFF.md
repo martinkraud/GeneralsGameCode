@@ -678,3 +678,10 @@ Read [GAMEPLAY_UI_AUDIT.md](GAMEPLAY_UI_AUDIT.md) first. **Awaiting OWNER accept
 * **Pure rules:** `Common/GameplayTextLayout.h` (message size / wrap, superweapon list), `EnhancedHudPanels::overviewFitAboveHud`, `PopupProfile {Standard, Wide}`; all unit tested and gated on Modern (messages) or the Enhanced HUD being active.
 * **Lessons:** the native probe found two Zero Hour parity defects that layout tests had missed (popup mapping, Overview scale): the Overview skin scales by height (424 wide in Generals, 596 in Zero Hour); the Zero Hour retail popup is 394 x 431 with 4 / 15 / 4 powers; scaled retail rectangles come back with up to two units of rounding error, so the Wide popup table matches with a tolerance of 3.
 * **Not done on purpose:** a Modern tooltip skin, quit menu, observer HUD, pause overlay, toasts. Chat / disconnect and countdown timers could not be captured natively (multiplayer / script state).
+
+## Gameplay UI closure: General Powers safe area + Selection Ring (2026-11-11; post-DP1; DP1 frozen at `c55234b5b`)
+
+* The Modern Gameplay UI and UX milestone is **COMPLETE** (owner accepted the direction; two findings fixed). Do not run another generic UI sweep.
+* General Powers popup: `EnhancedHudPanels::popupPlacementClear` (safe-area rule, tested for every surface / UI scale). Do not go back to `popupPlacement(..., infoTop, ...)` alone: it falls back onto the HUD when the popup is taller than the room above it.
+* Selection ring: [SELECTION_RING.md](SELECTION_RING.md). One implementation (`W3DView::drawNativeWorldOverlays`), styled by `Common/SelectionRingStyle.h`; Classic = retail, Modern = restrained, Modern + Off = none. Setting `SelectionRing` in `Options.ini` (default On when absent), applied by `ModernDisplayOptions`, cached in `SelectionRing::preferenceRef()`. Probe: `GENERALS_AUTOSELECT=infantry|vehicle|structure|multi` with the `gameui` flow captures `ui-ring-on / off / retail`.
+* Tooling note: `python3` in this shell is the Windows Store alias; use `py` and `unset PYTHONHOME` first (a stale `PYTHONHOME` breaks it).

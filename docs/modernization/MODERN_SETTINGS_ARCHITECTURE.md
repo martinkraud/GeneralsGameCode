@@ -31,6 +31,7 @@ Rule kept from UI.3: the retail gadgets keep every callback, message, sound and 
 | Gameplay: Use / Save camera in replays | `m_useCameraInReplay`, `m_saveCameraInReplay` | `UseCameraInReplays`, `SaveCameraInReplays` | use: at the click (restored by Cancel); save: on Accept | both |
 | Modern Experience: Unit Motion | `GroundTranslation` | `SmoothUnitMotion` | on Accept, main menu | both |
 | Modern Experience: Interface (Original / Enhanced HUD) | `EnhancedHud` | `InterfaceStyle` | live, also in a match | both (USA / China / GLA) |
+| Modern Experience: Selection Ring (On / Off) | `SelectionRing::setPreference` (cached flag) | `SelectionRing` (absent = On) | on Accept, live everywhere (match, replay, LAN); local presentation only; Classic ignores it ([SELECTION_RING](SELECTION_RING.md)) | both |
 | Network: LAN address | `OptionPreferences::setLANIPAddress` | `IPAddress` | on Accept | both |
 | Network: online address, firewall port, refresh NAT | GameSpy `FirewallHelper` | `GameSpyIPAddress`, `FirewallPortOverride` | on Accept; **the original online service is not available** | both |
 | Match rules (Starting Cash, AI Behaviour, Superweapons, Game Speed) | `GameInfo` | `Skirmish.ini` (`GameSpeed`, `Superweapons`, `AIBehavior`, ...) | per match | both; **not global settings, never on the Options pages** |

@@ -7,6 +7,13 @@ Milestone names (`X64.n`, `Stage n`) are the names used by those documents and b
 There are no tagged releases yet: this is a development branch, not an end-user release. Original gameplay semantics are the compatibility target throughout; anything that changes them
 is called out explicitly (nothing in this list is intended to).
 
+## 2026-11-11 - Modern Gameplay UI and UX Polish: COMPLETE (owner findings fixed; post Developer Preview 1)
+
+* **Owner review of `9ec2a95f2`:** direction accepted, two findings, both fixed.
+* **General Powers overlap (Zero Hour, real play):** the popup was sized by surface and UI scale only; when taller than the room above the HUD it fell back to centring on the whole surface, over the stepped HUD (27 of the unit-tested surface / UI-scale combinations). It is now placed by a safe-area rule (`popupPlacementClear`): the whole box stays above the highest HUD step it reaches minus a gap, reduced only as far as needed; an already-fitting popup keeps its accepted placement. Tested 800 x 600 .. 5120 x 1440 incl. 1024 x 768, 1280 x 720, 1920 x 1080, 2560 x 1440, 3440 x 1440, 5120 x 1440, both titles.
+* **Selection ring:** archaeology documented ([SELECTION_RING.md](docs/modernization/SELECTION_RING.md)); Modern now draws a restrained ring (softer colour, translucent, thinner), Classic keeps the retail ring exactly.
+* **New setting Options > Modern Experience > Selection Ring (On / Off):** key `SelectionRing`, default On (also when the key is absent), local presentation only, live, Classic ignores it, Defaults restores On, Cancel discards.
+
 ## 2026-11-10 - Modern Experience gameplay UI and UX polish (post Developer Preview 1; awaiting owner acceptance)
 
 * **Owner accepted** the revised stepped Modern HUD at `71b013524`; the Zero Hour Modern HUD milestone is complete.
